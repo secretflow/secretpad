@@ -1,0 +1,46 @@
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+!**/src/main/**/build/
+!**/src/test/**/build/
+!**/src/test/resources/certs/
+secretpad-api/client-java-kusciaapi/**/kusciaapi/
+secretpad-api/client-java-kusciaapi/**/common/
+secretpad-service/**/org/secretflow/proto/
+secretpad-web/config
+
+### VS Code ###
+.vscode/
+
+tmp/
+db/
+log/
+config/certs
+config/server.jks
+build/**/id_rsa*
+build/**/settings.xml
+docs/_build
