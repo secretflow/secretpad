@@ -1,0 +1,75 @@
+server:
+  tomcat:
+    accesslog:
+      enabled: true
+      directory: /var/log/secretpad
+  http-port: 8080
+  port: 443
+  ssl:
+    enabled: true
+    key-store: "file:./config/server.jks"
+    key-store-password: secretpad
+    key-alias: secretpad-server
+    key-password: secretpad
+    key-store-type: JKS
+
+spring:
+  task:
+    scheduling:
+      pool:
+        size: 10
+  application:
+    name: secretpad
+  jpa:
+    database-platform: org.hibernate.community.dialect.SQLiteDialect
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+  datasource:
+    hibernate.dialect: org.hibernate.dialect.SQLiteDialect
+    driver-class-name: org.sqlite.JDBC
+    url: jdbc:sqlite:./db/secretpad.sqlite
+    hikari:
+      idle-timeout: 60000
+      maximum-pool-size: 1
+      connection-timeout: 5000
+  jackson:
+    deserialization:
+      fail-on-missing-external-type-id-property: false
+      fail-on-ignored-properties: false
+      fail-on-unknown-properties: false
+    serialization:
+      fail-on-empty-beans: false
+  web:
+    locale: zh_CN # default locale, overridden by request "Accept-Language" header.
+
+logging:
+  level:
+    root: info
+    org:
+      hibernate:
+        type: debug
+
+kusciaapi:
+  address: 127.0.0.1:8083
+  tls:
+    cert-file: config/certs/client.crt
+    key-file: config/certs/client.pem
+    ca-file: config/certs/ca.crt
+  token-file: config/certs/token
+
+job:
+  max-parallelism: 1
+
+secretpad:
+  auth:
+    enabled: true
+  response:
+    extra-headers:
+      Content-Security-Policy: "base-uri 'self';frame-src 'self';worker-src blob: 'self' data:;object-src 'self';"
+  upload-file:
+    max-file-size: -1    # -1 means not limit, e.g.  200MB, 1GB
+    max-request-size: -1 # -1 means not limit, e.g.  200MB, 1GB
+  data:
+    dir-path: /app/data/
