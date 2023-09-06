@@ -57,9 +57,9 @@ public class NodeRouteController {
     }
 
     @PostMapping(value = "/update", consumes = "application/json")
-    public SecretPadResponse<Void> update(@Valid @RequestBody UpdateNodeRouterRequest request) {
+    public SecretPadResponse<String> update(@Valid @RequestBody UpdateNodeRouterRequest request) {
         nodeRouterService.updateNodeRouter(request);
-        return SecretPadResponse.success();
+        return SecretPadResponse.success(request.getRouterId());
     }
 
     @PostMapping(value = "/listNode")

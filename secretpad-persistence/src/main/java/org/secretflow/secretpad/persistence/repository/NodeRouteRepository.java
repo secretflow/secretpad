@@ -18,6 +18,8 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -73,4 +75,8 @@ public interface NodeRouteRepository extends JpaRepository<NodeRouteDO, Long>, J
     void deleteBySrcNodeId(@Param("srcNodeId") String srcNodeId);
 
     void deleteByDstNodeId(@Param("dstNodeId") String dstNodeId);
+
+    @Query(value = "from NodeRouteDO a join NodeDO b on a.dstNodeId=b.nodeId " +
+            "where a.srcNodeId=:nodeId and (a.dstNodeId like %:search% or a.dstNetAddress like %:search% or b.name like %:search%)")
+    Page<NodeRouteDO> pageQuery(@Param("nodeId") String nodeId, @Param("search") String search, Pageable pageable);
 }

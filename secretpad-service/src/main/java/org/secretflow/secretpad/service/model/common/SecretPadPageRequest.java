@@ -21,6 +21,7 @@ import org.secretflow.secretpad.common.constant.DatabaseConstants;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -35,6 +36,7 @@ import java.util.Set;
  * @author yutu
  * @date 2023/08/06
  */
+@Slf4j
 @Getter
 @Setter
 @ToString
@@ -61,7 +63,16 @@ public class SecretPadPageRequest {
         } else {
             Set<String> keySet = sortMap.keySet();
             List<Sort.Order> list = new ArrayList<>(keySet.size());
-            keySet.forEach(key -> list.add(new Sort.Order(Sort.Direction.fromString(sortMap.get(key)), key)));
+            keySet.forEach(key -> {
+                Sort.Direction direction;
+                try {
+                    direction = Sort.Direction.fromString(sortMap.get(key));
+                } catch (Exception e) {
+                    log.warn("SecretPadPageRequest Sort Direction error: {} now make it default DESC", sortMap.get(key));
+                    direction = Sort.Direction.DESC;
+                }
+                list.add(new Sort.Order(direction, key));
+            });
             sort = Sort.by(list);
         }
         return PageRequest.of(this.getPage() - 1, this.getSize(), sort);

@@ -1,4 +1,4 @@
-#!/usr/bin/env sh
+#!/bin/bash
 #
 # Copyright 2023 Ant Group Co., Ltd.
 #
@@ -17,7 +17,7 @@
 
 set -ex
 
-./scripts/build.sh
+./scripts/build.sh true
 
 DATETIME=$(date +"%Y%m%d%H%M%S")
 git fetch --tags

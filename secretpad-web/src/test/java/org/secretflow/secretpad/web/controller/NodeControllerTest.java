@@ -6,10 +6,7 @@ import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.persistence.repository.*;
-import org.secretflow.secretpad.service.model.node.CreateNodeRequest;
-import org.secretflow.secretpad.service.model.node.GetNodeResultDetailRequest;
-import org.secretflow.secretpad.service.model.node.ListNodeResultRequest;
-import org.secretflow.secretpad.service.model.node.NodeIdRequest;
+import org.secretflow.secretpad.service.model.node.*;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
 import org.junit.jupiter.api.Test;
@@ -20,6 +17,10 @@ import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.*;
@@ -499,5 +500,186 @@ class NodeControllerTest extends ControllerTest {
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "getNodeResultDetail", GetNodeResultDetailRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, DatatableErrorCode.DATATABLE_NOT_EXISTS);
+    }
+
+    @Test
+    void updateNode() throws Exception {
+        assertResponse(() -> {
+            UpdateNodeRequest request = FakerUtils.fake(UpdateNodeRequest.class);
+            request.setNodeId("alice");
+            request.setNetAddress("127.0.0.1:28080");
+            NodeDO alice = NodeDO.builder().nodeId(request.getNodeId()).build();
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "update", UpdateNodeRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    @Test
+    void updateNodeByNodeNotExistsException() throws Exception {
+        assertErrorCode(() -> {
+            UpdateNodeRequest request = FakerUtils.fake(UpdateNodeRequest.class);
+            request.setNodeId("alice");
+            request.setNetAddress("127.0.0.1:28080");
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(null);
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "update", UpdateNodeRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        }, NodeErrorCode.NODE_NOT_EXIST_ERROR);
+    }
+
+    @Test
+    void pageNode() throws Exception {
+        assertResponse(() -> {
+            PageNodeRequest request = FakerUtils.fake(PageNodeRequest.class);
+            request.setSearch("");
+            request.setPage(1);
+            request.setSize(10);
+            NodeDO alice = NodeDO.builder().nodeId("alice").build();
+            List<NodeDO> list = new ArrayList<>();
+            list.add(alice);
+            Page<NodeDO> page = new PageImpl<>(list);
+            Mockito.when(nodeRepository.findAll(Specification.anyOf(), request.of())).thenReturn(page);
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
+            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "page", PageNodeRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    @Test
+    void pageNodeByKusciaNodeNotExists() throws Exception {
+        assertResponse(() -> {
+            PageNodeRequest request = FakerUtils.fake(PageNodeRequest.class);
+            request.setSearch("");
+            request.setPage(1);
+            request.setSize(10);
+            NodeDO alice = NodeDO.builder().nodeId("alice").build();
+            Page<NodeDO> page = new PageImpl<>(buildNodeDOList());
+            Mockito.when(nodeRepository.findAll(Mockito.any(Specification.class), Mockito.any(Pageable.class))).thenReturn(page);
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
+            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
+            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "page", PageNodeRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    @Test
+    void pageNodeByNodeNotExists() throws Exception {
+        assertErrorCode(() -> {
+            PageNodeRequest request = FakerUtils.fake(PageNodeRequest.class);
+            request.setSearch("");
+            request.setPage(1);
+            request.setSize(10);
+            NodeDO alice = NodeDO.builder().nodeId("alice").build();
+            Page<NodeDO> page = new PageImpl<>(buildNodeDOList());
+            Mockito.when(nodeRepository.findAll(Mockito.any(Specification.class), Mockito.any(Pageable.class))).thenReturn(page);
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(null);
+            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "page", PageNodeRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        }, NodeErrorCode.NODE_NOT_EXIST_ERROR);
+    }
+
+    @Test
+    void getNode() throws Exception {
+        assertResponse(() -> {
+            NodeIdRequest request = FakerUtils.fake(NodeIdRequest.class);
+            request.setNodeId("alice");
+            NodeDO alice = NodeDO.builder().nodeId("alice").build();
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
+            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "get", NodeIdRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    @Test
+    void getNodeByNodeNotExists() throws Exception {
+        assertErrorCode(() -> {
+            NodeIdRequest request = FakerUtils.fake(NodeIdRequest.class);
+            request.setNodeId("alice");
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(null);
+            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "get", NodeIdRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        }, NodeErrorCode.NODE_NOT_EXIST_ERROR);
+    }
+
+    @Test
+    void getNodeByKusciaNodeNotExists() throws Exception {
+        assertResponse(() -> {
+            NodeIdRequest request = FakerUtils.fake(NodeIdRequest.class);
+            request.setNodeId("alice");
+            NodeDO alice = NodeDO.builder().nodeId("alice").build();
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
+            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
+            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "get", NodeIdRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    @Test
+    void tokenNode() throws Exception {
+        assertResponse(() -> {
+            NodeTokenRequest request = FakerUtils.fake(NodeTokenRequest.class);
+            request.setNodeId("alice");
+            NodeDO alice = NodeDO.builder().nodeId("alice").build();
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
+            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            queryDomainResponse = queryDomainResponse.toBuilder().setData(
+                    Domain.QueryDomainResponseData.newBuilder().addDeployTokenStatuses(
+                            Domain.DeployTokenStatus.newBuilder().setToken("123").setState("used").buildPartial()).build()).build();
+            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "token", NodeTokenRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    @Test
+    void tokenNodeByKusciaNodeNotExists() throws Exception {
+        assertErrorCode(() -> {
+            NodeTokenRequest request = FakerUtils.fake(NodeTokenRequest.class);
+            request.setNodeId("alice");
+            NodeDO alice = NodeDO.builder().nodeId("alice").build();
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
+            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
+            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "token", NodeTokenRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        }, KusciaGrpcErrorCode.RPC_ERROR);
+    }
+
+    @Test
+    void refreshNode() throws Exception {
+        assertResponse(() -> {
+            NodeIdRequest request = FakerUtils.fake(NodeIdRequest.class);
+            request.setNodeId("alice");
+            NodeDO alice = NodeDO.builder().nodeId("alice").build();
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
+            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "refresh", NodeIdRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    @Test
+    void refreshNodeByKusciaNodeNotExists() throws Exception {
+        assertResponse(() -> {
+            NodeIdRequest request = FakerUtils.fake(NodeIdRequest.class);
+            request.setNodeId("alice");
+            NodeDO alice = NodeDO.builder().nodeId("alice").build();
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
+            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
+            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "refresh", NodeIdRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        });
     }
 }

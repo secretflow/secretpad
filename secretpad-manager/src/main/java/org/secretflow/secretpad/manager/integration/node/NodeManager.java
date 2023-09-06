@@ -218,7 +218,7 @@ public class NodeManager extends AbstractNodeManager {
 
     @Override
     public NodeTokenDTO getNodeToken(String nodeId, boolean refresh) {
-        AtomicReference<NodeTokenDTO> nodeTokenDTO = new AtomicReference<>();
+        AtomicReference<NodeTokenDTO> nodeTokenDTO = new AtomicReference<>(new NodeTokenDTO());
         NodeDO nodeDO = nodeRepository.findByNodeId(nodeId);
         if (ObjectUtils.isEmpty(nodeDO)) {
             LOGGER.error("Cannot find node by nodeId {}.", nodeId);

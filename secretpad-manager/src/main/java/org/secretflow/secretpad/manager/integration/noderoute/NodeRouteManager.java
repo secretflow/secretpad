@@ -69,10 +69,9 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
             dstNode.setNetAddress(param.getDstNetAddress());
         }
         if (DomainRouterConstants.DomainRouterTypeEnum.FullDuplex.name().equals(param.getRouteType())) {
-            if (check) {
-                checkRouteExist(param.getDstNodeId(), param.getSrcNodeId());
+            if (!routeExist(param.getDstNodeId(), param.getSrcNodeId())) {
+                createNodeRoute(param, dstNode, srcNode);
             }
-            createNodeRoute(param, dstNode, srcNode);
         }
         if (check) {
             checkRouteExist(param.getSrcNodeId(), param.getDstNodeId());
@@ -216,7 +215,7 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
 
     private boolean checkDomainRouterExists(String srcNodeId, String dstNodeId) {
         DomainRoute.QueryDomainRouteResponse response = queryDomainRouter(srcNodeId, dstNodeId);
-        return response.getStatus().getCode() == 0;
+        return response.getStatus().getCode() == 11405;
     }
 
     private void deleteDomainRouter(String srcNodeId, String dstNodeId) {

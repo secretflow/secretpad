@@ -20,13 +20,18 @@ import org.secretflow.secretpad.service.constant.Constants;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Pattern;
-import lombok.Data;
+import lombok.*;
 
 /**
  * @author yutu
  * @date 2023/08/04
  */
-@Data
+@Builder
+@Setter
+@Getter
+@NoArgsConstructor
+@AllArgsConstructor
+@ToString
 public class UpdateNodeRouterRequest {
 
     /**

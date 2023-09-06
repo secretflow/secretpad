@@ -45,7 +45,7 @@ public class SafeFileUtils {
             return checkPathInWhitelist(file, whitelistPath);
         } catch (Exception e) {
             LOGGER.error("FilepathTraversalChecker checkPathTraversal CatchException, " +
-                    "filePath = {} Check path traversal catch exception, not deny!", filePath);
+                    "filePath = {} Check path traversal catch exception, not deny! error is {}", filePath, e);
             return true;
         }
     }
@@ -81,7 +81,7 @@ public class SafeFileUtils {
             LOGGER.error("Target canonical file path not in white list, need to deny!");
             return false;
         } catch (Exception e) {
-            LOGGER.error("Check path traversal catch exception, not deny!");
+            LOGGER.error("Check path traversal catch exception, not deny! error is {}", e);
             return true;
         }
     }

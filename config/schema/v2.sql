@@ -46,16 +46,14 @@ commit;
 
 
 -------- add mock data --------------
-insert into main.node (node_id, name, control_node_id, auth, description, type, is_deleted, gmt_create, gmt_modified,
-                       create_by, update_by, net_address)
-values ('alice', 'alice', 'alice', 'alice', 'alice', 'embedded', 0, '2023-05-11 11:54:08', '2023-05-11 11:54:08',
-        'admin', 'admin', '127.0.0.1:28080'),
-       ('bob', 'bob', 'bob', 'bob', 'bob', 'embedded', 0, '2023-05-11 11:54:08', '2023-05-11 11:54:08', 'admin',
-        'admin', '127.0.0.1:38080');
+insert into main.node (node_id, name, control_node_id, auth, description, type, is_deleted, create_by, update_by,
+                       net_address)
+values ('alice', 'alice', 'alice', 'alice', 'alice', 'embedded', 0, 'admin', 'admin', '127.0.0.1:28080'),
+       ('bob', 'bob', 'bob', 'bob', 'bob', 'embedded', 0, 'admin', 'admin', '127.0.0.1:38080');
 
-insert into main.node_route (src_node_id, dst_node_id, is_deleted, gmt_create, gmt_modified, create_by, update_by,
+insert into main.node_route (src_node_id, dst_node_id, is_deleted, create_by, update_by,
                              src_net_address, dst_net_address)
-values ('alice', 'bob', 0, '2023-05-11 11:54:08', '2023-05-11 11:54:08', 'admin', 'admin', '127.0.0.1:28080',
+values ('alice', 'bob', 0, 'admin', 'admin', '127.0.0.1:28080',
         '127.0.0.1:38080'),
-       ('bob', 'alice', 0, '2023-05-11 11:54:08', '2023-05-11 11:54:08', 'admin', 'admin', '127.0.0.1:38080',
+       ('bob', 'alice', 0, 'admin', 'admin', '127.0.0.1:38080',
         '127.0.0.1:28080');

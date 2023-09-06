@@ -52,9 +52,9 @@ public class NodeController {
     }
 
     @PostMapping(value = "/update", consumes = "application/json")
-    public SecretPadResponse<Void> update(@Valid @RequestBody UpdateNodeRequest request) {
+    public SecretPadResponse<String> update(@Valid @RequestBody UpdateNodeRequest request) {
         nodeService.updateNode(request);
-        return SecretPadResponse.success();
+        return SecretPadResponse.success(request.getNodeId());
     }
 
     @PostMapping(value = "/page", consumes = "application/json")

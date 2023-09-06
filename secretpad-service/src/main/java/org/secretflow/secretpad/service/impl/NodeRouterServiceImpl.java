@@ -18,7 +18,6 @@ package org.secretflow.secretpad.service.impl;
 
 import org.secretflow.secretpad.common.errorcode.NodeRouteErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
-import org.secretflow.secretpad.common.util.JpaQueryHelper;
 import org.secretflow.secretpad.manager.integration.model.CreateNodeRouteParam;
 import org.secretflow.secretpad.manager.integration.model.UpdateNodeRouteParam;
 import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
@@ -42,6 +41,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.List;
 import java.util.Set;
 
@@ -61,15 +62,17 @@ public class NodeRouterServiceImpl implements NodeRouterService {
     @Override
     public String createNodeRouter(CreateNodeRouterRequest request) {
         return String.valueOf(nodeRouteManager.createNodeRoute(CreateNodeRouteParam.builder()
-                .srcNodeId(request.getSrcNodeId()).dstNodeId(request.getDstNodeId()).routeType(request.getRouteType())
-                .srcNetAddress(request.getSrcNetAddress()).dstNetAddress(request.getDstNetAddress()).build(), true));
+                .srcNodeId(request.getSrcNodeId())
+                .dstNodeId(request.getDstNodeId())
+                .routeType(request.getRouteType())
+                .srcNetAddress(replaceNetAddressProtocol(request.getSrcNetAddress()))
+                .dstNetAddress(replaceNetAddressProtocol(request.getDstNetAddress()))
+                .build(), true));
     }
 
     @Override
     public SecretPadPageResponse<NodeRouterVO> queryPage(PageNodeRouteRequest request, Pageable pageable) {
-        Page<NodeRouteDO> page = nodeRouteRepository.findAll(
-                (root, criteriaQuery, criteriaBuilder) -> JpaQueryHelper.getPredicate(root, request, criteriaBuilder),
-                pageable);
+        Page<NodeRouteDO> page = nodeRouteRepository.pageQuery(request.getNodeId(), request.getSearch(), pageable);
         SecretPadPageResponse<NodeRouterVO> data = SecretPadPageResponse.toPage(page.map(NodeRouterVO::fromDo));
         data.getList().forEach(d -> {
             d.setSrcNode(nodeService.getNode(d.getSrcNodeId()));
@@ -84,9 +87,11 @@ public class NodeRouterServiceImpl implements NodeRouterService {
 
     @Override
     public void updateNodeRouter(UpdateNodeRouterRequest request) {
-        nodeRouteManager
-                .updateNodeRoute(UpdateNodeRouteParam.builder().nodeRouteId(Long.parseLong(request.getRouterId()))
-                        .srcNetAddress(request.getSrcNetAddress()).dstNetAddress(request.getDstNetAddress()).build());
+        nodeRouteManager.updateNodeRoute(UpdateNodeRouteParam.builder()
+                .nodeRouteId(Long.parseLong(request.getRouterId()))
+                .srcNetAddress(replaceNetAddressProtocol(request.getSrcNetAddress()))
+                .dstNetAddress(replaceNetAddressProtocol(request.getDstNetAddress()))
+                .build());
     }
 
     @Override
@@ -127,5 +132,15 @@ public class NodeRouterServiceImpl implements NodeRouterService {
     @Override
     public void deleteNodeRouter(Long routerId) {
         nodeRouteManager.deleteNodeRoute(routerId);
+    }
+
+    private String replaceNetAddressProtocol(String netAddress) {
+        try {
+            URL url = new URL(netAddress);
+            return String.format("%s:%d", url.getHost(), url.getPort());
+        } catch (MalformedURLException e) {
+            log.warn("replaceNetAddressProtocol str cast URL error", e);
+            return netAddress;
+        }
     }
 }

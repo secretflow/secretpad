@@ -44,7 +44,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -108,9 +107,7 @@ public class NodeServiceImpl implements NodeService {
     @Override
     public NodeVO getNode(String nodeId) {
         NodeDTO it = nodeManager.getNode(nodeId);
-        return NodeVO.from(it,
-                datatableManager.findByNodeId(it.getNodeId(), AbstractDatatableManager.DATA_VENDOR_MANUAL),
-                nodeManager.findBySrcNodeId(it.getNodeId()), resultRepository.countByNodeId(it.getNodeId()));
+        return NodeVO.from(it, null, null, null);
     }
 
     @Override
@@ -129,12 +126,11 @@ public class NodeServiceImpl implements NodeService {
         Page<NodeDO> page = nodeRepository.findAll(
                 (root, criteriaQuery, criteriaBuilder) -> JpaQueryHelper.getPredicate(root, request, criteriaBuilder),
                 pageable);
-        List<NodeDTO> list = new ArrayList<>(page.getContent().size());
-        page.forEach(info -> list.add(nodeManager.getNode(info.getNodeId())));
-        List<NodeVO> data = list.stream()
-                .map(it -> NodeVO.from(it,
-                        datatableManager.findByNodeId(it.getNodeId(), AbstractDatatableManager.DATA_VENDOR_MANUAL),
-                        nodeManager.findBySrcNodeId(it.getNodeId()), resultRepository.countByNodeId(it.getNodeId())))
+        if (ObjectUtils.isEmpty(page)) {
+            return SecretPadPageResponse.toPage(null, 0);
+        }
+        List<NodeVO> data = page.stream()
+                .map(info -> NodeVO.from(nodeManager.getNode(info.getNodeId()), null, null, null))
                 .collect(Collectors.toList());
         return SecretPadPageResponse.toPage(data, page.getTotalElements());
     }
