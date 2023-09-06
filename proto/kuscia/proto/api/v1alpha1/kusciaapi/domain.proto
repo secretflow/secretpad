@@ -80,16 +80,6 @@ message NodeStatus {
   string version = 3;
   string last_heartbeat_time = 4;
   string last_transition_time = 5;
-  repeated NodeResource resources = 6;
-}
-
-message NodeResource {
-  // cpu|memory|storage|pods
-  string name = 1;
-  // allocatable resource, unit: Ki|Mi|Gi or empty is byte
-  string allocatable = 2;
-  // capacity resource, unit: Ki|Mi|Gi or empty is byte
-  string capacity = 3;
 }
 
 message UpdateDomainRequest {

@@ -30,8 +30,8 @@ test: ## Run tests.
 	mvn clean test
 
 .PHONY: build
-build: ## Build scretpad binary.
-	./scripts/build.sh
+build: ## Build SecretPad binary whether to integrate frontend.
+	./scripts/build.sh true
 
 .PHONY: image
 image: build ## Build docker image with the manager.

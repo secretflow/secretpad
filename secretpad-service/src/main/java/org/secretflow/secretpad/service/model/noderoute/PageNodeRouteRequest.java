@@ -16,10 +16,8 @@
 
 package org.secretflow.secretpad.service.model.noderoute;
 
-import org.secretflow.secretpad.common.annotation.JpaQuery;
 import org.secretflow.secretpad.service.model.common.SecretPadPageRequest;
 
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.Setter;
@@ -35,16 +33,12 @@ import lombok.ToString;
 @Setter
 public class PageNodeRouteRequest extends SecretPadPageRequest {
     /**
-     * srcNodeId,srcNetAddress search
+     * dstNodeId,dstNetAddress,dstNodeName search
      */
-    @Schema(description = "srcNodeId,srcNetAddress search")
-    @JpaQuery(blurry = "srcNodeId,srcNetAddress")
     private String search;
 
     /**
      * srcNodeId  data filter
      */
-    @Schema(description = "srcNodeId")
-    @JpaQuery(or = "srcNodeId")
     private String nodeId;
 }

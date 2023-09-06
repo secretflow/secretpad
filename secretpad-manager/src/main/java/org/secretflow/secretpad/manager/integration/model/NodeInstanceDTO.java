@@ -23,7 +23,6 @@ import lombok.Data;
 import org.secretflow.v1alpha1.kusciaapi.Domain;
 
 import java.io.Serializable;
-import java.util.List;
 
 /**
  * NodeInstanceDTO
@@ -54,17 +53,12 @@ public class NodeInstanceDTO implements Serializable {
      * lastTransitionTime，RFC3339（e.g. 2006-01-02T15:04:05Z）
      */
     private String lastTransitionTime;
-    /**
-     * instance resource list
-     */
-    private List<NodeInstanceResourceDTO> resources;
 
     public static NodeInstanceDTO formDomainNodeStatus(Domain.NodeStatus nodeStatus) {
         return NodeInstanceDTO.builder().name(nodeStatus.getName()).status(nodeStatus.getStatus())
                 .version(nodeStatus.getVersion())
                 .lastHeartbeatTime(DateTimes.rfc3339ToGmt8(nodeStatus.getLastHeartbeatTime()))
                 .lastTransitionTime(DateTimes.rfc3339ToGmt8(nodeStatus.getLastTransitionTime()))
-                .resources(NodeInstanceResourceDTO.formDomainNodeResources(nodeStatus.getResourcesList()))
                 .build();
     }
 }

@@ -65,7 +65,7 @@ job:
   max-parallelism: 1
 
 kusciaapi:
-  address: 127.0.0.1:28083
+  address: 127.0.0.1:18083
   tls:
     cert-file: config/certs/client.crt
     key-file: config/certs/client.pem
