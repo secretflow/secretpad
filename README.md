@@ -4,7 +4,7 @@
 <a href="./README.zh-CN.md">简体中文</a>｜<a href="./README.md">English</a>
 </p>
 
-SecretPad is a **privacy-preserving  computing** web platform based on the [Kuscia](https://github.com/secretflow/kuscia) framework, designed to provide easy access to privacy-preserving data intelligence and machine learning functions. With SecretPad:
+SecretPad is a **privacy-preserving computing** web platform based on the [Kuscia](https://github.com/secretflow/kuscia) framework, designed to provide easy access to privacy-preserving data intelligence and machine learning functions. With SecretPad:
 
 * You can create node, register data, create project, create authorization between cooperative nodes.
 * You can use the ability of data preprocessing, analysis and modeling to meet diverse business scenarios

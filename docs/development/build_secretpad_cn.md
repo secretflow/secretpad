@@ -32,11 +32,11 @@ Development
 
 执行`make test`命令，该命令将会执行项目中所有的测试
 
-### 构建可执行Jar文件
+### 构建可执行JAR文件
 
 在 SecretPad 项目根目录下：
 
-执行`make build`命令，该命令将会构建出 SecretPad 的可执行 jar，构建产物会生成在 ./target/ 目录下。
+执行`make build`命令，该命令将会构建出 SecretPad 的可执行JAR，构建产物会生成在 ./target/ 目录下。
 
 ### 构建 SecretPad Image
 
