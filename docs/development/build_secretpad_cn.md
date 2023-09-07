@@ -24,6 +24,7 @@ Development
   build             Build scretpad binary.
   image             Build docker image with the manager.
   docs              Build docs.
+  pack              Build pack all in one with tar.gz.
 ```
 
 ### 测试
@@ -51,3 +52,23 @@ Development
 执行`make docs`命令，该命令会生成 SecretPad 文档，生成的文档会放在 `docs/_build/html` 目录，用浏览器打开 `docs/_build/html/index.html` 就可以查看文档。
 
 该命令依赖于 python 环境，并且已经安装了 pip 工具；编译文档前请提前安装，否则会执行错误。
+
+### 构建 allinone-package
+
+在 SecretPad 项目根目录下：
+
+执行`make pack`命令，该命令会生成 secretflow-allinone-package-{github-tag}.tar.gz
+包含kuscia镜像、secretflow镜像、secretpad镜像、一键安装脚本、一键卸载脚本。
+
+该命令执行结果依赖 环境变量配置，不配置默认使用最新的镜像
+
+```shell
+KUSCIA_IMAGE=""
+SECRETPAD_IMAGE=""
+SECRETFLOW_IMAGE=""
+
+# 默认
+KUSCIA_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:latest
+SECRETPAD_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:latest
+SECRETFLOW_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:latest
+```

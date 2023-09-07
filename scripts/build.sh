@@ -31,6 +31,7 @@ if [[ $WITH_FRONTEND_FLAG == true ]]; then
   tar -xvf $WORK_DIR/frontend.tar -C ${WORK_DIR} --strip-components=1
   DIST_DIR="$WORK_DIR/apps/platform/dist"
   TARGET_DIR="${ROOT}/secretpad-web/src/main/resources/static"
+  mkdir -p "${TARGET_DIR}"
   cp -rpf $DIST_DIR/* "${TARGET_DIR}"
   rm -rf "$WORK_DIR"
 fi
