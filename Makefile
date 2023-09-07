@@ -40,3 +40,7 @@ image: build ## Build docker image with the manager.
 .PHONY: docs
 docs: ## Build docs.
 	cd docs && pip install -r requirements.txt && make html
+
+.PHONY: pack
+pack: ## Build pack all in one with tar.gz.
+	./scripts/pack/pack_allinone.sh
