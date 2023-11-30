@@ -19,7 +19,7 @@ package org.secretflow.secretpad.service.graph;
 import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 
-import org.secretflow.proto.component.Comp;
+import com.secretflow.spec.v1.Attribute;
 import org.secretflow.proto.pipeline.Pipeline;
 
 import java.util.List;
@@ -45,7 +45,7 @@ public class ComponentTools {
             Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
             nodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeInfo.getNodeDef(), nodeDefBuilder);
         }
-        List<Comp.Attribute> attributes = nodeDef.getAttrsList();
+        List<Attribute> attributes = nodeDef.getAttrsList();
         String tableId = "";
         if (!attributes.isEmpty()) {
             tableId = attributes.get(0).getS();

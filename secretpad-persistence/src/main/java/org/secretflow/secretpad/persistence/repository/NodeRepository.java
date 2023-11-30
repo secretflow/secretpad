@@ -19,11 +19,10 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -33,7 +32,7 @@ import java.util.List;
  * @date 2023/5/30
  */
 @Repository
-public interface NodeRepository extends JpaRepository<NodeDO, String>, JpaSpecificationExecutor<NodeDO> {
+public interface NodeRepository extends BaseRepository<NodeDO, String> {
 
     /**
      * Query node results by nodeId
@@ -53,4 +52,9 @@ public interface NodeRepository extends JpaRepository<NodeDO, String>, JpaSpecif
     void deleteByNodeId(String nodeId);
 
     List<NodeDO> findByType(String type);
+
+    List<NodeDO> findByModeIn(List<Integer> modes);
+
+    List<NodeDO> findByNodeIdIn(Collection<String> nodeIDS);
+
 }

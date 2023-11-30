@@ -16,9 +16,12 @@
 
 package org.secretflow.secretpad.service.factory;
 
+import org.secretflow.secretpad.service.constant.ComponentConstants;
+
 import com.google.protobuf.Message;
 import com.google.protobuf.util.JsonFormat;
-import org.secretflow.proto.component.Comp;
+import com.secretflow.spec.v1.CompListDef;
+import com.secretflow.spec.v1.ComponentDef;
 import org.springframework.util.ResourceUtils;
 
 import java.io.File;
@@ -46,20 +49,34 @@ public class JsonProtobufSourceFactory {
      * @return component list
      * @throws IOException
      */
-    public List<Comp.CompListDef> load() throws IOException {
+    public List<CompListDef> load() throws IOException {
         if (locations == null || locations.length <= 0) {
             throw new IllegalArgumentException("locations can not be null or empty");
         }
-        List<Comp.CompListDef> items = new ArrayList<>();
+        List<CompListDef> items = new ArrayList<>();
+        List<CompListDef> resp = new ArrayList<>();
+        List<ComponentDef> secretpad = new ArrayList<>();
         for (String location : locations) {
             File dir = ResourceUtils.getFile(location);
             File[] files = dir.listFiles();
             for (File file : files) {
-                Message.Builder itemBuilder = Comp.CompListDef.newBuilder();
+                Message.Builder itemBuilder = CompListDef.newBuilder();
                 JsonFormat.parser().ignoringUnknownFields().merge(new FileReader(file), itemBuilder);
-                items.add((Comp.CompListDef) itemBuilder.build());
+                CompListDef compListDef = (CompListDef) itemBuilder.build();
+                items.add(compListDef);
+                if (compListDef.getName().equals(ComponentConstants.SECRETPAD)) {
+                    secretpad = compListDef.getCompsList();
+                }
             }
         }
-        return items;
+        for (CompListDef item : items) {
+            if (!item.getName().equals(ComponentConstants.SECRETPAD)) {
+                CompListDef build = item.toBuilder().addAllComps(secretpad).build();
+                resp.add(build);
+            } else {
+                resp.add(item);
+            }
+        }
+        return resp;
     }
 }

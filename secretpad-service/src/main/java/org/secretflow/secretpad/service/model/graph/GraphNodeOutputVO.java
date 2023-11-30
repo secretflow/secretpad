@@ -48,6 +48,21 @@ public class GraphNodeOutputVO {
      * Graph node output file meta
      */
     private FileMeta meta;
+
+    /**
+     * Graph node output jobId
+     */
+    private String jobId;
+
+    /**
+     * Graph node output taskId
+     */
+    private String taskId;
+
+    /**
+     * this output produced by this graph
+     */
+    private String graphID;
     /**
      * Graph start time
      */
@@ -108,6 +123,12 @@ public class GraphNodeOutputVO {
          * Project result nodeId
          */
         private String nodeId;
+
+        /**
+         * node type
+         */
+        private String type;
+
         /**
          * Build table column name list to string
          */

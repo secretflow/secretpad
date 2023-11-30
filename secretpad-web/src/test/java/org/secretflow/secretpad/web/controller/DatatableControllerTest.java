@@ -16,8 +16,10 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
 import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO;
 import org.secretflow.secretpad.persistence.repository.ProjectDatatableRepository;
@@ -38,6 +40,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Set;
 
 import static org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager.DATA_TYPE_TABLE;
 import static org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager.DATA_VENDOR_MANUAL;
@@ -69,6 +72,9 @@ class DatatableControllerTest extends ControllerTest {
             ListDatatableRequest request = FakerUtils.fake(ListDatatableRequest.class);
             request.setPageSize(10);
             request.setPageNumber(1);
+            request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_LIST));
 
             Domaindata.ListDomainDataResponse response = Domaindata.ListDomainDataResponse.newBuilder()
                     .setData(
@@ -95,6 +101,9 @@ class DatatableControllerTest extends ControllerTest {
     void getDatatable() throws Exception {
         assertResponse(() -> {
             GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
+            request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_GET));
 
             Domaindata.QueryDomainDataResponse response = Domaindata.QueryDomainDataResponse.newBuilder()
                     .setData(
@@ -118,6 +127,9 @@ class DatatableControllerTest extends ControllerTest {
     void deleteDatatable() throws Exception {
         assertResponseWithEmptyData(() -> {
             DeleteDatatableRequest request = FakerUtils.fake(DeleteDatatableRequest.class);
+            request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_DELETE));
 
             Mockito.when(datatableRepository.authProjectDatatablesByDatatableIds(request.getNodeId(),
                     Arrays.asList(request.getDatatableId()))).thenReturn(new ArrayList<>());
@@ -142,6 +154,9 @@ class DatatableControllerTest extends ControllerTest {
     void deleteDatatableHasBeenAuthException() throws Exception {
         assertErrorCode(() -> {
             DeleteDatatableRequest request = FakerUtils.fake(DeleteDatatableRequest.class);
+            request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_DELETE));
 
             Mockito.when(datatableRepository.authProjectDatatablesByDatatableIds(request.getNodeId(),
                     Arrays.asList(request.getDatatableId()))).thenReturn(buildProjectDatatableDO());
@@ -166,6 +181,9 @@ class DatatableControllerTest extends ControllerTest {
     void deleteDatatableException() throws Exception {
         assertErrorCode(() -> {
             DeleteDatatableRequest request = FakerUtils.fake(DeleteDatatableRequest.class);
+            request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_DELETE));
 
             Mockito.when(datatableRepository.authProjectDatatablesByDatatableIds(request.getNodeId(),
                     Arrays.asList(request.getDatatableId()))).thenReturn(new ArrayList<>());

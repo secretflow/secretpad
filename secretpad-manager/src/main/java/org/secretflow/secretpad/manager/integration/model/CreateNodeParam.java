@@ -49,4 +49,8 @@ public class CreateNodeParam {
      */
     private String description;
 
+    /**
+     * node feature 0 - mpc | 1 - tee | 2 mpc&tee
+     */
+    private Integer mode;
 }

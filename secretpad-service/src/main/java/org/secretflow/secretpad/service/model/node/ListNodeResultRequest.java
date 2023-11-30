@@ -41,6 +41,12 @@ public class ListNodeResultRequest {
     String nodeId;
 
     /**
+     * Tee node id, it can be blank and has default value
+     */
+    @Schema(description = "tee node id")
+    private String teeNodeId;
+
+    /**
      * How many pieces of data are in each page
      */
     @Schema(description = "page size")

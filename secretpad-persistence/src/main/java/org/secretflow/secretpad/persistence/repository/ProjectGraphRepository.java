@@ -18,7 +18,6 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectGraphDO;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -33,7 +32,7 @@ import java.util.Optional;
  * @date 2023/5/31
  */
 @Repository
-public interface ProjectGraphRepository extends JpaRepository<ProjectGraphDO, ProjectGraphDO.UPK> {
+public interface ProjectGraphRepository extends BaseRepository<ProjectGraphDO, ProjectGraphDO.UPK> {
     /**
      * Query project graph results by projectId
      *

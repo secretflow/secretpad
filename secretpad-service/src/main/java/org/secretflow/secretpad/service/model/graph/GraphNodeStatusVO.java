@@ -38,6 +38,11 @@ public class GraphNodeStatusVO {
      * Graph node task id
      */
     private String taskId;
+
+    /**
+     * Graph node job id
+     */
+    private String jobId;
     /**
      * Graph node task status
      */

@@ -20,7 +20,9 @@ import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 import org.secretflow.secretpad.persistence.entity.ProjectJobDO;
 import org.secretflow.secretpad.persistence.model.GraphJobStatus;
 import org.secretflow.secretpad.persistence.repository.ProjectJobRepository;
+import org.secretflow.secretpad.service.graph.GraphContext;
 import org.secretflow.secretpad.service.graph.converter.KusciaJobConverter;
+import org.secretflow.secretpad.service.graph.converter.KusciaTrustedFlowJobConverter;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
 
 import org.secretflow.v1alpha1.kusciaapi.Job;
@@ -40,6 +42,8 @@ public class JobSubmittedHandler extends AbstractJobHandler<ProjectJob> {
     private AbstractJobManager jobManager;
     @Autowired
     private KusciaJobConverter jobConverter;
+    @Autowired
+    private KusciaTrustedFlowJobConverter trustedFlowJobConverter;
     @Autowired
     private ProjectJobRepository jobRepository;
 
@@ -61,7 +65,12 @@ public class JobSubmittedHandler extends AbstractJobHandler<ProjectJob> {
             jobRepository.save(projectJobDO);
             return;
         }
-        Job.CreateJobRequest request = jobConverter.converter(job);
+        Job.CreateJobRequest request;
+        if (GraphContext.isTee()) {
+            request = trustedFlowJobConverter.converter(job);
+        } else {
+            request = jobConverter.converter(job);
+        }
         jobManager.createJob(request);
         if (next != null) {
             next.doHandler(job);

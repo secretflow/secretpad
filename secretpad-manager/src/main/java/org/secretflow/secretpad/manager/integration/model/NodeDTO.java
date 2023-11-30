@@ -59,6 +59,7 @@ public class NodeDTO {
     private String netAddress;
     private String token;
     private String type;
+    private Integer mode;
     private String cert;
     private String tokenStatus;
     private String nodeRole;
@@ -70,7 +71,7 @@ public class NodeDTO {
     /**
      * Convert NodeDO to NodeDTO
      *
-     * @param nodeDO
+     * @param nodeDO nodeDO
      * @return NodeDTO
      */
     public static NodeDTO fromDo(NodeDO nodeDO) {
@@ -88,6 +89,7 @@ public class NodeDTO {
         nodeDTO.setGmtCreate(DateTimes.toRfc3339(nodeDO.getGmtCreate()));
         nodeDTO.setGmtModified(DateTimes.toRfc3339(nodeDO.getGmtModified()));
         nodeDTO.setNodeName(nodeDO.getName());
+        nodeDTO.setMode(nodeDO.getMode());
         return nodeDTO;
     }
 

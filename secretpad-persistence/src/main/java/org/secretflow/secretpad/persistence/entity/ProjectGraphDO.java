@@ -45,7 +45,7 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
      * Project graph unique primary key
      */
     @EmbeddedId
-    private ProjectGraphDO.UPK upk;
+    private UPK upk;
 
     /**
      * Project graph name

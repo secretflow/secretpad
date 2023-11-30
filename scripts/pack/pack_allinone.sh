@@ -20,6 +20,11 @@ KUSCIA_IMAGE=""
 SECRETPAD_IMAGE=""
 SECRETFLOW_IMAGE=""
 
+TEE_APP_IMAGE=""
+TEE_DM_IMAGE=""
+CAPSULE_MANAGER_SIM_IMAGE=""
+
+
 GREEN='\033[0;32m'
 NC='\033[0m'
 function log() {
@@ -30,12 +35,20 @@ function log() {
 # create dir
 echo "mkdir -p secretflow-allinone-package/images"
 mkdir -p secretflow-allinone-package/images
+
 # copy install.sh
+path="$(cd "$(dirname $0)";pwd)"
 echo "cp install.sh secretflow-allinone-package/"
-cp install.sh secretflow-allinone-package/
+cp "$path"/install.sh secretflow-allinone-package/
 # copy uninstall.sh
 echo "cp uninstall.sh secretflow-allinone-package/"
-cp uninstall.sh secretflow-allinone-package/
+cp "$path"/uninstall.sh secretflow-allinone-package/
+# copy tee init
+echo "cp tee/init_tee.sh secretflow-allinone-package/tee/"
+cp "$path"/tee/init_tee.sh secretflow-allinone-package/
+cp "$path"/tee/tee-capsule-manager.yaml secretflow-allinone-package/
+cp "$path"/tee/tee-image.yaml secretflow-allinone-package/
+
 # remove temp data
 echo "rm -rf secretflow-allinone-package/images/*"
 rm -rf secretflow-allinone-package/images/*
@@ -51,10 +64,26 @@ fi
 if [ "${SECRETFLOW_IMAGE}" == "" ]; then
 	SECRETFLOW_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:latest
 fi
+# tee images
+if [ "${TEE_APP_IMAGE}" == "" ]; then
+	TEE_APP_IMAGE=registry.cn-hangzhou.aliyuncs.com/nueva-stack/teeapps-sim:latest
+fi
+
+if [ "${TEE_DM_IMAGE}" == "" ]; then
+	TEE_DM_IMAGE=registry.cn-hangzhou.aliyuncs.com/oasis-stack/sf-tee-dm-sim:latest
+fi
+
+if [ "${CAPSULE_MANAGER_SIM_IMAGE}" == "" ]; then
+	CAPSULE_MANAGER_SIM_IMAGE=registry.cn-hangzhou.aliyuncs.com/oasis-stack/capsule-manager-sim:latest
+fi
 
 echo "kuscia image: $KUSCIA_IMAGE"
 echo "secretpad image: $SECRETPAD_IMAGE"
 echo "secretflow image: $SECRETFLOW_IMAGE"
+
+echo "TEE_APP_IMAGE image: $TEE_APP_IMAGE"
+echo "TEE_DM_IMAGE image: $TEE_DM_IMAGE"
+echo "CAPSULE_MANAGER_SIM_IMAGE image: $CAPSULE_MANAGER_SIM_IMAGE"
 
 set -e
 echo "docker pull ${KUSCIA_IMAGE}"
@@ -67,12 +96,29 @@ echo "docker pull ${SECRETFLOW_IMAGE}"
 docker pull ${SECRETFLOW_IMAGE}
 log "docker pull ${SECRETFLOW_IMAGE} done"
 
+# tee
+docker pull ${TEE_APP_IMAGE}
+log "docker pull ${TEE_APP_IMAGE} done"
+docker pull ${TEE_DM_IMAGE}
+log "docker pull ${TEE_DM_IMAGE} done"
+docker pull ${CAPSULE_MANAGER_SIM_IMAGE}
+log "docker pull ${CAPSULE_MANAGER_SIM_IMAGE} done"
+
 kusciaTag=${KUSCIA_IMAGE##*:}
 echo "kuscia tag: $kusciaTag"
 secretpadTag=${SECRETPAD_IMAGE##*:}
 echo "secretpad tag: $secretpadTag"
 secretflowTag=${SECRETFLOW_IMAGE##*:}
 echo "secretflow tag: $secretflowTag"
+teeAppTag=${TEE_APP_IMAGE##*:}
+echo "tee app tag: $teeAppTag"
+
+teeDmTag=${TEE_DM_IMAGE##*:}
+echo "teeDmTag: $teeDmTag"
+
+capsuleManagerSimTag=${CAPSULE_MANAGER_SIM_IMAGE##*:}
+echo "capsuleManagerSimTag: $capsuleManagerSimTag"
+
 VERSION_TAG="$(git describe --tags)"
 echo "secretflow-allinone-package tag: $VERSION_TAG"
 
@@ -84,6 +130,16 @@ docker save -o ./secretflow-allinone-package/images/secretpad-${secretpadTag}.ta
 
 echo "docker save -o ./secretflow-allinone-package/images/secretflow-${secretflowTag}.tar ${SECRETFLOW_IMAGE} "
 docker save -o ./secretflow-allinone-package/images/secretflow-${secretflowTag}.tar ${SECRETFLOW_IMAGE}
+
+echo "docker save -o ./secretflow-allinone-package/images/teeapps-sim-${teeAppTag}.tar ${TEE_APP_IMAGE} "
+docker save -o ./secretflow-allinone-package/images/teeapps-sim-${teeAppTag}.tar ${TEE_APP_IMAGE}
+
+echo "docker save -o ./secretflow-allinone-package/images/sf-tee-dm-sim-${teeDmTag}.tar ${TEE_DM_IMAGE} "
+docker save -o ./secretflow-allinone-package/images/sf-tee-dm-sim-${teeDmTag}.tar ${TEE_DM_IMAGE}
+
+echo "docker save -o ./secretflow-allinone-package/image/capsule-manager-sim-${capsuleManagerSimTag}.tar ${CAPSULE_MANAGER_SIM_IMAGE} "
+docker save -o ./secretflow-allinone-package/images/capsule-manager-sim-${capsuleManagerSimTag}.tar ${CAPSULE_MANAGER_SIM_IMAGE}
+
 
 echo "tar --no-xattrs -zcvf secretflow-allinone-package-${VERSION_TAG}.tar.gz ./secretflow-allinone-package"
 tar --no-xattrs -zcvf secretflow-allinone-package-${VERSION_TAG}.tar.gz ./secretflow-allinone-package

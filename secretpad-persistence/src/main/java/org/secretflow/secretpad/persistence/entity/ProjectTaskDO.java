@@ -44,13 +44,13 @@ import java.util.List;
 @Table(name = "project_job_task")
 @SQLDelete(sql = "update project_job_task set is_deleted = 1 where job_id = ? and project_id = ? and task_id = ?")
 @Where(clause = "is_deleted = 0")
-public class ProjectTaskDO extends BaseEntity {
+public class ProjectTaskDO extends BaseAggregationRoot {
 
     /**
      * Project task unique primary key
      */
     @EmbeddedId
-    private ProjectTaskDO.UPK upk;
+    private UPK upk;
 
     /**
      * Initiator and participants
@@ -87,6 +87,16 @@ public class ProjectTaskDO extends BaseEntity {
     @Column(name = "graph_node", nullable = true)
     @Convert(converter = GraphNodeConverter.class)
     private ProjectGraphNodeDO graphNode;
+
+    @Override
+    public String getProjectId() {
+        return null;
+    }
+
+    @Override
+    public List<String> getNodeIds() {
+        return null;
+    }
 
     /**
      * Project task unique primary key

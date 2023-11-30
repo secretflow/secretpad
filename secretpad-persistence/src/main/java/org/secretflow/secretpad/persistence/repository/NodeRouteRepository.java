@@ -20,8 +20,6 @@ import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -37,7 +35,7 @@ import java.util.Set;
  * @date 2023/5/30
  */
 @Repository
-public interface NodeRouteRepository extends JpaRepository<NodeRouteDO, Long>, JpaSpecificationExecutor<NodeRouteDO> {
+public interface NodeRouteRepository extends BaseRepository<NodeRouteDO, String> {
     /**
      * Query node route results by nodeId of destination
      *
@@ -65,8 +63,8 @@ public interface NodeRouteRepository extends JpaRepository<NodeRouteDO, Long>, J
      * @param routeId id
      * @return NodeRouteDO
      */
-    @Query("from NodeRouteDO d where d.id=:routeId")
-    NodeRouteDO findByRouteId(@Param("routeId") Long routeId);
+    @Query("from NodeRouteDO d where d.routeId=:routeId")
+    NodeRouteDO findByRouteId(@Param("routeId") String routeId);
 
     @Query("from NodeRouteDO d where d.srcNodeId=:srcNodeId and d.dstNodeId=:dstNodeId")
     Optional<NodeRouteDO> findBySrcNodeIdAndDstNodeId(@Param("srcNodeId") String srcNodeId,
@@ -76,7 +74,7 @@ public interface NodeRouteRepository extends JpaRepository<NodeRouteDO, Long>, J
 
     void deleteByDstNodeId(@Param("dstNodeId") String dstNodeId);
 
-    @Query(value = "from NodeRouteDO a join NodeDO b on a.dstNodeId=b.nodeId " +
-            "where a.srcNodeId=:nodeId and (a.dstNodeId like %:search% or a.dstNetAddress like %:search% or b.name like %:search%)")
+    @Query(value = "from NodeRouteDO a join NodeDO b on a.srcNodeId=b.nodeId " +
+            "where a.dstNodeId=:nodeId and (a.srcNodeId like :search or a.dstNetAddress like :search or b.name like :search)")
     Page<NodeRouteDO> pageQuery(@Param("nodeId") String nodeId, @Param("search") String search, Pageable pageable);
 }

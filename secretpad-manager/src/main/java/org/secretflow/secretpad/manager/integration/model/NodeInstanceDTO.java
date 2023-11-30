@@ -20,7 +20,7 @@ import org.secretflow.secretpad.common.util.DateTimes;
 
 import lombok.Builder;
 import lombok.Data;
-import org.secretflow.v1alpha1.kusciaapi.Domain;
+import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 
 import java.io.Serializable;
 
@@ -54,7 +54,7 @@ public class NodeInstanceDTO implements Serializable {
      */
     private String lastTransitionTime;
 
-    public static NodeInstanceDTO formDomainNodeStatus(Domain.NodeStatus nodeStatus) {
+    public static NodeInstanceDTO formDomainNodeStatus(DomainOuterClass.NodeStatus nodeStatus) {
         return NodeInstanceDTO.builder().name(nodeStatus.getName()).status(nodeStatus.getStatus())
                 .version(nodeStatus.getVersion())
                 .lastHeartbeatTime(DateTimes.rfc3339ToGmt8(nodeStatus.getLastHeartbeatTime()))

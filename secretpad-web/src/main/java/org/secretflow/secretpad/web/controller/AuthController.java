@@ -16,6 +16,9 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.annotation.resource.ApiResource;
+import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
+import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.service.AuthService;
 import org.secretflow.secretpad.service.model.auth.LoginRequest;
 import org.secretflow.secretpad.service.model.auth.LogoutRequest;
@@ -57,12 +60,13 @@ public class AuthController {
      */
     @ResponseBody
     @PostMapping(value = "/login", consumes = "application/json")
-    public SecretPadResponse<String> login(HttpServletResponse response, @Valid @RequestBody LoginRequest request) {
-        String token = authService.login(request.getName(), request.getPasswordHash());
-        Cookie cookie = new Cookie(AuthConstants.TOKEN_NAME, token);
+    @ApiResource(code = ApiResourceCodeConstants.AUTH_LOGIN)
+    public SecretPadResponse<UserContextDTO> login(HttpServletResponse response, @Valid @RequestBody LoginRequest request) {
+        UserContextDTO login = authService.login(request.getName(), request.getPasswordHash());
+        Cookie cookie = new Cookie(AuthConstants.TOKEN_NAME, login.getToken());
         cookie.setMaxAge(MAX_COOKIE_AGE);
         response.addCookie(cookie);
-        return SecretPadResponse.success(token);
+        return SecretPadResponse.success(login);
     }
 
     /**
@@ -74,6 +78,7 @@ public class AuthController {
      */
     @ResponseBody
     @PostMapping(value = "/logout", consumes = "application/json")
+    @ApiResource(code = ApiResourceCodeConstants.AUTH_LOGOUT)
     public SecretPadResponse<String> logout(HttpServletRequest request, @Valid @RequestBody LogoutRequest logoutRequest) {
         Cookie cookie = AuthUtils.findTokenCookie(request.getCookies());
         authService.logout(logoutRequest.getName(), cookie.getValue());

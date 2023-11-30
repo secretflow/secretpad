@@ -18,8 +18,8 @@ package secretflow.pipeline;
 
 option java_package = "org.secretflow.proto.pipeline";
 
-import "secretflow/protos/component/comp.proto";
-import "secretflow/protos/component/data.proto";
+import "secretflow/spec/v1/component.proto";
+import "secretflow/spec/v1/data.proto";
 
 
 // A node is a building block of a DAG, nodes and edges together forms a DAG.
@@ -40,9 +40,11 @@ message NodeDef {
   // The attribute value.
   repeated string attr_paths = 5;
 
-  repeated secretflow.component.Attribute attrs = 6;
+  repeated secretflow.spec.v1.Attribute attrs = 6;
 
-  repeated secretflow.component.DistData inputs = 7;
+  repeated secretflow.spec.v1.DistData inputs = 7;
+
+  repeated string output_uris = 8;
 }
 
 // The pipeline(DAG) definition.

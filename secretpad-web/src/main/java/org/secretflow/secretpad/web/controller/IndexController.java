@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.annotation.resource.ApiResource;
+import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
@@ -33,7 +35,8 @@ public class IndexController {
      *
      * @return the string
      */
-    @RequestMapping(value = {"/", "/dag/**", "/home/**", "/node/**", "/guide/**", "/record/**", "/login/**", "/logout/**", "/my-node/**"}, method = RequestMethod.GET)
+    @ApiResource(code = ApiResourceCodeConstants.INDEX)
+    @RequestMapping(value = {"/", "/dag/**", "/home/**", "/node/**", "/guide/**", "/record/**", "/login/**", "/logout/**", "/my-node/**", "/message/**"}, method = RequestMethod.GET)
     public String index() {
         return "index";
     }

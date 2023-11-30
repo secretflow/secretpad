@@ -9,7 +9,8 @@ COPY config /app/config
 COPY scripts /app/scripts
 COPY demo/data /app/data
 COPY target/*.jar secretpad.jar
-
+ENV JAVA_OPTS="" SPRING_PROFILES_ACTIVE="default"
 EXPOSE 80
 EXPOSE 8080
-ENTRYPOINT ["java","-jar", "-Dsun.net.http.allowRestrictedHeaders=true", "secretpad.jar"]
+EXPOSE 9001
+ENTRYPOINT java ${JAVA_OPTS} -Dsun.net.http.allowRestrictedHeaders=true -jar -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE} /app/secretpad.jar

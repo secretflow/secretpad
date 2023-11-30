@@ -21,10 +21,8 @@ import org.secretflow.secretpad.common.util.ProtoUtils;
 import com.google.protobuf.Any;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
+import com.secretflow.spec.v1.*;
 import org.junit.jupiter.api.Test;
-import org.secretflow.proto.component.Comp;
-import org.secretflow.proto.component.Data;
-import org.secretflow.proto.component.ReportOuterClass;
 import org.secretflow.proto.pipeline.Pipeline;
 
 import java.io.IOException;
@@ -46,46 +44,46 @@ public class ProtoUtilsTest {
 
     @Test
     public void testPrint() throws InvalidProtocolBufferException {
-        ReportOuterClass.Table.HeaderItem headerItem = ReportOuterClass.Table.HeaderItem.newBuilder()
+        Table.HeaderItem headerItem = Table.HeaderItem.newBuilder()
                 .setName("table_column_name")
-                .setType(Comp.AttrType.AT_STRING)
+                .setType(String.valueOf(AttrType.AT_STRING))
                 .build();
-        Comp.Attribute attribute = Comp.Attribute.newBuilder()
+        Attribute attribute = Attribute.newBuilder()
                 .setS("id1")
                 .build();
-        ReportOuterClass.Table.Row row = ReportOuterClass.Table.Row.newBuilder()
+        Table.Row row = Table.Row.newBuilder()
                 .addItems(0, attribute)
                 .setName("table_column_name")
                 .build();
-        ReportOuterClass.Table table = ReportOuterClass.Table.newBuilder()
+        Table table = Table.newBuilder()
                 .addHeaders(0, headerItem)
                 .addRows(0, row)
                 .build();
-        ReportOuterClass.Div.Child child = ReportOuterClass.Div.Child.newBuilder()
+        Div.Child child = Div.Child.newBuilder()
                 .setType("table")
                 .setTable(table)
                 .build();
-        ReportOuterClass.Div div = ReportOuterClass.Div.newBuilder()
+        Div div = Div.newBuilder()
                 .addChildren(0, child)
                 .build();
-        ReportOuterClass.Tab tab = ReportOuterClass.Tab.newBuilder()
+        Tab tab = Tab.newBuilder()
                 .addDivs(0, div)
                 .build();
-        ReportOuterClass.Report report = ReportOuterClass.Report.newBuilder()
+        Report report = Report.newBuilder()
                 .setName("test")
                 .setDesc("desc")
                 .addTabs(0, tab)
                 .build();
-        Data.DistData distData = Data.DistData.newBuilder()
+        DistData distData = DistData.newBuilder()
                 .setType("sf.report")
                 .setName("nkdz-ynshnjb3-node-4-output-0")
                 .setMeta(Any.pack(report))
                 .build();
 
         JsonFormat.TypeRegistry typeRegistry = JsonFormat.TypeRegistry.newBuilder()
-                .add(ReportOuterClass.Report.getDescriptor()).build();
+                .add(Report.getDescriptor()).build();
         String content = ProtoUtils.toJsonString(distData, typeRegistry);
-        Data.DistData.Builder distDataBuilder = Data.DistData.newBuilder();
+        DistData.Builder distDataBuilder = DistData.newBuilder();
         JsonFormat.parser().ignoringUnknownFields().usingTypeRegistry(typeRegistry).merge(content, distDataBuilder);
         System.out.println(distDataBuilder.build().getMeta());
     }

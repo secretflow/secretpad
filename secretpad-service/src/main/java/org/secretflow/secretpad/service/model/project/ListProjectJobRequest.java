@@ -44,3 +44,4 @@ public class ListProjectJobRequest extends PageRequest {
     @Schema(description = "graph id")
     private String graphId;
 }
+

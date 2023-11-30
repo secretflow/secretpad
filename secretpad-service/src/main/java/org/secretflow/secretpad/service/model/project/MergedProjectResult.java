@@ -21,6 +21,7 @@ import org.secretflow.secretpad.persistence.model.ResultKind;
 
 import com.google.common.collect.Lists;
 import lombok.*;
+import org.apache.commons.lang3.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -77,7 +78,7 @@ public class MergedProjectResult {
      * @return merged project result list
      */
     public static List<MergedProjectResult> of(List<ProjectResultDO> results) {
-        Map<MergedProjectResultId, List<ProjectResultDO>> maps = results.stream().collect(Collectors.groupingBy(it ->
+        Map<MergedProjectResultId, List<ProjectResultDO>> maps = results.stream().filter(t-> StringUtils.isNotBlank(t.getTaskId())).collect(Collectors.groupingBy(it ->
                 new MergedProjectResult.MergedProjectResultId(it.getUpk().getProjectId(), it.getUpk().getKind(), it.getUpk().getRefId())
         ));
         List<MergedProjectResult> mergedResult = Lists.newArrayList();

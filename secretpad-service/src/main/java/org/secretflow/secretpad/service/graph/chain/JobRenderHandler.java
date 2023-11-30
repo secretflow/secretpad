@@ -31,11 +31,12 @@ import org.secretflow.secretpad.service.ComponentService;
 import org.secretflow.secretpad.service.graph.ComponentTools;
 import org.secretflow.secretpad.service.graph.DistDataVO;
 import org.secretflow.secretpad.service.graph.GraphBuilder;
+import org.secretflow.secretpad.service.graph.GraphContext;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
 import org.secretflow.secretpad.service.util.JobUtils;
 
-import org.secretflow.proto.component.Data;
+import com.secretflow.spec.v1.DistData;
 import org.secretflow.proto.pipeline.Pipeline;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -97,6 +98,7 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
                 continue;
             }
 
+
             Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
             ProtoUtils.fromObject(graphNodeInfo.getNodeDef(), nodeDefBuilder);
 
@@ -124,8 +126,13 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
                             if (datatableDTOOptional.isEmpty()) {
                                 throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
                             }
-                            Data.DistData distData = DistDataVO.fromDatatable(projectDatatableDO, datatableDTOOptional.get());
+                            DistData distData = DistDataVO.fromDatatable(projectDatatableDO, datatableDTOOptional.get());
                             nodeDefBuilder.addInputs(distData);
+                        }
+                        if (GraphContext.isTee()) {
+                            newInputs.add(GraphContext.getTeeNodeId() + "-" + datatableId);
+                        } else {
+                            newInputs.add(datatableId);
                         }
                     } else {
                         // dependency graph node is sf

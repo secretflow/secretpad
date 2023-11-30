@@ -17,17 +17,22 @@
 package org.secretflow.secretpad.persistence.entity;
 
 import org.secretflow.secretpad.persistence.converter.Boolean2IntConverter;
+import org.secretflow.secretpad.persistence.converter.SqliteLocalDateTimeConverter;
+import org.secretflow.secretpad.persistence.listener.EntityChangeListener;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;
 import lombok.Setter;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.domain.AbstractAggregateRoot;
 
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Base aggregate root
@@ -38,7 +43,8 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @MappedSuperclass
-public abstract class BaseAggregationRoot<A extends AbstractAggregateRoot<A>> extends AbstractAggregateRoot<A> {
+@EntityListeners(EntityChangeListener.class)
+public abstract class BaseAggregationRoot<A extends AbstractAggregateRoot<A>> extends AbstractAggregateRoot<A> implements ProjectNodesInfo {
 
     /**
      * The id of the database is automatically added
@@ -56,14 +62,42 @@ public abstract class BaseAggregationRoot<A extends AbstractAggregateRoot<A>> ex
     /**
      * Start time
      */
-    @CreatedDate
-    @Column(name = "gmt_create", nullable = false, insertable = false, updatable = false)
-    LocalDateTime gmtCreate;
+    @Column(name = "gmt_create", nullable = false)
+    @Convert(converter = SqliteLocalDateTimeConverter.class)
+    LocalDateTime gmtCreate = parseNow();
 
     /**
      * Update time
      */
-    @LastModifiedDate
-    @Column(name = "gmt_modified", nullable = false, insertable = false, updatable = false)
-    LocalDateTime gmtModified;
+    @Column(name = "gmt_modified", nullable = false)
+    @Convert(converter = SqliteLocalDateTimeConverter.class)
+    LocalDateTime gmtModified = parseNow();
+
+    // Default get project id method
+    public String getProjectId() {
+        return null;
+    }
+
+    // Default get node id method
+    public String getNodeId() {
+        return null;
+    }
+
+    // Default get node id list method
+    public List<String> getNodeIds() {
+        List<String> nodeIds = new ArrayList<>();
+
+        String nodeId = this.getNodeId();
+        if (nodeId != null) {
+            nodeIds.add(nodeId);
+        }
+        return nodeIds;
+    }
+
+    private LocalDateTime parseNow() {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        DateTimeFormatter dtf3 = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String strNow = dtf3.format(now);
+        return LocalDateTime.parse(strNow, dtf3);
+    }
 }

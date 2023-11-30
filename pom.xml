@@ -30,7 +30,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.1.0</version>
+        <version>3.1.5</version>
     </parent>
     <groupId>org.secretflow</groupId>
     <artifactId>secretpad-parent</artifactId>
@@ -53,8 +53,11 @@
         <javatuples.version>1.2</javatuples.version>
         <jakarta.version>2.1.1</jakarta.version>
         <javax.version>1.3.2</javax.version>
+        <okio-jvm.version>3.4.0</okio-jvm.version>
         <guava.version>32.1.1-jre</guava.version>
+        <disruptor.version>3.4.4</disruptor.version>
         <commons-compress.version>1.21</commons-compress.version>
+        <commons-codec.version>1.16.0</commons-codec.version>
         <springdoc-openapi-ui.version>2.1.0</springdoc-openapi-ui.version>
         <plugin.os.version>1.7.1</plugin.os.version>
         <plugin.protobuf.version>0.6.1</plugin.protobuf.version>
@@ -87,6 +90,11 @@
             <dependency>
                 <groupId>org.secretflow</groupId>
                 <artifactId>client-java-kusciaapi</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.secretflow</groupId>
+                <artifactId>client-java-secretpad</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -186,6 +194,22 @@
                 <groupId>org.apache.commons</groupId>
                 <artifactId>commons-compress</artifactId>
                 <version>${commons-compress.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.lmax</groupId>
+                <artifactId>disruptor</artifactId>
+                <version>${disruptor.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>commons-codec</groupId>
+                <artifactId>commons-codec</artifactId>
+                <version>${commons-codec.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.squareup.okio</groupId>
+                <artifactId>okio-jvm</artifactId>
+                <version>${okio-jvm.version}</version>
+                <scope>compile</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

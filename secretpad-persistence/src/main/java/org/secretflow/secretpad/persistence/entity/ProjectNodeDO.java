@@ -47,7 +47,7 @@ public class ProjectNodeDO extends BaseAggregationRoot<ProjectNodeDO> {
      * Project node unique primary key
      */
     @EmbeddedId
-    private ProjectNodeDO.UPK upk;
+    private UPK upk;
 
     public static class Factory {
         /**
@@ -82,4 +82,15 @@ public class ProjectNodeDO extends BaseAggregationRoot<ProjectNodeDO> {
         private String nodeId;
     }
 
+    @Override
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
+
+    @Override
+    public String getNodeId() {
+        return this.upk.nodeId;
+    }
 }
+
+

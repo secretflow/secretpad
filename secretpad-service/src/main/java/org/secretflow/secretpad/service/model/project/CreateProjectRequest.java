@@ -16,8 +16,12 @@
 
 package org.secretflow.secretpad.service.model.project;
 
+import org.secretflow.secretpad.common.constant.ProjectConstants;
+
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
+import org.hibernate.sql.Update;
 
 /**
  * Create project request
@@ -43,8 +47,15 @@ public class CreateProjectRequest {
     private String description;
 
     /**
-     * computeMode pipeline: ,hub:
+     * computeMode mpc,tee
      */
     @Schema(description = "computeMode", requiredMode = Schema.RequiredMode.REQUIRED)
-    private String computeMode = "pipeline";
+    private String computeMode = ProjectConstants.ComputeModeEnum.MPC.name();
+
+    /**
+     * tee node domainId
+     */
+    @Schema(description = "teeNodeId", requiredMode = Schema.RequiredMode.REQUIRED)
+    @NotBlank(message = "teeNodeId not empty", groups = {Update.class})
+    private String teeNodeId;
 }

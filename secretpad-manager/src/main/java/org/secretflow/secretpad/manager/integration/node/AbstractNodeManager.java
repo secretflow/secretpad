@@ -34,6 +34,14 @@ public abstract class AbstractNodeManager {
     public abstract List<NodeDTO> listNode();
 
     /**
+     * List Cooperating Node
+     *
+     * @param nodeId current node Id
+     * @return NodeDTO list
+     */
+    public abstract List<NodeDTO> listCooperatingNode(String nodeId);
+
+    /**
      * Create node
      *
      * @param param create parma
@@ -74,7 +82,7 @@ public abstract class AbstractNodeManager {
     public abstract NodeResultDTO getNodeResult(String nodeId, String domainDataId);
 
     /**
-     * refreshNode
+     * Refresh node
      *
      * @param nodeId nodeId
      * @return NodeDTO
@@ -82,7 +90,7 @@ public abstract class AbstractNodeManager {
     public abstract NodeDTO refreshNode(String nodeId);
 
     /**
-     * getNodeToken
+     * Get node token
      *
      * @param nodeId  nodeId
      * @param refresh true refresh，false only find unused
@@ -91,7 +99,7 @@ public abstract class AbstractNodeManager {
     public abstract NodeTokenDTO getNodeToken(String nodeId, boolean refresh);
 
     /**
-     * getNode info
+     * Get node information
      *
      * @param nodeId nodeId
      * @return NodeDTO
@@ -99,7 +107,15 @@ public abstract class AbstractNodeManager {
     public abstract NodeDTO getNode(String nodeId);
 
     /**
-     * checkNodeExists
+     * Get node cert
+     *
+     * @param nodeId target nodeId
+     * @return node cert
+     */
+    public abstract String getCert(String nodeId);
+
+    /**
+     * Check if node exists
      *
      * @param nodeId nodeId
      * @return boolean true exist false no exist
@@ -107,11 +123,18 @@ public abstract class AbstractNodeManager {
     public abstract boolean checkNodeExists(String nodeId);
 
     /**
-     * checkNodeReady grpc code and node status
+     * Check nodeReady grpc code and node status
      *
      * @param nodeId nodeId
      * @return boolean true ready false no ready
      */
     public abstract boolean checkNodeReady(String nodeId);
+
+    /**
+     * List tee nodes
+     *
+     * @return NodeDTO list
+     */
+    public abstract List<NodeDTO> listTeeNode();
 
 }

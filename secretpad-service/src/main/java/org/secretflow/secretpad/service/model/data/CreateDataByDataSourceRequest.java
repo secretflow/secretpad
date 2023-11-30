@@ -60,7 +60,7 @@ public class CreateDataByDataSourceRequest {
     /**
      * description
      */
-    @Schema(description = "表描述")
+    @Schema(description = "description")
     private String description;
 
     /**

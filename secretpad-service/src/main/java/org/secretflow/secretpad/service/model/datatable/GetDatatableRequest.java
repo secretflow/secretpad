@@ -41,4 +41,9 @@ public class GetDatatableRequest {
      */
     @Schema(description = "datatable id")
     private String datatableId;
+    /**
+     * Tee node id, it can be blank and has default value
+     */
+    @Schema(description = "tee node id")
+    private String teeNodeId;
 }

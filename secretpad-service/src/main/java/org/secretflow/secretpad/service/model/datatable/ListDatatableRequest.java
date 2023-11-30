@@ -62,4 +62,9 @@ public class ListDatatableRequest {
      */
     @Schema(description = "node id")
     private String nodeId;
+    /**
+     * Tee node id, it can be blank and has default value
+     */
+    @Schema(description = "tee node id")
+    private String teeNodeId;
 }

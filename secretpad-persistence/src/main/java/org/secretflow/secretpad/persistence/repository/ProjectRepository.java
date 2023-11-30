@@ -18,7 +18,6 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -28,8 +27,5 @@ import org.springframework.stereotype.Repository;
  * @date 2023/6/8
  */
 @Repository
-public interface ProjectRepository extends JpaRepository<ProjectDO, String> {
-//    @Query("")
-//    Map<String, List<String>> authProjectsByDatatableId(String nodeId, List<String> datatableIds);
-
+public interface ProjectRepository extends BaseRepository<ProjectDO, String> {
 }

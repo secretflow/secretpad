@@ -26,7 +26,7 @@ import lombok.Data;
 @Data
 @Builder
 public class UpdateNodeRouteParam {
-    private Long nodeRouteId;
+    private String nodeRouteId;
     private String srcNetAddress;
     private String dstNetAddress;
     private String routeType;

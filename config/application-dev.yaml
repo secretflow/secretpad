@@ -46,11 +46,13 @@ spring:
   sql:
     init:
       schema-locations:
-        - file:./config/schema/v1.sql
-        - file:./config/schema/v2.sql
+        - file:./config/schema/init.sql
       data-locations: file:./config/data/data.sql
       mode: always
       continue-on-error: true
+springdoc:
+  api-docs:
+    enabled: true
 
 logging:
   level:
@@ -72,7 +74,25 @@ kusciaapi:
     ca-file: config/certs/ca.crt
   token-file: config/certs/token
 
+kusciaapi-lite-alice:
+  address: 127.0.0.1:8061
+  tls:
+    cert-file: config/certs/alice/ca.crt
+    key-file: config/certs/alice/client.pem
+    ca-file: config/certs/alice/client.crt
+  token-file: config/certs/alice/token
+
+kusciaapi-lite-bob:
+  address: 127.0.0.1:8061
+  tls:
+    cert-file: config/certs/bob/ca.crt
+    key-file: config/certs/bob/client.pem
+    ca-file: config/certs/bob/client.crt
+  token-file: config/certs/bob/token
+
 secretpad:
+  center-platform-service: secretpad.master.svc
+  gateway: ${KUSCIA_GW_ADDRESS:127.0.0.1:8080}
   auth:
     enabled: false
   response:
@@ -83,3 +103,13 @@ secretpad:
     max-request-size: -1 # -1 means not limit, e.g.  200MB, 1GB
   data:
     dir-path: ../tmp/data/
+
+sfclusterDesc:
+  deviceConfig:
+    spu: "{\"runtime_config\":{\"protocol\":\"SEMI2K\",\"field\":\"FM128\"},\"link_desc\":{\"connect_retry_times\":60,\"connect_retry_interval_ms\":1000,\"brpc_channel_protocol\":\"http\",\"brpc_channel_connection_type\":\"pooled\",\"recv_timeout_ms\":1200000,\"http_timeout_ms\":1200000}}"
+    heu: "{\"mode\": \"PHEU\", \"schema\": \"paillier\", \"key_size\": 2048}"
+  rayFedConfig:
+    crossSiloCommBackend: "brpc_link"
+
+tee:
+  capsule-manager: capsule-manager.#.svc # tee capsule-manager service

@@ -42,4 +42,9 @@ public class ProjectNodeProjection {
      * Node name
      */
     private String nodeName;
+
+    /**
+     * Node Type : embedded normal
+     */
+    private String nodeType;
 }

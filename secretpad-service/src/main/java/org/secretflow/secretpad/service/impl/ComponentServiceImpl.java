@@ -28,7 +28,8 @@ import org.secretflow.secretpad.service.model.graph.ComponentKey;
 import org.secretflow.secretpad.service.model.graph.ComponentSummaryDef;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 
-import org.secretflow.proto.component.Comp;
+import com.secretflow.spec.v1.CompListDef;
+import com.secretflow.spec.v1.ComponentDef;
 import org.secretflow.proto.pipeline.Pipeline;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -57,14 +58,19 @@ public class ComponentServiceImpl implements ComponentService {
     private String i18nLocation;
 
     @Autowired
-    private List<Comp.CompListDef> components;
+    private List<CompListDef> components;
 
     @Override
-    public CompListVO listComponents() {
-        CompListVO compListVO = CompListVO.builder().name("secretflow").comps(new ArrayList<>()).build();
+    public Map<String, CompListVO> listComponents() {
+        Map<String, CompListVO> resp = new HashMap<>();
         components.stream().forEach(compListDef -> {
-            List<Comp.ComponentDef> comps = compListDef.getCompsList();
+            List<ComponentDef> comps = compListDef.getCompsList();
             if (!CollectionUtils.isEmpty(comps)) {
+                CompListVO compListVO = CompListVO.builder()
+                        .name(compListDef.getName())
+                        .version(compListDef.getVersion())
+                        .desc(compListDef.getDesc())
+                        .comps(new ArrayList<>()).build();
                 compListVO.getComps().addAll(comps.stream().map(componentDef ->
                                 ComponentSummaryDef.builder()
                                         .domain(componentDef.getDomain())
@@ -73,23 +79,25 @@ public class ComponentServiceImpl implements ComponentService {
                                         .desc(componentDef.getDesc())
                                         .build())
                         .collect(Collectors.toList()));
+                resp.put(compListVO.getName(), compListVO);
             }
         });
-        return compListVO;
+        resp.remove(ComponentConstants.SECRETPAD);
+        return resp;
     }
 
     @Override
-    public Comp.ComponentDef getComponent(ComponentKey key) {
+    public ComponentDef getComponent(ComponentKey key) {
         return batchGetComponent(List.of(key)).get(0);
     }
 
     @Override
-    public List<Comp.ComponentDef> batchGetComponent(List<ComponentKey> keys) {
-        List<Comp.ComponentDef> result = new ArrayList<>();
-        Map<ComponentKey, Comp.ComponentDef> componentMap = new HashMap<>();
+    public List<ComponentDef> batchGetComponent(List<ComponentKey> keys) {
+        List<ComponentDef> result = new ArrayList<>();
+        Map<ComponentKey, ComponentDef> componentMap = new HashMap<>();
         components.stream().filter(compListDef -> !CollectionUtils.isEmpty(compListDef.getCompsList())).forEach(compListDef -> {
             compListDef.getCompsList().stream().forEach(componentDef -> {
-                componentMap.put(new ComponentKey(componentDef.getDomain(), componentDef.getName()), componentDef);
+                componentMap.put(new ComponentKey(compListDef.getName(), componentDef.getDomain(), componentDef.getName()), componentDef);
             });
         });
         if (!CollectionUtils.isEmpty(keys)) {
@@ -105,18 +113,29 @@ public class ComponentServiceImpl implements ComponentService {
 
     @Override
     public Object listComponentI18n() {
-        Map<String, Object> config = new HashMap<>();
+        Map<String, Map<String, Object>> config = new HashMap<>();
+        Map<String, Object> secretpad = new HashMap<>();
         try {
             File dir = ResourceUtils.getFile(i18nLocation);
             File[] files = dir.listFiles();
             if (files != null) {
                 for (File file : files) {
+                    String fileName = file.getName();
+                    String app = fileName.substring(0, fileName.lastIndexOf("."));
                     String str = FileUtils.readFile2String(file);
                     Map<String, Object> content = JsonUtils.toJavaMap(str, Object.class);
                     if (!CollectionUtils.isEmpty(content)) {
-                        config.putAll(content);
+                        if (app.equals(ComponentConstants.SECRETPAD)) {
+                            secretpad = content;
+                        } else {
+                            config.put(app, content);
+                        }
                     }
                 }
+                Map<String, Object> finalSecretpad = secretpad;
+                config.keySet().forEach(k -> {
+                    config.get(k).putAll(finalSecretpad);
+                });
             }
         } catch (IOException e) {
             throw SecretpadException.of(GraphErrorCode.COMPONENT_18N_ERROR, e);
@@ -126,6 +145,7 @@ public class ComponentServiceImpl implements ComponentService {
 
     @Override
     public boolean isSecretpadComponent(GraphNodeInfo node) {
+        String domain, name;
         Pipeline.NodeDef pipelineNodeDef;
         if (node.getNodeDef() instanceof Pipeline.NodeDef) {
             pipelineNodeDef = (Pipeline.NodeDef) node.getNodeDef();
@@ -133,8 +153,8 @@ public class ComponentServiceImpl implements ComponentService {
             Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
             pipelineNodeDef = (Pipeline.NodeDef) ProtoUtils.fromJsonString(JsonUtils.toJSONString(node.getNodeDef()), nodeDefBuilder);
         }
-        String domain = pipelineNodeDef.getDomain();
-        String name = pipelineNodeDef.getName();
+        domain = pipelineNodeDef.getDomain();
+        name = pipelineNodeDef.getName();
         return ComponentConstants.READ_DATA.equals(domain) && ComponentConstants.DATA_TABLE.equals(name);
     }
 

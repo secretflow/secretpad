@@ -18,7 +18,6 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectRuleDO;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -32,7 +31,7 @@ import java.util.List;
  * @date 2023/6/8
  */
 @Repository
-public interface ProjectRuleRepository extends JpaRepository<ProjectRuleDO, ProjectRuleDO.UPK> {
+public interface ProjectRuleRepository extends BaseRepository<ProjectRuleDO, ProjectRuleDO.UPK> {
     /**
      * Query project rule results by projectId
      *

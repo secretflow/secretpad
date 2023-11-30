@@ -25,6 +25,7 @@ import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.Hibernate;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
@@ -34,6 +35,7 @@ import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
 /**
  * Project job data object
@@ -64,7 +66,7 @@ public class ProjectJobDO extends BaseAggregationRoot<ProjectJobDO> {
      * Project job unique primary key
      */
     @EmbeddedId
-    private ProjectJobDO.UPK upk;
+    private UPK upk;
 
     /**
      * Project job name
@@ -75,7 +77,7 @@ public class ProjectJobDO extends BaseAggregationRoot<ProjectJobDO> {
     /**
      * Map of task id and project task DO class
      */
-    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumns({@JoinColumn(name = "project_id", referencedColumnName = "project_id"),
             @JoinColumn(name = "job_id", referencedColumnName = "job_id")})
     @MapKeyColumn(name = "task_id")
@@ -178,6 +180,24 @@ public class ProjectJobDO extends BaseAggregationRoot<ProjectJobDO> {
          */
         @Column(name = "job_id", nullable = false, length = 64)
         private String jobId;
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) {
+                return false;
+            }
+            ProjectJobDO.UPK that = (ProjectJobDO.UPK) o;
+            return this.projectId.equals(that.projectId)
+                    && this.jobId.equals(that.jobId);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(projectId, jobId);
+        }
     }
 
     /**
@@ -249,5 +269,10 @@ public class ProjectJobDO extends BaseAggregationRoot<ProjectJobDO> {
         public String getProjectId(ProjectJobDO source) {
             return source.getUpk().getProjectId();
         }
+    }
+
+    @Override
+    public String getProjectId() {
+        return this.upk.projectId;
     }
 }

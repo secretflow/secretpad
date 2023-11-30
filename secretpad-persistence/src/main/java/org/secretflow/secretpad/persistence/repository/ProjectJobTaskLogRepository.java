@@ -18,7 +18,6 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectJobTaskLogDO;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -32,7 +31,7 @@ import java.util.List;
  * @date 2023/5/31
  */
 @Repository
-public interface ProjectJobTaskLogRepository extends JpaRepository<ProjectJobTaskLogDO, String> {
+public interface ProjectJobTaskLogRepository extends BaseRepository<ProjectJobTaskLogDO, String> {
 
     /**
      * Query project job task log results by jobId and taskId

@@ -41,7 +41,7 @@ import java.io.Serializable;
 @Table(name = "project_model")
 @SQLDelete(sql = "update project_model set is_deleted = 1 where model_id = ? and project_id = ?")
 @Where(clause = "is_deleted = 0")
-public class ProjectModelDO extends BaseEntity {
+public class ProjectModelDO extends BaseAggregationRoot {
     /**
      * Project model unique primary key
      */

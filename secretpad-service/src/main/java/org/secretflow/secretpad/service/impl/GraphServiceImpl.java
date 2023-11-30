@@ -19,6 +19,7 @@ package org.secretflow.secretpad.service.impl;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
 import org.secretflow.secretpad.common.errorcode.JobErrorCode;
+import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
@@ -38,6 +39,7 @@ import org.secretflow.secretpad.service.ComponentService;
 import org.secretflow.secretpad.service.GraphService;
 import org.secretflow.secretpad.service.ProjectService;
 import org.secretflow.secretpad.service.graph.ComponentTools;
+import org.secretflow.secretpad.service.graph.GraphContext;
 import org.secretflow.secretpad.service.graph.JobChain;
 import org.secretflow.secretpad.service.model.graph.*;
 import org.secretflow.secretpad.service.model.project.GetProjectJobTaskOutputRequest;
@@ -45,18 +47,22 @@ import org.secretflow.secretpad.service.model.project.StopProjectJobTaskRequest;
 import org.secretflow.secretpad.service.util.JobUtils;
 
 import com.google.common.base.Strings;
+import com.secretflow.spec.v1.AttrType;
+import com.secretflow.spec.v1.ComponentDef;
+import com.secretflow.spec.v1.Table;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.secretflow.proto.component.Comp;
-import org.secretflow.proto.component.ReportOuterClass;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.secretflow.secretpad.service.constant.Constants.TEE_PROJECT_MODE;
 
 /**
  * Graph service implementation class
@@ -113,18 +119,25 @@ public class GraphServiceImpl implements GraphService {
     @Autowired
     private NodeRepository nodeRepository;
 
+    @Autowired
+    private ProjectRepository projectRepository;
+
+
+    @Value("${tee.domain-id:tee}")
+    private String teeNodeId;
+
     @Override
-    public CompListVO listComponents() {
+    public Map<String, CompListVO> listComponents() {
         return componentService.listComponents();
     }
 
     @Override
-    public Comp.ComponentDef getComponent(GetComponentRequest request) {
+    public ComponentDef getComponent(GetComponentRequest request) {
         return componentService.getComponent(GetComponentRequest.toComponentKey(request));
     }
 
     @Override
-    public List<Comp.ComponentDef> batchGetComponent(List<GetComponentRequest> request) {
+    public List<ComponentDef> batchGetComponent(List<GetComponentRequest> request) {
         return componentService.batchGetComponent(GetComponentRequest.toComponentKeyList(request));
     }
 
@@ -265,7 +278,7 @@ public class GraphServiceImpl implements GraphService {
         String projectId = taskDO.getUpk().getProjectId();
         GraphNodeOutputVO outputVO = GraphNodeOutputVO.builder().build();
         List<GraphNodeOutputVO.OutputResult> outputResults = new ArrayList<>();
-        ReportOuterClass.Table.HeaderItem fileHeader = ReportOuterClass.Table.HeaderItem.newBuilder().setType(Comp.AttrType.AT_STRING).setName("metas").build();
+        Table.HeaderItem fileHeader = Table.HeaderItem.newBuilder().setType(String.valueOf(AttrType.AT_STRING)).setName("metas").build();
         ProjectGraphNodeDO graphNode = taskDO.getGraphNode();
         GraphNodeInfo graphNodeInfo = GraphNodeInfo.fromDO(graphNode);
         if (componentService.isSecretpadComponent(graphNodeInfo)) {
@@ -274,7 +287,7 @@ public class GraphServiceImpl implements GraphService {
             List<ProjectDatatableDO> datatableDOS = datatableRepository.findByDatableId(projectId, datatableId);
             if (!CollectionUtils.isEmpty(datatableDOS)) {
                 for (ProjectDatatableDO datatableDO : datatableDOS) {
-                    GraphNodeOutputVO.OutputResult outputResult = fromDatatable(datatableDO);
+                    GraphNodeOutputVO.OutputResult outputResult = fromDatatable(datatableDO, null, null);
                     outputResults.add(outputResult);
                 }
                 outputVO.setGmtCreate(DateTimes.toRfc3339(datatableDOS.get(0).getGmtCreate()));
@@ -283,6 +296,13 @@ public class GraphServiceImpl implements GraphService {
         } else {
             String jobId = taskDO.getUpk().getJobId();
             String taskId = taskDO.getUpk().getTaskId();
+            outputVO.setTaskId(taskId);
+            outputVO.setJobId(jobId);
+            Optional<ProjectJobDO> projectJobDOOptional = jobRepository.findById(new ProjectJobDO.UPK(projectId, jobId));
+            if (!projectJobDOOptional.isPresent()) {
+                throw SecretpadException.of(JobErrorCode.PROJECT_JOB_NOT_EXISTS);
+            }
+            outputVO.setGraphID(projectJobDOOptional.get().getGraphId());
             List<String> outputs = taskDO.getGraphNode().getOutputs();
             if (CollectionUtils.isEmpty(outputs) || outputs.contains(outputId)) {
                 String latestOutputId = JobUtils.genTaskOutputId(jobId, outputId);
@@ -307,8 +327,11 @@ public class GraphServiceImpl implements GraphService {
                                 outputVO.setTabs(tabs);
                                 return outputVO;
                             case Model:
+                                GraphNodeOutputVO.OutputResult outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(nodeId).path(latestOutputId).type(ResultKind.Model.getName()).tableId(latestOutputId).build();
+                                outputResults.add(outputResult);
+                                break;
                             case Rule:
-                                GraphNodeOutputVO.OutputResult outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(nodeId).path(latestOutputId).build();
+                                outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(nodeId).path(latestOutputId).type(ResultKind.Rule.getName()).tableId(latestOutputId).build();
                                 outputResults.add(outputResult);
                                 break;
                             case FedTable:
@@ -316,7 +339,7 @@ public class GraphServiceImpl implements GraphService {
                                 if (datatableDOOptional.isEmpty()) {
                                     throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
                                 }
-                                outputResult = fromDatatable(datatableDOOptional.get());
+                                outputResult = fromDatatable(datatableDOOptional.get(), null, null);
                                 outputResults.add(outputResult);
                                 break;
                             default:
@@ -335,7 +358,7 @@ public class GraphServiceImpl implements GraphService {
     public GraphNodeOutputVO getResultOutputVO(String nodeId, String resultId) {
         GraphNodeOutputVO outputVO = GraphNodeOutputVO.builder().build();
         List<GraphNodeOutputVO.OutputResult> outputResults = new ArrayList<>();
-        ReportOuterClass.Table.HeaderItem fileHeader = ReportOuterClass.Table.HeaderItem.newBuilder().setType(Comp.AttrType.AT_STRING).setName("metas").build();
+        Table.HeaderItem fileHeader = Table.HeaderItem.newBuilder().setType(String.valueOf(AttrType.AT_STRING)).setName("metas").build();
         Optional<ProjectResultDO> resultOpt = resultRepository.findByNodeIdAndRefId(nodeId, resultId);
         if (resultOpt.isEmpty()) {
             throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_OUTPUT_NOT_EXISTS);
@@ -347,9 +370,21 @@ public class GraphServiceImpl implements GraphService {
         outputVO.setCodeName(task.getGraphNode().getCodeName());
         outputVO.setGmtCreate(DateTimes.toRfc3339(resultDO.getGmtCreate()));
         outputVO.setGmtModified(DateTimes.toRfc3339(resultDO.getGmtModified()));
+        String projectId = resultDO.getUpk().getProjectId();
+        Optional<ProjectDO> projectOpt = projectRepository.findById(projectId);
+        if (projectOpt.isEmpty()) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_NOT_EXISTS);
+        }
+        // rebuild node id and result id when project is tee mode
+        String centerNodeId = nodeId;
+        String centerResultId = resultId;
+        if (StringUtils.endsWithIgnoreCase(projectOpt.get().getComputeMode(), TEE_PROJECT_MODE)) {
+            centerResultId = resultId.replace(nodeId + "-", "");
+            centerNodeId = teeNodeId;
+        }
         switch (resultKind) {
             case Report:
-                Optional<ProjectReportDO> reportDOOptional = reportRepository.findById(new ProjectReportDO.UPK(resultDO.getUpk().getProjectId(), resultId));
+                Optional<ProjectReportDO> reportDOOptional = reportRepository.findById(new ProjectReportDO.UPK(projectId, centerResultId));
                 if (reportDOOptional.isEmpty()) {
                     throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_OUTPUT_NOT_EXISTS);
                 }
@@ -360,15 +395,15 @@ public class GraphServiceImpl implements GraphService {
                 return outputVO;
             case Model:
             case Rule:
-                GraphNodeOutputVO.OutputResult outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(nodeId).path(resultId).build();
+                GraphNodeOutputVO.OutputResult outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(centerNodeId).path(centerResultId).build();
                 outputResults.add(outputResult);
                 break;
             case FedTable:
-                Optional<ProjectDatatableDO> datatableDOOptional = datatableRepository.findById(new ProjectDatatableDO.UPK(resultDO.getUpk().getProjectId(), nodeId, resultId));
+                Optional<ProjectDatatableDO> datatableDOOptional = datatableRepository.findById(new ProjectDatatableDO.UPK(projectId, centerNodeId, centerResultId));
                 if (datatableDOOptional.isEmpty()) {
                     throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
                 }
-                outputResult = fromDatatable(datatableDOOptional.get());
+                outputResult = fromDatatable(datatableDOOptional.get(), nodeId, resultId);
                 outputResults.add(outputResult);
                 break;
             default:
@@ -383,9 +418,11 @@ public class GraphServiceImpl implements GraphService {
      * Build graph node output result from project datatable data object
      *
      * @param datatableDO target project datatable data object
+     * @param edgeNodeId  edge node id
+     * @param edgeTableId edge table id
      * @return graph node output result
      */
-    private GraphNodeOutputVO.OutputResult fromDatatable(ProjectDatatableDO datatableDO) {
+    private GraphNodeOutputVO.OutputResult fromDatatable(ProjectDatatableDO datatableDO, String edgeNodeId, String edgeTableId) {
         List<ProjectDatatableDO.TableColumnConfig> tableConfig = datatableDO.getTableConfig();
         List<String> fields = new ArrayList<>();
         List<String> types = new ArrayList<>();
@@ -397,8 +434,13 @@ public class GraphServiceImpl implements GraphService {
         }
         String nodeId = datatableDO.getUpk().getNodeId();
         String tableId = datatableDO.getUpk().getDatatableId();
-        GraphNodeOutputVO.OutputResult outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(nodeId).fields(String.join(",", fields)).fieldTypes(String.join(",", types)).tableId(tableId).build();
-        Optional<DatatableDTO> datatableDTOOptional = datatableManager.findById(DatatableDTO.NodeDatatableId.from(nodeId, tableId));
+        GraphNodeOutputVO.OutputResult outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(nodeId).type(nodeRepository.findByNodeId(nodeId).getType()).fields(String.join(",", fields)).fieldTypes(String.join(",", types)).tableId(tableId).build();
+        Optional<ProjectDO> projectOpt = projectRepository.findById(datatableDO.getProjectId());
+        if (projectOpt.isEmpty()) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_NOT_EXISTS);
+        }
+        Optional<DatatableDTO> datatableDTOOptional = datatableManager.findById(DatatableDTO.NodeDatatableId.from(StringUtils.isNotBlank(edgeNodeId) ? edgeNodeId : nodeId,
+                StringUtils.isNotBlank(edgeTableId) ? edgeTableId : tableId));
         if (datatableDTOOptional.isPresent()) {
             DatatableDTO datatableDTO = datatableDTOOptional.get();
             outputResult.setPath(datatableDTO.getRelativeUri());
@@ -424,7 +466,12 @@ public class GraphServiceImpl implements GraphService {
         if (selectedNodes.size() != nodeIds.size()) {
             throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_NOT_EXISTS);
         }
+        Optional<ProjectDO> projectOpt = projectRepository.findById(request.getProjectId());
+        if (projectOpt.isEmpty()) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_NOT_EXISTS);
+        }
         Set<String> parties = new HashSet<>();
+        List<GraphContext.GraphParty> partyList = new ArrayList<>();
         for (ProjectGraphNodeDO nodeDO : nodeDOList) {
             GraphNodeInfo graphNodeInfo = GraphNodeInfo.fromDO(nodeDO);
             if (componentService.isSecretpadComponent(graphNodeInfo)) {
@@ -433,13 +480,20 @@ public class GraphServiceImpl implements GraphService {
                     List<ProjectDatatableDO> datatableDOS = datatableRepository.findByDatableId(request.getProjectId(), datatableId);
                     if (!CollectionUtils.isEmpty(datatableDOS)) {
                         parties.addAll(datatableDOS.stream().map(datatableDO -> datatableDO.getUpk().getNodeId()).collect(Collectors.toList()));
+                        partyList.add(GraphContext.GraphParty.builder().datatableId(datatableId).node(datatableDOS.get(0).getUpk().getNodeId()).build());
                     }
                 }
             }
         }
+        GraphContext.set(projectOpt.get(), GraphContext.GraphParties.builder().parties(partyList).build());
+        if (GraphContext.isTee()) {
+            parties = new HashSet<>();
+            parties.add(GraphContext.getTeeNodeId());
+        }
         verifyNodeAndRouteHealthy(parties);
         ProjectJob projectJob = ProjectJob.genProjectJob(graphDO, selectedNodes, parties.stream().collect(Collectors.toList()));
         jobChain.proceed(projectJob);
+        GraphContext.remove();
         return new StartGraphVO(projectJob.getJobId());
     }
 
@@ -479,6 +533,7 @@ public class GraphServiceImpl implements GraphService {
                 if (taskDOOptional.isPresent()) {
                     status = taskDOOptional.get().getStatus();
                     nodeStatusVO.setTaskId(taskDOOptional.get().getUpk().getTaskId());
+                    nodeStatusVO.setJobId(taskDOOptional.get().getUpk().getJobId());
                     jobIds.add(taskDOOptional.get().getUpk().getJobId());
                 }
                 nodeStatusVO.setStatus(status);

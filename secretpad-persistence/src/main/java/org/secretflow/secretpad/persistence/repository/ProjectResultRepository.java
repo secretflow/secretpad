@@ -21,7 +21,6 @@ import org.secretflow.secretpad.persistence.entity.ProjectResultDO;
 import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.persistence.projection.CountProjection;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -36,7 +35,7 @@ import java.util.Optional;
  * @date 2023/6/8
  */
 @Repository
-public interface ProjectResultRepository extends JpaRepository<ProjectResultDO, ProjectResultDO.UPK> {
+public interface ProjectResultRepository extends BaseRepository<ProjectResultDO, ProjectResultDO.UPK> {
     /**
      * Query project result results by projectId
      *

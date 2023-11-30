@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -114,12 +115,15 @@ public class GraphNodeDetail extends GraphNodeInfo {
      */
     public static List<GraphNodeDetail> fromDOList(List<ProjectGraphNodeDO> graphNodeDOList, List<GraphNodeStatusVO> nodeStatus) {
         final Map<String, GraphNodeTaskStatus> statusMap = new HashMap<>();
+        final Map<String, GraphNodeStatusVO> jobTaskMap = new HashMap<>();
         if (!CollectionUtils.isEmpty(nodeStatus)) {
             statusMap.putAll(nodeStatus.stream().collect(Collectors.toMap(GraphNodeStatusVO::getGraphNodeId, GraphNodeStatusVO::getStatus)));
+            jobTaskMap.putAll(nodeStatus.stream().collect(Collectors.toMap(GraphNodeStatusVO::getGraphNodeId, Function.identity())));
         }
         if (!CollectionUtils.isEmpty(graphNodeDOList)) {
             return graphNodeDOList.stream().map(graphNodeDO ->
-                            fromDO(graphNodeDO, statusMap.getOrDefault(graphNodeDO.getUpk().getGraphNodeId(), GraphNodeTaskStatus.STAGING), null))
+                            fromDO(graphNodeDO, statusMap.getOrDefault(graphNodeDO.getUpk().getGraphNodeId(), GraphNodeTaskStatus.STAGING), null)
+                                    .withJobTask(jobTaskMap.get(graphNodeDO.getUpk().getGraphNodeId()).getJobId(), jobTaskMap.get(graphNodeDO.getUpk().getGraphNodeId()).getTaskId()))
                     .collect(Collectors.toList());
         }
         return new ArrayList<>();

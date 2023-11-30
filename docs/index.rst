@@ -20,3 +20,4 @@ SecretPad 是一个基于 [Kuscia](https://github.com/secretflow/kuscia) 的隐�
    :maxdepth: 2
 
    development/index
+   deployment_experience/index

@@ -33,7 +33,7 @@ import org.junit.jupiter.api.Test;
 import org.secretflow.v1alpha1.factory.KusciaAPIChannelFactory;
 import org.secretflow.v1alpha1.factory.TlsConfig;
 import org.secretflow.v1alpha1.interceptor.TokenAuthServerInterceptor;
-import org.secretflow.v1alpha1.kusciaapi.Domain;
+import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -81,8 +81,8 @@ public class DomainServiceTests {
 
     @Test
     public void testCreate() {
-        Domain.CreateDomainRequest request = Domain.CreateDomainRequest.newBuilder().setDomainId("test").build();
-        Domain.CreateDomainResponse response = domainServiceStub.createDomain(request);
+        DomainOuterClass.CreateDomainRequest request = DomainOuterClass.CreateDomainRequest.newBuilder().setDomainId("test").build();
+        DomainOuterClass.CreateDomainResponse response = domainServiceStub.createDomain(request);
         LOGGER.info(response.toString());
     }
 
@@ -123,33 +123,33 @@ public class DomainServiceTests {
     private class DomainServiceImpl extends DomainServiceGrpc.DomainServiceImplBase {
 
         @Override
-        public void createDomain(Domain.CreateDomainRequest request, StreamObserver<Domain.CreateDomainResponse> responseObserver) {
-            responseObserver.onNext(Domain.CreateDomainResponse.newBuilder().build());
+        public void createDomain(DomainOuterClass.CreateDomainRequest request, StreamObserver<DomainOuterClass.CreateDomainResponse> responseObserver) {
+            responseObserver.onNext(DomainOuterClass.CreateDomainResponse.newBuilder().build());
             responseObserver.onCompleted();
         }
 
         @Override
-        public void queryDomain(Domain.QueryDomainRequest request, StreamObserver<Domain.QueryDomainResponse> responseObserver) {
-            responseObserver.onNext(Domain.QueryDomainResponse.newBuilder().build());
+        public void queryDomain(DomainOuterClass.QueryDomainRequest request, StreamObserver<DomainOuterClass.QueryDomainResponse> responseObserver) {
+            responseObserver.onNext(DomainOuterClass.QueryDomainResponse.newBuilder().build());
             responseObserver.onCompleted();
         }
 
         @Override
-        public void updateDomain(Domain.UpdateDomainRequest request, StreamObserver<Domain.UpdateDomainResponse> responseObserver) {
-            responseObserver.onNext(Domain.UpdateDomainResponse.newBuilder().build());
+        public void updateDomain(DomainOuterClass.UpdateDomainRequest request, StreamObserver<DomainOuterClass.UpdateDomainResponse> responseObserver) {
+            responseObserver.onNext(DomainOuterClass.UpdateDomainResponse.newBuilder().build());
             responseObserver.onCompleted();
         }
 
         @Override
-        public void deleteDomain(Domain.DeleteDomainRequest request, StreamObserver<Domain.DeleteDomainResponse> responseObserver) {
-            responseObserver.onNext(Domain.DeleteDomainResponse.newBuilder().build());
+        public void deleteDomain(DomainOuterClass.DeleteDomainRequest request, StreamObserver<DomainOuterClass.DeleteDomainResponse> responseObserver) {
+            responseObserver.onNext(DomainOuterClass.DeleteDomainResponse.newBuilder().build());
             responseObserver.onCompleted();
         }
 
         @Override
-        public void batchQueryDomainStatus(Domain.BatchQueryDomainStatusRequest request,
-                                           StreamObserver<Domain.BatchQueryDomainStatusResponse> responseObserver) {
-            responseObserver.onNext(Domain.BatchQueryDomainStatusResponse.newBuilder().build());
+        public void batchQueryDomain(DomainOuterClass.BatchQueryDomainRequest request,
+                                     StreamObserver<DomainOuterClass.BatchQueryDomainResponse> responseObserver) {
+            responseObserver.onNext(DomainOuterClass.BatchQueryDomainResponse.newBuilder().build());
             responseObserver.onCompleted();
         }
     }

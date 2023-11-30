@@ -39,6 +39,14 @@ public interface NodeService {
     List<NodeVO> listNodes();
 
     /**
+     * List all Node base info without oneself node.
+     *
+     * @param oneselfNodeId oneselfNodeId
+     * @return List<NodeBaseInfoVO>
+     */
+    List<NodeBaseInfoVO> listOtherNodeBaseInfo(String oneselfNodeId);
+
+    /**
      * Create a node
      *
      * @param request create node request
@@ -70,19 +78,58 @@ public interface NodeService {
     NodeResultDetailVO getNodeResultDetail(GetNodeResultDetailRequest request);
 
     /**
-     * 查询节点
+     * get node info
      *
-     * @param nodeId 节点id
-     * @return 节点视图
+     * @param nodeId node id
+     * @return node info
      */
     NodeVO getNode(String nodeId);
 
+    /**
+     * update node info
+     *
+     * @param request node info
+     */
     void updateNode(UpdateNodeRequest request);
 
+    /**
+     * page of node
+     *
+     * @param request  page request param
+     * @param pageable jpa page param
+     * @return page node info
+     */
     SecretPadPageResponse<NodeVO> queryPage(PageNodeRequest request, Pageable pageable);
 
+    /**
+     * get now node stats
+     *
+     * @param nodeId node id
+     * @return node info
+     */
     NodeVO refreshNode(String nodeId);
 
+    /**
+     * get node deploy token used or unused
+     *
+     * @param nodeId  node id
+     * @param refresh true: unused false used
+     * @return node info
+     */
     NodeTokenVO getNodeToken(String nodeId, boolean refresh);
+
+    /**
+     * List tee nodes
+     *
+     * @return NodeDTO list
+     */
+    List<NodeVO> listTeeNode();
+
+    /**
+     * List Cooperating Node
+     * @param nodeId current node Id
+     * @return node view object list
+     */
+    List<NodeVO> listCooperatingNode(String nodeId);
 
 }

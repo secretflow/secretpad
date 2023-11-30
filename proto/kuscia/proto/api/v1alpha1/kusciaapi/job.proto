@@ -31,7 +31,7 @@ service JobService {
   rpc BatchQueryJobStatus(BatchQueryJobStatusRequest) returns (BatchQueryJobStatusResponse);
 
   rpc StopJob(StopJobRequest)returns (StopJobResponse);
-
+  
   rpc DeleteJob(DeleteJobRequest) returns (DeleteJobResponse);
 
   rpc WatchJob(WatchJobRequest) returns (stream WatchJobEventResponse);
@@ -57,11 +57,13 @@ message CreateJobResponseData {
 message Task {
   string app_image = 1;
   repeated Party parties = 2; // 参与方
-  string alias = 3;
+  string alias = 3; 
   string task_id = 4;
   repeated string dependencies = 5; // dependencies tasks
   string task_input_config = 6; // task input config
   int32 priority = 7;
+  string task_cluster_def = 8;
+  string allocated_ports = 9;
 }
 
 message Party {

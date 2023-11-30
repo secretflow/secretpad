@@ -16,7 +16,6 @@
 
 package org.secretflow.secretpad.service.model.datatable;
 
-import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO;
 import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO.TableColumnConfig;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -79,7 +78,7 @@ public class TableColumnConfigVO extends TableColumnVO {
      * @param columns table column config list
      * @return table column config view object list
      */
-    public static List<TableColumnConfigVO> from(List<ProjectDatatableDO.TableColumnConfig> columns) {
+    public static List<TableColumnConfigVO> from(List<TableColumnConfig> columns) {
         return columns.stream().map(TableColumnConfigVO::from).collect(Collectors.toList());
     }
 }

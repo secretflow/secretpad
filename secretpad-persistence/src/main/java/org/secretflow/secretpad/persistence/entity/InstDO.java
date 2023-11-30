@@ -55,3 +55,4 @@ public class InstDO extends BaseAggregationRoot<InstDO> {
     @Column(name = "name", nullable = false, length = 256)
     private String name;
 }
+

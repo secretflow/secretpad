@@ -22,12 +22,14 @@ import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
 
 import com.google.protobuf.util.JsonFormat;
+import com.secretflow.spec.v1.IndividualTable;
+import lombok.extern.slf4j.Slf4j;
 import org.secretflow.proto.component.Cluster;
-import org.secretflow.proto.component.Data;
 import org.secretflow.proto.kuscia.TaskConfig;
 import org.secretflow.proto.pipeline.Pipeline;
 import org.secretflow.v1alpha1.kusciaapi.Job;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -43,16 +45,25 @@ import java.util.stream.Collectors;
  * @author yansi
  * @date 2023/5/30
  */
+@Slf4j
 @Component
+@ConfigurationProperties(prefix = "sfcluster-desc")
 public class KusciaJobConverter implements JobConverter {
     private final static String defaultDS = "default-data-source";
     @Value("${job.max-parallelism:1}")
     private int maxParallelism;
-    private static final Map<String, String> deviceConfig = Map.of
-            (
-                    "spu", "{\"runtime_config\":{\"protocol\":\"REF2K\",\"field\":\"FM64\"},\"link_desc\":{\"connect_retry_times\":60,\"connect_retry_interval_ms\":1000,\"brpc_channel_protocol\":\"http\",\"brpc_channel_connection_type\":\"pooled\",\"recv_timeout_ms\":1200000,\"http_timeout_ms\":1200000}}",
-                    "heu", "{\"mode\": \"PHEU\", \"schema\": \"paillier\", \"key_size\": 2048}"
-            );
+    private static String crossSiloCommBackend;
+
+    @Value("${sfcluster-desc.ray-fed-config.cross-silo-comm-backend:brpc_link}")
+    private void setCrossSiloCommBackend(String crossSiloCommBackend) {
+        KusciaJobConverter.crossSiloCommBackend = crossSiloCommBackend;
+    }
+
+    private static Map<String, String> deviceConfig;
+
+    public void setDeviceConfig(Map<String, String> deviceConfig) {
+        KusciaJobConverter.deviceConfig = deviceConfig;
+    }
 
     /**
      * Converter create job request from project job
@@ -116,8 +127,10 @@ public class KusciaJobConverter implements JobConverter {
                     .build();
             deviceDescs.add(deviceDesc);
         });
-
-        JsonFormat.TypeRegistry typeRegistry = JsonFormat.TypeRegistry.newBuilder().add(Data.IndividualTable.getDescriptor()).build();
+        Cluster.SFClusterDesc.RayFedConfig rayFedConfig = Cluster.SFClusterDesc.RayFedConfig.newBuilder()
+                .setCrossSiloCommBackend(crossSiloCommBackend)
+                .build();
+        JsonFormat.TypeRegistry typeRegistry = JsonFormat.TypeRegistry.newBuilder().add(IndividualTable.getDescriptor()).build();
         Pipeline.NodeDef pipelineNodeDef;
         if (nodeDef instanceof Pipeline.NodeDef) {
             pipelineNodeDef = (Pipeline.NodeDef) nodeDef;
@@ -125,8 +138,7 @@ public class KusciaJobConverter implements JobConverter {
             Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
             pipelineNodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeDef, nodeDefBuilder);
         }
-
-        Cluster.SFClusterDesc sfClusterDesc = Cluster.SFClusterDesc.newBuilder().addAllParties(parties).addAllDevices(deviceDescs).build();
+        Cluster.SFClusterDesc sfClusterDesc = Cluster.SFClusterDesc.newBuilder().addAllParties(parties).setRayFedConfig(rayFedConfig).addAllDevices(deviceDescs).build();
         TaskConfig.TaskInputConfig taskInputConfig = TaskConfig.TaskInputConfig.newBuilder()
                 .putAllSfDatasourceConfig(defaultDatasourceConfig(parties))
                 .addAllSfInputIds(inputs)

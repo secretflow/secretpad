@@ -16,14 +16,22 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.dto.UserContextDTO;
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.ErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
+import org.secretflow.secretpad.service.util.PushToCenterUtil;
 import org.secretflow.secretpad.web.SecretPadApplication;
 
 import org.apache.commons.lang3.StringUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
+import org.mockito.MockedStatic;
+import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +53,7 @@ import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
 import java.util.Objects;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -61,8 +70,12 @@ import java.util.regex.Pattern;
 @SpringBootTest(classes = SecretPadApplication.class)
 public class ControllerTest {
     private final static Logger LOGGER = LoggerFactory.getLogger(ControllerTest.class);
+    public static final String PROJECT_ID = "projectagdasvacaghyhbvscvyjnba";
+
     @Autowired
     private MockMvc mockMvc;
+
+    public static MockedStatic<PushToCenterUtil> pushToCenterUtilMockedStatic;
 
     @BeforeAll
     public static void setup() throws IOException, InterruptedException {
@@ -71,6 +84,19 @@ public class ControllerTest {
         ProcessBuilder pb = new ProcessBuilder("./config/setup.sh");
         Process process = pb.start();
         process.waitFor();
+    }
+
+    @BeforeEach
+    public void initSession() {
+        UserContext.setBaseUser(UserContextDTO.builder().ownerId("alice")
+                .platformType(PlatformTypeEnum.CENTER)
+                .projectIds(Set.of(PROJECT_ID)).build());
+        pushToCenterUtilMockedStatic = Mockito.mockStatic(PushToCenterUtil.class);
+    }
+
+    @AfterEach
+    public void after() {
+        pushToCenterUtilMockedStatic.close();
     }
 
     void assertResponse(MvcRequestFunction<MockHttpServletRequestBuilder> f) throws Exception {

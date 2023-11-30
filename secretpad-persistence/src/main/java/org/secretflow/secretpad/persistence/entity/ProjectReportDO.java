@@ -41,12 +41,12 @@ import java.io.Serializable;
 @Table(name = "project_report")
 @SQLDelete(sql = "update project_report set is_deleted = 1 where project_id = ? and report_id = ?")
 @Where(clause = "is_deleted = 0")
-public class ProjectReportDO extends BaseEntity {
+public class ProjectReportDO extends BaseAggregationRoot {
     /**
      * Project report unique primary key
      */
     @EmbeddedId
-    private ProjectReportDO.UPK upk;
+    private UPK upk;
     /**
      * Project report content
      */

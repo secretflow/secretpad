@@ -1,0 +1,60 @@
+package org.secretflow.secretpad.manager.integration.job;
+
+import org.secretflow.secretpad.manager.integration.model.DatabaseChangeNotificationDTO;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.util.concurrent.CompletableFuture;
+
+public class PlatformSyncManager extends AbstractPlatformSyncManager {
+    private final static Logger LOGGER = LoggerFactory.getLogger(PlatformSyncManager.class);
+
+    private SseEmitter emitter;
+
+    @Override
+    public void startSync() {
+//        // if pull sync started (edge mode)
+//        // 创建连接到服务端的SseEmitter
+//        emitter = new SseEmitter();
+//
+//        // 异步处理SseEmitter的数据
+//        CompletableFuture.runAsync(() -> {
+//            try {
+//                RestTemplate restTemplate = new RestTemplate();
+//                // TODO: get stream url
+//                restTemplate.getForObject("http://your-server/stream", SseEmitter.class);
+//
+//                ResponseEntity<DatabaseChangeNotificationDTO> responseEntity;
+//                while ((responseEntity = restTemplate.exchange(emitter.getRequest().getURI(), HttpMethod.GET, null, DatabaseChangeNotificationDTO.class)).getStatusCode().is2xxSuccessful()) {
+//                    DatabaseChangeNotificationDTO notificationDTO = responseEntity.getBody();
+//                    if (notificationDTO != null && notificationDTO.getChanges() != null) {
+//                        // 处理服务器推送的数据库变更
+//                        for (DatabaseChange change : notificationDTO.getChanges()) {
+//                            // 写入本地数据库
+//                            databaseService.processDatabaseChange(change);
+//                        }
+//                    }
+//                }
+//            } catch (Exception e) {
+//                emitter.completeWithError(e);
+//                // 客户端断开连接，进行重连
+//                reconnect();
+//            }
+//        });
+    };
+
+    private void reconnect() {
+        // 等待一段时间后重新连接
+        try {
+            Thread.sleep(5000); // 等待5秒后重新连接
+            startSync();
+        } catch (InterruptedException e) {
+            LOGGER.error("sync exception: {}", e.getMessage());
+        }
+    }
+}

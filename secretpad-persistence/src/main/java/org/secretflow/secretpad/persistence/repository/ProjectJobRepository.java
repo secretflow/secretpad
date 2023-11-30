@@ -25,7 +25,6 @@ import org.secretflow.secretpad.persistence.projection.ProjectJobStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -40,7 +39,7 @@ import java.util.Optional;
  * @date 2023/5/31
  */
 @Repository
-public interface ProjectJobRepository extends JpaRepository<ProjectJobDO, ProjectJobDO.UPK> {
+public interface ProjectJobRepository extends BaseRepository<ProjectJobDO, ProjectJobDO.UPK> {
 
     /**
      * Query project job result by jobId

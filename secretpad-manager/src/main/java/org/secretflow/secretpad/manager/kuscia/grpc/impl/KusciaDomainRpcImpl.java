@@ -20,7 +20,7 @@ import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainRpc;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.secretflow.v1alpha1.kusciaapi.Domain;
+import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
 import org.springframework.stereotype.Service;
 
@@ -36,55 +36,63 @@ public class KusciaDomainRpcImpl implements KusciaDomainRpc {
     private final DomainServiceGrpc.DomainServiceBlockingStub domainServiceBlockingStub;
 
     @Override
-    public Domain.CreateDomainResponse createDomain(Domain.CreateDomainRequest request) {
+    public DomainOuterClass.CreateDomainResponse createDomain(DomainOuterClass.CreateDomainRequest request) {
         log.info("DomainServiceGrpc createDomain request{}", request);
-        Domain.CreateDomainResponse response = domainServiceBlockingStub.createDomain(request);
+        DomainOuterClass.CreateDomainResponse response = domainServiceBlockingStub.createDomain(request);
         log.info("DomainServiceGrpc createDomain response{}", response);
         checkResponse(response.getStatus());
         return response;
     }
 
     @Override
-    public Domain.QueryDomainResponse queryDomain(Domain.QueryDomainRequest request) {
+    public DomainOuterClass.QueryDomainResponse queryDomain(DomainOuterClass.QueryDomainRequest request) {
         log.info("DomainServiceGrpc queryDomain request{}", request);
-        Domain.QueryDomainResponse response = domainServiceBlockingStub.queryDomain(request);
+        DomainOuterClass.QueryDomainResponse response = domainServiceBlockingStub.queryDomain(request);
         log.info("DomainServiceGrpc queryDomain response{}", response);
         checkResponse(response.getStatus());
         return response;
     }
 
     @Override
-    public Domain.QueryDomainResponse queryDomainNoCheck(Domain.QueryDomainRequest request) {
+    public DomainOuterClass.QueryDomainResponse queryDomainNoCheck(DomainOuterClass.QueryDomainRequest request) {
         log.info("DomainServiceGrpc queryDomain request{}", request);
-        Domain.QueryDomainResponse response = domainServiceBlockingStub.queryDomain(request);
+        DomainOuterClass.QueryDomainResponse response = domainServiceBlockingStub.queryDomain(request);
         log.info("DomainServiceGrpc queryDomain response{}", response);
         return response;
     }
 
     @Override
-    public Domain.UpdateDomainResponse updateDomain(Domain.UpdateDomainRequest request) {
+    public DomainOuterClass.UpdateDomainResponse updateDomain(DomainOuterClass.UpdateDomainRequest request) {
         log.info("DomainServiceGrpc updateDomain request{}", request);
-        Domain.UpdateDomainResponse response = domainServiceBlockingStub.updateDomain(request);
+        DomainOuterClass.UpdateDomainResponse response = domainServiceBlockingStub.updateDomain(request);
         log.info("DomainServiceGrpc updateDomain response{}", response);
         checkResponse(response.getStatus());
         return response;
     }
 
     @Override
-    public Domain.DeleteDomainResponse deleteDomain(Domain.DeleteDomainRequest request) {
+    public DomainOuterClass.DeleteDomainResponse deleteDomain(DomainOuterClass.DeleteDomainRequest request) {
         log.info("DomainServiceGrpc deleteDomain request{}", request);
-        Domain.DeleteDomainResponse response = domainServiceBlockingStub.deleteDomain(request);
+        DomainOuterClass.DeleteDomainResponse response = domainServiceBlockingStub.deleteDomain(request);
         log.info("DomainServiceGrpc deleteDomain response{}", response);
         checkResponse(response.getStatus());
         return response;
     }
 
     @Override
-    public Domain.BatchQueryDomainStatusResponse batchQueryDomainStatus(Domain.BatchQueryDomainStatusRequest request) {
+    public DomainOuterClass.BatchQueryDomainResponse batchQueryDomain(DomainOuterClass.BatchQueryDomainRequest request) {
         log.info("DomainServiceGrpc batchQueryDomainStatus request{}", request);
-        Domain.BatchQueryDomainStatusResponse response = domainServiceBlockingStub.batchQueryDomainStatus(request);
+        DomainOuterClass.BatchQueryDomainResponse response = domainServiceBlockingStub.batchQueryDomain(request);
         log.info("DomainServiceGrpc batchQueryDomainStatus response{}", response);
         checkResponse(response.getStatus());
+        return response;
+    }
+
+    @Override
+    public DomainOuterClass.BatchQueryDomainResponse batchQueryDomainNoCheck(DomainOuterClass.BatchQueryDomainRequest request) {
+        log.info("DomainServiceGrpc batchQueryDomainStatus request{}", request);
+        DomainOuterClass.BatchQueryDomainResponse response = domainServiceBlockingStub.batchQueryDomain(request);
+        log.info("DomainServiceGrpc batchQueryDomainStatus response{}", response);
         return response;
     }
 }

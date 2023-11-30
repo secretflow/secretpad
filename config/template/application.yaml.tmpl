@@ -4,6 +4,7 @@ server:
       enabled: true
       directory: /var/log/secretpad
   http-port: 8080
+  http-port-inner: 9001
   port: 443
   ssl:
     enabled: true
@@ -43,12 +44,22 @@ spring:
   web:
     locale: zh_CN # default locale, overridden by request "Accept-Language" header.
 
+springdoc:
+  api-docs:
+    enabled: false
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,readiness
+    enabled-by-default: false
+
 logging:
   level:
     root: info
     org:
       hibernate:
-        type: debug
+        type: info
 
 kusciaapi:
   address: {{.KUSCIA_API_ADDRESS}}:8083
@@ -57,11 +68,30 @@ kusciaapi:
     key-file: config/certs/client.pem
     ca-file: config/certs/ca.crt
   token-file: config/certs/token
+kusciaapi-lite-alice:
+  address: {{.KUSCIA_API_LITE_ALICE_ADDRESS}}:8083
+  tls:
+    cert-file: config/certs/alice/client.crt
+    key-file: config/certs/alice/client.pem
+    ca-file: config/certs/alice/ca.crt
+  token-file: config/certs/alice/token
+kusciaapi-lite-bob:
+  address: {{.KUSCIA_API_LITE_BOB_ADDRESS}}:8083
+  tls:
+    cert-file: config/certs/bob/client.crt
+    key-file: config/certs/bob/client.pem
+    ca-file: config/certs/bob/ca.crt
+  token-file: config/certs/bob/token
 
 job:
   max-parallelism: 1
 
 secretpad:
+  deploy-mode: ${DEPLOY_MODE:ALL-IN-ONE} # MPC TEE ALL-IN-ONE
+  platform-type: CENTER
+  node-id: kuscia-system
+  center-platform-service: secretpad.master.svc
+  gateway: ${KUSCIA_GW_ADDRESS:127.0.0.1:80}
   auth:
     enabled: true
   response:
@@ -72,3 +102,34 @@ secretpad:
     max-request-size: -1 # -1 means not limit, e.g.  200MB, 1GB
     data:
       dir-path: /app/data/
+
+sfclusterDesc:
+  deviceConfig:
+    spu: "{\"runtime_config\":{\"protocol\":\"SEMI2K\",\"field\":\"FM128\"},\"link_desc\":{\"connect_retry_times\":60,\"connect_retry_interval_ms\":1000,\"brpc_channel_protocol\":\"http\",\"brpc_channel_connection_type\":\"pooled\",\"recv_timeout_ms\":1200000,\"http_timeout_ms\":1200000}}"
+    heu: "{\"mode\": \"PHEU\", \"schema\": \"paillier\", \"key_size\": 2048}"
+  rayFedConfig:
+    crossSiloCommBackend: "brpc_link"
+
+tee:
+  capsule-manager: capsule-manager.#.svc
+
+data:
+  sync:
+    - org.secretflow.secretpad.persistence.entity.ProjectDO
+    - org.secretflow.secretpad.persistence.entity.ProjectNodeDO
+    - org.secretflow.secretpad.persistence.entity.NodeDO
+    - org.secretflow.secretpad.persistence.entity.NodeRouteDO
+    - org.secretflow.secretpad.persistence.entity.ProjectJobDO
+    - org.secretflow.secretpad.persistence.entity.ProjectTaskDO
+    - org.secretflow.secretpad.persistence.entity.ProjectDatatableDO
+    - org.secretflow.secretpad.persistence.entity.VoteRequestDO
+    - org.secretflow.secretpad.persistence.entity.VoteInviteDO
+    - org.secretflow.secretpad.persistence.entity.TeeDownLoadAuditConfigDO
+    - org.secretflow.secretpad.persistence.entity.NodeRouteApprovalConfigDO
+    - org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO
+
+inner-port:
+  path:
+    - /api/v1alpha1/vote_sync/create
+    - /api/v1alpha1/user/node/resetPassword
+    - /sync

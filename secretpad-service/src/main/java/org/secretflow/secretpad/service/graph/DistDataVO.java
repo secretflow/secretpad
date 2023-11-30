@@ -20,7 +20,8 @@ import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO;
 
 import com.google.protobuf.Any;
-import org.secretflow.proto.component.Data;
+import com.secretflow.spec.v1.DistData;
+import com.secretflow.spec.v1.IndividualTable;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
@@ -39,37 +40,21 @@ public class DistDataVO {
      * @param datatableDTO       datatable data transfer object
      * @return distributed data
      */
-    public static Data.DistData fromDatatable(ProjectDatatableDO projectDatatableDO, DatatableDTO datatableDTO) {
-        Data.DistData.DataRef dataRef = Data.DistData.DataRef.newBuilder()
+    public static DistData fromDatatable(ProjectDatatableDO projectDatatableDO, DatatableDTO datatableDTO) {
+        DistData.DataRef dataRef = DistData.DataRef.newBuilder()
                 .setUri(datatableDTO.getRelativeUri())
                 .setParty(datatableDTO.getNodeId())
                 .setFormat("csv")
                 .build();
 
-        Data.DistData.Builder distDataBuilder = Data.DistData.newBuilder()
+        DistData.Builder distDataBuilder = DistData.newBuilder()
                 .setType("sf.table.individual")
                 .addDataRefs(0, dataRef);
 
         List<ProjectDatatableDO.TableColumnConfig> tableConfig = projectDatatableDO.getTableConfig();
         if (!CollectionUtils.isEmpty(tableConfig)) {
-            Data.TableSchema.Builder schemaBuilder = Data.TableSchema.newBuilder();
-            for (ProjectDatatableDO.TableColumnConfig config : tableConfig) {
-                String colName = config.getColName();
-                String colType = config.getColType();
-                if (config.isAssociateKey()) {
-                    schemaBuilder.addIds(colName);
-                    schemaBuilder.addIdTypes(colType);
-                } else if (config.isLabelKey()) {
-                    schemaBuilder.addLabels(colName);
-                    schemaBuilder.addLabelTypes(colType);
-                } else {
-                    schemaBuilder.addFeatures(colName);
-                    schemaBuilder.addFeatureTypes(colType);
-                }
-            }
-            Data.IndividualTable vTable = Data.IndividualTable.newBuilder()
-                    .setSchema(schemaBuilder.build())
-                    .setNumLines(-1)
+            IndividualTable vTable = IndividualTable.newBuilder()
+                    .setLineCount(-1)
                     .build();
             distDataBuilder.setMeta(Any.pack(vTable));
         }

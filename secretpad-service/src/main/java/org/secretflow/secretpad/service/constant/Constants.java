@@ -22,8 +22,10 @@ package org.secretflow.secretpad.service.constant;
  * @author : xiaonan.fhn
  * @date 2023/5/15
  */
-public class Constants {
-    public static final String NODE_NAME_PATTERN = "^[\\u4e00-\\u9fa5a-zA-Z0-9\\_-]{1,32}$";
-    public static final String IP_PORT_PATTERN =
+public interface Constants {
+    String NODE_NAME_PATTERN = "^[\\u4e00-\\u9fa5a-zA-Z0-9\\_-]{1,32}$";
+    String IP_PORT_PATTERN =
             "^.{1,50}:([0-9]|[1-9]\\d|[1-9]\\d{2}|[1-9]\\d{3}|[1-5]\\d{4}|6[0-4]\\d{3}|65[0-4]\\d{2}|655[0-2]\\d|6553[0-5])$";
+
+    String TEE_PROJECT_MODE = "tee";
 }

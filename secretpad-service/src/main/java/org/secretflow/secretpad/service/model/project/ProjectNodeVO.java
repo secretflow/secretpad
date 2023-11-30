@@ -51,6 +51,12 @@ public class ProjectNodeVO {
      */
     @Schema(description = "node name")
     private String nodeName;
+
+    /**
+     * Node Type
+     */
+    @Schema(description = "node type")
+    private String nodeType;
     /**
      * Datatable list of the node, it is empty for list requests
      */
@@ -71,6 +77,7 @@ public class ProjectNodeVO {
                         : dts.stream().map(dt -> new ProjectDatatableBaseVO(dt.getDatatableId(),
                         dt.getDatatableName())).collect(Collectors.toList()))
                 .nodeName(pnp.getNodeName())
+                .nodeType(pnp.getNodeType())
                 .build();
     }
 

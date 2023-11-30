@@ -28,4 +28,9 @@ public class Constants {
 
     public final static String STATUS_UNAVAILABLE = "Unavailable";
 
+    public final static String SUCCESS_STATUS_MESSAGE = "success";
+
+    public static final String PUSH_TO_TEE_JOB_ID = "pushToTeeJobId";
+    public static final String AUTH_TO_TEE_PROJECT_JOB_ID = "authToTeeProjectJobId";
+
 }

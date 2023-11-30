@@ -18,7 +18,6 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectGraphNodeDO;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -28,5 +27,5 @@ import org.springframework.stereotype.Repository;
  * @date 2023/5/31
  */
 @Repository
-public interface ProjectGraphNodeRepository extends JpaRepository<ProjectGraphNodeDO, ProjectGraphNodeDO.UPK> {
+public interface ProjectGraphNodeRepository extends BaseRepository<ProjectGraphNodeDO, ProjectGraphNodeDO.UPK> {
 }

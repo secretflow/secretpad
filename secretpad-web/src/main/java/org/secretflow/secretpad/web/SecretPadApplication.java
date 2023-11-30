@@ -41,6 +41,8 @@ public class SecretPadApplication {
 
     @Value("${server.http-port}")
     private Integer httpPort;
+    @Value("${server.http-port-inner}")
+    private Integer innerHttpPort;
 
     public static void main(String[] args) {
         SpringApplication.run(SecretPadApplication.class, args);
@@ -57,6 +59,10 @@ public class SecretPadApplication {
         Connector connector = new Connector("org.apache.coyote.http11.Http11NioProtocol");
         connector.setPort(httpPort);
         tomcat.addAdditionalTomcatConnectors(connector);
+
+        Connector innerConnector = new Connector("org.apache.coyote.http11.Http11NioProtocol");
+        innerConnector.setPort(innerHttpPort);
+        tomcat.addAdditionalTomcatConnectors(innerConnector);
         return tomcat;
     }
 

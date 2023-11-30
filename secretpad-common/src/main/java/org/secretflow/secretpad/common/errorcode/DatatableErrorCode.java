@@ -42,7 +42,19 @@ public enum DatatableErrorCode implements ErrorCode {
     /**
      * Datatable has been auth to project
      */
-    DATATABLE_DUPLICATED_AUTHORIZED(202011305);
+    DATATABLE_DUPLICATED_AUTHORIZED(202011305),
+    /**
+     * Failed to query the data table grant in ApiLite
+     */
+    QUERY_DATATABLE_GRANT_FAILED(202011306),
+    /**
+     * Failed to create the data table grant in ApiLite
+     */
+    CREATE_DATATABLE_GRANT_FAILED(202011307),
+    /**
+     * Failed to create the data table grant in ApiLite
+     */
+    CREATE_TEE_JOB_FAILED(202011308);
 
     private final int code;
 

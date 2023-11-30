@@ -16,19 +16,54 @@
 
 package org.secretflow.secretpad.web.controller;
 
-import org.secretflow.secretpad.common.errorcode.*;
-import org.secretflow.secretpad.common.util.DateTimes;
-import org.secretflow.secretpad.common.util.JsonUtils;
-import org.secretflow.secretpad.persistence.entity.*;
-import org.secretflow.secretpad.persistence.model.ResultKind;
-import org.secretflow.secretpad.persistence.repository.*;
-import org.secretflow.secretpad.service.model.project.*;
-import org.secretflow.secretpad.web.utils.FakerUtils;
-
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.proto.pipeline.Pipeline;
+
+import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
+import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
+import org.secretflow.secretpad.common.errorcode.InstErrorCode;
+import org.secretflow.secretpad.common.errorcode.JobErrorCode;
+import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
+import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
+import org.secretflow.secretpad.common.util.DateTimes;
+import org.secretflow.secretpad.common.util.JsonUtils;
+import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.persistence.entity.InstDO;
+import org.secretflow.secretpad.persistence.entity.NodeDO;
+import org.secretflow.secretpad.persistence.entity.ProjectDO;
+import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO;
+import org.secretflow.secretpad.persistence.entity.ProjectGraphNodeDO;
+import org.secretflow.secretpad.persistence.entity.ProjectJobDO;
+import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
+import org.secretflow.secretpad.persistence.entity.ProjectResultDO;
+import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
+import org.secretflow.secretpad.persistence.model.ResultKind;
+import org.secretflow.secretpad.persistence.repository.InstRepository;
+import org.secretflow.secretpad.persistence.repository.NodeRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectDatatableRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectGraphRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectJobRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectResultRepository;
+import org.secretflow.secretpad.service.model.project.AddInstToProjectRequest;
+import org.secretflow.secretpad.service.model.project.AddNodeToProjectRequest;
+import org.secretflow.secretpad.service.model.project.AddProjectDatatableRequest;
+import org.secretflow.secretpad.service.model.project.CreateProjectRequest;
+import org.secretflow.secretpad.service.model.project.DeleteProjectDatatableRequest;
+import org.secretflow.secretpad.service.model.project.GetProjectDatatableRequest;
+import org.secretflow.secretpad.service.model.project.GetProjectJobRequest;
+import org.secretflow.secretpad.service.model.project.GetProjectJobTaskLogRequest;
+import org.secretflow.secretpad.service.model.project.GetProjectJobTaskOutputRequest;
+import org.secretflow.secretpad.service.model.project.GetProjectRequest;
+import org.secretflow.secretpad.service.model.project.ListProjectJobRequest;
+import org.secretflow.secretpad.service.model.project.StopProjectJobTaskRequest;
+import org.secretflow.secretpad.service.model.project.TableColumnConfigParam;
+import org.secretflow.secretpad.service.model.project.UpdateProjectRequest;
+import org.secretflow.secretpad.web.utils.FakerUtils;
+
 import org.secretflow.v1alpha1.common.Common;
 import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
@@ -46,7 +81,6 @@ import java.util.*;
  */
 class ProjectControllerTest extends ControllerTest {
 
-    private static final String PROJECT_ID = "projectagdasvacaghyhbvscvyjnba";
     private static final String GRAPH_ID = "graphagdasvacaghyhbvscvyjnba";
     private static final String TASK_ID = "task-dabgvasfasdasdas";
     private static final String JOB_ID = "op-psiv3-dabgvasfasdasdas";
@@ -82,7 +116,7 @@ class ProjectControllerTest extends ControllerTest {
     private JobServiceGrpc.JobServiceBlockingStub jobStub;
 
     private ProjectDO buildProjectDO() {
-        return ProjectDO.builder().build();
+        return ProjectDO.builder().projectId(PROJECT_ID).build();
     }
 
     private InstDO buildInstDO() {
@@ -90,11 +124,11 @@ class ProjectControllerTest extends ControllerTest {
     }
 
     private NodeDO buildNodeDO() {
-        return NodeDO.builder().build();
+        return NodeDO.builder().nodeId("alice").name("alice").description("alice").auth("alice").type("mpc").build();
     }
 
     private ProjectNodeDO buildProjectNodeDO() {
-        return ProjectNodeDO.builder().build();
+        return ProjectNodeDO.builder().upk(new ProjectNodeDO.UPK(PROJECT_ID, "alice")).build();
     }
 
     private ProjectDatatableDO buildProjectDatatableDO() {
@@ -189,9 +223,13 @@ class ProjectControllerTest extends ControllerTest {
             CreateProjectRequest request = new CreateProjectRequest();
             request.setName("test");
             request.setDescription("test project");
+            request.setComputeMode("mpc");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_CREATE));
 
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(instRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildInstDO()));
+            Mockito.when(nodeRepository.findById(Mockito.any())).thenReturn(Optional.of(FakerUtils.fake(NodeDO.class)));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "createProject", CreateProjectRequest.class))
                     .content(JsonUtils.toJSONString(request));
         });
@@ -203,7 +241,9 @@ class ProjectControllerTest extends ControllerTest {
             CreateProjectRequest request = new CreateProjectRequest();
             request.setName("test");
             request.setDescription("test project");
+            request.setComputeMode("mpc");
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_CREATE));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.empty());
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "createProject", CreateProjectRequest.class))
                     .content(JsonUtils.toJSONString(request));
@@ -216,7 +256,9 @@ class ProjectControllerTest extends ControllerTest {
             CreateProjectRequest request = new CreateProjectRequest();
             request.setName("test");
             request.setDescription("test project");
+            request.setComputeMode("mpc");
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_CREATE));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(instRepository.findById(Mockito.anyString())).thenReturn(Optional.empty());
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "createProject", CreateProjectRequest.class))
@@ -227,16 +269,24 @@ class ProjectControllerTest extends ControllerTest {
     @Test
     void listProject() throws Exception {
         assertResponse(() -> {
+            Mockito.when(projectRepository.findAll()).thenReturn(Collections.emptyList());
+            Mockito.when(projectNodeRepository.findByNodeId(Mockito.anyString())).thenReturn(Collections.emptyList());
+            Mockito.when(projectRepository.findAllById(Mockito.anySet())).thenReturn(Collections.emptyList());
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "listProject"));
         });
+        UserContext.remove();
     }
 
     @Test
     void getProject() throws Exception {
         assertResponse(() -> {
             GetProjectRequest request = FakerUtils.fake(GetProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_GET));
 
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectDatatableRepository.findUpkByProjectId(Mockito.anyString(), Mockito.any())).thenReturn(buildProjectDatatableDOUPK());
             Domaindata.BatchQueryDomainDataResponse batchQueryDomainDataResponse = buildBatchQueryDomainDataResponse(0);
             Mockito.when(dataStub.batchQueryDomainData(Mockito.any())).thenReturn(batchQueryDomainDataResponse);
@@ -249,7 +299,10 @@ class ProjectControllerTest extends ControllerTest {
     void getProjectByProjectNotExistsException() throws Exception {
         assertErrorCode(() -> {
             GetProjectRequest request = FakerUtils.fake(GetProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_GET));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getProject", GetProjectRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ProjectErrorCode.PROJECT_NOT_EXISTS);
@@ -259,8 +312,11 @@ class ProjectControllerTest extends ControllerTest {
     void getProjectByQueryDatatableFailedException() throws Exception {
         assertErrorCode(() -> {
             GetProjectRequest request = FakerUtils.fake(GetProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_GET));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectDatatableRepository.findUpkByProjectId(Mockito.anyString(), Mockito.any())).thenReturn(buildProjectDatatableDOUPK());
             Domaindata.BatchQueryDomainDataResponse batchQueryDomainDataResponse = buildBatchQueryDomainDataResponse(1);
             Mockito.when(dataStub.batchQueryDomainData(Mockito.any())).thenReturn(batchQueryDomainDataResponse);
@@ -273,7 +329,10 @@ class ProjectControllerTest extends ControllerTest {
     void updateProject() throws Exception {
         assertResponseWithEmptyData(() -> {
             UpdateProjectRequest request = FakerUtils.fake(UpdateProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_UPDATE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "updateProject", UpdateProjectRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -284,7 +343,10 @@ class ProjectControllerTest extends ControllerTest {
     void updateProjectByProjectNotExistsException() throws Exception {
         assertErrorCode(() -> {
             UpdateProjectRequest request = FakerUtils.fake(UpdateProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_UPDATE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "updateProject", UpdateProjectRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ProjectErrorCode.PROJECT_NOT_EXISTS);
@@ -294,7 +356,10 @@ class ProjectControllerTest extends ControllerTest {
     void deleteProject() throws Exception {
         assertResponseWithEmptyData(() -> {
             GetProjectRequest request = FakerUtils.fake(GetProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DELETE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "deleteProject", GetProjectRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -305,7 +370,10 @@ class ProjectControllerTest extends ControllerTest {
     void deleteProjectByProjectNotExistsException() throws Exception {
         assertErrorCode(() -> {
             GetProjectRequest request = FakerUtils.fake(GetProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DELETE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "deleteProject", GetProjectRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ProjectErrorCode.PROJECT_NOT_EXISTS);
@@ -315,7 +383,10 @@ class ProjectControllerTest extends ControllerTest {
     void deleteProjectByProjectGraphNotEmptyException() throws Exception {
         assertErrorCode(() -> {
             GetProjectRequest request = FakerUtils.fake(GetProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DELETE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(graphRepository.countByProjectId(Mockito.anyString())).thenReturn(1);
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "deleteProject", GetProjectRequest.class)).
@@ -327,7 +398,10 @@ class ProjectControllerTest extends ControllerTest {
     void addProjectInst() throws Exception {
         assertResponseWithEmptyData(() -> {
             AddInstToProjectRequest request = FakerUtils.fake(AddInstToProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_ADD_INST));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(instRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildInstDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "addProjectInst", AddInstToProjectRequest.class)).
@@ -339,7 +413,10 @@ class ProjectControllerTest extends ControllerTest {
     void addProjectInstByProjectNotExistsException() throws Exception {
         assertErrorCode(() -> {
             AddInstToProjectRequest request = FakerUtils.fake(AddInstToProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_ADD_INST));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "addProjectInst", AddInstToProjectRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ProjectErrorCode.PROJECT_NOT_EXISTS);
@@ -349,7 +426,10 @@ class ProjectControllerTest extends ControllerTest {
     void addProjectInstByInstNotExistsException() throws Exception {
         assertErrorCode(() -> {
             AddInstToProjectRequest request = FakerUtils.fake(AddInstToProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_ADD_INST));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "addProjectInst", AddInstToProjectRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -360,7 +440,10 @@ class ProjectControllerTest extends ControllerTest {
     void addProjectNode() throws Exception {
         assertResponseWithEmptyData(() -> {
             AddNodeToProjectRequest request = FakerUtils.fake(AddNodeToProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_ADD_NODE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(nodeRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "addProjectNode", AddNodeToProjectRequest.class)).
@@ -372,7 +455,10 @@ class ProjectControllerTest extends ControllerTest {
     void addProjectNodeByProjectNotExistsException() throws Exception {
         assertErrorCode(() -> {
             AddNodeToProjectRequest request = FakerUtils.fake(AddNodeToProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_ADD_NODE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "addProjectNode", AddNodeToProjectRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ProjectErrorCode.PROJECT_NOT_EXISTS);
@@ -382,7 +468,10 @@ class ProjectControllerTest extends ControllerTest {
     void addProjectNodeByNodeNotExistsException() throws Exception {
         assertErrorCode(() -> {
             AddNodeToProjectRequest request = FakerUtils.fake(AddNodeToProjectRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_ADD_NODE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "addProjectNode", AddNodeToProjectRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -401,7 +490,9 @@ class ProjectControllerTest extends ControllerTest {
             tableColumnConfigParam.setLabelKey(true);
             configs.add(tableColumnConfigParam);
             request.setConfigs(configs);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_ADD_TABLE));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
 
@@ -416,28 +507,22 @@ class ProjectControllerTest extends ControllerTest {
     void addProjectDatatableByProjectNotExistsException() throws Exception {
         assertErrorCode(() -> {
             AddProjectDatatableRequest request = FakerUtils.fake(AddProjectDatatableRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_ADD_TABLE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "addProjectDatatable", AddProjectDatatableRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ProjectErrorCode.PROJECT_NOT_EXISTS);
     }
 
     @Test
-    void addProjectDatatableByProjectNodeNotExistsException() throws Exception {
-        assertErrorCode(() -> {
-            AddProjectDatatableRequest request = FakerUtils.fake(AddProjectDatatableRequest.class);
-
-            Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
-            return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "addProjectDatatable", AddProjectDatatableRequest.class)).
-                    content(JsonUtils.toJSONString(request));
-        }, ProjectErrorCode.PROJECT_NODE_NOT_EXISTS);
-    }
-
-    @Test
     void addProjectDatatableByQueryDatatableFailedException() throws Exception {
         assertErrorCode(() -> {
             AddProjectDatatableRequest request = FakerUtils.fake(AddProjectDatatableRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_ADD_TABLE));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
 
@@ -452,7 +537,10 @@ class ProjectControllerTest extends ControllerTest {
     void deleteProjectDatatable() throws Exception {
         assertResponseWithEmptyData(() -> {
             DeleteProjectDatatableRequest request = FakerUtils.fake(DeleteProjectDatatableRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_DELETE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectDatatableRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectDatatableDO()));
 
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "deleteProjectDatatable", DeleteProjectDatatableRequest.class)).
@@ -464,7 +552,10 @@ class ProjectControllerTest extends ControllerTest {
     void deleteProjectDatatableByProjectDatatableNotExistsException() throws Exception {
         assertErrorCode(() -> {
             DeleteProjectDatatableRequest request = FakerUtils.fake(DeleteProjectDatatableRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_DELETE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "deleteProjectDatatable", DeleteProjectDatatableRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ProjectErrorCode.PROJECT_DATATABLE_NOT_EXISTS);
@@ -474,7 +565,10 @@ class ProjectControllerTest extends ControllerTest {
     void getProjectDatatable() throws Exception {
         assertResponse(() -> {
             GetProjectDatatableRequest request = FakerUtils.fake(GetProjectDatatableRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_GET));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(projectDatatableRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectDatatableDO()));
 
@@ -489,7 +583,10 @@ class ProjectControllerTest extends ControllerTest {
     void getProjectDatatableByProjectNotExistsException() throws Exception {
         assertErrorCode(() -> {
             GetProjectDatatableRequest request = FakerUtils.fake(GetProjectDatatableRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_GET));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getProjectDatatable", GetProjectDatatableRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ProjectErrorCode.PROJECT_NOT_EXISTS);
@@ -499,7 +596,10 @@ class ProjectControllerTest extends ControllerTest {
     void getProjectDatatableByProjectDatatableNotExistsException() throws Exception {
         assertErrorCode(() -> {
             GetProjectDatatableRequest request = FakerUtils.fake(GetProjectDatatableRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_GET));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
 
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getProjectDatatable", GetProjectDatatableRequest.class)).
@@ -511,7 +611,10 @@ class ProjectControllerTest extends ControllerTest {
     void getProjectDatatableByQueryDatatableFailedException() throws Exception {
         assertErrorCode(() -> {
             GetProjectDatatableRequest request = FakerUtils.fake(GetProjectDatatableRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_GET));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(projectDatatableRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectDatatableDO()));
 
@@ -529,7 +632,10 @@ class ProjectControllerTest extends ControllerTest {
             ListProjectJobRequest request = FakerUtils.fake(ListProjectJobRequest.class);
             request.setPageNum(1);
             request.setPageSize(20);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_JOB_LIST));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             //Mockito.when(projectJobRepository.pageByProjectIdAndGraphId(Mockito.anyString(), Mockito.anyString(), Mockito.any())).thenReturn(page);
 
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "listJob", ListProjectJobRequest.class)).
@@ -542,7 +648,10 @@ class ProjectControllerTest extends ControllerTest {
     void getJob() throws Exception {
         assertResponse(() -> {
             GetProjectJobRequest request = FakerUtils.fake(GetProjectJobRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_JOB_GET));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
             Mockito.when(projectResultRepository.findByProjectJobId(Mockito.anyString(), Mockito.anyString())).thenReturn(buildProjectResultDOList());
@@ -556,7 +665,10 @@ class ProjectControllerTest extends ControllerTest {
     void getJobByProjectNotExistsException() throws Exception {
         assertErrorCode(() -> {
             GetProjectJobRequest request = FakerUtils.fake(GetProjectJobRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_JOB_GET));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJob", GetProjectJobRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ProjectErrorCode.PROJECT_NOT_EXISTS);
@@ -566,7 +678,10 @@ class ProjectControllerTest extends ControllerTest {
     void getJobByProjectJobNotExistsException() throws Exception {
         assertErrorCode(() -> {
             GetProjectJobRequest request = FakerUtils.fake(GetProjectJobRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_JOB_GET));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
 
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJob", GetProjectJobRequest.class)).
@@ -578,7 +693,10 @@ class ProjectControllerTest extends ControllerTest {
     void stopJob() throws Exception {
         assertResponseWithEmptyData(() -> {
             StopProjectJobTaskRequest request = FakerUtils.fake(StopProjectJobTaskRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_JOB_STOP));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
             Mockito.when(projectResultRepository.findByProjectJobId(Mockito.anyString(), Mockito.anyString())).thenReturn(buildProjectResultDOList());
@@ -593,7 +711,10 @@ class ProjectControllerTest extends ControllerTest {
     void stopJobByProjectNotExistsException() throws Exception {
         assertErrorCode(() -> {
             StopProjectJobTaskRequest request = FakerUtils.fake(StopProjectJobTaskRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_JOB_STOP));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "stopJob", StopProjectJobTaskRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ProjectErrorCode.PROJECT_NOT_EXISTS);
@@ -603,7 +724,10 @@ class ProjectControllerTest extends ControllerTest {
     void stopJobByProjectJobNotExistsException() throws Exception {
         assertErrorCode(() -> {
             StopProjectJobTaskRequest request = FakerUtils.fake(StopProjectJobTaskRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_JOB_STOP));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
 
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "stopJob", StopProjectJobTaskRequest.class)).
@@ -616,7 +740,10 @@ class ProjectControllerTest extends ControllerTest {
         assertResponse(() -> {
             GetProjectJobTaskLogRequest request = FakerUtils.fake(GetProjectJobTaskLogRequest.class);
             request.setTaskId("task-dabgvasfasdasdas");
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_TASK_LOGS));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
 
@@ -629,7 +756,10 @@ class ProjectControllerTest extends ControllerTest {
     void getJobLogByProjectNotExistsException() throws Exception {
         assertErrorCode(() -> {
             GetProjectJobTaskLogRequest request = FakerUtils.fake(GetProjectJobTaskLogRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_TASK_LOGS));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJobLog", GetProjectJobTaskLogRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ProjectErrorCode.PROJECT_NOT_EXISTS);
@@ -639,7 +769,10 @@ class ProjectControllerTest extends ControllerTest {
     void getJobLogByProjectJobNotExistsException() throws Exception {
         assertErrorCode(() -> {
             GetProjectJobTaskLogRequest request = FakerUtils.fake(GetProjectJobTaskLogRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_TASK_LOGS));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
 
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJobLog", GetProjectJobTaskLogRequest.class)).
@@ -652,8 +785,14 @@ class ProjectControllerTest extends ControllerTest {
         assertResponse(() -> {
             GetProjectJobTaskOutputRequest request = FakerUtils.fake(GetProjectJobTaskOutputRequest.class);
             request.setTaskId(TASK_ID);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_TASK_OUTPUT));
+            Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(buildNodeDO());
+            Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectJobRepository.findByJobId(Mockito.anyString())).thenReturn(Optional.of(buildProjectJobDO(false)));
+            Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
             Mockito.when(projectResultRepository.findByOutputId(Mockito.anyString(), Mockito.anyString(), Mockito.anyString())).thenReturn(buildProjectResultDOList());
 
             Mockito.when(projectDatatableRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectDatatableDO()));
@@ -670,7 +809,10 @@ class ProjectControllerTest extends ControllerTest {
     void getJobTaskOutputByProjectJobNotExistsException() throws Exception {
         assertErrorCode(() -> {
             GetProjectJobTaskOutputRequest request = FakerUtils.fake(GetProjectJobTaskOutputRequest.class);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_TASK_OUTPUT));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJobTaskOutput", GetProjectJobTaskOutputRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, JobErrorCode.PROJECT_JOB_NOT_EXISTS);
@@ -681,7 +823,10 @@ class ProjectControllerTest extends ControllerTest {
         assertErrorCode(() -> {
             GetProjectJobTaskOutputRequest request = FakerUtils.fake(GetProjectJobTaskOutputRequest.class);
             request.setTaskId(TASK_ID + "sbvasdx");
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_TASK_OUTPUT));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectJobRepository.findByJobId(Mockito.anyString())).thenReturn(Optional.of(buildProjectJobDO(true)));
 
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJobTaskOutput", GetProjectJobTaskOutputRequest.class)).
@@ -694,8 +839,12 @@ class ProjectControllerTest extends ControllerTest {
         assertErrorCode(() -> {
             GetProjectJobTaskOutputRequest request = FakerUtils.fake(GetProjectJobTaskOutputRequest.class);
             request.setTaskId(TASK_ID);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_TASK_OUTPUT));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectJobRepository.findByJobId(Mockito.anyString())).thenReturn(Optional.of(buildProjectJobDO(false)));
+            Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
             Mockito.when(projectResultRepository.findByOutputId(Mockito.anyString(), Mockito.anyString(), Mockito.anyString())).thenReturn(buildProjectResultDOList());
 
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJobTaskOutput", GetProjectJobTaskOutputRequest.class)).
@@ -704,12 +853,42 @@ class ProjectControllerTest extends ControllerTest {
     }
 
     @Test
+    void getJobTaskOutputByProjectFailedException() throws Exception {
+        assertErrorCode(() -> {
+            GetProjectJobTaskOutputRequest request = FakerUtils.fake(GetProjectJobTaskOutputRequest.class);
+            request.setTaskId(TASK_ID);
+            request.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_TASK_OUTPUT));
+            Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(buildNodeDO());
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
+            Mockito.when(projectJobRepository.findByJobId(Mockito.anyString())).thenReturn(Optional.of(buildProjectJobDO(false)));
+            Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
+            Mockito.when(projectResultRepository.findByOutputId(Mockito.anyString(), Mockito.anyString(), Mockito.anyString())).thenReturn(buildProjectResultDOList());
+
+            Mockito.when(projectDatatableRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectDatatableDO()));
+
+            Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(1);
+            Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
+
+            return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJobTaskOutput", GetProjectJobTaskOutputRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        }, ProjectErrorCode.PROJECT_NOT_EXISTS);
+    }
+
+    @Test
     void getJobTaskOutputByQueryDatatableFailedException() throws Exception {
         assertErrorCode(() -> {
             GetProjectJobTaskOutputRequest request = FakerUtils.fake(GetProjectJobTaskOutputRequest.class);
             request.setTaskId(TASK_ID);
+            request.setProjectId(PROJECT_ID);
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_TASK_OUTPUT));
+            Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(buildNodeDO());
+            Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectJobRepository.findByJobId(Mockito.anyString())).thenReturn(Optional.of(buildProjectJobDO(false)));
+            Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
             Mockito.when(projectResultRepository.findByOutputId(Mockito.anyString(), Mockito.anyString(), Mockito.anyString())).thenReturn(buildProjectResultDOList());
 
             Mockito.when(projectDatatableRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectDatatableDO()));

@@ -33,19 +33,19 @@ import java.util.Set;
  * @date 2023/08/04
  */
 public interface NodeRouterService {
-    String createNodeRouter(CreateNodeRouterRequest request);
+    void createNodeRouter(CreateNodeRouterRequest request);
 
     SecretPadPageResponse<NodeRouterVO> queryPage(PageNodeRouteRequest request, Pageable pageable);
 
     void updateNodeRouter(UpdateNodeRouterRequest request);
 
-    NodeRouterVO getNodeRouter(Long nodeId);
+    NodeRouterVO getNodeRouter(String nodeId);
 
     List<NodeVO> listNode();
 
-    NodeRouterVO refreshRouter(Long routerId);
+    NodeRouterVO refreshRouter(String routerId);
 
-    void refreshRouters(Set<Long> routerIds);
+    void refreshRouters(Set<String> routerIds);
 
-    void deleteNodeRouter(Long routerId);
+    void deleteNodeRouter(String routerId);
 }

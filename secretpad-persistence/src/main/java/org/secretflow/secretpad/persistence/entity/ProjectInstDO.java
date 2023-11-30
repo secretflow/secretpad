@@ -103,4 +103,8 @@ public class ProjectInstDO extends BaseAggregationRoot<ProjectInstDO> {
         public String instId;
     }
 
+    @Override
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
 }

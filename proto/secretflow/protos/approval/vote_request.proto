@@ -1,0 +1,79 @@
+// Copyright 2023 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+syntax = "proto3";
+
+package secretflow.approval;
+
+option java_package = "org.secretflow.proto.approval";
+
+
+enum VoteType {
+  TEE_DOWNLOAD = 0;
+  NODE_ROUTE = 1;
+}
+
+message Request {
+  //unique vote id
+  string vote_request_id = 1;
+
+  //vote type
+  VoteType type = 2;
+
+  //vote initiator
+  string initiator = 3;
+
+  //vote_counter
+  string  vote_counter = 4;
+
+  //vote participants
+  repeated string voters = 5;
+
+  //executors
+  repeated string executors = 6;
+
+  //approved_threshold
+  uint32 approved_threshold = 7;
+
+  //approved_action
+  string approved_action = 8;
+
+  //rejected_action
+  string rejected_action = 9;
+
+
+  /*------------ this is split line , we only transfer below content -------------------- **/
+  //"cert_chain" :["cacertxxx","tempcertxxx"]
+  repeated string cert_chain = 10;
+
+  //bas464 struct from 1~9
+  /**
+  {
+    "vote_request_id":"xxx",
+    "type" : "TEE_DOWNLOAD",
+    "initiator" : "xxx",
+    "vote_counter" :"master",
+    "voters" :["alice,bob"],
+    "executors":["alice"],
+    "approved_threshold":2,
+    "approved_action":"TEE_DOWNLOAD,123",
+    "rejected_action" :"NONE"
+  }
+   */
+  string body = 11;
+
+  //signature for 11
+  string vote_request_signature = 12;
+
+}

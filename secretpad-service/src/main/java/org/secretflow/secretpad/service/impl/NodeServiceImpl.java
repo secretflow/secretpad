@@ -16,36 +16,45 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.JpaQueryHelper;
+import org.secretflow.secretpad.common.util.Sha256Utils;
+import org.secretflow.secretpad.common.util.UUIDUtils;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.model.*;
 import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
+import org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO;
+import org.secretflow.secretpad.persistence.model.TeeJobKind;
 import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectResultRepository;
-import org.secretflow.secretpad.service.DataService;
-import org.secretflow.secretpad.service.GraphService;
-import org.secretflow.secretpad.service.NodeService;
-import org.secretflow.secretpad.service.ProjectService;
+import org.secretflow.secretpad.persistence.repository.TeeNodeDatatableManagementRepository;
+import org.secretflow.secretpad.service.*;
+import org.secretflow.secretpad.service.model.auth.NodeUserCreateRequest;
 import org.secretflow.secretpad.service.model.common.SecretPadPageResponse;
 import org.secretflow.secretpad.service.model.data.DataSourceVO;
 import org.secretflow.secretpad.service.model.datatable.TableColumnVO;
 import org.secretflow.secretpad.service.model.node.*;
 import org.secretflow.secretpad.service.model.project.ProjectJobVO;
 
+import jakarta.validation.constraints.NotBlank;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -68,6 +77,9 @@ public class NodeServiceImpl implements NodeService {
     @Autowired
     private ProjectResultRepository resultRepository;
 
+    @Autowired
+    private NodeUserService nodeUserService;
+
     /**
      * Todo: part of the projectService logic should be brought into use in projectManager
      */
@@ -84,19 +96,48 @@ public class NodeServiceImpl implements NodeService {
     @Autowired
     public DataService dataService;
 
+    @Autowired
+    private TeeNodeDatatableManagementRepository teeNodeDatatableManagementRepository;
+
+    @Value("${tee.domain-id:tee}")
+    private String teeNodeId;
+
     @Override
     public List<NodeVO> listNodes() {
+        final String userOwnerId = UserContext.getUser().getOwnerId();
+
         List<NodeDTO> nodeDTOList = nodeManager.listNode();
         return nodeDTOList.stream()
-                .map(it -> NodeVO.from(it,
-                        datatableManager.findByNodeId(it.getNodeId(), AbstractDatatableManager.DATA_VENDOR_MANUAL),
-                        nodeManager.findBySrcNodeId(it.getNodeId()), resultRepository.countByNodeId(it.getNodeId())))
-                .collect(Collectors.toList());
+                .map(it -> {
+                    if (UserOwnerTypeEnum.CENTER.equals(UserContext.getUser().getOwnerType()) || Objects.equals(it.getNodeId(), userOwnerId)) {
+                        return NodeVO.from(it,
+                                datatableManager.findByNodeId(it.getNodeId(), AbstractDatatableManager.DATA_VENDOR_MANUAL),
+                                nodeManager.findBySrcNodeId(it.getNodeId()),
+                                resultRepository.countByNodeId(it.getNodeId()));
+                    } else {
+                        return NodeVO.from(it, null, null, null);
+                    }
+                }).collect(Collectors.toList());
     }
 
     @Override
+    public List<NodeBaseInfoVO> listOtherNodeBaseInfo(@NotBlank final String oneselfNodeId) {
+        List<NodeDO> nodeDOList = nodeRepository.findAll();
+        return nodeDOList.stream().filter(nodeDO -> !Objects.equals(nodeDO.getNodeId(), oneselfNodeId)).map(NodeBaseInfoVO::from).toList();
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public String createNode(CreateNodeRequest request) {
-        return nodeManager.createNode(CreateNodeParam.builder().name(request.getName()).build());
+        String nodeId = nodeManager.createNode(CreateNodeParam.builder().name(request.getName()).mode(request.getMode()).build());
+
+        NodeUserCreateRequest nodeUserCreateParam = new NodeUserCreateRequest();
+        nodeUserCreateParam.setNodeId(nodeId);
+        nodeUserCreateParam.setName(nodeId);
+        nodeUserCreateParam.setPasswordHash(Sha256Utils.hash(UUIDUtils.newUUID()));
+        nodeUserService.create(nodeUserCreateParam);
+
+        return nodeId;
     }
 
     @Override
@@ -141,7 +182,24 @@ public class NodeServiceImpl implements NodeService {
                 .nodeId(request.getNodeId()).pageSize(request.getPageSize()).pageNumber(request.getPageNumber())
                 .kindFilters(request.getKindFilters()).dataVendorFilter(request.getDataVendorFilter())
                 .nameFilter(request.getNameFilter()).timeSortingRule(request.getTimeSortingRule()).build());
-        return NodeResultsListVO.fromDTO(nodeResultDTOList);
+        // teeNodeId maybe blank
+        String teeDomainId = StringUtils.isBlank(request.getTeeNodeId()) ? teeNodeId : request.getTeeNodeId();
+        // query push to tee map
+        Map<String, List<TeeNodeDatatableManagementDO>> pullFromTeeInfoMap = getPullFromTeeInfos(request.getNodeId(), teeDomainId,
+                nodeResultDTOList.getNodeResultDTOList().stream().map(NodeResultDTO::getDomainDataId).toList());
+        List<NodeResultsVO> nodeResultsVOList = nodeResultDTOList.getNodeResultDTOList().stream().map(
+                it -> {
+                    // query management data object
+                    List<TeeNodeDatatableManagementDO> pullFromTeeInfos = pullFromTeeInfoMap.get(it.getDomainDataId());
+                    TeeNodeDatatableManagementDO managementDO = CollectionUtils.isEmpty(pullFromTeeInfos) ? null : pullFromTeeInfos.stream()
+                            .sorted(Comparator.comparing(TeeNodeDatatableManagementDO::getGmtCreate).reversed()).toList().get(0);
+                    return NodeResultsVO.fromNodeResultDTO(it, managementDO);
+                }
+        ).toList();
+        return NodeResultsListVO.builder()
+                .totalResultNums(nodeResultDTOList.getTotalResultNums())
+                .nodeResultsVOList(nodeResultsVOList)
+                .build();
     }
 
     @Override
@@ -175,7 +233,7 @@ public class NodeServiceImpl implements NodeService {
                 break;
             }
         }
-        return NodeResultDetailVO.builder().nodeResultsVO(NodeResultsVO.fromNodeResultDTO(nodeResult))
+        return NodeResultDetailVO.builder().nodeResultsVO(NodeResultsVO.fromNodeResultDTO(nodeResult, null))
                 .graphDetailVO(projectJob.getGraph())
                 .tableColumnVOList(
                         datatableDTO.get().getSchema().stream().map(TableColumnVO::from).collect(Collectors.toList()))
@@ -183,4 +241,43 @@ public class NodeServiceImpl implements NodeService {
                 .datasource(datasource)
                 .build();
     }
+
+    @Override
+    public List<NodeVO> listTeeNode() {
+        List<NodeDTO> nodeDTOList = nodeManager.listTeeNode();
+        return nodeDTOList.stream()
+                .map(it -> NodeVO.from(it, null, null, null))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<NodeVO> listCooperatingNode(String nodeId) {
+        List<NodeDTO> nodeDTOList = nodeManager.listCooperatingNode(nodeId);
+        return nodeDTOList.stream()
+                .map(it -> NodeVO.from(it,
+                        datatableManager.findByNodeId(it.getNodeId(), AbstractDatatableManager.DATA_VENDOR_MANUAL),
+                        nodeManager.findBySrcNodeId(it.getNodeId()), resultRepository.countByNodeId(it.getNodeId())))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Query tee node datatable management data object list by nodeId, teeNodeId and datatableIds then collect to Map
+     *
+     * @param nodeId       target nodeId
+     * @param teeNodeId    target teeNodeId
+     * @param datatableIds target datatableId list
+     * @return Map of datatableId and tee node datatable management data object list
+     */
+    private Map<String, List<TeeNodeDatatableManagementDO>> getPullFromTeeInfos(String nodeId, String teeNodeId, List<String> datatableIds) {
+        // batch query push to tee job list by datatableIds
+        List<TeeNodeDatatableManagementDO> managementList = teeNodeDatatableManagementRepository
+                .findAllByNodeIdAndTeeNodeIdAndDatatableIdsAndKind(nodeId, teeNodeId, datatableIds, TeeJobKind.Pull);
+        if (CollectionUtils.isEmpty(managementList)) {
+            return Collections.emptyMap();
+        }
+        // collect by datatable id
+        return managementList.stream().collect(Collectors.groupingBy(it -> it.getUpk().getDatatableId()));
+    }
 }
+
+

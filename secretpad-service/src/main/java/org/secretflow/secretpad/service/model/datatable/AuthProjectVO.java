@@ -54,6 +54,12 @@ public class AuthProjectVO {
     private String name;
 
     /**
+     * Compute mode
+     */
+    @Schema(description = "compute mode")
+    private String computeMode;
+
+    /**
      * Association key list
      */
     @Schema(description = "association key list")
@@ -88,6 +94,7 @@ public class AuthProjectVO {
                 it -> new AuthProjectVO(
                         it.getValue1().getProjectId(),
                         it.getValue1().getName(),
+                        it.getValue1().getComputeMode(),
                         it.getValue0().getAssociateKey(),
                         it.getValue0().getGroupKey(),
                         it.getValue0().getLabelKeys(),

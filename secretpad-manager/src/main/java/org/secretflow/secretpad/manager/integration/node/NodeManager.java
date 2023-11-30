@@ -17,6 +17,10 @@
 package org.secretflow.secretpad.manager.integration.node;
 
 import org.secretflow.secretpad.common.constant.DomainConstants;
+import org.secretflow.secretpad.common.constant.role.RoleCodeConstants;
+import org.secretflow.secretpad.common.enums.PermissionTargetTypeEnum;
+import org.secretflow.secretpad.common.enums.PermissionUserTypeEnum;
+import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
 import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
@@ -29,12 +33,13 @@ import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainRpc;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.repository.*;
 
+import com.google.common.collect.Lists;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.secretflow.v1alpha1.kusciaapi.Domain;
 import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
+import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.slf4j.Logger;
@@ -65,7 +70,6 @@ public class NodeManager extends AbstractNodeManager {
     private final NodeRepository nodeRepository;
     private final NodeRouteRepository nodeRouteRepository;
     private final ProjectResultRepository projectResultRepository;
-    private final ProjectGraphRepository projectGraphRepository;
     private final ProjectRepository projectRepository;
     private final ProjectJobRepository projectJobRepository;
     private final ProjectNodeRepository projectNodeRepository;
@@ -73,6 +77,7 @@ public class NodeManager extends AbstractNodeManager {
 
     private final DomainServiceGrpc.DomainServiceBlockingStub domainServiceBlockingStub;
     private final KusciaDomainRpc kusciaDomainRpc;
+    private final SysUserPermissionRelRepository permissionRelRepository;
 
     private void check(String nodeId) {
         List<NodeDO> byType = nodeRepository.findByType(DomainConstants.DomainTypeEnum.embedded.name());
@@ -90,7 +95,25 @@ public class NodeManager extends AbstractNodeManager {
      */
     @Override
     public List<NodeDTO> listNode() {
-        return nodeRepository.findAll().stream().map(this::fillByGrpcDomainQuery).collect(Collectors.toList());
+        List<NodeDTO> nodeDTOS = nodeRepository.findAll().stream().map(NodeDTO::fromDo).toList();
+        return this.addNodeStatusByGrpcBatchQuery(nodeDTOS);
+//        return nodeRepository.findAll().stream().map(this::fillByGrpcDomainQuery).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<NodeDTO> listCooperatingNode(String nodeId) {
+
+        List<NodeRouteDO> nodeRouteList = nodeRouteRepository.findBySrcNodeId(nodeId);
+
+        Set<String> cooperatingNodeIdSet;
+        if (CollectionUtils.isEmpty(nodeRouteList)) {
+            cooperatingNodeIdSet = Collections.singleton(nodeId);
+        } else {
+            cooperatingNodeIdSet = nodeRouteList.stream().map(NodeRouteDO::getDstNodeId).collect(Collectors.toSet());
+            // add oneself
+            cooperatingNodeIdSet.add(nodeId);
+        }
+        return nodeRepository.findByNodeIdIn(cooperatingNodeIdSet).stream().map(this::fillByGrpcDomainQuery).collect(Collectors.toList());
     }
 
     /**
@@ -105,11 +128,21 @@ public class NodeManager extends AbstractNodeManager {
         String nodeId = genDomainId();
         // the creation is successful. insert into the database
         NodeDO nodeDO = NodeDO.builder().controlNodeId(nodeId).nodeId(nodeId).netAddress(nodeId + ":1080")
-                .type(DomainConstants.DomainTypeEnum.normal.name()).name(param.getName()).build();
+                .type(DomainConstants.DomainTypeEnum.normal.name()).mode(param.getMode()).name(param.getName()).build();
         nodeRepository.save(nodeDO);
-        Domain.CreateDomainRequest request = Domain.CreateDomainRequest.newBuilder().setDomainId(nodeId)
+
+        SysUserPermissionRelDO sysUserPermission = new SysUserPermissionRelDO();
+        sysUserPermission.setUserType(PermissionUserTypeEnum.NODE);
+        sysUserPermission.setTargetType(PermissionTargetTypeEnum.ROLE);
+        SysUserPermissionRelDO.UPK upk = new SysUserPermissionRelDO.UPK();
+        upk.setUserKey(nodeId);
+        upk.setTargetCode(RoleCodeConstants.EDGE_NODE);
+        sysUserPermission.setUpk(upk);
+        permissionRelRepository.save(sysUserPermission);
+
+        DomainOuterClass.CreateDomainRequest request = DomainOuterClass.CreateDomainRequest.newBuilder().setDomainId(nodeId)
                 .setAuthCenter(
-                        Domain.AuthCenter.newBuilder().setAuthenticationType("Token").setTokenGenMethod("UID-RSA-GEN").build())
+                        DomainOuterClass.AuthCenter.newBuilder().setAuthenticationType("Token").setTokenGenMethod("UID-RSA-GEN").build())
                 .build();
         try {
             kusciaDomainRpc.createDomain(request);
@@ -122,10 +155,15 @@ public class NodeManager extends AbstractNodeManager {
     @Override
     @Transactional
     public void deleteNode(String nodeId) {
+        SysUserPermissionRelDO.UPK upk = new SysUserPermissionRelDO.UPK();
+        upk.setUserKey(nodeId);
+        upk.setTargetCode(RoleCodeConstants.EDGE_NODE);
+
         // check whether the node exists first
         check(nodeId);
         if (!checkNodeExists(nodeId)) {
             nodeRepository.deleteById(nodeId);
+            permissionRelRepository.deleteById(upk);
             nodeRepository.flush();
             LOGGER.error("node {} is not exist! but delete anyway", nodeId);
             return;
@@ -136,8 +174,9 @@ public class NodeManager extends AbstractNodeManager {
             throw SecretpadException.of(NodeErrorCode.NODE_DELETE_ERROR, "node have job running");
         }
         // call the api interface to delete node
-        Domain.DeleteDomainRequest request = Domain.DeleteDomainRequest.newBuilder().setDomainId(nodeId).build();
+        DomainOuterClass.DeleteDomainRequest request = DomainOuterClass.DeleteDomainRequest.newBuilder().setDomainId(nodeId).build();
         nodeRepository.deleteById(nodeId);
+        permissionRelRepository.deleteById(upk);
         nodeRouteRepository.deleteByDstNodeId(nodeId);
         nodeRouteRepository.deleteByDstNodeId(nodeId);
         try {
@@ -203,6 +242,11 @@ public class NodeManager extends AbstractNodeManager {
                 )
                 .build();
         Domaindata.QueryDomainDataResponse queryDomainDataResponse = domainDataStub.queryDomainData(request);
+        if (queryDomainDataResponse.getStatus().getCode() != 0) {
+            LOGGER.error("query domain data from kusciaapi failed: code={}, message={}, nodeId={}, domainDataId={}",
+                    queryDomainDataResponse.getStatus().getCode(), queryDomainDataResponse.getStatus().getMessage(), nodeId, domainDataId);
+            throw SecretpadException.of(DatatableErrorCode.QUERY_DATATABLE_FAILED);
+        }
         Optional<ProjectResultDO> projectResultDO = projectResultRepository.findByNodeIdAndRefId(nodeId, domainDataId);
         if (projectResultDO.isEmpty()) {
             LOGGER.error("Cannot found result in project_result table, but it can be queried with kuscia api.");
@@ -224,10 +268,10 @@ public class NodeManager extends AbstractNodeManager {
             LOGGER.error("Cannot find node by nodeId {}.", nodeId);
             throw SecretpadException.of(NodeErrorCode.NODE_NOT_EXIST_ERROR);
         }
-        Domain.QueryDomainRequest queryDomainRequest =
-                Domain.QueryDomainRequest.newBuilder().setDomainId(nodeId).build();
-        Domain.QueryDomainResponse response = kusciaDomainRpc.queryDomain(queryDomainRequest);
-        List<Domain.DeployTokenStatus> deployTokenStatusesList = response.getData().getDeployTokenStatusesList();
+        DomainOuterClass.QueryDomainRequest queryDomainRequest =
+                DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(nodeId).build();
+        DomainOuterClass.QueryDomainResponse response = kusciaDomainRpc.queryDomain(queryDomainRequest);
+        List<DomainOuterClass.DeployTokenStatus> deployTokenStatusesList = response.getData().getDeployTokenStatusesList();
         if (CollectionUtils.isEmpty(deployTokenStatusesList)) {
             throw SecretpadException.of(NodeErrorCode.NODE_TOKEN_IS_EMPTY_ERROR, "kuscia return empty token");
         }
@@ -259,17 +303,31 @@ public class NodeManager extends AbstractNodeManager {
         return fillByGrpcDomainQuery(nodeDO);
     }
 
+    @Override
+    public String getCert(String nodeId) {
+        DomainOuterClass.BatchQueryDomainRequest queryDomainRequest =
+                DomainOuterClass.BatchQueryDomainRequest.newBuilder().addAllDomainIds(Lists.newArrayList(nodeId)).build();
+        DomainOuterClass.BatchQueryDomainResponse response = kusciaDomainRpc.batchQueryDomain(queryDomainRequest);
+        if (response.getStatus().getCode() != 0) {
+            return "";
+        }
+        if (ObjectUtils.isEmpty(response.getData())) {
+            return "";
+        }
+        return response.getData().getDomainsList().get(0).getCert();
+    }
+
     private NodeDTO fillByGrpcDomainQuery(NodeDO nodeDO) {
         NodeDTO nodeDTO = NodeDTO.fromDo(nodeDO);
-        Domain.QueryDomainRequest queryDomainRequest =
-                Domain.QueryDomainRequest.newBuilder().setDomainId(nodeDO.getNodeId()).build();
-        Domain.QueryDomainResponse response = kusciaDomainRpc.queryDomainNoCheck(queryDomainRequest);
+        DomainOuterClass.QueryDomainRequest queryDomainRequest =
+                DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(nodeDO.getNodeId()).build();
+        DomainOuterClass.QueryDomainResponse response = kusciaDomainRpc.queryDomainNoCheck(queryDomainRequest);
         if (response.getStatus().getCode() == 0) {
             nodeDTO.setNodeStatus(DomainConstants.DomainStatusEnum.NotReady.name());
             if (ObjectUtils.isNotEmpty(response.getData())) {
                 String cert = response.getData().getCert();
                 String role = response.getData().getRole();
-                List<Domain.NodeStatus> nodeStatusesList = response.getData().getNodeStatusesList();
+                List<DomainOuterClass.NodeStatus> nodeStatusesList = response.getData().getNodeStatusesList();
                 if (ObjectUtils.isNotEmpty(nodeStatusesList)) {
                     List<NodeInstanceDTO> nodeInstanceDTOList = nodeStatusesList.stream().map(NodeInstanceDTO::formDomainNodeStatus).collect(Collectors.toList());
                     nodeDTO.setNodeInstances(nodeInstanceDTOList);
@@ -281,7 +339,7 @@ public class NodeManager extends AbstractNodeManager {
                         }
                     });
                 }
-                List<Domain.DeployTokenStatus> deployTokenStatusesList = response.getData().getDeployTokenStatusesList();
+                List<DomainOuterClass.DeployTokenStatus> deployTokenStatusesList = response.getData().getDeployTokenStatusesList();
                 if (ObjectUtils.isNotEmpty(deployTokenStatusesList)) {
                     String token = nodeDTO.getToken();
                     if (StringUtils.isEmpty(token)) {
@@ -306,6 +364,32 @@ public class NodeManager extends AbstractNodeManager {
         return nodeDTO;
     }
 
+    private List<NodeDTO> addNodeStatusByGrpcBatchQuery(List<NodeDTO> nodeList) {
+        Set<String> nodeIdSet = nodeList.stream().map(NodeDTO::getNodeId).collect(Collectors.toSet());
+        DomainOuterClass.BatchQueryDomainRequest domainIds =
+                DomainOuterClass.BatchQueryDomainRequest.newBuilder().addAllDomainIds(nodeIdSet).build();
+        DomainOuterClass.BatchQueryDomainResponse domainStatusResponse = kusciaDomainRpc.batchQueryDomainNoCheck(domainIds);
+
+        if (domainStatusResponse.getStatus().getCode() == 0) {
+
+            List<DomainOuterClass.Domain> domainsList = domainStatusResponse.getData().getDomainsList();
+            Map<String, List<DomainOuterClass.NodeStatus>> domainId2StatusListMap = domainsList.stream().collect(Collectors.toMap(DomainOuterClass.Domain::getDomainId, DomainOuterClass.Domain::getNodeStatusesList));
+
+            nodeList.forEach(node -> {
+                List<DomainOuterClass.NodeStatus> nodeStatusList = domainId2StatusListMap.getOrDefault(node.getNodeId(), Collections.emptyList());
+                List<NodeInstanceDTO> nodeInstanceDTOList = nodeStatusList.stream().map(NodeInstanceDTO::formDomainNodeStatus).collect(Collectors.toList());
+                nodeInstanceDTOList.forEach(s -> {
+                    if (Objects.equals(s.getStatus(), DomainConstants.DomainStatusEnum.Ready.name())) {
+                        node.setNodeStatus(s.getStatus());
+                    }
+                });
+            });
+        }
+
+        return nodeList;
+
+    }
+
     /**
      * Check whether node exists in domain service stub
      *
@@ -314,27 +398,27 @@ public class NodeManager extends AbstractNodeManager {
      */
     @Override
     public boolean checkNodeExists(String nodeId) {
-        Domain.QueryDomainRequest request = Domain.QueryDomainRequest.newBuilder()
+        DomainOuterClass.QueryDomainRequest request = DomainOuterClass.QueryDomainRequest.newBuilder()
                 .setDomainId(nodeId)
                 .build();
-        Domain.QueryDomainResponse response = domainServiceBlockingStub.queryDomain(request);
+        DomainOuterClass.QueryDomainResponse response = domainServiceBlockingStub.queryDomain(request);
         return response.getStatus().getCode() == 0;
     }
 
     @Override
     public boolean checkNodeReady(String nodeId) {
-        Domain.QueryDomainRequest request = Domain.QueryDomainRequest.newBuilder()
+        DomainOuterClass.QueryDomainRequest request = DomainOuterClass.QueryDomainRequest.newBuilder()
                 .setDomainId(nodeId)
                 .build();
-        Domain.QueryDomainResponse response = domainServiceBlockingStub.queryDomain(request);
+        DomainOuterClass.QueryDomainResponse response = domainServiceBlockingStub.queryDomain(request);
         log.info("checkNodeReady response  {} {} ", nodeId, response);
         if (response.getStatus().getCode() != 0) {
             return false;
         }
-        List<Domain.NodeStatus> nodeStatusesList = response.getData().getNodeStatusesList();
+        List<DomainOuterClass.NodeStatus> nodeStatusesList = response.getData().getNodeStatusesList();
         log.info("checkNodeReady  {} {} ", nodeId, nodeStatusesList);
         boolean flag = false;
-        for (Domain.NodeStatus nodeStatus : nodeStatusesList) {
+        for (DomainOuterClass.NodeStatus nodeStatus : nodeStatusesList) {
             if (nodeStatus.getStatus().equals(DomainConstants.DomainStatusEnum.Ready.name())) {
                 flag = true;
             }
@@ -344,6 +428,14 @@ public class NodeManager extends AbstractNodeManager {
             return false;
         }
         return true;
+    }
+
+    @Override
+    public List<NodeDTO> listTeeNode() {
+        List<Integer> teeModes = new ArrayList<>();
+        teeModes.add(DomainConstants.DomainModeEnum.tee.code);
+        teeModes.add(DomainConstants.DomainModeEnum.teeAndMpc.code);
+        return nodeRepository.findByModeIn(teeModes).stream().map(this::fillByGrpcDomainQuery).collect(Collectors.toList());
     }
 
     /**
@@ -459,22 +551,19 @@ public class NodeManager extends AbstractNodeManager {
         // query project graph list from project graph table
         Optional<ProjectJobDO> projectJobDO = projectJobRepository.findByJobId(projectResultDO.getJobId());
         if (projectJobDO.isPresent()) {
-            Optional<ProjectGraphDO> projectGraphDO = projectGraphRepository.findByGraphId(projectJobDO.get().getGraphId(), projectDO.get().getProjectId());
-            if (projectGraphDO.isPresent()) {
-                return NodeResultDTO.builder()
-                        .domainDataId(domainData.getDomaindataId())
-                        .resultName(domainData.getDomaindataId())
-                        .resultKind(domainData.getType())
-                        .sourceProjectId(projectDO.get().getProjectId())
-                        .sourceProjectName(projectDO.get().getName())
-                        .trainFlow(projectGraphDO.get().getName())
-                        .gmtCreate(DateTimes.toRfc3339(projectResultDO.getGmtCreate()))
-                        .relativeUri(domainData.getRelativeUri())
-                        .jobId(projectResultDO.getJobId())
-                        .build();
-            } else {
-                LOGGER.warn("Cannot find graph when list node results.");
-            }
+            // Use graph name saved in project_job.name
+            return NodeResultDTO.builder()
+                    .domainDataId(domainData.getDomaindataId())
+                    .resultName(domainData.getDomaindataId())
+                    .resultKind(domainData.getType())
+                    .sourceProjectId(projectDO.get().getProjectId())
+                    .sourceProjectName(projectDO.get().getName())
+                    .trainFlow(projectJobDO.get().getName())
+                    .gmtCreate(DateTimes.toRfc3339(projectResultDO.getGmtCreate()))
+                    .relativeUri(domainData.getRelativeUri())
+                    .jobId(projectResultDO.getJobId())
+                    .computeMode(projectDO.get().getComputeMode())
+                    .build();
         } else {
             LOGGER.warn("Cannot find project job when list node results.");
         }
@@ -488,6 +577,7 @@ public class NodeManager extends AbstractNodeManager {
                 .gmtCreate(DateTimes.toRfc3339(projectResultDO.getGmtCreate()))
                 .relativeUri(domainData.getRelativeUri())
                 .jobId(projectResultDO.getJobId())
+                .computeMode(projectDO.get().getComputeMode())
                 .build();
     }
 
@@ -510,7 +600,7 @@ public class NodeManager extends AbstractNodeManager {
         }
     }
 
-    private String genDomainId() {
+    protected String genDomainId() {
         return UUIDUtils.random(8);
     }
 

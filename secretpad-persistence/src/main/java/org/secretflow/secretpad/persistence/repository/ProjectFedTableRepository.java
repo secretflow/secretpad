@@ -18,7 +18,6 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectFedTableDO;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -32,7 +31,7 @@ import java.util.List;
  * @date 2023/5/30
  */
 @Repository
-public interface ProjectFedTableRepository extends JpaRepository<ProjectFedTableDO, ProjectFedTableDO.UPK> {
+public interface ProjectFedTableRepository extends BaseRepository<ProjectFedTableDO, ProjectFedTableDO.UPK> {
     /**
      * Query project federal table results by projectId
      *

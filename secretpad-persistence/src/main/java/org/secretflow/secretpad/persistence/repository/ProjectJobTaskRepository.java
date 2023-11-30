@@ -19,7 +19,6 @@ package org.secretflow.secretpad.persistence.repository;
 import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
 import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -34,7 +33,7 @@ import java.util.Optional;
  * @date 2023/6/8
  */
 @Repository
-public interface ProjectJobTaskRepository extends JpaRepository<ProjectTaskDO, ProjectTaskDO.UPK> {
+public interface ProjectJobTaskRepository extends BaseRepository<ProjectTaskDO, ProjectTaskDO.UPK> {
     /**
      * Query the latest project job task result by projectId and graphNodeId
      *

@@ -32,6 +32,11 @@ import java.util.stream.Collectors;
 @Data
 public class GetComponentRequest {
     /**
+     * app of the component, it can not be blank
+     */
+    @NotBlank
+    private String app;
+    /**
      * Namespace of the component, it can not be blank
      */
     @NotBlank
@@ -49,7 +54,7 @@ public class GetComponentRequest {
      * @return a new ComponentKey
      */
     public static ComponentKey toComponentKey(GetComponentRequest request) {
-        return new ComponentKey(request.getDomain(), request.getName());
+        return new ComponentKey(request.getApp(), request.getDomain(), request.getName());
     }
 
     /**
