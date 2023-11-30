@@ -17,10 +17,9 @@
 package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
-import org.secretflow.secretpad.persistence.entity.ProjectNodeDO.UPK;
 import org.secretflow.secretpad.persistence.projection.ProjectNodeProjection;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -34,7 +33,7 @@ import java.util.List;
  * @date 2023/6/8
  */
 @Repository
-public interface ProjectNodeRepository extends JpaRepository<ProjectNodeDO, UPK> {
+public interface ProjectNodeRepository extends BaseRepository<ProjectNodeDO, ProjectNodeDO.UPK> {
     /**
      * Query project node results by projectId
      *
@@ -50,10 +49,19 @@ public interface ProjectNodeRepository extends JpaRepository<ProjectNodeDO, UPK>
      * @param projectId target projectId
      * @return ProjectNodeProjection list in project node table
      */
-    @Query("select new org.secretflow.secretpad.persistence.projection.ProjectNodeProjection(pn, n.name) from ProjectNodeDO pn join NodeDO n "
+    @Query("select new org.secretflow.secretpad.persistence.projection.ProjectNodeProjection(pn, n.name, n.type) from ProjectNodeDO pn join NodeDO n "
             + "on pn.upk.nodeId=n.nodeId and pn.upk.projectId=:projectId")
     List<ProjectNodeProjection> findProjectionByProjectId(@Param("projectId") String projectId);
 
     @Query("from ProjectNodeDO pn where pn.upk.nodeId=:nodeId")
     List<ProjectNodeDO> findByNodeId(@Param("nodeId") String nodeId);
+
+    /**
+     * Delete all ProjectNode in project node table by projectId
+     *
+     * @param projectId target projectId
+     */
+    @Modifying
+    @Query("delete from ProjectNodeDO pn where pn.upk.projectId=:projectId")
+    void deleteByProjectId(@Param("projectId") String projectId);
 }

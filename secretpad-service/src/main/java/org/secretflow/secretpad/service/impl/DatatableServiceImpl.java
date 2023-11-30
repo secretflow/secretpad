@@ -16,32 +16,52 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
+import org.secretflow.secretpad.common.util.JsonUtils;
+import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
+import org.secretflow.secretpad.manager.integration.datatablegrant.AbstractDatatableGrantManager;
+import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.model.DatatableListDTO;
+import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
 import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO;
+import org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO;
+import org.secretflow.secretpad.persistence.model.TeeJobKind;
+import org.secretflow.secretpad.persistence.model.TeeJobStatus;
 import org.secretflow.secretpad.persistence.repository.ProjectDatatableRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectRepository;
+import org.secretflow.secretpad.persistence.repository.TeeNodeDatatableManagementRepository;
 import org.secretflow.secretpad.service.DatatableService;
+import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
+import org.secretflow.secretpad.service.graph.converter.KusciaTeeDataManagerConverter;
+import org.secretflow.secretpad.service.model.datasync.vote.TeeNodeDatatableManagementSyncRequest;
+import org.secretflow.secretpad.service.model.datasync.vote.VoteSyncRequest;
 import org.secretflow.secretpad.service.model.datatable.*;
+import org.secretflow.secretpad.service.util.PushToCenterUtil;
 
 import com.google.common.collect.Lists;
+import jakarta.transaction.Transactional;
+import org.apache.commons.lang3.StringUtils;
 import org.javatuples.Pair;
+import org.secretflow.v1alpha1.kusciaapi.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
+import static org.secretflow.secretpad.manager.integration.model.Constants.PUSH_TO_TEE_JOB_ID;
+import static org.secretflow.secretpad.service.constant.TeeJobConstants.MOCK_VOTE_RESULT;
+import static org.secretflow.secretpad.service.impl.DataServiceImpl.DEFAULT_DATASOURCE;
 
 /**
  * Datatable service implementation class
@@ -54,14 +74,37 @@ public class DatatableServiceImpl implements DatatableService {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(DatatableServiceImpl.class);
 
+    private static final String DOMAIN_DATA_GRANT_ID = "domaindatagrant_id";
+
     @Autowired
     private AbstractDatatableManager datatableManager;
+
+    @Autowired
+    private AbstractDatatableGrantManager datatableGrantManager;
+
+    @Autowired
+    private AbstractNodeRouteManager nodeRouteManager;
+
+    @Autowired
+    private AbstractJobManager jobManager;
+
+    @Autowired
+    private KusciaTeeDataManagerConverter teeJobConverter;
 
     @Autowired
     private ProjectRepository projectRepository;
 
     @Autowired
     private ProjectDatatableRepository projectDatatableRepository;
+
+    @Autowired
+    private TeeNodeDatatableManagementRepository teeNodeDatatableManagementRepository;
+
+    @Value("${tee.domain-id:tee}")
+    private String teeNodeId;
+
+    @Value("${secretpad.platform-type}")
+    private String plaformType;
 
     @Override
     public DatatableListVO listDatatablesByNodeId(ListDatatableRequest request) {
@@ -77,7 +120,13 @@ public class DatatableServiceImpl implements DatatableService {
                 request.getNodeId(),
                 Lists.newArrayList(datatables.values().stream().map(DatatableDTO::getDatatableId).collect(Collectors.toList()))
         );
-        LOGGER.info("get datatable VO list from datatableListDTO and with datatabl auth pairs.");
+        LOGGER.info("get datatable VO list from datatableListDTO and with datatable auth pairs.");
+        // teeNodeId maybe blank
+        String teeDomainId = StringUtils.isBlank(request.getTeeNodeId()) ? teeNodeId : request.getTeeNodeId();
+        // query push to tee map
+        Map<String, List<TeeNodeDatatableManagementDO>> pushToTeeInfoMap = getPushToTeeInfos(request.getNodeId(), teeDomainId,
+                Lists.newArrayList(datatables.values().stream().map(DatatableDTO::getDatatableId).collect(Collectors.toList())));
+
         List<DatatableVO> datatableVOList = dataTableListDTO.getDatatableDTOList().stream().map(
                 it -> {
                     List<Pair<ProjectDatatableDO, ProjectDO>> pairs = datatableAuthPairs.get(it.getDatatableId());
@@ -85,8 +134,12 @@ public class DatatableServiceImpl implements DatatableService {
                     if (pairs != null) {
                         authProjectVOList = AuthProjectVO.fromPairs(pairs);
                     }
+                    // query management data object
+                    List<TeeNodeDatatableManagementDO> pushToTeeInfos = pushToTeeInfoMap.get(teeJobConverter.buildTeeDatatableId(teeDomainId, it.getDatatableId()));
+                    TeeNodeDatatableManagementDO managementDO = CollectionUtils.isEmpty(pushToTeeInfos) ? null : pushToTeeInfos.stream()
+                            .sorted(Comparator.comparing(TeeNodeDatatableManagementDO::getGmtCreate).reversed()).toList().get(0);
                     DatatableDTO datatableDTO = datatables.get(it.getDatatableId());
-                    return DatatableVO.from(datatableDTO, authProjectVOList);
+                    return DatatableVO.from(datatableDTO, authProjectVOList, managementDO);
                 }
         ).collect(Collectors.toList());
 
@@ -108,18 +161,165 @@ public class DatatableServiceImpl implements DatatableService {
 
         Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> datatableAuthPairs =
                 getAuthProjectPairs(request.getNodeId(), Lists.newArrayList(dto.getDatatableId()));
+        // teeNodeId maybe blank
+        String teeDomainId = StringUtils.isBlank(request.getTeeNodeId()) ? teeNodeId : request.getTeeNodeId();
+        // query push to tee map
+        Map<String, List<TeeNodeDatatableManagementDO>> pushToTeeInfoMap = getPushToTeeInfos(request.getNodeId(), teeDomainId,
+                Lists.newArrayList(dto.getDatatableId()));
+        // query management data object
+        List<TeeNodeDatatableManagementDO> pushToTeeInfos = pushToTeeInfoMap.get(teeJobConverter.buildTeeDatatableId(teeDomainId, dto.getDatatableId()));
+        TeeNodeDatatableManagementDO managementDO = CollectionUtils.isEmpty(pushToTeeInfos) ? null : pushToTeeInfos.stream()
+                .sorted(Comparator.comparing(TeeNodeDatatableManagementDO::getGmtCreate).reversed()).toList().get(0);
         return DatatableVO.from(dto, datatableAuthPairs.containsKey(dto.getDatatableId()) ?
-                AuthProjectVO.fromPairs(datatableAuthPairs.get(dto.getDatatableId())) : null);
+                AuthProjectVO.fromPairs(datatableAuthPairs.get(dto.getDatatableId())) : null, managementDO);
     }
 
     @Override
+    @Transactional(rollbackOn = Exception.class)
     public void deleteDatatable(DeleteDatatableRequest request) {
         LOGGER.info("Delete datatable with node id = {}, datatable id = {}", request.getNodeId(), request.getDatatableId());
-        Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> authProjectPairs = getAuthProjectPairs(request.getNodeId(), Arrays.asList(request.getDatatableId()));
+        // check if it has auth projects
+        Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> authProjectPairs = getAuthProjectPairs(request.getNodeId(), Collections.singletonList(request.getDatatableId()));
         if (!CollectionUtils.isEmpty(authProjectPairs)) {
             throw SecretpadException.of(DatatableErrorCode.DATATABLE_DUPLICATED_AUTHORIZED);
         }
+        // teeNodeId maybe blank
+        String teeDomainId = StringUtils.isBlank(request.getTeeNodeId()) ? teeNodeId : request.getTeeNodeId();
+        String datatableId = teeJobConverter.buildTeeDatatableId(teeNodeId, request.getDatatableId());
+        // query last push to tee job
+        Optional<TeeNodeDatatableManagementDO> pushOptional = teeNodeDatatableManagementRepository
+                .findFirstByNodeIdAndTeeNodeIdAndDatatableIdAndKind(request.getNodeId(), teeDomainId, datatableId, TeeJobKind.Push);
+        // delete tee node datatable if status is success
+        if (pushOptional.isPresent() && pushOptional.get().getStatus().equals(TeeJobStatus.SUCCESS)) {
+            // datasourceId and relativeUri maybe blank
+            String datasourceId = StringUtils.isBlank(request.getDatasourceId()) ? DEFAULT_DATASOURCE : request.getDatasourceId();
+            String relativeUri = StringUtils.isBlank(request.getRelativeUri()) ? "" : request.getRelativeUri();
+            Map<String, String> deleteFromTeeMap = new HashMap<>(2);
+            deleteFromTeeMap.put(PUSH_TO_TEE_JOB_ID, pushOptional.get().getUpk().getJobId());
+            deleteFromTeeMap.put(TeeJob.RELATIVE_URI, relativeUri);
+            // save delete datatable from Tee node job
+            TeeNodeDatatableManagementDO deleteFromDO = TeeNodeDatatableManagementDO.builder()
+                    .upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(request.getNodeId()).datatableId(datatableId)
+                            .teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build())
+                    .datasourceId(datasourceId)
+                    .status(TeeJobStatus.RUNNING)
+                    .kind(TeeJobKind.Delete)
+                    .operateInfo(JsonUtils.toJSONString(deleteFromTeeMap)).build();
+            saveTeeNodeDatatableManagementOrPush(deleteFromDO);
+            // build tee job model
+            TeeJob teeJob = TeeJob.genTeeJob(deleteFromDO, List.of(request.getNodeId()), "", Collections.emptyList(), Collections.emptyList());
+            // build push datatable to Tee node input config
+            Job.CreateJobRequest createJobRequest = teeJobConverter.converter(teeJob);
+            // create job
+            jobManager.createJob(createJobRequest);
+        }
         datatableManager.deleteDataTable(DatatableDTO.NodeDatatableId.from(request.getNodeId(), request.getDatatableId()));
+    }
+
+    @Override
+    @Transactional(rollbackOn = Exception.class)
+    public void pushDatatableToTeeNode(PushDatatableToTeeRequest request) {
+        LOGGER.info("Push datatable to teeNode with node id = {}, datatable id = {}", request.getNodeId(), request.getDatatableId());
+        boolean pushAuth = false;
+        String domainDataGrantId = "";
+        // teeNodeId and datasourceId maybe blank
+        String teeDomainId = StringUtils.isBlank(request.getTeeNodeId()) ? teeNodeId : request.getTeeNodeId();
+        String datasourceId = StringUtils.isBlank(request.getDatasourceId()) ? DEFAULT_DATASOURCE : request.getDatasourceId();
+        String datatableId = teeJobConverter.buildTeeDatatableId(teeNodeId, request.getDatatableId());
+        String relativeUri = StringUtils.isBlank(request.getRelativeUri()) ? datatableId : request.getRelativeUri();
+        // check node route
+        nodeRouteManager.checkRouteNotExist(request.getNodeId(), teeDomainId);
+        nodeRouteManager.checkRouteNotExist(teeDomainId, request.getNodeId());
+        // query domain data grant id from database
+        Optional<TeeNodeDatatableManagementDO> pushAuthOptional = teeNodeDatatableManagementRepository
+                .findFirstByNodeIdAndTeeNodeIdAndDatatableIdAndKind(request.getNodeId(), teeDomainId, request.getDatatableId(), TeeJobKind.PushAuth);
+        if (pushAuthOptional.isPresent()) {
+            Map<String, Object> operateInfoMap = TeeJob.getOperateInfoMap(pushAuthOptional.get().getOperateInfo());
+            if (!CollectionUtils.isEmpty(operateInfoMap) && operateInfoMap.containsKey(DOMAIN_DATA_GRANT_ID)) {
+                pushAuth = true;
+                domainDataGrantId = operateInfoMap.get(DOMAIN_DATA_GRANT_ID).toString();
+            }
+        }
+        // query push auth from tee node for pushing datatable if pushAuth tag is true
+        if (pushAuth) {
+            try {
+                datatableGrantManager.queryDomainGrant(request.getNodeId(), domainDataGrantId);
+            } catch (Exception ex) {
+                LOGGER.info("Datatable grant is empty, node id = {}, datatable id = {}", request.getNodeId(), request.getDatatableId());
+                pushAuth = false;
+            }
+        }
+        // create push auth from tee node for pushing datatable if pushAuth tag is false
+        if (!pushAuth) {
+            String domainGrantId = datatableGrantManager.createDomainGrant(request.getNodeId(), teeDomainId, request.getDatatableId(), "");
+            // save domain grant id
+            Map<String, String> domainGrantIdMap = new HashMap<>(1);
+            domainGrantIdMap.put(DOMAIN_DATA_GRANT_ID, domainGrantId);
+            TeeNodeDatatableManagementDO pushAuthDO = TeeNodeDatatableManagementDO.builder()
+                    .upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(request.getNodeId()).datatableId(request.getDatatableId())
+                            .teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build())
+                    .datasourceId(datasourceId)
+                    .status(TeeJobStatus.SUCCESS)
+                    .kind(TeeJobKind.PushAuth)
+                    .operateInfo(JsonUtils.toJSONString(domainGrantIdMap)).build();
+//            teeNodeDatatableManagementRepository.save(pushAuthDO);
+            saveTeeNodeDatatableManagementOrPush(pushAuthDO);
+        }
+        Map<String, String> pushToTeeMap = new HashMap<>(1);
+        pushToTeeMap.put(TeeJob.RELATIVE_URI, relativeUri);
+        // save push datatable to Tee node job
+        TeeNodeDatatableManagementDO pushToTeeDO = TeeNodeDatatableManagementDO.builder()
+                .upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(request.getNodeId()).datatableId(datatableId)
+                        .teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build())
+                .datasourceId(datasourceId)
+                .status(TeeJobStatus.RUNNING)
+                .kind(TeeJobKind.Push)
+                .operateInfo(JsonUtils.toJSONString(pushToTeeMap)).build();
+//        teeNodeDatatableManagementRepository.save(pushToTeeDO);
+        saveTeeNodeDatatableManagementOrPush(pushToTeeDO);
+        // build tee job model
+        TeeJob teeJob = TeeJob.genTeeJob(pushToTeeDO, List.of(request.getNodeId(), teeDomainId), "", Collections.emptyList(), Collections.emptyList());
+        // build push datatable to Tee node input config
+        Job.CreateJobRequest createJobRequest = teeJobConverter.converter(teeJob);
+        // create job
+        jobManager.createJob(createJobRequest);
+    }
+
+    @Override
+    @Transactional(rollbackOn = Exception.class)
+    public void pullResultFromTeeNode(String nodeId, String datatableId, String targetTeeNodeId, String datasourceId, String relativeUri, String voteResult,
+                                      String projectId, String projectJobId, String projectJobTaskId, String resultType) {
+        LOGGER.info("Pull result from teeNode with node id = {}, datatable id = {}", nodeId, datatableId);
+        // teeNodeId and datasourceId maybe blank
+        String teeDomainId = StringUtils.isBlank(targetTeeNodeId) ? teeNodeId : targetTeeNodeId;
+        datasourceId = StringUtils.isBlank(datasourceId) ? DEFAULT_DATASOURCE : datasourceId;
+        datatableId = teeJobConverter.buildTeeDatatableId(nodeId, datatableId);
+        relativeUri = StringUtils.isBlank(relativeUri) ? datatableId : relativeUri;
+        Map<String, String> pullFromTeeMap = new HashMap<>(5);
+        pullFromTeeMap.put(TeeJob.RELATIVE_URI, relativeUri);
+        // mock vote result
+        // String voteResult = VOTE_RESULT;
+        pullFromTeeMap.put(TeeJob.VOTE_RESULT, StringUtils.isNotBlank(voteResult) ? voteResult : MOCK_VOTE_RESULT);
+        pullFromTeeMap.put(TeeJob.PROJECT_ID, projectId);
+        pullFromTeeMap.put(TeeJob.PROJECT_JOB_ID, projectJobId);
+        pullFromTeeMap.put(TeeJob.PROJECT_JOB_TASK_ID, projectJobTaskId);
+        pullFromTeeMap.put(TeeJob.RESULT_TYPE, resultType);
+        // save pull result from Tee node job
+        TeeNodeDatatableManagementDO pullFromTeeDO = TeeNodeDatatableManagementDO.builder()
+                .upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(nodeId).datatableId(datatableId)
+                        .teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build())
+                .datasourceId(datasourceId)
+                .status(TeeJobStatus.RUNNING)
+                .kind(TeeJobKind.Pull)
+                .operateInfo(JsonUtils.toJSONString(pullFromTeeMap)).build();
+//        teeNodeDatatableManagementRepository.save(pullFromTeeDO);
+        saveTeeNodeDatatableManagementOrPush(pullFromTeeDO);
+        // build tee job model
+        TeeJob teeJob = TeeJob.genTeeJob(pullFromTeeDO, List.of(nodeId, teeDomainId), "", Collections.emptyList(), Collections.emptyList());
+        // build push datatable to Tee node input config
+        Job.CreateJobRequest createJobRequest = teeJobConverter.converter(teeJob);
+        // create job
+        jobManager.createJob(createJobRequest);
     }
 
     /**
@@ -141,6 +341,36 @@ public class DatatableServiceImpl implements DatatableService {
                 .filter(it -> it.getValue1() != null)
                 // Map<datatable, List<Pair>>
                 .collect(Collectors.groupingBy(it -> it.getValue0().getUpk().getDatatableId()));
+    }
+
+    /**
+     * Query tee node datatable management data object list by nodeId, teeNodeId and datatableIds then collect to Map
+     *
+     * @param nodeId       target nodeId
+     * @param teeNodeId    target teeNodeId
+     * @param datatableIds target datatableId list
+     * @return Map of datatableId and tee node datatable management data object list
+     */
+    private Map<String, List<TeeNodeDatatableManagementDO>> getPushToTeeInfos(String nodeId, String teeNodeId, List<String> datatableIds) {
+        List<String> teeDatatables = datatableIds.stream().map(datatableId -> teeJobConverter.buildTeeDatatableId(teeNodeId, datatableId)).toList();
+        // batch query push to tee job list by datatableIds
+        List<TeeNodeDatatableManagementDO> managementList = teeNodeDatatableManagementRepository
+                .findAllByNodeIdAndTeeNodeIdAndDatatableIdsAndKind(nodeId, teeNodeId, teeDatatables, TeeJobKind.Push);
+        if (CollectionUtils.isEmpty(managementList)) {
+            return Collections.emptyMap();
+        }
+        // collect by datatable id
+        return managementList.stream().collect(Collectors.groupingBy(it -> it.getUpk().getDatatableId()));
+    }
+
+    private void saveTeeNodeDatatableManagementOrPush(TeeNodeDatatableManagementDO saveDO) {
+        if (PlatformTypeEnum.EDGE.equals(PlatformTypeEnum.valueOf(plaformType))) {
+            TeeNodeDatatableManagementSyncRequest request = TeeNodeDatatableManagementSyncRequest.parse2VO(saveDO);
+            VoteSyncRequest voteSyncRequest = VoteSyncRequest.builder().syncDataType(VoteSyncTypeEnum.TEE_NODE_DATATABLE_MANAGEMENT.name()).projectNodesInfo(request).build();
+            PushToCenterUtil.dataPushToCenter(voteSyncRequest);
+        } else {
+            teeNodeDatatableManagementRepository.save(saveDO);
+        }
     }
 
 

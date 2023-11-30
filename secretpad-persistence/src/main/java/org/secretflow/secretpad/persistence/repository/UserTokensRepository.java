@@ -18,7 +18,7 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.TokensDO;
 
-import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -30,7 +30,7 @@ import java.util.Optional;
  * @author : xiaonan.fhn
  * @date 2023/5/25
  */
-public interface UserTokensRepository extends JpaRepository<TokensDO, String> {
+public interface UserTokensRepository extends BaseRepository<TokensDO, String> {
 
     /**
      * Query user information by user token
@@ -48,6 +48,7 @@ public interface UserTokensRepository extends JpaRepository<TokensDO, String> {
      * @param token user token record
      */
     @Query("delete from TokensDO td where td.name=:name and td.token=:token")
+    @Modifying
     void deleteByNameAndToken(@Param("name") String name, @Param("token") String token);
 
 

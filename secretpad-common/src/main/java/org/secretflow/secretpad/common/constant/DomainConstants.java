@@ -20,18 +20,18 @@ package org.secretflow.secretpad.common.constant;
  * @author yutu
  * @date 2023/08/01
  */
-public interface DomainConstants {
+public class DomainConstants {
 
-    enum TokenStatusEnum {
+    public enum TokenStatusEnum {
         used,
         unused
     }
 
-    enum DomainRoleEnum {
+    public enum DomainRoleEnum {
         partner, normal
     }
 
-    enum DomainStatusEnum {
+    public enum DomainStatusEnum {
         // Pending...
         Pending,
         // Ready
@@ -42,17 +42,32 @@ public interface DomainConstants {
         Unknown
     }
 
-    enum DomainTypeEnum {
+    public enum DomainTypeEnum {
         // embedded
         embedded,
         // normal
         normal
     }
 
-    enum DomainCertConfigEnum {
+    public enum DomainCertConfigEnum {
         // configured
         configured,
         // unConfigured
         unconfirmed
+    }
+
+    public enum DomainModeEnum {
+        // tee
+        tee(0),
+        // mpc
+        mpc(1),
+        // teeAndMpc
+        teeAndMpc(2);
+
+        public final int code;
+
+        DomainModeEnum(int code) {
+            this.code = code;
+        }
     }
 }

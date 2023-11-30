@@ -29,6 +29,7 @@ import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.support.ResourceBundleMessageSource;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 
@@ -73,4 +74,8 @@ public class SecretPadConfiguration {
                 errorViewResolversProvider.getIfAvailable());
     }
 
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
 }

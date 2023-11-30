@@ -48,4 +48,29 @@ public interface DatatableService {
      * @return
      */
     void deleteDatatable(DeleteDatatableRequest request);
+
+    /**
+     * Push datatable to tee node by request
+     *
+     * @param request push datable to tee node request
+     * @return
+     */
+    void pushDatatableToTeeNode(PushDatatableToTeeRequest request);
+
+    /**
+     * Pull result from tee node by request
+     *
+     * @param nodeId          target edge node id
+     * @param datatableId     target datatableId in tee node
+     * @param targetTeeNodeId tee node id
+     * @param datasourceId    target datasourceId
+     * @param relativeUri     target relativeUri
+     * @param voteResult      target vote result string
+     * @param projectId       target project id
+     * @param projectJobId    target project job id
+     * @param projectJobId    target project job task id
+     * @param resultType      target result type
+     */
+    void pullResultFromTeeNode(String nodeId, String datatableId, String targetTeeNodeId, String datasourceId, String relativeUri, String voteResult,
+                               String projectId, String projectJobId, String projectJobTaskId, String resultType);
 }

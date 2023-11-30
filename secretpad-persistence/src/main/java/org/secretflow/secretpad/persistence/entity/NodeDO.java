@@ -16,13 +16,13 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
-import org.springframework.data.annotation.CreatedBy;
-import org.springframework.data.annotation.LastModifiedBy;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 /**
  * Node data object
@@ -40,7 +40,6 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Setter
 @SQLDelete(sql = "update node set is_deleted = 1 where node_id = ?")
 @Where(clause = "is_deleted = 0")
-@EntityListeners(AuditingEntityListener.class)
 public class NodeDO extends BaseAggregationRoot<NodeDO> {
 
     /**
@@ -72,9 +71,5 @@ public class NodeDO extends BaseAggregationRoot<NodeDO> {
     private String netAddress;
     private String token;
     private String type;
-    @CreatedBy
-    private String createBy;
-    @LastModifiedBy
-    private String updateBy;
-
+    private Integer mode;
 }

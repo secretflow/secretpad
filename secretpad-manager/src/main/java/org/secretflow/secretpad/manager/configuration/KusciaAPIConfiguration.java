@@ -17,11 +17,9 @@
 package org.secretflow.secretpad.manager.configuration;
 
 import org.secretflow.secretpad.manager.kuscia.KusciaAPIProperties;
+
 import org.secretflow.v1alpha1.factory.KusciaAPIChannelFactory;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
-import org.secretflow.v1alpha1.kusciaapi.DomainRouteServiceGrpc;
-import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
-import org.secretflow.v1alpha1.kusciaapi.JobServiceGrpc;
+import org.secretflow.v1alpha1.kusciaapi.*;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -91,6 +89,21 @@ public class KusciaAPIConfiguration {
     @Bean
     DomainDataServiceGrpc.DomainDataServiceBlockingStub domainDataServiceStub(KusciaAPIChannelFactory channelFactory) {
         return DomainDataServiceGrpc.newBlockingStub(channelFactory.newClientChannel())
+                .withMaxInboundMessageSize(Integer.MAX_VALUE)
+                .withMaxOutboundMessageSize(Integer.MAX_VALUE);
+    }
+
+
+    @Bean
+    DomainDataGrantServiceGrpc.DomainDataGrantServiceBlockingStub dataGrantStub(KusciaAPIChannelFactory channelFactory) {
+        return DomainDataGrantServiceGrpc.newBlockingStub(channelFactory.newClientChannel())
+                .withMaxInboundMessageSize(Integer.MAX_VALUE)
+                .withMaxOutboundMessageSize(Integer.MAX_VALUE);
+    }
+
+    @Bean("certificateServiceBlockingStub")
+    public CertificateServiceGrpc.CertificateServiceBlockingStub certificateServiceBlockingStub(KusciaAPIChannelFactory channelFactory) {
+        return CertificateServiceGrpc.newBlockingStub(channelFactory.newClientChannel())
                 .withMaxInboundMessageSize(Integer.MAX_VALUE)
                 .withMaxOutboundMessageSize(Integer.MAX_VALUE);
     }

@@ -89,13 +89,18 @@ public class NodeVO {
     /**
      * nodeStatus Pending,  Ready,  NotReady,  Unknown
      */
-    @Schema(description = "节点状态")
+    @Schema(description = "nodeStatus")
     private String nodeStatus;
     /**
      * node type embedded
      */
     @Schema(description = "nodeType")
     private String type;
+    /**
+     * node feature indicates by bit, bit0 - mpc | bit1 - tee | bit2 mpc&tee
+     */
+    @Schema(description = "node feature indicates by bit, bit0 - mpc | bit1 - tee | bit2 mpc&tee")
+    private Integer mode;
     /**
      * gmtCreate
      */
@@ -135,7 +140,7 @@ public class NodeVO {
                 .netAddress(nodeDTO.getNetAddress()).cert(nodeDTO.getCert()).token(nodeDTO.getToken())
                 .tokenStatus(nodeDTO.getTokenStatus()).nodeRole(nodeDTO.getNodeRole()).nodeStatus(nodeDTO.getNodeStatus())
                 .type(nodeDTO.getType()).gmtCreate(nodeDTO.getGmtCreate()).gmtModified(nodeDTO.getGmtModified())
-                .nodeInstances(nodeDTO.getNodeInstances())
+                .nodeInstances(nodeDTO.getNodeInstances()).mode(nodeDTO.getMode())
                 .datatables(CollectionUtils.isEmpty(datatables) ? null
                         : datatables.stream().map(it -> new NodeDatatableVO(it.getDatatableId(), it.getDatatableName()))
                         .collect(Collectors.toList()))
@@ -160,6 +165,7 @@ public class NodeVO {
         nodeVO.setGmtCreate(nodeDTO.getGmtCreate());
         nodeVO.setGmtModified(nodeDTO.getGmtModified());
         nodeVO.setNodeInstances(nodeDTO.getNodeInstances());
+        nodeVO.setMode(nodeDTO.getMode());
         return nodeVO;
     }
 

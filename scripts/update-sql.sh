@@ -15,14 +15,12 @@
 # limitations under the License.
 #
 
-set -ex
+set -e
 SECRETPAD_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 
 DB_PATH="$SECRETPAD_ROOT/db/secretpad.sqlite"
-SCHEMA_PATH="$SECRETPAD_ROOT/config/schema/v1.sql"
-SCHEMA_PATH_V2="${SECRETPAD_ROOT}/config/schema/v2.sql"
+SCHEMA_PATH="$SECRETPAD_ROOT/config/schema/init.sql"
 
 rm -rf "$DB_PATH"
 
 sqlite3 "$DB_PATH" ".read $SCHEMA_PATH"
-sqlite3 "$DB_PATH" ".read $SCHEMA_PATH_V2"

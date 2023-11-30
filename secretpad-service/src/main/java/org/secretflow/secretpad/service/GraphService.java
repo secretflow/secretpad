@@ -19,9 +19,10 @@ package org.secretflow.secretpad.service;
 import org.secretflow.secretpad.service.model.graph.*;
 import org.secretflow.secretpad.service.model.project.GetProjectJobTaskOutputRequest;
 
-import org.secretflow.proto.component.Comp;
+import com.secretflow.spec.v1.ComponentDef;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Graph service interface
@@ -36,7 +37,7 @@ public interface GraphService {
      *
      * @return component list view object
      */
-    CompListVO listComponents();
+    Map<String, CompListVO> listComponents();
 
     /**
      * Query component by get component request
@@ -44,7 +45,7 @@ public interface GraphService {
      * @param request get component request
      * @return componentDef message
      */
-    Comp.ComponentDef getComponent(GetComponentRequest request);
+    ComponentDef getComponent(GetComponentRequest request);
 
     /**
      * Batch query component by get component request
@@ -52,7 +53,7 @@ public interface GraphService {
      * @param request get component request
      * @return componentDef message list
      */
-    List<Comp.ComponentDef> batchGetComponent(List<GetComponentRequest> request);
+    List<ComponentDef> batchGetComponent(List<GetComponentRequest> request);
 
     /**
      * List components from international location file then collect to map

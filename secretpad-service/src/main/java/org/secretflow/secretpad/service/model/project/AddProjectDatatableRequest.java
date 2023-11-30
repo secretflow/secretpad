@@ -58,4 +58,14 @@ public class AddProjectDatatableRequest {
      */
     @Schema(description = "datatable column config list")
     private @Valid List<TableColumnConfigParam> configs;
+    /**
+     * Tee node id, it can be blank and has default value
+     */
+    @Schema(description = "tee node id")
+    private String teeNodeId;
+    /**
+     * Datasource id, it can be blank and has default value
+     */
+    @Schema(description = "datasource id")
+    private String datasourceId;
 }

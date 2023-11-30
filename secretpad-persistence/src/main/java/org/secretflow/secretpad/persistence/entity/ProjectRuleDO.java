@@ -16,10 +16,7 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
@@ -41,7 +38,7 @@ import java.io.Serializable;
 @Table(name = "project_rule")
 @SQLDelete(sql = "update project_rule set is_deleted = 1 where project_id = ? and rule_id = ?")
 @Where(clause = "is_deleted = 0")
-public class ProjectRuleDO extends BaseEntity {
+public class ProjectRuleDO extends BaseAggregationRoot {
     /**
      * Project rule unique primary key
      */
@@ -56,6 +53,7 @@ public class ProjectRuleDO extends BaseEntity {
     @AllArgsConstructor
     @NoArgsConstructor
     @EqualsAndHashCode
+    @Embeddable
     public static class UPK implements Serializable {
         /**
          * Project id

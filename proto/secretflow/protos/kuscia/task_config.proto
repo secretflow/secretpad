@@ -20,6 +20,7 @@ option java_package = "org.secretflow.proto.kuscia";
 
 import "secretflow/protos/component/cluster.proto";
 import "secretflow/protos/pipeline/pipeline.proto";
+import "secretflow/protos/pipeline/task_config.proto";
 
 message TaskInputConfig {
   map<string, DatasourceConfig> sf_datasource_config = 1;
@@ -28,6 +29,7 @@ message TaskInputConfig {
   repeated string sf_output_uris = 4;
   repeated string sf_input_ids = 5;
   repeated string sf_output_ids = 6;
+  secretflow.pipeline.TaskConfig tee_task_config = 7;
 }
 
 message DatasourceConfig {

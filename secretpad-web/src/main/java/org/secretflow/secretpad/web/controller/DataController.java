@@ -16,11 +16,18 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.annotation.resource.ApiResource;
+import org.secretflow.secretpad.common.annotation.resource.DataResource;
+import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
+import org.secretflow.secretpad.common.enums.DataResourceTypeEnum;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.service.DataService;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
-import org.secretflow.secretpad.service.model.data.*;
+import org.secretflow.secretpad.service.model.data.CreateDataRequest;
+import org.secretflow.secretpad.service.model.data.DownloadDataRequest;
+import org.secretflow.secretpad.service.model.data.DownloadInfo;
+import org.secretflow.secretpad.service.model.data.UploadDataResultVO;
 
 import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
@@ -35,7 +42,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
-import java.util.List;
 
 /**
  * Data controller
@@ -65,6 +71,7 @@ public class DataController {
      */
     @ResponseBody
     @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ApiResource(code = ApiResourceCodeConstants.DATA_UPLOAD)
     public SecretPadResponse<UploadDataResultVO> upload(
             @RequestParam(value = "Node-Id") String nodeId,
             @RequestParam("file") MultipartFile file
@@ -80,15 +87,12 @@ public class DataController {
      */
     @ResponseBody
     @PostMapping(value = "/create", consumes = "application/json")
+    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @ApiResource(code = ApiResourceCodeConstants.DATA_CREATE)
     public SecretPadResponse<String> createData(
             @Valid @RequestBody CreateDataRequest request
     ) {
         return SecretPadResponse.success(dataService.createData(request));
-    }
-
-    @PostMapping(value = "/createData", consumes = "application/json")
-    public SecretPadResponse<String> createDataByDataSource(@Valid @RequestBody CreateDataByDataSourceRequest request) {
-        return SecretPadResponse.success(dataService.createDataByDataSource(request));
     }
 
     /**
@@ -96,10 +100,11 @@ public class DataController {
      *
      * @param response http servlet response
      * @param request  download data request
-     * @return successful SecretPadResponse with null data
      */
     @ResponseBody
     @PostMapping(value = "/download")
+    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @ApiResource(code = ApiResourceCodeConstants.DATA_DOWNLOAD)
     public void download(HttpServletResponse response, @Valid @RequestBody DownloadDataRequest request) {
         DownloadInfo downloadInfo = dataService.download(request);
         response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
@@ -119,10 +124,4 @@ public class DataController {
             throw SecretpadException.of(SystemErrorCode.UNKNOWN_ERROR, e);
         }
     }
-
-    @PostMapping(value = "/listDataSource")
-    public SecretPadResponse<List<DataSourceVO>> listDataSource() {
-        return SecretPadResponse.success(dataService.queryDataSources());
-    }
-
 }

@@ -16,13 +16,12 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.constant.ProjectConstants;
+import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
 import org.secretflow.secretpad.common.util.JsonUtils;
-import org.secretflow.secretpad.persistence.entity.ProjectGraphDO;
-import org.secretflow.secretpad.persistence.entity.ProjectGraphNodeDO;
-import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
-import org.secretflow.secretpad.persistence.repository.ProjectGraphNodeRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectGraphRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectJobTaskRepository;
+import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.model.graph.*;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
@@ -33,6 +32,7 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * Graph controller test
@@ -51,6 +51,12 @@ class GraphControllerTest extends ControllerTest {
     @MockBean
     private ProjectJobTaskRepository taskRepository;
 
+    @MockBean
+    private ProjectRepository projectRepository;
+
+    @MockBean
+    private ProjectNodeRepository projectNodeRepository;
+
     private static final String NODE_DEF = """
             {
                     "attrPaths": [
@@ -66,6 +72,10 @@ class GraphControllerTest extends ControllerTest {
                     "version": "0.0.1"
              }
             """;
+
+    private ProjectNodeDO buildProjectNodeDO() {
+        return ProjectNodeDO.builder().upk(new ProjectNodeDO.UPK(PROJECT_ID, "alice")).build();
+    }
 
     //todo get uri path from mapping path
     @Test
@@ -83,20 +93,13 @@ class GraphControllerTest extends ControllerTest {
     }
 
     @Test
-    void getComponent() throws Exception {
-        assertResponse(() -> {
-            GetComponentRequest request = new GetComponentRequest();
-            request.setDomain("feature");
-            request.setName("vert_woe_binning");
-            return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "getComponent", GetComponentRequest.class))
-                    .content(JsonUtils.toJSONString(request));
-        });
-    }
-
-    @Test
     void createGraph() throws Exception {
         assertResponse(() -> {
             CreateGraphRequest createGraphRequest = FakerUtils.fake(CreateGraphRequest.class);
+            createGraphRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_CREATE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "createGraph", CreateGraphRequest.class))
                     .content(JsonUtils.toJSONString(createGraphRequest));
         });
@@ -106,6 +109,10 @@ class GraphControllerTest extends ControllerTest {
     void deleteGraph() throws Exception {
         assertResponseWithEmptyData(() -> {
             DeleteGraphRequest deleteGraphRequest = FakerUtils.fake(DeleteGraphRequest.class);
+            deleteGraphRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_DELETE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "deleteGraph", DeleteGraphRequest.class))
                     .content(JsonUtils.toJSONString(deleteGraphRequest));
         });
@@ -115,6 +122,10 @@ class GraphControllerTest extends ControllerTest {
     void listGraph() throws Exception {
         assertResponse(() -> {
             ListGraphRequest listGraphRequest = FakerUtils.fake(ListGraphRequest.class);
+            listGraphRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_LIST));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "listGraph", ListGraphRequest.class))
                     .content(JsonUtils.toJSONString(listGraphRequest));
         });
@@ -124,6 +135,10 @@ class GraphControllerTest extends ControllerTest {
     void updateGraphMeta() throws Exception {
         assertResponseWithEmptyData(() -> {
             UpdateGraphMetaRequest updateGraphMetaRequest = FakerUtils.fake(UpdateGraphMetaRequest.class);
+            updateGraphMetaRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_META_UPDATE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
             Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(updateGraphMetaRequest.getProjectId(), updateGraphMetaRequest.getGraphId())))
                     .thenReturn(Optional.of(projectGraphDO));
@@ -136,6 +151,10 @@ class GraphControllerTest extends ControllerTest {
     void fullUpdateGraph() throws Exception {
         assertResponseWithEmptyData(() -> {
             FullUpdateGraphRequest fullUpdateGraphRequest = FakerUtils.fake(FullUpdateGraphRequest.class);
+            fullUpdateGraphRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_UPDATE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
             Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(fullUpdateGraphRequest.getProjectId(), fullUpdateGraphRequest.getGraphId())))
                     .thenReturn(Optional.of(projectGraphDO));
@@ -148,6 +167,10 @@ class GraphControllerTest extends ControllerTest {
     void updateGraphNode() throws Exception {
         assertResponseWithEmptyData(() -> {
             UpdateGraphNodeRequest updateGraphNodeRequest = FakerUtils.fake(UpdateGraphNodeRequest.class);
+            updateGraphNodeRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_NODE_UPDATE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             ProjectGraphNodeDO graphNodeDO = FakerUtils.fake(ProjectGraphNodeDO.class);
             Mockito.when(graphNodeRepository.findById(new ProjectGraphNodeDO.UPK(updateGraphNodeRequest.getProjectId(), updateGraphNodeRequest.getGraphId(), updateGraphNodeRequest.getNode().getGraphNodeId())))
                     .thenReturn(Optional.of(graphNodeDO));
@@ -160,15 +183,20 @@ class GraphControllerTest extends ControllerTest {
     void startGraph() throws Exception {
         assertResponse(() -> {
             StartGraphRequest startGraphRequest = FakerUtils.fake(StartGraphRequest.class);
+            startGraphRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_START));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
             projectGraphDO.setEdges(null);
-
             Object nodeDef = JsonUtils.toJavaObject(NODE_DEF, Object.class);
             List<ProjectGraphNodeDO> nodes = projectGraphDO.getNodes();
             nodes.get(0).setUpk(new ProjectGraphNodeDO.UPK(startGraphRequest.getProjectId(), startGraphRequest.getGraphId(), startGraphRequest.getNodes().get(0)));
             nodes.get(0).setNodeDef(nodeDef);
             Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(startGraphRequest.getProjectId(), startGraphRequest.getGraphId())))
                     .thenReturn(Optional.of(projectGraphDO));
+            Mockito.when(projectRepository.findById(startGraphRequest.getProjectId()))
+                    .thenReturn(Optional.of(ProjectDO.builder().computeMode(ProjectConstants.ComputeModeEnum.MPC.name()).build()));
             return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "startGraph", StartGraphRequest.class))
                     .content(JsonUtils.toJSONString(startGraphRequest));
         });
@@ -178,6 +206,10 @@ class GraphControllerTest extends ControllerTest {
     void listGraphNodeStatus() throws Exception {
         assertResponse(() -> {
             ListGraphNodeStatusRequest listGraphNodeStatusRequest = FakerUtils.fake(ListGraphNodeStatusRequest.class);
+            listGraphNodeStatusRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_NODE_STATUS));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
             Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(listGraphNodeStatusRequest.getProjectId(), listGraphNodeStatusRequest.getGraphId())))
                     .thenReturn(Optional.of(projectGraphDO));
@@ -190,6 +222,10 @@ class GraphControllerTest extends ControllerTest {
     void stopGraphNode() throws Exception {
         assertResponseWithEmptyData(() -> {
             StopGraphNodeRequest stopGraphNodeRequest = FakerUtils.fake(StopGraphNodeRequest.class);
+            stopGraphNodeRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_STOP));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "stopGraphNode", StopGraphNodeRequest.class))
                     .content(JsonUtils.toJSONString(stopGraphNodeRequest));
         });
@@ -199,6 +235,10 @@ class GraphControllerTest extends ControllerTest {
     void getGraphDetail() throws Exception {
         assertResponse(() -> {
             GetGraphRequest getGraphRequest = FakerUtils.fake(GetGraphRequest.class);
+            getGraphRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_DETAIL));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
             Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(getGraphRequest.getProjectId(), getGraphRequest.getGraphId())))
                     .thenReturn(Optional.of(projectGraphDO));
@@ -211,6 +251,10 @@ class GraphControllerTest extends ControllerTest {
     void getGraphNodeOutput() throws Exception {
         assertResponse(() -> {
             GraphNodeOutputRequest graphNodeOutputRequest = FakerUtils.fake(GraphNodeOutputRequest.class);
+            graphNodeOutputRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_NODE_OUTPUT));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Object nodeDef = JsonUtils.toJavaObject(NODE_DEF, Object.class);
             ProjectTaskDO projectTaskDO = FakerUtils.fake(ProjectTaskDO.class);
             projectTaskDO.getGraphNode().setNodeDef(nodeDef);
@@ -225,6 +269,10 @@ class GraphControllerTest extends ControllerTest {
     void getGraphNodeLogs() throws Exception {
         assertResponse(() -> {
             GraphNodeLogsRequest graphNodeLogsRequest = FakerUtils.fake(GraphNodeLogsRequest.class);
+            graphNodeLogsRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_NODE_LOGS));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(taskRepository.findLatestTasks(graphNodeLogsRequest.getProjectId(), graphNodeLogsRequest.getGraphNodeId()))
                     .thenReturn(Optional.of(FakerUtils.fake(ProjectTaskDO.class)));
             return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "getGraphNodeLogs", GraphNodeLogsRequest.class))

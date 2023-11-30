@@ -45,7 +45,7 @@ public class ProjectGraphNodeDO extends BaseAggregationRoot<ProjectGraphNodeDO> 
      * Project graph node unique primary key
      */
     @EmbeddedId
-    private ProjectGraphNodeDO.UPK upk;
+    private UPK upk;
 
     /**
      * Project graph code name
@@ -124,7 +124,7 @@ public class ProjectGraphNodeDO extends BaseAggregationRoot<ProjectGraphNodeDO> 
             if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) {
                 return false;
             }
-            ProjectGraphNodeDO.UPK that = (ProjectGraphNodeDO.UPK) o;
+            UPK that = (UPK) o;
             return this.projectId.equals(that.projectId)
                     && this.graphId.equals(that.graphId)
                     && this.graphNodeId.equals(that.getGraphNodeId());

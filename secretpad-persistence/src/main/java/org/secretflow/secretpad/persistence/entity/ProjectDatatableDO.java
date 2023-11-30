@@ -22,8 +22,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.SQLInsert;
 import org.hibernate.annotations.Where;
 
 import java.io.Serializable;
@@ -44,8 +42,6 @@ import java.util.stream.Collectors;
 @Setter
 @Getter
 @Table(name = "project_datatable")
-@SQLDelete(sql = "update project_datatable set is_deleted = 1 where datatable_id = ? and node_id =? and project_id = ?")
-@SQLInsert(sql = "insert or replace into project_datatable (is_deleted, source, table_configs, datatable_id, node_id, project_id) values (?, ?, ?, ?, ?, ?)")
 @Where(clause = "is_deleted = 0")
 public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> {
 
@@ -225,5 +221,19 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
         public TableConfigConverter() {
             super(TableColumnConfig.class);
         }
+    }
+
+    @Override
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
+
+    @Override
+    public String getNodeId() {
+        //TODO should check the this node is tee node,not only by 'node_id';
+        if ("tee".equals(this.upk.nodeId)) {
+            return null;
+        }
+        return this.upk.nodeId;
     }
 }

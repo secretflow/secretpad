@@ -17,11 +17,9 @@
 package org.secretflow.secretpad.persistence.entity;
 
 import org.secretflow.secretpad.common.util.UUIDUtils;
+import org.secretflow.secretpad.persistence.converter.ProjectInfoConverter;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
@@ -65,17 +63,23 @@ public class ProjectDO extends BaseAggregationRoot<ProjectDO> {
 
 
     /**
-     * computeMode pipeline: ,hub:
+     * computeMode mpc,tee
      */
     private String computeMode;
+
+    /**
+     * projectInfo tee dag runtimeParams
+     */
+    @Convert(converter = ProjectInfoConverter.class)
+    private ProjectInfoDO projectInfo;
 
     /**
      * Create a new project DO class
      */
     public static class Factory {
-        public static ProjectDO newProject(String name, String desc, String computeMode) {
+        public static ProjectDO newProject(String name, String desc, String computeMode, ProjectInfoDO projectInfoDO) {
             return ProjectDO.builder().projectId(UUIDUtils.random(8)).name(name).description(desc)
-                    .computeMode(computeMode).build();
+                    .computeMode(computeMode).projectInfo(projectInfoDO).build();
         }
     }
 

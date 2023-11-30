@@ -57,8 +57,9 @@ public class NodeResultsListVO {
     public static NodeResultsListVO fromDTO(NodeResultListDTO nodeResultListDTO) {
         return NodeResultsListVO.builder()
                 .totalResultNums(nodeResultListDTO.getTotalResultNums())
-                .nodeResultsVOList(nodeResultListDTO.getNodeResultDTOList().stream().map(NodeResultsVO::fromNodeResultDTO).collect(Collectors.toList()))
+                .nodeResultsVOList(nodeResultListDTO.getNodeResultDTOList().stream().map(t -> NodeResultsVO.fromNodeResultDTO(t, null)).collect(Collectors.toList()))
                 .build();
     }
 
 }
+

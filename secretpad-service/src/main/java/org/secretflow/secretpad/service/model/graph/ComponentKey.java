@@ -29,6 +29,10 @@ import lombok.Data;
 @AllArgsConstructor
 public class ComponentKey {
     /**
+     * app of the component
+     */
+    private String app;
+    /**
      * Namespace of the component
      */
     private String domain;

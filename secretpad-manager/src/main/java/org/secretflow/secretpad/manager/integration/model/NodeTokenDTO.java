@@ -20,7 +20,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.secretflow.v1alpha1.kusciaapi.Domain;
+import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 
 /**
  * @author yutu
@@ -45,7 +45,7 @@ public class NodeTokenDTO {
      */
     private String lastTransitionTime;
 
-    public static NodeTokenDTO fromDeployTokenStatus(Domain.DeployTokenStatus t) {
+    public static NodeTokenDTO fromDeployTokenStatus(DomainOuterClass.DeployTokenStatus t) {
         return NodeTokenDTO.builder().token(t.getToken()).tokenStatus(t.getState())
                 .lastTransitionTime(t.getLastTransitionTime()).build();
     }

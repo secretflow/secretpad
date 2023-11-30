@@ -18,8 +18,8 @@ package org.secretflow.secretpad.manager.integration.noderoute;
 
 import org.secretflow.secretpad.manager.integration.model.CreateNodeRouteParam;
 import org.secretflow.secretpad.manager.integration.model.NodeRouteDTO;
-import org.secretflow.secretpad.manager.integration.model.UpdateNodeRouteParam;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
+import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
 
 import org.secretflow.v1alpha1.kusciaapi.DomainRoute;
 
@@ -29,21 +29,23 @@ import org.secretflow.v1alpha1.kusciaapi.DomainRoute;
  */
 public abstract class AbstractNodeRouteManager {
 
-    public abstract Long createNodeRoute(CreateNodeRouteParam param, boolean check);
+    public abstract void createNodeRouteInKuscia(CreateNodeRouteParam param, NodeDO srcNode, NodeDO desNode, boolean check);
 
-    public abstract Long createNodeRoute(CreateNodeRouteParam param, NodeDO srcNode, NodeDO dstNode);
+    public abstract void createNodeRoute(CreateNodeRouteParam param, NodeDO srcNode, NodeDO dstNode);
 
     public abstract NodeRouteDTO queryNodeRoute(String srcNodeId);
 
     public abstract void deleteNodeRoute(String srcNodeId, String dstNodeId);
 
-    public abstract void deleteNodeRoute(Long nodeRouteId);
+    public abstract void deleteNodeRoute(String nodeRouteId);
 
-    public abstract void updateNodeRoute(UpdateNodeRouteParam param);
+    public abstract void updateNodeRoute(NodeRouteDO nodeRouteDO, NodeDO srcNode, NodeDO dstNode);
 
     public abstract DomainRoute.RouteStatus getRouteStatus(String srcNodeId, String dstNodeId);
 
     public abstract boolean checkNodeRouteExists(String srcNodeId, String dstNodeId);
 
     public abstract boolean checkNodeRouteReady(String srcNodeId, String dstNodeId);
+
+    public abstract void checkRouteNotExist(String srcNodeId, String dstNodeId);
 }

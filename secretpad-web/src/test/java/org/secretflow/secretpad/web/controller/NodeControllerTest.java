@@ -1,19 +1,22 @@
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
 import org.secretflow.secretpad.common.errorcode.*;
 import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.persistence.repository.*;
+import org.secretflow.secretpad.service.NodeUserService;
 import org.secretflow.secretpad.service.model.node.*;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.common.Common;
-import org.secretflow.v1alpha1.kusciaapi.Domain;
 import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
+import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -60,9 +63,12 @@ class NodeControllerTest extends ControllerTest {
     @MockBean
     private DomainServiceGrpc.DomainServiceBlockingStub domainServiceStub;
 
+    @MockBean
+    private NodeUserService nodeUserService;
+
     private List<NodeDO> buildNodeDOList() {
         List<NodeDO> nodeDOList = new ArrayList<>();
-        nodeDOList.add(NodeDO.builder().nodeId("alice").name("alice").description("alice").auth("alice").build());
+        nodeDOList.add(NodeDO.builder().nodeId("alice").name("alice").description("alice").auth("alice").type("mpc").build());
         return nodeDOList;
     }
 
@@ -131,16 +137,20 @@ class NodeControllerTest extends ControllerTest {
         return Domaindata.ListDomainDataResponse.newBuilder().setStatus(status).build();
     }
 
-    private Domain.QueryDomainResponse buildQueryDomainResponse(Integer code) {
-        return Domain.QueryDomainResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(code).build()).build();
+    private DomainOuterClass.QueryDomainResponse buildQueryDomainResponse(Integer code) {
+        return DomainOuterClass.QueryDomainResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(code).build()).build();
     }
 
-    private Domain.CreateDomainResponse buildCreateDomainResponse(Integer code) {
-        return Domain.CreateDomainResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(code).build()).build();
+    private DomainOuterClass.BatchQueryDomainResponse buildBatchQueryDomainResponse(Integer code) {
+        return DomainOuterClass.BatchQueryDomainResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(code).build()).build();
     }
 
-    private Domain.DeleteDomainResponse buildDeleteDomainResponse(Integer code) {
-        return Domain.DeleteDomainResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(code).build()).build();
+    private DomainOuterClass.CreateDomainResponse buildCreateDomainResponse(Integer code) {
+        return DomainOuterClass.CreateDomainResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(code).build()).build();
+    }
+
+    private DomainOuterClass.DeleteDomainResponse buildDeleteDomainResponse(Integer code) {
+        return DomainOuterClass.DeleteDomainResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(code).build()).build();
     }
 
     private Domaindata.BatchQueryDomainDataResponse buildBatchQueryDomainDataResponse(Integer code) {
@@ -164,8 +174,10 @@ class NodeControllerTest extends ControllerTest {
     @Test
     void listNode() throws Exception {
         assertResponse(() -> {
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_LIST));
+
+            DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
+            Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             Mockito.when(nodeRepository.findAll()).thenReturn(buildNodeDOList());
             Domaindata.ListDomainDataResponse response = buildListDomainDataResponse(0);
             Mockito.when(dataStub.listDomainData(Mockito.any())).thenReturn(response);
@@ -176,8 +188,10 @@ class NodeControllerTest extends ControllerTest {
     @Test
     void listNodeByQueryDatatableFailedException() throws Exception {
         assertErrorCode(() -> {
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_LIST));
+
+            DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
+            Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             Mockito.when(nodeRepository.findAll()).thenReturn(buildNodeDOList());
             Domaindata.ListDomainDataResponse response = buildListDomainDataResponse(1);
             Mockito.when(dataStub.listDomainData(Mockito.any())).thenReturn(response);
@@ -189,10 +203,14 @@ class NodeControllerTest extends ControllerTest {
     void createNode() throws Exception {
         assertResponse(() -> {
             CreateNodeRequest request = FakerUtils.fake(CreateNodeRequest.class);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(1);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
-            Domain.CreateDomainResponse createDomainResponse = buildCreateDomainResponse(0);
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_CREATE));
+
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(1);
+            request.setMode(0);
+            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(FakerUtils.fake(NodeDO.class));
+            DomainOuterClass.CreateDomainResponse createDomainResponse = buildCreateDomainResponse(0);
             Mockito.when(domainServiceStub.createDomain(Mockito.any())).thenReturn(createDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "createNode", CreateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -203,7 +221,10 @@ class NodeControllerTest extends ControllerTest {
     void createNodeByNodeAlreadyExistsException() throws Exception {
         assertErrorCode(() -> {
             CreateNodeRequest request = FakerUtils.fake(CreateNodeRequest.class);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_CREATE));
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            request.setMode(0);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "createNode", CreateNodeRequest.class)).
@@ -215,10 +236,13 @@ class NodeControllerTest extends ControllerTest {
     void createNodeByNodeCreateFailedException() throws Exception {
         assertErrorCode(() -> {
             CreateNodeRequest request = FakerUtils.fake(CreateNodeRequest.class);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(1);
+            request.setMode(0);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_CREATE));
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(1);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
-            Domain.CreateDomainResponse createDomainResponse = buildCreateDomainResponse(1);
+            DomainOuterClass.CreateDomainResponse createDomainResponse = buildCreateDomainResponse(1);
             Mockito.when(domainServiceStub.createDomain(Mockito.any())).thenReturn(createDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "createNode", CreateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -230,10 +254,13 @@ class NodeControllerTest extends ControllerTest {
         assertResponseWithEmptyData(() -> {
             String nodeId = FakerUtils.fake(String.class);
             NodeIdRequest request = new NodeIdRequest(nodeId);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_DELETE));
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
-            Domain.DeleteDomainResponse deleteDomainResponse = buildDeleteDomainResponse(0);
+            DomainOuterClass.DeleteDomainResponse deleteDomainResponse = buildDeleteDomainResponse(0);
             Mockito.when(domainServiceStub.deleteDomain(Mockito.any())).thenReturn(deleteDomainResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "deleteNode", NodeIdRequest.class)).
@@ -246,7 +273,10 @@ class NodeControllerTest extends ControllerTest {
         assertResponseWithEmptyData(() -> {
             String nodeId = FakerUtils.fake(String.class);
             NodeIdRequest request = new NodeIdRequest(nodeId);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(1);
+            request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_DELETE));
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(1);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "deleteNode", NodeIdRequest.class)).
@@ -259,10 +289,13 @@ class NodeControllerTest extends ControllerTest {
         assertErrorCode(() -> {
             String nodeId = FakerUtils.fake(String.class);
             NodeIdRequest request = new NodeIdRequest(nodeId);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_DELETE));
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
-            Domain.DeleteDomainResponse deleteDomainResponse = buildDeleteDomainResponse(1);
+            DomainOuterClass.DeleteDomainResponse deleteDomainResponse = buildDeleteDomainResponse(1);
             Mockito.when(domainServiceStub.deleteDomain(Mockito.any())).thenReturn(deleteDomainResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "deleteNode", NodeIdRequest.class)).
@@ -278,6 +311,9 @@ class NodeControllerTest extends ControllerTest {
             request.setNameFilter("alice");
             request.setPageSize(20);
             request.setPageNumber(1);
+            request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_LIST));
 
             List<ProjectResultDO> projectResultDOS = buildProjectResultDOList();
             Mockito.when(resultRepository.findByNodeId(Mockito.anyString())).thenReturn(projectResultDOS);
@@ -298,6 +334,9 @@ class NodeControllerTest extends ControllerTest {
             request.setNameFilter("alice");
             request.setPageSize(20);
             request.setPageNumber(1);
+            request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_LIST));
 
             List<ProjectResultDO> projectResultDOS = buildProjectResultDOList();
             Mockito.when(resultRepository.findByNodeId(Mockito.anyString())).thenReturn(projectResultDOS);
@@ -318,6 +357,9 @@ class NodeControllerTest extends ControllerTest {
             request.setNameFilter("alice");
             request.setPageSize(20);
             request.setPageNumber(2);
+            request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_LIST));
 
             List<ProjectResultDO> projectResultDOS = buildProjectResultDOList();
             Mockito.when(resultRepository.findByNodeId(Mockito.anyString())).thenReturn(projectResultDOS);
@@ -337,10 +379,13 @@ class NodeControllerTest extends ControllerTest {
             request.setNodeId("alice");
             request.setDomainDataId("alice-ref1");
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_DETAIL));
+
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);
             Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
 
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(ProjectDO.builder().projectId(PROJECT_ID).build()));
+            Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(buildNodeDOList().get(0));
 
             List<ProjectResultDO> projectResultDOS = buildProjectResultDOList();
             Mockito.when(resultRepository.findByNodeIdAndRefId(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(projectResultDOS.get(0)));
@@ -366,6 +411,8 @@ class NodeControllerTest extends ControllerTest {
             request.setNodeId("alice");
             request.setDomainDataId("alice-ref1");
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_DETAIL));
+
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);
             Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
 
@@ -380,6 +427,8 @@ class NodeControllerTest extends ControllerTest {
             GetNodeResultDetailRequest request = FakerUtils.fake(GetNodeResultDetailRequest.class);
             request.setNodeId("alice");
             request.setDomainDataId("alice-ref1");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_DETAIL));
 
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);
             Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
@@ -398,6 +447,8 @@ class NodeControllerTest extends ControllerTest {
             GetNodeResultDetailRequest request = FakerUtils.fake(GetNodeResultDetailRequest.class);
             request.setNodeId("alice");
             request.setDomainDataId("alice-ref1");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_DETAIL));
 
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);
             Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
@@ -418,6 +469,8 @@ class NodeControllerTest extends ControllerTest {
             GetNodeResultDetailRequest request = FakerUtils.fake(GetNodeResultDetailRequest.class);
             request.setNodeId("alice");
             request.setDomainDataId("alice-ref1");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_DETAIL));
 
             List<ProjectResultDO> projectResultDOS = buildProjectResultDOList();
             Mockito.when(resultRepository.findByNodeIdAndRefId(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(projectResultDOS.get(0)));
@@ -441,6 +494,8 @@ class NodeControllerTest extends ControllerTest {
             request.setNodeId("alice");
             request.setDomainDataId("alice-ref1");
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_DETAIL));
+
             List<ProjectResultDO> projectResultDOS = buildProjectResultDOList();
             Mockito.when(resultRepository.findByNodeIdAndRefId(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(projectResultDOS.get(0)));
 
@@ -462,6 +517,8 @@ class NodeControllerTest extends ControllerTest {
             GetNodeResultDetailRequest request = FakerUtils.fake(GetNodeResultDetailRequest.class);
             request.setNodeId("alice");
             request.setDomainDataId("alice-ref1");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_DETAIL));
 
             List<ProjectResultDO> projectResultDOS = buildProjectResultDOList();
             Mockito.when(resultRepository.findByNodeIdAndRefId(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(projectResultDOS.get(0)));
@@ -486,6 +543,8 @@ class NodeControllerTest extends ControllerTest {
             request.setNodeId("alice");
             request.setDomainDataId("alice-ref1");
 
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_DETAIL));
+
             List<ProjectResultDO> projectResultDOS = buildProjectResultDOList();
             Mockito.when(resultRepository.findByNodeIdAndRefId(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(projectResultDOS.get(0)));
 
@@ -508,6 +567,8 @@ class NodeControllerTest extends ControllerTest {
             UpdateNodeRequest request = FakerUtils.fake(UpdateNodeRequest.class);
             request.setNodeId("alice");
             request.setNetAddress("127.0.0.1:28080");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_UPDATE));
             NodeDO alice = NodeDO.builder().nodeId(request.getNodeId()).build();
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "update", UpdateNodeRequest.class)).
@@ -521,6 +582,8 @@ class NodeControllerTest extends ControllerTest {
             UpdateNodeRequest request = FakerUtils.fake(UpdateNodeRequest.class);
             request.setNodeId("alice");
             request.setNetAddress("127.0.0.1:28080");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_UPDATE));
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(null);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "update", UpdateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -534,13 +597,15 @@ class NodeControllerTest extends ControllerTest {
             request.setSearch("");
             request.setPage(1);
             request.setSize(10);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_PAGE));
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             List<NodeDO> list = new ArrayList<>();
             list.add(alice);
             Page<NodeDO> page = new PageImpl<>(list);
             Mockito.when(nodeRepository.findAll(Specification.anyOf(), request.of())).thenReturn(page);
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "page", PageNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -554,11 +619,13 @@ class NodeControllerTest extends ControllerTest {
             request.setSearch("");
             request.setPage(1);
             request.setSize(10);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_PAGE));
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Page<NodeDO> page = new PageImpl<>(buildNodeDOList());
             Mockito.when(nodeRepository.findAll(Mockito.any(Specification.class), Mockito.any(Pageable.class))).thenReturn(page);
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "page", PageNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -572,11 +639,13 @@ class NodeControllerTest extends ControllerTest {
             request.setSearch("");
             request.setPage(1);
             request.setSize(10);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_PAGE));
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Page<NodeDO> page = new PageImpl<>(buildNodeDOList());
             Mockito.when(nodeRepository.findAll(Mockito.any(Specification.class), Mockito.any(Pageable.class))).thenReturn(page);
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(null);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "page", PageNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -588,9 +657,11 @@ class NodeControllerTest extends ControllerTest {
         assertResponse(() -> {
             NodeIdRequest request = FakerUtils.fake(NodeIdRequest.class);
             request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_GET));
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "get", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -602,8 +673,10 @@ class NodeControllerTest extends ControllerTest {
         assertErrorCode(() -> {
             NodeIdRequest request = FakerUtils.fake(NodeIdRequest.class);
             request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_GET));
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(null);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "get", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -615,9 +688,11 @@ class NodeControllerTest extends ControllerTest {
         assertResponse(() -> {
             NodeIdRequest request = FakerUtils.fake(NodeIdRequest.class);
             request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_GET));
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "get", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -629,12 +704,14 @@ class NodeControllerTest extends ControllerTest {
         assertResponse(() -> {
             NodeTokenRequest request = FakerUtils.fake(NodeTokenRequest.class);
             request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_TOKEN));
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
             queryDomainResponse = queryDomainResponse.toBuilder().setData(
-                    Domain.QueryDomainResponseData.newBuilder().addDeployTokenStatuses(
-                            Domain.DeployTokenStatus.newBuilder().setToken("123").setState("used").buildPartial()).build()).build();
+                    DomainOuterClass.QueryDomainResponseData.newBuilder().addDeployTokenStatuses(
+                            DomainOuterClass.DeployTokenStatus.newBuilder().setToken("123").setState("used").buildPartial()).build()).build();
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "token", NodeTokenRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -646,9 +723,11 @@ class NodeControllerTest extends ControllerTest {
         assertErrorCode(() -> {
             NodeTokenRequest request = FakerUtils.fake(NodeTokenRequest.class);
             request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_TOKEN));
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "token", NodeTokenRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -660,9 +739,11 @@ class NodeControllerTest extends ControllerTest {
         assertResponse(() -> {
             NodeIdRequest request = FakerUtils.fake(NodeIdRequest.class);
             request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_REFRESH));
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "refresh", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -674,9 +755,11 @@ class NodeControllerTest extends ControllerTest {
         assertResponse(() -> {
             NodeIdRequest request = FakerUtils.fake(NodeIdRequest.class);
             request.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_REFRESH));
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
-            Domain.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
+            DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "refresh", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));

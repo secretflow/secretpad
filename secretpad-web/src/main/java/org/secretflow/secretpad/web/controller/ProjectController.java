@@ -16,11 +16,17 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.annotation.resource.ApiResource;
+import org.secretflow.secretpad.common.annotation.resource.DataResource;
+import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
+import org.secretflow.secretpad.common.enums.DataResourceTypeEnum;
 import org.secretflow.secretpad.service.GraphService;
+import org.secretflow.secretpad.service.NodeService;
 import org.secretflow.secretpad.service.ProjectService;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
 import org.secretflow.secretpad.service.model.graph.GraphNodeOutputVO;
 import org.secretflow.secretpad.service.model.graph.GraphNodeTaskLogsVO;
+import org.secretflow.secretpad.service.model.node.NodeVO;
 import org.secretflow.secretpad.service.model.project.*;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -44,6 +50,9 @@ public class ProjectController {
     @Autowired
     private GraphService graphService;
 
+    @Autowired
+    private NodeService nodeService;
+
     /**
      * Create a new project api
      *
@@ -51,6 +60,7 @@ public class ProjectController {
      * @return successful SecretPadResponse with create project view object
      */
     @ResponseBody
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_CREATE)
     @PostMapping(value = "/create", consumes = "application/json")
     @Operation(summary = "create a new project", description = "create a new project")
     public SecretPadResponse<CreateProjectVO> createProject(@Valid @RequestBody CreateProjectRequest request) {
@@ -65,6 +75,7 @@ public class ProjectController {
     @ResponseBody
     @PostMapping(value = "/list", consumes = "application/json")
     @Operation(summary = "list project", description = "list project")
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_LIST)
     public SecretPadResponse<List<ProjectVO>> listProject() {
         return SecretPadResponse.success(projectService.listProject());
     }
@@ -78,6 +89,8 @@ public class ProjectController {
     @ResponseBody
     @PostMapping(value = "/get", consumes = "application/json")
     @Operation(summary = "query project detail", description = "query project detail")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_GET)
     public SecretPadResponse<ProjectVO> getProject(@Valid @RequestBody GetProjectRequest request) {
         return SecretPadResponse.success(projectService.getProject(request.getProjectId()));
     }
@@ -91,6 +104,8 @@ public class ProjectController {
     @ResponseBody
     @PostMapping(value = "/update", consumes = "application/json")
     @Operation(summary = "update project", description = "update project")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_UPDATE)
     public SecretPadResponse<Void> updateProject(@Valid @RequestBody UpdateProjectRequest request) {
         projectService.updateProject(request);
         return SecretPadResponse.success();
@@ -105,6 +120,8 @@ public class ProjectController {
     @ResponseBody
     @PostMapping(value = "/delete", consumes = "application/json")
     @Operation(summary = "delete project", description = "delete project")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_DELETE)
     public SecretPadResponse<Void> deleteProject(@Valid @RequestBody GetProjectRequest request) {
         projectService.deleteProject(request.getProjectId());
         return SecretPadResponse.success();
@@ -119,6 +136,8 @@ public class ProjectController {
     @ResponseBody
     @PostMapping(value = "/inst/add")
     @Operation(summary = "add institution to the project", description = "add institution to the project")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_ADD_INST)
     public SecretPadResponse<Object> addProjectInst(@Valid @RequestBody AddInstToProjectRequest request) {
         projectService.addInstToProject(request);
         return SecretPadResponse.success();
@@ -134,6 +153,8 @@ public class ProjectController {
     @ResponseBody
     @PostMapping(value = "/node/add")
     @Operation(summary = "add node to the project", description = "add node to the project")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_ADD_NODE)
     public SecretPadResponse<Object> addProjectNode(@Valid @RequestBody AddNodeToProjectRequest request) {
         projectService.addNodeToProject(request);
         return SecretPadResponse.success();
@@ -149,6 +170,8 @@ public class ProjectController {
     @ResponseBody
     @PostMapping(value = "/datatable/add")
     @Operation(summary = "add datatable to the project", description = "add datatable to the project")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_ADD_TABLE)
     public SecretPadResponse<Object> addProjectDatatable(@Valid @RequestBody AddProjectDatatableRequest request) {
         projectService.addDatatableToProject(request);
         return SecretPadResponse.success();
@@ -162,6 +185,8 @@ public class ProjectController {
      */
     @ResponseBody
     @PostMapping(value = "/datatable/delete")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_DATATABLE_DELETE)
     @Operation(summary = "delete datatable and cancel datatable authorization in the project", description = "delete datatable and cancel datatable authorization in the project")
     public SecretPadResponse<Object> deleteProjectDatatable(@Valid @RequestBody DeleteProjectDatatableRequest request) {
         projectService.deleteDatatableToProject(request);
@@ -176,6 +201,8 @@ public class ProjectController {
      */
     @ResponseBody
     @PostMapping(value = "/datatable/get")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_DATATABLE_GET)
     @Operation(summary = "query project datatable detail", description = "query project datatable detail")
     public SecretPadResponse<Object> getProjectDatatable(@Valid @RequestBody GetProjectDatatableRequest request) {
         return SecretPadResponse.success(projectService.getProjectDatatable(request));
@@ -190,6 +217,8 @@ public class ProjectController {
     @ResponseBody
     @PostMapping(value = "/job/list")
     @Operation(summary = "project job list", description = "project job list")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_JOB_LIST)
     public SecretPadResponse<PageResponse<ProjectJobSummaryVO>> listJob(@Valid @RequestBody ListProjectJobRequest request) {
         return SecretPadResponse.success(projectService.listProjectJob(request));
     }
@@ -203,6 +232,8 @@ public class ProjectController {
     @ResponseBody
     @PostMapping(value = "/job/get")
     @Operation(summary = "project job detail", description = "project job detail")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_JOB_GET)
     public SecretPadResponse<ProjectJobVO> getJob(@Valid @RequestBody GetProjectJobRequest request) {
         return SecretPadResponse.success(projectService.getProjectJob(request.getProjectId(), request.getJobId()));
     }
@@ -215,6 +246,8 @@ public class ProjectController {
      */
     @ResponseBody
     @PostMapping(value = "/job/stop")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_JOB_STOP)
     @Operation(summary = "stop project job", description = "stop project job")
     public SecretPadResponse<Void> stopJob(@Valid @RequestBody StopProjectJobTaskRequest request) {
         projectService.stopProjectJob(request);
@@ -229,6 +262,8 @@ public class ProjectController {
      */
     @ResponseBody
     @PostMapping(value = "/job/task/logs")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_TASK_LOGS)
     @Operation(summary = "project job task logs", description = "project job task logs")
     public SecretPadResponse<GraphNodeTaskLogsVO> getJobLog(@Valid @RequestBody GetProjectJobTaskLogRequest request) {
         return SecretPadResponse.success(projectService.getProjectJobTaskLogs(request));
@@ -242,9 +277,22 @@ public class ProjectController {
      */
     @ResponseBody
     @PostMapping(value = "/job/task/output")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_TASK_OUTPUT)
     @Operation(summary = "project job task output", description = "project job task output")
     public SecretPadResponse<GraphNodeOutputVO> getJobTaskOutput(@Valid @RequestBody GetProjectJobTaskOutputRequest request) {
         return SecretPadResponse.success(graphService.getGraphNodeTaskOutputVO(request));
+    }
+
+    /**
+     * create project chose tee domain id ,this is for the chose list
+     *
+     * @return successful SecretPadResponse with tee node list view object
+     */
+    @PostMapping(value = "/tee/list")
+    @Operation(summary = "tee list", description = "tee list")
+    public SecretPadResponse<List<NodeVO>> getTeeNodeList() {
+        return SecretPadResponse.success(nodeService.listTeeNode());
     }
 
 }

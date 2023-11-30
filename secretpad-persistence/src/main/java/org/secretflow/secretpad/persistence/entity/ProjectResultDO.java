@@ -91,4 +91,14 @@ public class ProjectResultDO extends BaseAggregationRoot<ProjectResultDO> {
         @Column(name = "ref_id", nullable = false, length = 64)
         private String refId;
     }
+
+    @Override
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
+
+    @Override
+    public String getNodeId() {
+        return this.upk.nodeId;
+    }
 }

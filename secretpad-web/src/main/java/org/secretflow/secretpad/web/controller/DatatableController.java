@@ -17,6 +17,10 @@
 package org.secretflow.secretpad.web.controller;
 
 
+import org.secretflow.secretpad.common.annotation.resource.DataResource;
+import org.secretflow.secretpad.common.annotation.resource.ApiResource;
+import org.secretflow.secretpad.common.enums.DataResourceTypeEnum;
+import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
 import org.secretflow.secretpad.service.DatatableService;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
 import org.secretflow.secretpad.service.model.datatable.*;
@@ -46,6 +50,8 @@ public class DatatableController {
      */
     @ResponseBody
     @PostMapping(value = "/list", consumes = "application/json")
+    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @ApiResource(code = ApiResourceCodeConstants.DATATABLE_LIST)
     public SecretPadResponse<DatatableListVO> listDatatables(@RequestBody @Valid ListDatatableRequest request) {
         return SecretPadResponse.success(datatableService.listDatatablesByNodeId(request));
     }
@@ -58,6 +64,8 @@ public class DatatableController {
      */
     @ResponseBody
     @PostMapping(value = "/get", consumes = "application/json")
+    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @ApiResource(code = ApiResourceCodeConstants.DATATABLE_GET)
     public SecretPadResponse<DatatableVO> getDatatable(@RequestBody @Valid GetDatatableRequest request) {
         return SecretPadResponse.success(datatableService.getDatatable(request));
     }
@@ -69,8 +77,22 @@ public class DatatableController {
      * @return successful SecretPadResponse with null data
      */
     @PostMapping(value = "/delete", consumes = "application/json")
+    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @ApiResource(code = ApiResourceCodeConstants.DATATABLE_DELETE)
     public SecretPadResponse deleteDatatable(@RequestBody @Valid DeleteDatatableRequest request) {
         datatableService.deleteDatatable(request);
+        return SecretPadResponse.success();
+    }
+
+    /**
+     * Push datable to tee node api
+     *
+     * @param request push datable to tee node request
+     * @return successful SecretPadResponse with null data
+     */
+    @PostMapping(value = "/pushToTee", consumes = "application/json")
+    public SecretPadResponse pushDatatableToTeeNode(@RequestBody @Valid PushDatatableToTeeRequest request) {
+        datatableService.pushDatatableToTeeNode(request);
         return SecretPadResponse.success();
     }
 

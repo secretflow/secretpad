@@ -18,7 +18,6 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.InstDO;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -28,5 +27,5 @@ import org.springframework.stereotype.Repository;
  * @date 2023/5/30
  */
 @Repository
-public interface InstRepository extends JpaRepository<InstDO, String> {
+public interface InstRepository extends BaseRepository<InstDO, String> {
 }

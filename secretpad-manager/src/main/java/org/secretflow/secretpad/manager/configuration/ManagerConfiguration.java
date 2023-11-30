@@ -62,6 +62,7 @@ public class ManagerConfiguration {
      * @param ruleRepository
      * @param modelRepository
      * @param reportRepository
+     * @param managementRepository
      * @param jobStub
      * @return abstract job manager
      */
@@ -75,9 +76,10 @@ public class ManagerConfiguration {
             ProjectRuleRepository ruleRepository,
             ProjectModelRepository modelRepository,
             ProjectReportRepository reportRepository,
+            TeeNodeDatatableManagementRepository managementRepository,
             JobServiceGrpc.JobServiceBlockingStub jobStub
     ) {
-        return new JobManager(projectJobRepository, datatableManager, resultRepository, fedTableRepository, datatableRepository, ruleRepository, modelRepository, reportRepository, jobStub);
+        return new JobManager(projectJobRepository, datatableManager, resultRepository, fedTableRepository, datatableRepository, ruleRepository, modelRepository, reportRepository, managementRepository, jobStub);
     }
 
     /**
@@ -94,3 +96,4 @@ public class ManagerConfiguration {
     }
 
 }
+

@@ -16,6 +16,10 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.annotation.resource.ApiResource;
+import org.secretflow.secretpad.common.annotation.resource.DataResource;
+import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
+import org.secretflow.secretpad.common.enums.DataResourceTypeEnum;
 import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.service.GraphService;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
@@ -30,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Graph controller
@@ -51,6 +56,7 @@ public class GraphController {
      */
     @PostMapping("/component/i18n")
     @Operation(summary = "component international config")
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_COMM_I18N)
     public SecretPadResponse<Object> listComponentI18n() {
         return SecretPadResponse.success(graphService.listComponentI18n());
     }
@@ -62,20 +68,9 @@ public class GraphController {
      */
     @PostMapping("/component/list")
     @Operation(summary = "component list")
-    public SecretPadResponse<CompListVO> listComponents() {
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_COMM_LIST)
+    public SecretPadResponse<Map<String, CompListVO>> listComponents() {
         return SecretPadResponse.success(graphService.listComponents());
-    }
-
-    /**
-     * Query component detail api
-     *
-     * @param request get component request
-     * @return successful SecretPadResponse with component detail
-     */
-    @Operation(summary = "component detail")
-    @PostMapping("/component/get")
-    public SecretPadResponse<Object> getComponent(@Valid @RequestBody GetComponentRequest request) {
-        return SecretPadResponse.success(ProtoUtils.protoToMap(graphService.getComponent(request)));
     }
 
     /**
@@ -86,6 +81,7 @@ public class GraphController {
      */
     @Operation(summary = "component detail list")
     @PostMapping("/component/batch")
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_COMM_BATH)
     public SecretPadResponse<Object> batchGetComponent(@Valid @RequestBody List<GetComponentRequest> request) {
         return SecretPadResponse.success(ProtoUtils.protosToListMap(graphService.batchGetComponent(request)));
     }
@@ -98,6 +94,8 @@ public class GraphController {
      */
     @Operation(summary = "create graph")
     @PostMapping("/graph/create")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_CREATE)
     public SecretPadResponse<CreateGraphVO> createGraph(@Valid @RequestBody CreateGraphRequest request) {
         return SecretPadResponse.success(graphService.createGraph(request));
     }
@@ -110,6 +108,8 @@ public class GraphController {
      */
     @Operation(summary = "delete graph")
     @PostMapping("/graph/delete")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_DELETE)
     public SecretPadResponse deleteGraph(@Valid @RequestBody DeleteGraphRequest request) {
         graphService.deleteGraph(request);
         return SecretPadResponse.success();
@@ -123,6 +123,8 @@ public class GraphController {
      */
     @Operation(summary = "graph list")
     @PostMapping("/graph/list")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_LIST)
     public SecretPadResponse<List<GraphMetaVO>> listGraph(@Valid @RequestBody ListGraphRequest request) {
         return SecretPadResponse.success(graphService.listGraph(request));
     }
@@ -135,6 +137,8 @@ public class GraphController {
      */
     @Operation(summary = "update graph meta information")
     @PostMapping("/graph/meta/update")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_META_UPDATE)
     public SecretPadResponse updateGraphMeta(@Valid @RequestBody UpdateGraphMetaRequest request) {
         graphService.updateGraphMeta(request);
         return SecretPadResponse.success();
@@ -148,6 +152,8 @@ public class GraphController {
      */
     @Operation(summary = "fully update graph")
     @PostMapping("/graph/update")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_UPDATE)
     public SecretPadResponse fullUpdateGraph(@Valid @RequestBody FullUpdateGraphRequest request) {
         graphService.fullUpdateGraph(request);
         return SecretPadResponse.success();
@@ -161,6 +167,8 @@ public class GraphController {
      */
     @Operation(summary = "update graph node")
     @PostMapping("/graph/node/update")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_NODE_UPDATE)
     public SecretPadResponse<Void> updateGraphNode(@Valid @RequestBody UpdateGraphNodeRequest request) {
         graphService.updateGraphNode(request);
         return SecretPadResponse.success();
@@ -174,6 +182,8 @@ public class GraphController {
      */
     @Operation(summary = "start graph")
     @PostMapping("/graph/start")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_START)
     public SecretPadResponse<StartGraphVO> startGraph(@Valid @RequestBody StartGraphRequest request) {
         return SecretPadResponse.success(graphService.startGraph(request));
     }
@@ -186,6 +196,8 @@ public class GraphController {
      */
     @Operation(summary = "graph node status")
     @PostMapping("/graph/node/status")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_NODE_STATUS)
     public SecretPadResponse<GraphStatus> listGraphNodeStatus(@Valid @RequestBody ListGraphNodeStatusRequest request) {
         return SecretPadResponse.success(graphService.listGraphNodeStatus(request));
     }
@@ -198,6 +210,8 @@ public class GraphController {
      */
     @Operation(summary = "stop graph")
     @PostMapping("/graph/stop")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_STOP)
     public SecretPadResponse<Void> stopGraphNode(@Valid @RequestBody StopGraphNodeRequest request) {
         graphService.stopGraphNode(request);
         return SecretPadResponse.success();
@@ -211,6 +225,8 @@ public class GraphController {
      */
     @Operation(summary = "graph detail")
     @PostMapping("/graph/detail")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_DETAIL)
     public SecretPadResponse<GraphDetailVO> getGraphDetail(@Valid @RequestBody GetGraphRequest request) {
         return SecretPadResponse.success(graphService.getGraphDetail(request));
     }
@@ -223,6 +239,8 @@ public class GraphController {
      */
     @Operation(summary = "graph node output")
     @PostMapping("/graph/node/output")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_NODE_OUTPUT)
     public SecretPadResponse<GraphNodeOutputVO> getGraphNodeOutput(@Valid @RequestBody GraphNodeOutputRequest request) {
         return SecretPadResponse.success(graphService.getGraphNodeOutput(request));
     }
@@ -235,6 +253,8 @@ public class GraphController {
      */
     @Operation(summary = "graph node logs")
     @PostMapping("/graph/node/logs")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_NODE_LOGS)
     public SecretPadResponse<GraphNodeTaskLogsVO> getGraphNodeLogs(@Valid @RequestBody GraphNodeLogsRequest request) {
         return SecretPadResponse.success(graphService.getGraphNodeLogs(request));
     }

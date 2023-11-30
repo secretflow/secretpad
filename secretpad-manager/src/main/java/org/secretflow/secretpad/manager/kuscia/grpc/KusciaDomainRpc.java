@@ -16,22 +16,24 @@
 
 package org.secretflow.secretpad.manager.kuscia.grpc;
 
-import org.secretflow.v1alpha1.kusciaapi.Domain;
+import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 
 /**
  * @author yutu
  * @date 2023/08/09
  */
 public interface KusciaDomainRpc extends KusciaRpc {
-    Domain.CreateDomainResponse createDomain(Domain.CreateDomainRequest request);
+    DomainOuterClass.CreateDomainResponse createDomain(DomainOuterClass.CreateDomainRequest request);
 
-    Domain.QueryDomainResponse queryDomain(Domain.QueryDomainRequest request);
+    DomainOuterClass.QueryDomainResponse queryDomain(DomainOuterClass.QueryDomainRequest request);
 
-    Domain.QueryDomainResponse queryDomainNoCheck(Domain.QueryDomainRequest request);
+    DomainOuterClass.QueryDomainResponse queryDomainNoCheck(DomainOuterClass.QueryDomainRequest request);
 
-    Domain.UpdateDomainResponse updateDomain(Domain.UpdateDomainRequest request);
+    DomainOuterClass.UpdateDomainResponse updateDomain(DomainOuterClass.UpdateDomainRequest request);
 
-    Domain.DeleteDomainResponse deleteDomain(Domain.DeleteDomainRequest request);
+    DomainOuterClass.DeleteDomainResponse deleteDomain(DomainOuterClass.DeleteDomainRequest request);
 
-    Domain.BatchQueryDomainStatusResponse batchQueryDomainStatus(Domain.BatchQueryDomainStatusRequest request);
+    DomainOuterClass.BatchQueryDomainResponse batchQueryDomain(DomainOuterClass.BatchQueryDomainRequest request);
+
+    DomainOuterClass.BatchQueryDomainResponse batchQueryDomainNoCheck(DomainOuterClass.BatchQueryDomainRequest request);
 }

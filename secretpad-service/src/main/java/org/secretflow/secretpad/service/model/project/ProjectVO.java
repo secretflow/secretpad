@@ -69,8 +69,13 @@ public class ProjectVO {
     @Schema(description = "start time of the project")
     private String gmtCreate;
     /**
-     * computeMode pipeline: ,hub:
+     * computeMode mpc,tee
      */
     @Schema(description = "computeMode")
     private String computeMode;
+    /**
+     * tee node domainId
+     */
+    @Schema(description = "teeNodeId", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String teeNodeId;
 }

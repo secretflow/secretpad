@@ -104,7 +104,7 @@ public class NodeRouterVO {
 
     public static NodeRouterVO fromDo(NodeRouteDO nodeRouteDO) {
         NodeRouterVO nodeRouterVO = new NodeRouterVO();
-        nodeRouterVO.setRouteId(String.valueOf(nodeRouteDO.getId()));
+        nodeRouterVO.setRouteId(nodeRouteDO.getRouteId());
         nodeRouterVO.setSrcNodeId(nodeRouteDO.getSrcNodeId());
         nodeRouterVO.setDstNodeId(nodeRouteDO.getDstNodeId());
         nodeRouterVO.setSrcNetAddress(nodeRouteDO.getSrcNetAddress());

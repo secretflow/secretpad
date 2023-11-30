@@ -56,6 +56,21 @@
             <groupId>org.javatuples</groupId>
             <artifactId>javatuples</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.squareup.okio</groupId>
+            <artifactId>okio-jvm</artifactId>
+            <scope>compile</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.squareup.okhttp3</groupId>
+            <artifactId>okhttp-sse</artifactId>
+            <exclusions>
+                <exclusion>
+                    <groupId>com.squareup.okio</groupId>
+                    <artifactId>okio-jvm</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
     </dependencies>
 
     <build>
@@ -67,6 +82,7 @@
                     <protoSourceRoot>../proto</protoSourceRoot>
                     <includes>
                         <include>**/secretflow/protos/**</include>
+                        <include>**/secretflow/spec/v1/**</include>
                     </includes>
                 </configuration>
             </plugin>

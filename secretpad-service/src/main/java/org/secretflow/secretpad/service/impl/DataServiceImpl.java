@@ -17,12 +17,16 @@
 package org.secretflow.secretpad.service.impl;
 
 
+import org.secretflow.secretpad.common.dto.UserContextDTO;
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
+import org.secretflow.secretpad.common.errorcode.AuthErrorCode;
 import org.secretflow.secretpad.common.errorcode.DataErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.CompressUtils;
 import org.secretflow.secretpad.common.util.SafeFileUtils;
 import org.secretflow.secretpad.common.util.TypeConvertUtils;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.manager.integration.data.AbstractDataManager;
 import org.secretflow.secretpad.manager.integration.model.NodeResultDTO;
 import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
@@ -56,7 +60,7 @@ public class DataServiceImpl implements DataService {
 
     private final static List<String> SUPPORT_FILE_TYPE = Arrays.asList(".csv");
 
-    private final static String DEFAULT_DATASOURCE = "default-data-source";
+    public final static String DEFAULT_DATASOURCE = "default-data-source";
 
     private final static String DEFAULT_DATASOURCE_TYPE = "localfs";
 
@@ -75,6 +79,7 @@ public class DataServiceImpl implements DataService {
 
     @Override
     public UploadDataResultVO upload(MultipartFile file, String nodeId) {
+        checkDataPermissions(nodeId);
         String fileName = file.getOriginalFilename();
         fileNameCheck(fileName);
         nodeIdValidCheck(nodeId);
@@ -264,5 +269,14 @@ public class DataServiceImpl implements DataService {
         List<DataSourceVO> list = new ArrayList<>();
         list.add(DataSourceVO.builder().name("default-data-source").path("/home/kuscia/var/storage/data").build());
         return list;
+    }
+
+    private void checkDataPermissions(String nodeId) {
+        UserContextDTO user = UserContext.getUser();
+        if (user.getPlatformType().equals(PlatformTypeEnum.EDGE)) {
+            if (!user.getOwnerId().equals(nodeId)) {
+                throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "no Permissions");
+            }
+        }
     }
 }

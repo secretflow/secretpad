@@ -17,9 +17,11 @@
 package org.secretflow.secretpad.service.model.datatable;
 
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
+import org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,6 +39,9 @@ import java.util.stream.Collectors;
 @NoArgsConstructor
 public class DatatableVO {
 
+    private static final String DATA_MESH_DATATABLE_TYPE = "table";
+    private static final String DATATABLE_TYPE = "CSV";
+
     /**
      * Datatable id
      */
@@ -53,6 +58,17 @@ public class DatatableVO {
      */
     @Schema(description = "datatable status")
     private String status;
+    /**
+     * Datatable push to tee status
+     * Status：FAILED/SUCCESS/RUNNING
+     */
+    @Schema(description = "datatable push to tee status")
+    private String pushToTeeStatus;
+    /**
+     * Datatable push to tee error message
+     */
+    @Schema(description = "datatable push to tee error message if failed")
+    private String pushToTeeErrMsg;
     /**
      * The data source id which it belongs to
      */
@@ -87,19 +103,22 @@ public class DatatableVO {
      *
      * @param dto          datatable data transfer object
      * @param authProjects authorized project list
+     * @param managementDO management data object
      * @return datatable view object
      */
-    public static DatatableVO from(DatatableDTO dto, List<AuthProjectVO> authProjects) {
+    public static DatatableVO from(DatatableDTO dto, List<AuthProjectVO> authProjects, TeeNodeDatatableManagementDO managementDO) {
         return DatatableVO.builder()
                 .datatableId(dto.getDatatableId())
                 .datatableName(dto.getDatatableName())
                 .status(dto.getStatus())
                 .datasourceId(dto.getDatasourceId())
                 .relativeUri(dto.getRelativeUri())
-                .type(dto.getType())
+                .type(StringUtils.equalsIgnoreCase(dto.getType(), DATA_MESH_DATATABLE_TYPE) ? DATATABLE_TYPE : dto.getType())
                 .description(dto.getAttributes().getOrDefault("description", ""))
                 .schema(dto.getSchema().stream().map(TableColumnVO::from).collect(Collectors.toList()))
                 .authProjects(authProjects)
+                .pushToTeeStatus(null == managementDO ? "" : managementDO.getStatus().name())
+                .pushToTeeErrMsg(null == managementDO ? "" : managementDO.getErrMsg())
                 .build();
     }
 }

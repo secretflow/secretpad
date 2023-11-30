@@ -307,7 +307,7 @@ public class CompressUtils {
     public static void createDirectory(String outputDir, String subDir) {
         File file = new File(outputDir);
         // the subdirectory is not empty
-        if (!(subDir == null || subDir.trim().equals(""))) {
+        if (!(subDir == null || "".equals(subDir.trim()))) {
             file = new File(outputDir + File.separator + subDir);
         }
         if (!file.exists()) {

@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.service;
 
+import org.secretflow.secretpad.common.dto.UserContextDTO;
+
 /**
  * User auth service interface
  *
@@ -31,7 +33,7 @@ public interface AuthService {
      * @param passwd user password
      * @return provisional token
      */
-    String login(String name, String passwd);
+    UserContextDTO login(String name, String passwd);
 
     /**
      * User logout and delete user token data

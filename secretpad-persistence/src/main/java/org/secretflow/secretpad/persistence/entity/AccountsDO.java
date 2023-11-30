@@ -16,13 +16,11 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
+import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 
 /**
  * User account data object
@@ -53,5 +51,18 @@ public class AccountsDO extends BaseAggregationRoot<AccountsDO> {
      */
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
+
+    /**
+     * CENTER or EDGE
+     */
+    @Column(name = "owner_type", nullable = false)
+    @Enumerated(EnumType.STRING)
+    private UserOwnerTypeEnum ownerType;
+
+    /**
+     * nodeId or 'kuscia-system'
+     */
+    @Column(name = "owner_id", nullable = false)
+    private String ownerId;
 
 }

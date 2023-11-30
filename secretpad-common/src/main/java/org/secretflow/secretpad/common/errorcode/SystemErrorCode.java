@@ -50,7 +50,19 @@ public enum SystemErrorCode implements ErrorCode {
     /**
      * http response 5xx error
      */
-    HTTP_5XX_ERROR(202011105);
+    HTTP_5XX_ERROR(202011105),
+
+    ENCODE_ERROR(202011106),
+
+    SIGNATURE_ERROR(2020111107),
+    /**
+     * sse error
+     */
+    SSE_ERROR(202011108),
+
+    REMOTE_CALL_ERROR(202011109),
+
+    ;
 
     private final int code;
 

@@ -16,18 +16,23 @@
 
 package org.secretflow.secretpad.service.configuration;
 
+import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.factory.JsonProtobufSourceFactory;
 import org.secretflow.secretpad.service.graph.JobChain;
 import org.secretflow.secretpad.service.graph.chain.AbstractJobHandler;
+import org.secretflow.secretpad.service.handler.VoteTypeHandler;
 
-import org.secretflow.proto.component.Comp;
+import com.secretflow.spec.v1.CompListDef;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * Configuration for service layer
@@ -45,7 +50,7 @@ public class ServiceConfiguration {
      * @throws IOException
      */
     @Bean
-    List<Comp.CompListDef> components(@Value("${component.spec.location:./config/components}") String componentLocation) throws IOException {
+    List<CompListDef> components(@Value("${component.spec.location:./config/components}") String componentLocation) throws IOException {
         JsonProtobufSourceFactory factory = new JsonProtobufSourceFactory(new String[]{componentLocation});
         return factory.load();
     }
@@ -59,5 +64,17 @@ public class ServiceConfiguration {
     @Bean
     JobChain jobChain(List<AbstractJobHandler> jobHandlers) {
         return new JobChain<>(jobHandlers);
+    }
+
+    @Bean
+    public Map<VoteTypeEnum, VoteTypeHandler> voteTypeHandlerMap(List<VoteTypeHandler> voteTypeHandlers) {
+        Map<VoteTypeEnum, VoteTypeHandler> voteTypeHandlerMap = new HashMap<>();
+        voteTypeHandlers.forEach(handler -> {
+            List<VoteTypeEnum> voteTypeEnums = handler.supportTypes();
+            if (!CollectionUtils.isEmpty(voteTypeEnums)) {
+                voteTypeEnums.forEach(enm -> voteTypeHandlerMap.put(enm, handler));
+            }
+        });
+        return voteTypeHandlerMap;
     }
 }

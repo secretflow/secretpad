@@ -186,3 +186,4 @@ public class DatatableManager extends AbstractDatatableManager {
     }
 
 }
+

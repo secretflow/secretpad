@@ -20,6 +20,8 @@ DB_PATH="/app/db/secretpad.sqlite"
 LOG_FILE_PATH_DEFAULT="/app/log/init.log"
 USER_NAME=""
 USER_PASSWD=""
+OWNER_TYPE="CENTER"
+OWNER_ID="kuscia-system"
 # log func
 function log() {
     echo -e "\033[32m[INFO]\033[0m\033[36m[$(date +%y/%m/%d-%H:%M:%S)]\033[0m $1"
@@ -72,8 +74,8 @@ function register(){
   local RET
   check_user_name "${USER_NAME}"
   password_hash=$(echo -n "${USER_PASSWD}" | sha256sum |cut -d " " -f 1)
-  log "username = ${USER_NAME}, password_hash = ${password_hash}"
-  sqlite3 ${DB_PATH} "insert into user_accounts (name, password_hash) values ('${USER_NAME}', '${password_hash}');"
+  log "username = ${USER_NAME}, password_hash = ${password_hash}, owner_type = ${OWNER_TYPE}, owner_id = ${OWNER_ID}"
+  sqlite3 ${DB_PATH} "insert into user_accounts (name, password_hash, owner_type, owner_id) values ('${USER_NAME}', '${password_hash}', '${OWNER_TYPE}', '${OWNER_ID}' );"
   log "User ${USER_NAME} is set!"
 }
 
@@ -118,7 +120,7 @@ Options:
   -p, --password            your password
 
 Examples:
-  bash register_account.sh -u 'admin' -p 'xxx'
+  bash register_account.sh -n 'admin' -p 'xxx'
 
 Note:
   !! Use single quote when pass the content or the special characters in password will be ignored.
@@ -135,7 +137,7 @@ function check_inputs() {
 }
 
 
-while getopts 'hn:p:' OPT; do
+while getopts 'hn:p:t:o:' OPT; do
   case ${OPT} in
     h)
       show_help
@@ -143,10 +145,19 @@ while getopts 'hn:p:' OPT; do
       ;;
     n)
       USER_NAME="${OPTARG}"
+      log "USER_NAME = ${OPTARG}"
       ;;
     p)
       USER_PASSWD="${OPTARG}"
       log "pwd = ${USER_PASSWD}"
+      ;;
+    t)
+      OWNER_TYPE="${OPTARG}"
+      log "type = ${OWNER_TYPE}"
+      ;;
+    o)
+      OWNER_ID="${OPTARG}"
+      log "OWNER_ID = ${OWNER_ID}"
       ;;
     ?) show_help;;
   esac

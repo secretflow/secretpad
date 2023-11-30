@@ -18,8 +18,9 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectInstDO;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 /**
  * Project inst repository
@@ -28,5 +29,7 @@ import org.springframework.stereotype.Repository;
  * @date 2023/5/31
  */
 @Repository
-public interface ProjectInstRepository extends JpaRepository<ProjectInstDO, ProjectInstDO.UPK> {
+public interface ProjectInstRepository extends BaseRepository<ProjectInstDO, ProjectInstDO.UPK>{
+
+    List<ProjectInstDO> findByUpkProjectId(String projectId);
 }

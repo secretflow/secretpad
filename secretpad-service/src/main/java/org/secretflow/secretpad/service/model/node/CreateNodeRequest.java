@@ -16,9 +16,13 @@
 
 package org.secretflow.secretpad.service.model.node;
 
+import org.secretflow.secretpad.common.constant.DomainConstants;
 import org.secretflow.secretpad.service.constant.Constants;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.*;
 
@@ -41,4 +45,13 @@ public class CreateNodeRequest {
     @Schema(description = "node name")
     @Pattern(regexp = Constants.NODE_NAME_PATTERN, message = "node name illegal")
     private String name;
+
+    /**
+     * node feature indicates by bit, bit0 - mpc | bit1 - tee | bit2 mpc&tee
+     */
+    @NotNull
+    @Min(0)
+    @Max(2)
+    @Schema(description = "node feature indicates by bit, bit0 - mpc | bit1 - tee | bit2 mpc&tee")
+    private Integer mode = DomainConstants.DomainModeEnum.mpc.code;
 }

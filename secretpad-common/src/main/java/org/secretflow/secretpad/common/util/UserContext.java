@@ -16,35 +16,40 @@
 
 package org.secretflow.secretpad.common.util;
 
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
+import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.errorcode.AuthErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
-
-import org.apache.commons.lang3.StringUtils;
 
 /**
  * @author yutu
  * @date 2023/08/09
  */
-public final class UserContext {
-    private static final ThreadLocal<String> USER = new ThreadLocal<>();
+@Setter
+@Getter
+@ToString
+public final class  UserContext {
+    private static final ThreadLocal<UserContextDTO> USER = new ThreadLocal<>();
 
     private UserContext() {
     }
 
     public static String getUserName() {
-        return getUser();
+        return getUser().getName();
     }
 
-    public static String getUser() {
-        String userName = USER.get();
-        if (StringUtils.isEmpty(userName)) {
+    public static UserContextDTO getUser() {
+        UserContextDTO userContextDTO = USER.get();
+        if (userContextDTO == null) {
             throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "auth failed");
         }
-        return userName;
+        return userContextDTO;
     }
 
-    public static void setBaseUser(String userName) {
-        USER.set(userName);
+    public static void setBaseUser(UserContextDTO userContextDTO) {
+        USER.set(userContextDTO);
     }
 
     public static void remove() {

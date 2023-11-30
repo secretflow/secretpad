@@ -55,3 +55,4 @@ public class CountProjection {
         return counts.stream().collect(Collectors.toMap(CountProjection::getId, CountProjection::getCount));
     }
 }
+

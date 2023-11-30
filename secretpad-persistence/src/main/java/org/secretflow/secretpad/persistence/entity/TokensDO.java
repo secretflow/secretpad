@@ -63,4 +63,11 @@ public class TokensDO extends BaseAggregationRoot<TokensDO> {
     @Column(name = "gmt_token")
     private LocalDateTime gmtToken;
 
+
+    /**
+     * session data
+     */
+    @Column(name = "session_data", nullable = true)
+    private String sessionData;
+
 }

@@ -26,14 +26,12 @@ import io.swagger.v3.oas.annotations.info.License;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 /**
  * @author yutu
  * @date 2023/08/08
  * @see <a href="https://swagger.io/docs/specification/authentication/cookie-authentication/"/>
  */
-@Profile({"dev", "test"})
 @OpenAPIDefinition(
         info = @Info(title = "Secretpad Restful API", version = "0.0.1-SNAPSHOT", license = @License(name = "Apache 2.0")),
         security = @SecurityRequirement(name = AuthConstants.TOKEN_NAME))

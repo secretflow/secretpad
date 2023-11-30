@@ -20,9 +20,10 @@ import org.secretflow.secretpad.service.model.graph.CompListVO;
 import org.secretflow.secretpad.service.model.graph.ComponentKey;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 
-import org.secretflow.proto.component.Comp;
+import com.secretflow.spec.v1.ComponentDef;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Component service interface
@@ -36,7 +37,7 @@ public interface ComponentService {
      *
      * @return component list view object
      */
-    CompListVO listComponents();
+    Map<String, CompListVO> listComponents();
 
     /**
      * Get component by component key
@@ -44,7 +45,7 @@ public interface ComponentService {
      * @param key component key
      * @return componentDef
      */
-    Comp.ComponentDef getComponent(ComponentKey key);
+    ComponentDef getComponent(ComponentKey key);
 
     /**
      * Batch get component list by component keys
@@ -52,7 +53,7 @@ public interface ComponentService {
      * @param keys component keys
      * @return componentDef list
      */
-    List<Comp.ComponentDef> batchGetComponent(List<ComponentKey> keys);
+    List<ComponentDef> batchGetComponent(List<ComponentKey> keys);
 
     /**
      * List components from international location file then collect to map

@@ -19,7 +19,14 @@
 KUSCIA_IMAGE=""
 SECRETPAD_IMAGE=""
 SECRETFLOW_IMAGE=""
+
+TEE_APP_IMAGE=""
+TEE_DM_IMAGE=""
+CAPSULE_MANAGER_SIM_IMAGE=""
+
 LITE_INSTALL_DIR="$HOME/kuscia/lite"
+TEE_DOMAIN="tee"
+
 set -e
 
 usage() {
@@ -32,7 +39,10 @@ lite OPTIONS:
     -i              [optional]  The IP address exposed by the domain. Usually the host IP, default is the IP address of interface eth0.
     -c              [optional]  The host directory used to store domain certificates, default is 'kuscia-{{DEPLOY_MODE}}-{{DOMAIN_ID}}-certs'. It will be mounted into the domain container.
     -h              [optional]  Show this help text.
-    -p              [optional]  The port exposed by domain, The port must NOT be occupied by other processes, default 10800
+    -p              [optional]  The port exposed by kuscia-lite-gateway, The port must NOT be occupied by other processes, default 10800
+    -s              [optional]  The port exposed by secretpad-edge, The port must NOT be occupied by other processes, default 10801
+    -k              [optional]  The port exposed by kuscia-lite-api-http, The port must NOT be occupied by other processes, default 40802
+    -g              [optional]  The port exposed by kuscia-lite-api-grpc, The port must NOT be occupied by other processes, default 40803
     -t              [mandatory] The deploy token, get this token from secretpad platform.
     -m              [mandatory] The master endpoint.
     -n              [mandatory] Domain id to be deployed.
@@ -40,13 +50,13 @@ lite OPTIONS:
 
 example:
     install.sh
-    install.sh lite -n alice-domain-id -m 'https://root-kuscia-master:1080' -t xdeploy-tokenx
+    install.sh lite -n alice-domain-id -m 'https://root-kuscia-master:1080' -t xdeploy-tokenx -p 10080 -s 10081
     "
 }
 
 mode="master"
 case  "$1" in
-master | lite )
+master | lite | tee)
   mode=$1
   shift
   ;;
@@ -55,6 +65,9 @@ esac
 domain_id=
 domain_host_ip=
 domain_host_port=
+edge_domain_host_port=
+lite_api_http_port=
+lite_api_grpc_port=
 domain_certs_dir=
 master_endpoint=
 token=
@@ -62,7 +75,7 @@ masterca=
 volume_path=$(pwd)
 install_dir=
 
-while getopts 'c:d:i:n:p:t:m:h' option; do
+while getopts 'c:d:i:n:p:s:t:m:k:g:h' option; do
   case "$option" in
   c)
     domain_certs_dir=$OPTARG
@@ -78,6 +91,15 @@ while getopts 'c:d:i:n:p:t:m:h' option; do
     ;;
   p)
     domain_host_port=$OPTARG
+    ;;
+  s)
+    edge_domain_host_port=$OPTARG
+    ;;
+  k)
+    lite_api_http_port=$OPTARG
+    ;;
+  g)
+    lite_api_grpc_port=$OPTARG
     ;;
   t)
     token=$OPTARG
@@ -106,75 +128,207 @@ while getopts 'c:d:i:n:p:t:m:h' option; do
 done
 shift $((OPTIND - 1))
 
-for file in images/*; do
-	if [ -f "$file" ]; then
-		echo "$file"
-		imageInfo="$(docker load <$file)"
-		echo "echo ${imageInfo}"
-		someimage=$(echo ${imageInfo} | sed "s/Loaded image: //")
-		if [[ $someimage == *kuscia* ]]; then
-			KUSCIA_IMAGE=$someimage
-		elif [[ $someimage == *secretpad* ]]; then
-			SECRETPAD_IMAGE=$someimage
-		elif [[ $someimage == *secretflow-lite* ]]; then
-			SECRETFLOW_IMAGE=$someimage
-		elif [[ $someimage == *sf-dev-anolis8* ]]; then
-	SECRETFLOW_IMAGE=$someimage
-    fi
-	fi
-done
-export KUSCIA_IMAGE=$KUSCIA_IMAGE
-export SECRETPAD_IMAGE=$SECRETPAD_IMAGE
-export SECRETFLOW_IMAGE=$SECRETFLOW_IMAGE
-# deploy master
-if [[ ${mode} == "master" ]]; then
-  docker run --rm -v $(pwd):/tmp/kuscia $KUSCIA_IMAGE cp -f /home/kuscia/scripts/deploy/start_standalone.sh /tmp/kuscia
+function init_images_from_files() {
+    for file in images/*; do
+    	if [ -f "$file" ]; then
+    		echo "$file"
+    		imageInfo="$(docker load <$file)"
+    		echo "echo ${imageInfo}"
+    		someimage=$(echo ${imageInfo} | sed "s/Loaded image: //")
+    		if [[ $someimage == *kuscia* ]]; then
+    			KUSCIA_IMAGE=$someimage
+    		elif [[ $someimage == *secretpad* ]]; then
+    			SECRETPAD_IMAGE=$someimage
+    		elif [[ $someimage == *secretflow-lite* ]]; then
+    			SECRETFLOW_IMAGE=$someimage
+    		elif [[ $someimage == *sf-dev-anolis8* ]]; then
+        	SECRETFLOW_IMAGE=$someimage
+        elif [[ $someimage == *sf-tee-dm-sim* ]]; then
+          TEE_DM_IMAGE=$someimage
+        elif [[ $someimage == *capsule-manager-sim* ]]; then
+          CAPSULE_MANAGER_SIM_IMAGE=$someimage
+        elif [[ $someimage == *teeapps-sim* ]]; then
+          TEE_APP_IMAGE=$someimage
+        fi
+    	fi
+    done
+}
+
+function start_master() {
+  docker run --rm -v $(pwd):/tmp/kuscia "$1" cp -f /home/kuscia/scripts/deploy/start_standalone.sh /tmp/kuscia
   echo "bash $(pwd)/start_standalone.sh -u web"
   bash $(pwd)/start_standalone.sh -u web
+}
+function start_secretpad() {
+    edge_opt="-n ${domain_id} -s ${edge_domain_host_port}"
+
+    # initialize start_edge.sh
+    docker run --rm --entrypoint /bin/bash -v $(pwd):/tmp/secretpad $SECRETPAD_IMAGE -c 'cp -R /app/scripts/start_edge.sh /tmp/secretpad/'
+    echo "bash $(pwd)/start_edge.sh ${edge_opt}"
+    bash $(pwd)/start_edge.sh ${edge_opt}
+}
+function loadTeeDmImage2Container() {
+  for file in images/*; do
+    if [ -f "$file" ]; then
+      someimage=$(basename "$file")
+      echo "echo ${someimage}"
+      if [[ $someimage == *sf-tee-dm-sim* ]]; then
+        tee_dm_image_tar=$someimage
+      	cp images/$tee_dm_image_tar /tmp/$tee_dm_image_tar
+      fi
+    fi
+  done
+  local container_id=$1
+  local image_tar=/tmp/$tee_dm_image_tar
+  local CTR_ROOT=/home/kuscia
+  docker exec -it $container_id ctr -a=${CTR_ROOT}/containerd/run/containerd.sock -n=k8s.io images import $image_tar
+}
+function start_lite() {
+  # deploy lite
+  if [[ ${domain_id} == "" ]]; then
+    printf "empty domain id\n" >&2
+    exit 1
+  fi
+
+  if [[ ${master_endpoint} == "" ]]; then
+    printf "empty master_endpoint \n" >&2
+    exit 1
+  fi
+
+  if [[ ${token} == "" ]]; then
+    printf "empty deploy token \n" >&2
+    exit 1
+  fi
+
+  if [[ ${domain_host_port} == "" ]]; then
+    domain_host_port="10080"
+  fi
+
+  if [[ ${edge_domain_host_port} == "" ]]; then
+    edge_domain_host_port="10081"
+  fi
+
+  if [[ ${lite_api_http_port} == "" ]]; then
+    lite_api_http_port="48082"
+  fi
+
+  if [[ ${lite_api_grpc_port} == "" ]]; then
+    lite_api_grpc_port="48083"
+  fi
+
+  if [[ ${install_dir} == "" ]]; then
+    install_dir=${LITE_INSTALL_DIR}
+  fi
+
+  # set intall dir of the deploy.sh
+  # the datapath is ${ROOT}/kuscia-${deploy_mode}-${DOMAIN_ID}-data
+  # the certpath is ${ROOT}/kuscia-${deploy_mode}-${DOMAIN_ID}-certs
+  export ROOT=${install_dir}
+
+  cmd_opt="-n ${domain_id} -m ${master_endpoint} -t ${token} -p ${domain_host_port} -k ${lite_api_http_port} -g ${lite_api_grpc_port}"
+
+  # set the datapath of lite is ${ROOT}/domain-id/data
+  domain_data_dir=${ROOT}/${domain_id}/data
+  cmd_opt="${cmd_opt} -d ${domain_data_dir}"
+  # set the certpath of lite is ${ROOT}/domain-id/certs
+  if [[ ${domain_certs_dir} == "" ]]; then
+    domain_certs_dir=${ROOT}/${domain_id}/certs
+  fi
+  cmd_opt="${cmd_opt} -c ${domain_certs_dir}"
+  # set host ip
+  if [[ ${domain_host_ip} != "" ]]; then
+    cmd_opt="${cmd_opt} -i ${domain_host_ip}"
+  fi
+
+  # copy deploy.sh from kuscia image
+  docker run --rm -v $(pwd):/tmp/kuscia $KUSCIA_IMAGE cp -f /home/kuscia/scripts/deploy/deploy.sh /tmp/kuscia
+  # execute deploy lite shell
+  echo "bash $(pwd)/deploy.sh lite ${cmd_opt}"
+  bash $(pwd)/deploy.sh lite ${cmd_opt}
+  local domain_ctr=${USER}-kuscia-lite-${domain_id}
+  loadTeeDmImage2Container "$domain_ctr"
+}
+
+function getIPV4Address() {
+  local ipv4=""
+  arch=$(uname -s || true)
+  case $arch in
+  "Linux")
+    eth="eth0"
+    ipv4=$(ip -4 addr show $eth | grep -oP '(?<=inet\s)\d+(\.\d+){3}') || true
+    if [[ $ipv4 == "" ]]; then
+      eth=$(ip route | grep default | cut -d" " -f5) || true
+      if [[ $eth != "" ]]; then
+        ipv4=$(ip -4 addr show $eth | grep -oP '(?<=inet\s)\d+(\.\d+){3}') || true
+      fi
+    fi
+    ;;
+  "Darwin")
+    ipv4=$(ipconfig getifaddr en0) || true
+    ;;
+  esac
+  echo $ipv4
+}
+
+function start_lite_tee() {
+  domain_id=$TEE_DOMAIN
+  if [[ ${domain_host_port} == "" ]]; then
+    domain_host_port="48080"
+  fi
+
+  if [[ ${lite_api_http_port} == "" ]]; then
+    lite_api_http_port="47082"
+  fi
+
+  if [[ ${lite_api_grpc_port} == "" ]]; then
+    lite_api_grpc_port="47083"
+  fi
+  host_ip=$(getIPV4Address)
+  master_endpoint="https://${host_ip}:18080"
+  docker exec -it "${USER}-kuscia-master" scripts/deploy/add_domain_lite.sh "${domain_id}"
+  token=$(docker exec -it ${USER}-kuscia-master kubectl get domain $domain_id  -o=jsonpath='{.status.deployTokenStatuses[?(@.state=="unused")].token}')
+  # init tee
+  start_lite
+  bash ./init_tee.sh
+}
+
+init_images_from_files
+
+export KUSCIA_IMAGE=$KUSCIA_IMAGE
+echo -e  "KUSCIA_IMAGE=$KUSCIA_IMAGE"
+
+export SECRETPAD_IMAGE=$SECRETPAD_IMAGE
+echo -e  "SECRETPAD_IMAGE=$SECRETPAD_IMAGE"
+
+export SECRETFLOW_IMAGE=$SECRETFLOW_IMAGE
+echo -e  "SECRETFLOW_IMAGE=$SECRETFLOW_IMAGE"
+
+export TEE_APP_IMAGE=$TEE_APP_IMAGE
+echo -e  "TEE_APP_IMAGE=$TEE_APP_IMAGE"
+
+export TEE_DM_IMAGE=$TEE_DM_IMAGE
+echo -e  "TEE_DM_IMAGE=$TEE_DM_IMAGE"
+
+export CAPSULE_MANAGER_SIM_IMAGE=$CAPSULE_MANAGER_SIM_IMAGE
+echo -e  "CAPSULE_MANAGER_SIM_IMAGE=$CAPSULE_MANAGER_SIM_IMAGE"
+
+
+# deploy master
+if [[ ${mode} == "master" ]]; then
+  echo -e "start_master $KUSCIA_IMAGE"
+  start_master $KUSCIA_IMAGE
+  start_lite_tee
   exit 0
 fi
 
-# deploy lite
-if [[ ${domain_id} == "" ]]; then
-  printf "empty domain id\n" >&2
-  exit 1
+if [[ ${mode} == "tee" ]]; then
+  domain_id=$TEE_DOMAIN
+  # init tee
+  start_lite
+  bash ./init_tee.sh
+  exit 0
 fi
 
-if [[ ${master_endpoint} == "" ]]; then
-  printf "empty master_endpoint \n" >&2
-  exit 1
-fi
-
-if [[ ${token} == "" ]]; then
-  printf "empty deploy token \n" >&2
-  exit 1
-fi
-
-if [[ ${domain_host_port} == "" ]]; then
-  domain_host_port="10080"
-fi
-
-if [[ ${install_dir} == "" ]]; then
-  install_dir=${LITE_INSTALL_DIR}
-fi
-
-# set intall dir of the deploy.sh
-# the datapath is ${ROOT}/kuscia-${deploy_mode}-${DOMAIN_ID}-data
-# the certpath is ${ROOT}/kuscia-${deploy_mode}-${DOMAIN_ID}-certs
-export ROOT=${install_dir}
-
-cmd_opt="-n ${domain_id} -m ${master_endpoint} -t ${token} -p ${domain_host_port}"
-
-if [[ ${domain_certs_dir} != "" ]]; then
-  cmd_opt="${cmd_opt} -c ${domain_certs_dir}"
-fi
-
-if [[ ${domain_host_ip} != "" ]]; then
-  cmd_opt="${cmd_opt} -i ${domain_host_ip}"
-fi
-
-# copy deploy.sh from kuscia image
-docker run --rm -v $(pwd):/tmp/kuscia $KUSCIA_IMAGE cp -f /home/kuscia/scripts/deploy/deploy.sh /tmp/kuscia
-# execute deploy lite shell
-echo "bash $(pwd)/deploy.sh lite ${cmd_opt}"
-bash $(pwd)/deploy.sh lite ${cmd_opt}
+# create lite with secretpad
+start_lite
+start_secretpad

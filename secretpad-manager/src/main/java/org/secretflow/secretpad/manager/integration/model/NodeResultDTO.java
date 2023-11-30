@@ -76,4 +76,9 @@ public class NodeResultDTO {
      */
     private String jobId;
 
+    /**
+     * project computeMode
+     */
+    private String computeMode;
+
 }

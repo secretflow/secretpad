@@ -18,10 +18,10 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.AccountsDO;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -30,7 +30,7 @@ import java.util.Optional;
  * @author : xiaonan.fhn
  * @date 2023/5/25
  */
-public interface UserAccountsRepository extends JpaRepository<AccountsDO, String> {
+public interface UserAccountsRepository extends BaseRepository<AccountsDO, String> {
 
     /**
      * Query user information by userName
@@ -41,4 +41,13 @@ public interface UserAccountsRepository extends JpaRepository<AccountsDO, String
     @Query("from AccountsDO nd where nd.name=:name")
     Optional<AccountsDO> findByName(@Param("name") String name);
 
+
+    /**
+     * Query user information by ownerId
+     *
+     * @param ownerId ownerId
+     * @return user information
+     */
+    @Query("from AccountsDO nd where nd.ownerId=:ownerId")
+    List<AccountsDO> findByOwnerId(@Param("ownerId") String ownerId);
 }

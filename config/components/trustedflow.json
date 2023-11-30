@@ -1,0 +1,1189 @@
+{
+  "name": "trustedflow",
+  "desc": "First-party TrustedFlow components.",
+  "version": "0.0.1",
+  "comps": [
+    {
+      "domain": "preprocessing",
+      "name": "psi",
+      "desc": "PSI between two parties.",
+      "version": "0.0.1",
+      "inputs": [
+        {
+          "name": "input1",
+          "desc": "Individual table for party 1",
+          "types": [
+            "sf.table.individual"
+          ],
+          "attrs": [
+            {
+              "name": "key",
+              "desc": "Column(s) used to join.",
+              "col_min_cnt_inclusive": "1"
+            }
+          ]
+        },
+        {
+          "name": "input2",
+          "desc": "Individual table for party 2",
+          "types": [
+            "sf.table.individual"
+          ],
+          "attrs": [
+            {
+              "name": "key",
+              "desc": "Column(s) used to join.",
+              "col_min_cnt_inclusive": "1"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "psi_output",
+          "desc": "Output table",
+          "types": [
+            "sf.table.individual"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "preprocessing",
+      "name": "feature_filter",
+      "desc": "Drop features from the dataset.",
+      "version": "0.0.1",
+      "inputs": [
+        {
+          "name": "in_ds",
+          "desc": "Input table.",
+          "types": [
+            "sf.table.individual"
+          ],
+          "attrs": [
+            {
+              "name": "drop_features",
+              "desc": "Features to drop.",
+              "col_min_cnt_inclusive": "1"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "out_ds",
+          "desc": "Output table.",
+          "types": [
+            "sf.table.individual"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "preprocessing",
+      "name": "train_test_split",
+      "desc": "Split datasets into random train and test subsets.\n- Please check: https://scikit-learn.org/stable/modules/generated/sklearn.model_selection.train_test_split.html",
+      "version": "0.0.1",
+      "attrs": [
+        {
+          "name": "train_size",
+          "desc": "Proportion of the dataset to include in the train subset.",
+          "type": "AT_FLOAT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "f": 0.75
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "f": 1
+            }
+          }
+        },
+        {
+          "name": "fix_random",
+          "desc": "Whether to fix random.",
+          "type": "AT_BOOL",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "b": true
+            }
+          }
+        },
+        {
+          "name": "random_state",
+          "desc": "Specify the random seed of the shuffling.",
+          "type": "AT_INT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "i64": "1024"
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {}
+          }
+        },
+        {
+          "name": "shuffle",
+          "desc": "Whether to shuffle the data before splitting.",
+          "type": "AT_BOOL",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "b": true
+            }
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "name": "input_data",
+          "desc": "Input table.",
+          "types": [
+            "sf.table.individual"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "train",
+          "desc": "Output train dataset.",
+          "types": [
+            "sf.table.individual"
+          ]
+        },
+        {
+          "name": "test",
+          "desc": "Output test dataset.",
+          "types": [
+            "sf.table.individual"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "stats",
+      "name": "pearsonr",
+      "desc": "Calculate Pearson's product-moment correlation coefficient for individual dataset.",
+      "version": "0.0.1",
+      "inputs": [
+        {
+          "name": "input_data",
+          "desc": "Input table.",
+          "types": [
+            "sf.table.individual"
+          ],
+          "attrs": [
+            {
+              "name": "feature_selects",
+              "desc": "Specify which features to calculate correlation coefficient with. If empty, all features will be used"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "report",
+          "desc": "Output Pearson's product-moment correlation coefficient report.",
+          "types": [
+            "sf.report"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "stats",
+      "name": "table_statistics",
+      "desc": "Get a table of statistics,\nincluding each column's\n1. datatype\n2. total_count\n3. count\n4. count_na\n5. na_ratio\n6. min\n7. max\n8. mean\n9. var\n10. std\n11. sem\n12. skewness\n13. kurtosis\n14. q1\n15. q2\n16. q3\n17. moment_2\n18. moment_3\n19. moment_4\n20. central_moment_2\n21. central_moment_3\n22. central_moment_4\n23. sum\n24. sum_2\n25. sum_3\n26. sum_4\n- moment_2 means E[X^2].\n- central_moment_2 means E[(X - mean(X))^2].\n- sum_2 means sum(X^2).",
+      "version": "0.0.1",
+      "inputs": [
+        {
+          "name": "input_data",
+          "desc": "Input table.",
+          "types": [
+            "sf.table.individual"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "report",
+          "desc": "Output table statistics report.",
+          "types": [
+            "sf.report"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "stats",
+      "name": "vif",
+      "desc": "Calculate Variance Inflation Factor(VIF) for individual dataset",
+      "version": "0.0.1",
+      "inputs": [
+        {
+          "name": "input_data",
+          "desc": "Input table.",
+          "types": [
+            "sf.table.individual"
+          ],
+          "attrs": [
+            {
+              "name": "feature_selects",
+              "desc": "Specify which features to calculate VIF with. If empty, all features will be used."
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "report",
+          "desc": "Output Variance Inflation Factor(VIF) report.",
+          "types": [
+            "sf.report"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "feature",
+      "name": "vert_woe_binning",
+      "desc": "Generate Weight of Evidence (WOE) binning rules for individual datasets.",
+      "version": "0.0.1",
+      "attrs": [
+        {
+          "name": "binning_method",
+          "desc": "How to bin features with numeric types: quantile\"(equal frequency)/\"bucket\"(equal width)",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "quantile"
+            },
+            "allowed_values": {
+              "ss": [
+                "quantile",
+                "bucket"
+              ]
+            }
+          }
+        },
+        {
+          "name": "positive_label",
+          "desc": "Which value represent positive value in label.",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "1"
+            }
+          }
+        },
+        {
+          "name": "bin_num",
+          "desc": "Max bin counts for one features.",
+          "type": "AT_INT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "i64": "10"
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {}
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "name": "input_data",
+          "desc": "Input table.",
+          "types": [
+            "sf.table.individual"
+          ],
+          "attrs": [
+            {
+              "name": "feature_selects",
+              "desc": "which features should be binned.",
+              "col_min_cnt_inclusive": "1"
+            },
+            {
+              "name": "label",
+              "desc": "Label column.",
+              "col_min_cnt_inclusive": "1",
+              "col_max_cnt_inclusive": "1"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "woe_rule",
+          "desc": "Output WOE rule.",
+          "types": [
+            "sf.rule.woe_binning"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "feature",
+      "name": "vert_woe_substitution",
+      "desc": "Substitute datasets' value by WOE substitution rules.",
+      "version": "0.0.1",
+      "inputs": [
+        {
+          "name": "input_data",
+          "desc": "Dataset to be substituted.",
+          "types": [
+            "sf.table.individual"
+          ]
+        },
+        {
+          "name": "woe_rule",
+          "desc": "WOE substitution rule.",
+          "types": [
+            "sf.rule.woe_binning"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output_data",
+          "desc": "Output substituted dataset.",
+          "types": [
+            "sf.table.individual"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "ml.eval",
+      "name": "biclassification_eval",
+      "desc": "Statistics evaluation for a bi-classification model on a dataset.\n1. summary_report: SummaryReport\n2. eq_frequent_bin_report: List[EqBinReport]\n3. eq_range_bin_report: List[EqBinReport]\n4. head_report: List[PrReport]\nreports for fpr = 0.001, 0.005, 0.01, 0.05, 0.1, 0.2",
+      "version": "0.0.1",
+      "attrs": [
+        {
+          "name": "bucket_num",
+          "desc": "Number of buckets.",
+          "type": "AT_INT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "i64": "10"
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {
+              "i64": "1"
+            },
+            "lower_bound_inclusive": true
+          }
+        },
+        {
+          "name": "min_item_cnt_per_bucket",
+          "desc": "Min item cnt per bucket. If any bucket doesn't meet the requirement, error raises. For security reasons, we require this parameter to be at least 2.",
+          "type": "AT_INT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "i64": "2"
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {
+              "i64": "2"
+            },
+            "lower_bound_inclusive": true
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "name": "predictions",
+          "desc": "Input table with predictions",
+          "types": [
+            "sf.table.individual"
+          ],
+          "attrs": [
+            {
+              "name": "label",
+              "desc": "The real value column name",
+              "col_min_cnt_inclusive": "1",
+              "col_max_cnt_inclusive": "1"
+            },
+            {
+              "name": "score",
+              "desc": "The score value column name",
+              "col_min_cnt_inclusive": "1",
+              "col_max_cnt_inclusive": "1"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "reports",
+          "desc": "Output report.",
+          "types": [
+            "sf.report"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "ml.eval",
+      "name": "prediction_bias_eval",
+      "desc": "Calculate prediction bias, ie. average of predictions - average of labels.",
+      "version": "0.0.1",
+      "attrs": [
+        {
+          "name": "bucket_num",
+          "desc": "Num of bucket.",
+          "type": "AT_INT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "i64": "10"
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {
+              "i64": "1"
+            },
+            "lower_bound_inclusive": true
+          }
+        },
+        {
+          "name": "min_item_cnt_per_bucket",
+          "desc": "Min item cnt per bucket. If any bucket doesn't meet the requirement, error raises. For security reasons, we require this parameter to be at least 2.",
+          "type": "AT_INT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "i64": "2"
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {
+              "i64": "2"
+            },
+            "lower_bound_inclusive": true
+          }
+        },
+        {
+          "name": "bucket_method",
+          "desc": "Bucket method.",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "equal_width"
+            },
+            "allowed_values": {
+              "ss": [
+                "equal_width",
+                "equal_frequency"
+              ]
+            }
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "name": "predictions",
+          "desc": "Input table with predictions.",
+          "types": [
+            "sf.table.individual"
+          ],
+          "attrs": [
+            {
+              "name": "label",
+              "desc": "The real value column name",
+              "col_min_cnt_inclusive": "1",
+              "col_max_cnt_inclusive": "1"
+            },
+            {
+              "name": "score",
+              "desc": "The score value column name",
+              "col_min_cnt_inclusive": "1",
+              "col_max_cnt_inclusive": "1"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "reports",
+          "desc": "Output report.",
+          "types": [
+            "sf.report"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "ml.predict",
+      "name": "xgb_predict",
+      "desc": "Predict using the XGB model.",
+      "version": "0.0.1",
+      "attrs": [
+        {
+          "name": "pred_name",
+          "desc": "Column name for predictions.",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "pred"
+            }
+          }
+        },
+        {
+          "name": "save_label",
+          "desc": "Whether or not to save real label column into output pred table. If true, input feature_dataset must contain label column.",
+          "type": "AT_BOOL",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {}
+          }
+        },
+        {
+          "name": "label_name",
+          "desc": "Column name for label.",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "label"
+            }
+          }
+        },
+        {
+          "name": "save_id",
+          "desc": "Whether to save id column into output pred table. If true, input feature_dataset must contain id column.",
+          "type": "AT_BOOL",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {}
+          }
+        },
+        {
+          "name": "id_name",
+          "desc": "Column name for id.",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "id"
+            }
+          }
+        },
+        {
+          "name": "col_names",
+          "desc": "Extra column names into output pred table.",
+          "type": "AT_STRINGS",
+          "atomic": {
+            "list_max_length_inclusive": "-1",
+            "is_optional": true
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "name": "feature_dataset",
+          "desc": "Input feature dataset.",
+          "types": [
+            "sf.table.individual"
+          ],
+          "attrs": [
+            {
+              "name": "ids",
+              "desc": "Id columns.",
+              "col_max_cnt_inclusive": "1"
+            },
+            {
+              "name": "label",
+              "desc": "Label column.",
+              "col_max_cnt_inclusive": "1"
+            }
+          ]
+        },
+        {
+          "name": "model",
+          "desc": "Input model.",
+          "types": [
+            "sf.model.xgb"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pred",
+          "desc": "Output prediction.",
+          "types": [
+            "sf.table.individual"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "ml.predict",
+      "name": "lr_predict",
+      "desc": "Predict using the lr model.",
+      "version": "0.0.1",
+      "attrs": [
+        {
+          "name": "pred_name",
+          "desc": "Column name for predictions.",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "pred"
+            }
+          }
+        },
+        {
+          "name": "save_label",
+          "desc": "Whether or not to save real label column into output pred table. If true, input feature_dataset must contain label column.",
+          "type": "AT_BOOL",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {}
+          }
+        },
+        {
+          "name": "label_name",
+          "desc": "Column name for label.",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "label"
+            }
+          }
+        },
+        {
+          "name": "save_id",
+          "desc": "Whether to save id column into output pred table. If true, input feature_dataset must contain id column.",
+          "type": "AT_BOOL",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {}
+          }
+        },
+        {
+          "name": "id_name",
+          "desc": "Column name for id.",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "id"
+            }
+          }
+        },
+        {
+          "name": "col_names",
+          "desc": "Column names into output pred table.",
+          "type": "AT_STRINGS",
+          "atomic": {
+            "list_max_length_inclusive": "-1",
+            "is_optional": true
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "name": "feature_dataset",
+          "desc": "Input feature dataset.",
+          "types": [
+            "sf.table.individual"
+          ],
+          "attrs": [
+            {
+              "name": "ids",
+              "desc": "Id columns.",
+              "col_max_cnt_inclusive": "1"
+            },
+            {
+              "name": "label",
+              "desc": "Label column.",
+              "col_max_cnt_inclusive": "1"
+            }
+          ]
+        },
+        {
+          "name": "model",
+          "desc": "Input model.",
+          "types": [
+            "sf.model.lr"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "pred",
+          "desc": "Output prediction.",
+          "types": [
+            "sf.table.individual"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "ml.train",
+      "name": "xgb_train",
+      "desc": "Provides both classification and regression tree boosting (also known as GBDT, GBM) for individual dataset.",
+      "version": "0.0.1",
+      "attrs": [
+        {
+          "name": "num_boost_round",
+          "desc": "Number of boosting iterations.",
+          "type": "AT_INT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "i64": "10"
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {
+              "i64": "1"
+            },
+            "lower_bound_inclusive": true,
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "i64": "1024"
+            },
+            "upper_bound_inclusive": true
+          }
+        },
+        {
+          "name": "max_depth",
+          "desc": "Maximum depth of a tree.",
+          "type": "AT_INT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "i64": "6"
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {
+              "i64": "1"
+            },
+            "lower_bound_inclusive": true,
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "i64": "16"
+            },
+            "upper_bound_inclusive": true
+          }
+        },
+        {
+          "name": "max_leaves",
+          "desc": "Maximum leaf of a tree. 0 indicates no limit.",
+          "type": "AT_INT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {},
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "lower_bound_inclusive": true,
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "i64": "32768"
+            },
+            "upper_bound_inclusive": true
+          }
+        },
+        {
+          "name": "seed",
+          "desc": "Pseudorandom number generator seed.",
+          "type": "AT_INT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "i64": "42"
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "lower_bound_inclusive": true
+          }
+        },
+        {
+          "name": "learning_rate",
+          "desc": "Step size shrinkage used in update to prevent overfitting.",
+          "type": "AT_FLOAT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "f": 0.3
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "f": 1
+            },
+            "upper_bound_inclusive": true
+          }
+        },
+        {
+          "name": "lambda",
+          "desc": "L2 regularization term on weights.",
+          "type": "AT_FLOAT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "f": 1
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "lower_bound_inclusive": true,
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "f": 10000
+            },
+            "upper_bound_inclusive": true
+          }
+        },
+        {
+          "name": "gamma",
+          "desc": "Greater than 0 means pre-pruning enabled. If gain of a node is less than this value, it would be pruned.",
+          "type": "AT_FLOAT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {},
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "lower_bound_inclusive": true,
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "f": 10000
+            },
+            "upper_bound_inclusive": true
+          }
+        },
+        {
+          "name": "colsample_bytree",
+          "desc": "Subsample ratio of columns when constructing each tree.",
+          "type": "AT_FLOAT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "f": 1
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "f": 1
+            },
+            "upper_bound_inclusive": true
+          }
+        },
+        {
+          "name": "base_score",
+          "desc": "The initial prediction score of all instances, global bias.",
+          "type": "AT_FLOAT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "f": 0.5
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "f": 1
+            }
+          }
+        },
+        {
+          "name": "min_child_weight",
+          "desc": "Minimum sum of instance weight (hessian) needed in a child. If the tree partition step results in a leaf node with the sum of instance weight less than min_child_weight, then the building process will give up further partitioning",
+          "type": "AT_FLOAT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "f": 1
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "lower_bound_inclusive": true,
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "f": 1000
+            },
+            "upper_bound_inclusive": true
+          }
+        },
+        {
+          "name": "objective",
+          "desc": "Specify the learning objective.",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "binary:logistic"
+            },
+            "allowed_values": {
+              "ss": [
+                "reg:squarederror",
+                "binary:logistic"
+              ]
+            }
+          }
+        },
+        {
+          "name": "alpha",
+          "desc": "L1 regularization term on weights. Increasing this value will make model more conservative",
+          "type": "AT_FLOAT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {},
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "lower_bound_inclusive": true,
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "f": 10000
+            },
+            "upper_bound_inclusive": true
+          }
+        },
+        {
+          "name": "subsample",
+          "desc": "Subsample ratio of the training instance.",
+          "type": "AT_FLOAT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "f": 1
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "f": 1
+            },
+            "upper_bound_inclusive": true
+          }
+        },
+        {
+          "name": "max_bin",
+          "desc": "Maximum number of discrete bins to bucket continuous features.  Only used if tree_method is set to hist, approx or gpu_hist.",
+          "type": "AT_INT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "i64": "10"
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "i64": "254"
+            }
+          }
+        },
+        {
+          "name": "tree_method",
+          "desc": "The tree construction algorithm used in XGBoost.",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "auto"
+            },
+            "allowed_values": {
+              "ss": [
+                "auto",
+                "exact",
+                "approx",
+                "hist"
+              ]
+            }
+          }
+        },
+        {
+          "name": "booster",
+          "desc": "Which booster to use",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "gbtree"
+            },
+            "allowed_values": {
+              "ss": [
+                "gbtree",
+                "gblinear",
+                "dart"
+              ]
+            }
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "name": "train_dataset",
+          "desc": "Input table.",
+          "types": [
+            "sf.table.individual"
+          ],
+          "attrs": [
+            {
+              "name": "ids",
+              "desc": "Id columns will not be trained."
+            },
+            {
+              "name": "label",
+              "desc": "Label column.",
+              "col_min_cnt_inclusive": "1",
+              "col_max_cnt_inclusive": "1"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output_model",
+          "desc": "Output model.",
+          "types": [
+            "sf.model.xgb"
+          ]
+        }
+      ]
+    },
+    {
+      "domain": "ml.train",
+      "name": "lr_train",
+      "desc": "linear or logistic regression training.",
+      "version": "0.0.1",
+      "attrs": [
+        {
+          "name": "max_iter",
+          "desc": "Maximum number of iterations taken for the solvers to converge.",
+          "type": "AT_INT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "i64": "10"
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {
+              "i64": "1"
+            },
+            "lower_bound_inclusive": true,
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "i64": "10000"
+            },
+            "upper_bound_inclusive": true
+          }
+        },
+        {
+          "name": "reg_type",
+          "desc": "Regression type",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "logistic"
+            },
+            "allowed_values": {
+              "ss": [
+                "linear",
+                "logistic"
+              ]
+            }
+          }
+        },
+        {
+          "name": "l2_norm",
+          "desc": "L2 regularization term.",
+          "type": "AT_FLOAT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "f": 1
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "lower_bound_inclusive": true,
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "f": 10000
+            }
+          }
+        },
+        {
+          "name": "tol",
+          "desc": "Tolerance for stopping criteria.",
+          "type": "AT_FLOAT",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "f": 0.0001
+            },
+            "lower_bound_enabled": true,
+            "lower_bound": {},
+            "upper_bound_enabled": true,
+            "upper_bound": {
+              "f": 1
+            }
+          }
+        },
+        {
+          "name": "penalty",
+          "desc": "The penalty(aka regularization term) to be used.",
+          "type": "AT_STRING",
+          "atomic": {
+            "is_optional": true,
+            "default_value": {
+              "s": "l2"
+            },
+            "allowed_values": {
+              "ss": [
+                "l1",
+                "l2",
+                "elasticnet",
+                "None"
+              ]
+            }
+          }
+        }
+      ],
+      "inputs": [
+        {
+          "name": "train_dataset",
+          "desc": "Input train dataset.",
+          "types": [
+            "sf.table.individual"
+          ],
+          "attrs": [
+            {
+              "name": "ids",
+              "desc": "Id columns will not be trained."
+            },
+            {
+              "name": "label",
+              "desc": "Label column.",
+              "col_min_cnt_inclusive": "1",
+              "col_max_cnt_inclusive": "1"
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "name": "output_model",
+          "desc": "Output model.",
+          "types": [
+            "sf.model.lr"
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -18,7 +18,6 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectReportDO;
 
-import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 /**
@@ -28,5 +27,5 @@ import org.springframework.stereotype.Repository;
  * @date 2023/6/8
  */
 @Repository
-public interface ProjectReportRepository extends JpaRepository<ProjectReportDO, ProjectReportDO.UPK> {
+public interface ProjectReportRepository extends BaseRepository<ProjectReportDO, ProjectReportDO.UPK> {
 }

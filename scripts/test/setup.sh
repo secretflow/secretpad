@@ -66,12 +66,10 @@ echo "generate kusciaapi certs successfully"
 
 echo "start to init sqlite"
 mkdir -p "${SECRETPAD_ROOT}/db"
-SQL_PATH="${SECRETPAD_ROOT}/config/schema/v1.sql"
-SQL_PATH_V2="${SECRETPAD_ROOT}/config/schema/v2.sql"
+SQL_PATH="${SECRETPAD_ROOT}/config/schema/init.sql"
 DB_PATH="${SECRETPAD_ROOT}/db/secretpad.sqlite"
 if [ -e "${DB_PATH}" ]; then
   echo >"${DB_PATH}"
   sqlite3 "${DB_PATH}" ".read ${SQL_PATH}"
-  sqlite3 "${DB_PATH}" ".read ${SQL_PATH_V2}"
 fi
 echo "init sqlite successfully"

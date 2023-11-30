@@ -22,6 +22,9 @@ package org.secretflow.secretpad.service.constant;
  * @author yansi
  * @date 2023/6/1
  */
-public class JobConstants {
-    public static final String APP_IMAGE = "secretflow-image";
+public interface JobConstants {
+    String APP_IMAGE = "secretflow-image";
+    String TEE_APP_IMAGE = "tee-image";
+
+    String TEE_IMAGE = "tee-dm-image";
 }

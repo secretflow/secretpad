@@ -134,4 +134,13 @@ public interface ProjectService {
      */
     void stopProjectJob(StopProjectJobTaskRequest request);
 
+    /**
+     * check the project contain node.
+     *
+     * @param projectId project resource ID
+     * @param nodeId node ID
+     * @return boolean
+     */
+    boolean checkNodeInProject(String projectId, String nodeId);
+
 }

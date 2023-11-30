@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.service.model.node;
 
 import org.secretflow.secretpad.manager.integration.model.NodeResultDTO;
+import org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -85,10 +86,27 @@ public class NodeResultsVO {
     private String trainFlow;
 
     /**
+     * Result pull from tee status
+     * Status：FAILED/SUCCESS/RUNNING
+     */
+    @Schema(description = "result pull from tee status")
+    private String pullFromTeeStatus;
+    /**
+     * Result pull from tee error message
+     */
+    @Schema(description = "result pull from tee error message if failed")
+    private String pullFromTeeErrMsg;
+    /**
      * Start time of the node result
      */
     @Schema(description = "start time")
     private String gmtCreate;
+
+    /**
+     * project computeMode mpc,tee
+     */
+    @Schema(description = "computeMode")
+    private String computeMode;
 
     /**
      * Build node results view object from node result data transfer object
@@ -96,7 +114,7 @@ public class NodeResultsVO {
      * @param nodeResultDTO node result data transfer object
      * @return node results view object
      */
-    public static NodeResultsVO fromNodeResultDTO(NodeResultDTO nodeResultDTO) {
+    public static NodeResultsVO fromNodeResultDTO(NodeResultDTO nodeResultDTO, TeeNodeDatatableManagementDO managementDO) {
         return NodeResultsVO.builder()
                 .domainDataId(nodeResultDTO.getDomainDataId())
                 .productName(nodeResultDTO.getResultName())
@@ -106,7 +124,10 @@ public class NodeResultsVO {
                 .relativeUri(nodeResultDTO.getRelativeUri())
                 .jobId(nodeResultDTO.getJobId())
                 .trainFlow(nodeResultDTO.getTrainFlow())
+                .pullFromTeeStatus(null == managementDO ? "" : managementDO.getStatus().name())
+                .pullFromTeeErrMsg(null == managementDO ? "" : managementDO.getErrMsg())
                 .gmtCreate(nodeResultDTO.getGmtCreate())
+                .computeMode(nodeResultDTO.getComputeMode())
                 .build();
     }
 

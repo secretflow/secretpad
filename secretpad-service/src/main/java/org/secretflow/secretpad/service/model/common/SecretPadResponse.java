@@ -63,6 +63,7 @@ public class SecretPadResponse<T> {
     @Getter
     @AllArgsConstructor
     @NoArgsConstructor
+    @ToString
     public static class SecretPadResponseStatus {
         /**
          * Status code

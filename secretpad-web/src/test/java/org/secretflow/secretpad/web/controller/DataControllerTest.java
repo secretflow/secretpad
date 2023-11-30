@@ -16,7 +16,9 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
 import org.secretflow.secretpad.common.util.JsonUtils;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
 import org.secretflow.secretpad.persistence.entity.ProjectGraphDO;
 import org.secretflow.secretpad.persistence.entity.ProjectJobDO;
@@ -42,6 +44,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.Set;
 
 import static org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager.DATA_TYPE_TABLE;
 import static org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager.DATA_VENDOR_MANUAL;
@@ -83,6 +86,9 @@ class DataControllerTest extends ControllerTest {
     void createData() throws Exception {
         assertResponse(() -> {
             CreateDataRequest createDataRequest = FakerUtils.fake(CreateDataRequest.class);
+            createDataRequest.setNodeId("alice");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATA_CREATE));
 
             Domaindata.ListDomainDataResponse response = Domaindata.ListDomainDataResponse.newBuilder()
                     .setData(
