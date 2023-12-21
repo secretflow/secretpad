@@ -66,15 +66,15 @@ if [ "${SECRETFLOW_IMAGE}" == "" ]; then
 fi
 # tee images
 if [ "${TEE_APP_IMAGE}" == "" ]; then
-	TEE_APP_IMAGE=registry.cn-hangzhou.aliyuncs.com/nueva-stack/teeapps-sim:latest
+	TEE_APP_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/teeapps-sim:latest
 fi
 
 if [ "${TEE_DM_IMAGE}" == "" ]; then
-	TEE_DM_IMAGE=registry.cn-hangzhou.aliyuncs.com/oasis-stack/sf-tee-dm-sim:latest
+	TEE_DM_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/sf-tee-dm-sim:latest
 fi
 
 if [ "${CAPSULE_MANAGER_SIM_IMAGE}" == "" ]; then
-	CAPSULE_MANAGER_SIM_IMAGE=registry.cn-hangzhou.aliyuncs.com/oasis-stack/capsule-manager-sim:latest
+	CAPSULE_MANAGER_SIM_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/capsule-manager-sim:latest
 fi
 
 echo "kuscia image: $KUSCIA_IMAGE"
