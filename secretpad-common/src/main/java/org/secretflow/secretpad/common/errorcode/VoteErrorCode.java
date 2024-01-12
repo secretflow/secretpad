@@ -27,7 +27,12 @@ public enum VoteErrorCode implements ErrorCode {
 
     VOTE_CHECK_FAILED(202012202),
 
-    VOTE_SIGNATURE_SYNCHRONIZING(202012203);
+    VOTE_SIGNATURE_SYNCHRONIZING(202012203),
+
+    PROJECT_VOTE_NOT_EXISTS(202012204),
+
+    PROJECT_ARCHIVE_VOTE_ALREADY_EXIST(202012205),
+    ;
     private final int code;
 
     VoteErrorCode(int code) {

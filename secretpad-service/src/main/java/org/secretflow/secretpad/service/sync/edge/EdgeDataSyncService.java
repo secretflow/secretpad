@@ -16,7 +16,7 @@
 
 package org.secretflow.secretpad.service.sync.edge;
 
-import org.secretflow.secretpad.manager.integration.model.SyncDataDTO;
+import org.secretflow.secretpad.common.dto.SyncDataDTO;
 
 import java.util.List;
 

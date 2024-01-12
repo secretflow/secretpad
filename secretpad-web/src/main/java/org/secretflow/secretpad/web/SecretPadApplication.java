@@ -28,6 +28,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.protobuf.ProtobufHttpMessageConverter;
+import org.springframework.scheduling.annotation.EnableAsync;
 
 /**
  * SecretPad application
@@ -37,6 +38,7 @@ import org.springframework.http.converter.protobuf.ProtobufHttpMessageConverter;
  */
 @ComponentScan(basePackages = "org.secretflow.secretpad.*")
 @SpringBootApplication
+@EnableAsync
 public class SecretPadApplication {
 
     @Value("${server.http-port}")

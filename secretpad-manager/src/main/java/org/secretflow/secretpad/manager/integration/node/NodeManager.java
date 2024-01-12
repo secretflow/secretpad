@@ -18,16 +18,17 @@ package org.secretflow.secretpad.manager.integration.node;
 
 import org.secretflow.secretpad.common.constant.DomainConstants;
 import org.secretflow.secretpad.common.constant.role.RoleCodeConstants;
+import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.PermissionTargetTypeEnum;
 import org.secretflow.secretpad.common.enums.PermissionUserTypeEnum;
-import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
-import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
-import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
-import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
+import org.secretflow.secretpad.common.enums.ProjectStatusEnum;
+import org.secretflow.secretpad.common.errorcode.*;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UUIDUtils;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.manager.integration.model.*;
 import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainRpc;
 import org.secretflow.secretpad.persistence.entity.*;
@@ -44,6 +45,7 @@ import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
@@ -73,11 +75,15 @@ public class NodeManager extends AbstractNodeManager {
     private final ProjectRepository projectRepository;
     private final ProjectJobRepository projectJobRepository;
     private final ProjectNodeRepository projectNodeRepository;
+    private final ProjectApprovalConfigRepository projectApprovalConfigRepository;
     private final DomainDataServiceGrpc.DomainDataServiceBlockingStub domainDataStub;
 
     private final DomainServiceGrpc.DomainServiceBlockingStub domainServiceBlockingStub;
     private final KusciaDomainRpc kusciaDomainRpc;
     private final SysUserPermissionRelRepository permissionRelRepository;
+
+    @Value("${secretpad.master-node-id:master}")
+    private String masterNodeId;
 
     private void check(String nodeId) {
         List<NodeDO> byType = nodeRepository.findByType(DomainConstants.DomainTypeEnum.embedded.name());
@@ -153,11 +159,68 @@ public class NodeManager extends AbstractNodeManager {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
+    public String createP2pNode(CreateNodeParam param) {
+        String nodeId = param.getNodeId();
+        // p2p mode nodeId maybe repeated, must valid
+        Optional<NodeDO> nodeOptional = nodeRepository.findById(nodeId);
+        if (nodeOptional.isPresent()) {
+            throw SecretpadException.of(NodeErrorCode.NODE_ALREADY_EXIST_ERROR, nodeId + " already exists in db, cannot create!");
+        }
+        NodeDO nodeDO;
+        // query if exists deleted record, avoid insert
+        Optional<NodeDO> deletednodeOptional = nodeRepository.findDeletedRecordByNodeId(nodeId);
+        if (deletednodeOptional.isPresent()) {
+            LOGGER.info("exists deleted record, nodeId = {}", nodeId);
+            nodeDO = deletednodeOptional.get();
+            nodeDO.setName(param.getName());
+            nodeDO.setMode(param.getMode());
+            nodeDO.setMasterNodeId(param.getMasterNodeId());
+            nodeDO.setNetAddress(param.getNetAddress());
+            nodeDO.setIsDeleted(Boolean.FALSE);
+        } else {
+            LOGGER.info("create new record, nodeId = {}", nodeId);
+            nodeDO = NodeDO.builder().controlNodeId(nodeId).nodeId(nodeId).netAddress(param.getNetAddress())
+                    .masterNodeId(param.getMasterNodeId()).type(DomainConstants.DomainTypeEnum.normal.name())
+                    .mode(param.getMode()).name(param.getName()).build();
+        }
+        try {
+            nodeRepository.save(nodeDO);
+        } catch (Exception e) {
+            throw SecretpadException.of(NodeErrorCode.NODE_CREATE_ERROR,e, nodeId + " node create fail in db :" + e.getMessage());
+        }
+
+        SysUserPermissionRelDO sysUserPermission = new SysUserPermissionRelDO();
+        sysUserPermission.setUserType(PermissionUserTypeEnum.NODE);
+        sysUserPermission.setTargetType(PermissionTargetTypeEnum.ROLE);
+        SysUserPermissionRelDO.UPK upk = new SysUserPermissionRelDO.UPK();
+        upk.setUserKey(nodeId);
+        upk.setTargetCode(RoleCodeConstants.P2P_NODE);
+        sysUserPermission.setUpk(upk);
+        permissionRelRepository.save(sysUserPermission);
+
+        DomainOuterClass.CreateDomainRequest request = DomainOuterClass.CreateDomainRequest.newBuilder().setDomainId(nodeId)
+                .setAuthCenter(
+                        DomainOuterClass.AuthCenter.newBuilder().setAuthenticationType("Token").setTokenGenMethod("RSA-GEN").build())
+                .setRole("partner")
+                .setCert(param.getCertText())
+                .build();
+        DomainOuterClass.CreateDomainResponse domain = DomainOuterClass.CreateDomainResponse.newBuilder().build();
+        try {
+            kusciaDomainRpc.createDomain(request);
+        } catch (Exception e) {
+            throw SecretpadException.of(NodeErrorCode.NODE_CREATE_ERROR,e, nodeId + " node create fail in kuscia :" + domain.getStatus().getMessage());
+        }
+        return nodeId;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
     public void deleteNode(String nodeId) {
         SysUserPermissionRelDO.UPK upk = new SysUserPermissionRelDO.UPK();
         upk.setUserKey(nodeId);
-        upk.setTargetCode(RoleCodeConstants.EDGE_NODE);
+        // if platformType is AUTONOMY, targetCode is different
+        upk.setTargetCode(UserContext.getUser().getPlatformType().equals(PlatformTypeEnum.AUTONOMY) ? RoleCodeConstants.P2P_NODE : RoleCodeConstants.EDGE_NODE);
 
         // check whether the node exists first
         check(nodeId);
@@ -173,11 +236,23 @@ public class NodeManager extends AbstractNodeManager {
             LOGGER.error("node {} has job running!", nodeId);
             throw SecretpadException.of(NodeErrorCode.NODE_DELETE_ERROR, "node have job running");
         }
+        // if project vote exists and status is reviewing, can not be deleted
+        if (UserContext.getUser().getPlatformType().equals(PlatformTypeEnum.AUTONOMY)) {
+            List<ProjectDO> projectList = projectRepository.findByStatus(ProjectStatusEnum.REVIEWING.getCode());
+            if (!CollectionUtils.isEmpty(projectList)) {
+                List<ProjectApprovalConfigDO> projectApprovalConfigList = projectApprovalConfigRepository
+                        .findByProjectIdsAndType(projectList.stream().map(ProjectDO::getProjectId).toList(), "PROJECT_CREATE");
+                if (!CollectionUtils.isEmpty(projectApprovalConfigList) && projectApprovalConfigList.stream().anyMatch(t ->
+                        t.getParties().contains(nodeId))) {
+                    throw SecretpadException.of(NodeErrorCode.NODE_DELETE_ERROR, "node have project reviewing");
+                }
+            }
+        }
         // call the api interface to delete node
         DomainOuterClass.DeleteDomainRequest request = DomainOuterClass.DeleteDomainRequest.newBuilder().setDomainId(nodeId).build();
         nodeRepository.deleteById(nodeId);
         permissionRelRepository.deleteById(upk);
-        nodeRouteRepository.deleteByDstNodeId(nodeId);
+        nodeRouteRepository.deleteBySrcNodeId(nodeId);
         nodeRouteRepository.deleteByDstNodeId(nodeId);
         try {
             kusciaDomainRpc.deleteDomain(request);
@@ -327,12 +402,14 @@ public class NodeManager extends AbstractNodeManager {
             if (ObjectUtils.isNotEmpty(response.getData())) {
                 String cert = response.getData().getCert();
                 String role = response.getData().getRole();
+                // cert, role are no judgment required for node_statuses
+                nodeDTO.setCert(StringUtils.isEmpty(cert) ? DomainConstants.DomainCertConfigEnum.unconfirmed.name() : DomainConstants.DomainCertConfigEnum.configured.name());
+                nodeDTO.setCertText(cert);
+                nodeDTO.setNodeRole(role);
                 List<DomainOuterClass.NodeStatus> nodeStatusesList = response.getData().getNodeStatusesList();
                 if (ObjectUtils.isNotEmpty(nodeStatusesList)) {
                     List<NodeInstanceDTO> nodeInstanceDTOList = nodeStatusesList.stream().map(NodeInstanceDTO::formDomainNodeStatus).collect(Collectors.toList());
                     nodeDTO.setNodeInstances(nodeInstanceDTOList);
-                    nodeDTO.setCert(StringUtils.isEmpty(cert) ? DomainConstants.DomainCertConfigEnum.unconfirmed.name() : DomainConstants.DomainCertConfigEnum.configured.name());
-                    nodeDTO.setNodeRole(role);
                     nodeInstanceDTOList.forEach(s -> {
                         if (s.getStatus().equals(DomainConstants.DomainStatusEnum.Ready.name())) {
                             nodeDTO.setNodeStatus(s.getStatus());
@@ -436,6 +513,33 @@ public class NodeManager extends AbstractNodeManager {
         teeModes.add(DomainConstants.DomainModeEnum.tee.code);
         teeModes.add(DomainConstants.DomainModeEnum.teeAndMpc.code);
         return nodeRepository.findByModeIn(teeModes).stream().map(this::fillByGrpcDomainQuery).collect(Collectors.toList());
+    }
+
+    @Override
+    public void checkSrcAddressAndDstAddressEquals(String srcNodeAddress, String dstNodeAddress) {
+        if (StringUtils.isNotBlank(dstNodeAddress) && StringUtils.equals(srcNodeAddress, dstNodeAddress)) {
+            throw SecretpadException.of(NodeRouteErrorCode.NODE_ROUTE_CONFIG_ERROR,
+                    "");
+        }
+    }
+
+    @Override
+    public void checkNodeCert(String nodeId, CreateNodeParam request) {
+        if (StringUtils.isBlank(request.getCertText()) || getCert(nodeId).equals(request.getCertText()) || nodeId.equals(request.getNodeId())) {
+            throw SecretpadException.of(NodeErrorCode.NODE_CERT_CONFIG_ERROR, "");
+        }
+    }
+
+    @Override
+    public void initialNode(String nodeId) {
+        NodeDO nodeBuild = NodeDO.builder().nodeId(nodeId)
+                .description(nodeId).type(DomainConstants.DomainTypeEnum.normal.name())
+                .mode(1).name(nodeId).netAddress("127.0.0.1:28080").controlNodeId(nodeId)
+                .masterNodeId(masterNodeId).build();
+        UserContextDTO userContextDTO = new UserContextDTO();
+        userContextDTO.setName("admin");
+        UserContext.setBaseUser(userContextDTO);
+        nodeRepository.saveAndFlush(nodeBuild);
     }
 
     /**

@@ -18,6 +18,8 @@ package org.secretflow.secretpad.persistence.entity;
 
 import lombok.*;
 
+import java.io.Serializable;
+
 /**
  * @author yutu
  * @date 2023/09/04
@@ -28,7 +30,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @ToString
-public class ProjectInfoDO {
+public class ProjectInfoDO implements Serializable {
 
     /**
      * tee domain id

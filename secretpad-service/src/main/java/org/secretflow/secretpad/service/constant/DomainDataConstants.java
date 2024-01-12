@@ -22,8 +22,8 @@ package org.secretflow.secretpad.service.constant;
  * @author yansi
  * @date 2023/6/12
  */
-public interface DomainDataConstants {
-    String DIST_DATA = "dist_data";
+public class DomainDataConstants {
+    public static final String DIST_DATA = "dist_data";
 
-    String SYSTEM_DOMAIN_ID = "master";
+    public static final String SYSTEM_DOMAIN_ID = "master";
 }

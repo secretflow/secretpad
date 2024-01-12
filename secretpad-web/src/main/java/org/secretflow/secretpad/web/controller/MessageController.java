@@ -57,6 +57,7 @@ public class MessageController {
      * @return
      */
     @PostMapping(value = "/reply", consumes = "application/json")
+    @DataResource(field = "voteParticipantID", resourceType = DataResourceTypeEnum.NODE_ID)
     public SecretPadResponse<Object> reply(@Valid @RequestBody VoteReplyRequest voteReplyRequest) {
         messageService.reply(voteReplyRequest.getAction(), voteReplyRequest.getReason(), voteReplyRequest.getVoteParticipantID(), voteReplyRequest.getVoteID());
         return SecretPadResponse.success();

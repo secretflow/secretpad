@@ -22,13 +22,13 @@ package org.secretflow.secretpad.service.constant;
  * @author yansi
  * @date 2023/6/9
  */
-public interface DemoConstants {
-    String DEMO_ALICE_INST_ID = "alice";
-    String DEMO_BOB_INST_ID = "bob";
-    String DEMO_ALICE_NODE_ID = "alice";
-    String DEMO_BOB_NODE_ID = "bob";
-    String DEMO_ALICE_DATATABLE_ID = "alice";
-    String DEMO_BOB_DATATABLE_ID = "bob";
-    String DATATABLE_KEY_COLUMN_NAME = "id";
+public class DemoConstants {
+    public static final String DEMO_ALICE_INST_ID = "alice";
+    public static final String DEMO_BOB_INST_ID = "bob";
+    public static final String DEMO_ALICE_NODE_ID = "alice";
+    public static final String DEMO_BOB_NODE_ID = "bob";
+    public static final String DEMO_ALICE_DATATABLE_ID = "alice";
+    public static final String DEMO_BOB_DATATABLE_ID = "bob";
+    public static final String DATATABLE_KEY_COLUMN_NAME = "id";
 
 }

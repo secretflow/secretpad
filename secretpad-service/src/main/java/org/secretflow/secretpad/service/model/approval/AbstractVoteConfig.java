@@ -22,5 +22,5 @@ package org.secretflow.secretpad.service.model.approval;
  * @author cml
  * @date 2023/09/19
  */
-public abstract class AbstractVoteConfig {
+public class AbstractVoteConfig {
 }

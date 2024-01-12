@@ -53,4 +53,19 @@ public class CreateNodeParam {
      * node feature 0 - mpc | 1 - tee | 2 mpc&tee
      */
     private Integer mode;
+
+    /**
+     * master nodeId
+     */
+    private String masterNodeId;
+
+    /**
+     * node netAddress
+     */
+    private String netAddress;
+
+    /**
+     * node certText
+     */
+    private String certText;
 }

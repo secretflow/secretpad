@@ -51,5 +51,14 @@ public interface UserTokensRepository extends BaseRepository<TokensDO, String> {
     @Modifying
     void deleteByNameAndToken(@Param("name") String name, @Param("token") String token);
 
+    /**
+     * the token record of the user is deleted
+     *
+     * @param name  userName
+     */
+    @Query("delete from TokensDO td where td.name=:name")
+    @Modifying
+    void deleteByName(@Param("name") String name);
+
 
 }

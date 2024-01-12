@@ -12,7 +12,7 @@ import org.secretflow.secretpad.persistence.repository.NodeRouteRepository;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
 import org.secretflow.secretpad.service.model.datasync.vote.VoteSyncRequest;
 import org.secretflow.secretpad.service.model.noderoute.UpdateNodeRouterRequest;
-import org.secretflow.secretpad.service.util.PushToCenterUtil;
+import org.secretflow.secretpad.service.util.DbSyncUtil;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -60,7 +60,7 @@ class NodeRouteControllerTest extends ControllerTest {
             Mockito.when(domainRouteServiceBlockingStub.queryDomainRoute(Mockito.any())).thenReturn(buildQueryDomainRouteResponse(0));
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
 
-            pushToCenterUtilMockedStatic.when(() -> PushToCenterUtil.dataPushToCenter(Mockito.any(VoteSyncRequest.class))).thenReturn(SecretPadResponse.success());
+            pushToCenterUtilMockedStatic.when(() -> DbSyncUtil.dbDataSyncToCenter(Mockito.any(VoteSyncRequest.class))).thenReturn(SecretPadResponse.success());
             return MockMvcRequestBuilders.post(getMappingUrl(NodeRouteController.class, "update", UpdateNodeRouterRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });
@@ -80,7 +80,7 @@ class NodeRouteControllerTest extends ControllerTest {
             Mockito.when(domainRouteServiceBlockingStub.queryDomainRoute(Mockito.any())).thenReturn(buildQueryDomainRouteResponse(0));
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
 
-            pushToCenterUtilMockedStatic.when(() -> PushToCenterUtil.dataPushToCenter(Mockito.any(VoteSyncRequest.class))).thenReturn(SecretPadResponse.success());
+            pushToCenterUtilMockedStatic.when(() -> DbSyncUtil.dbDataSyncToCenter(Mockito.any(VoteSyncRequest.class))).thenReturn(SecretPadResponse.success());
             return MockMvcRequestBuilders.post(getMappingUrl(NodeRouteController.class, "update", UpdateNodeRouterRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, NodeRouteErrorCode.NODE_ROUTE_NOT_EXIST_ERROR);

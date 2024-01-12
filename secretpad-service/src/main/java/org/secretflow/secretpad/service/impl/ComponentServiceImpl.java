@@ -121,7 +121,7 @@ public class ComponentServiceImpl implements ComponentService {
             if (files != null) {
                 for (File file : files) {
                     String fileName = file.getName();
-                    String app = fileName.substring(0, fileName.lastIndexOf("."));
+                    String app = fileName.substring(0, fileName.lastIndexOf('.'));
                     String str = FileUtils.readFile2String(file);
                     Map<String, Object> content = JsonUtils.toJavaMap(str, Object.class);
                     if (!CollectionUtils.isEmpty(content)) {

@@ -55,6 +55,10 @@ public enum NodeErrorCode implements ErrorCode {
      * Domain token empty error
      */
     NODE_TOKEN_IS_EMPTY_ERROR(202011408),
+    /**
+     * Domain cert error
+     */
+    NODE_CERT_CONFIG_ERROR(202011409)
     ;
 
     private final int code;

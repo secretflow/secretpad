@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service.schedule;
 
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.util.Base64Utils;
 import org.secretflow.secretpad.common.util.EncryptUtils;
 import org.secretflow.secretpad.common.util.JsonUtils;
@@ -29,8 +30,8 @@ import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.handler.VoteTypeHandler;
 import org.secretflow.secretpad.service.model.approval.VoteRequestMessage;
-import org.secretflow.secretpad.service.model.datasync.vote.VoteSyncRequest;
-import org.secretflow.secretpad.service.util.PushToCenterUtil;
+import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
+import org.secretflow.secretpad.service.util.DbSyncUtil;
 
 import com.google.common.collect.Lists;
 import jakarta.annotation.Resource;
@@ -69,17 +70,26 @@ public class VoteRequestStatusMonitor {
     @Resource
     private EnvService envService;
 
-    @Scheduled(initialDelay = 6000, fixedDelay = 5000)
+    @Scheduled(initialDelay = 6000, fixedDelay = 1000)
     public void sync() {
         List<VoteRequestDO> maybeNotSigns = voteRequestRepository.findByStatusAndExecuteStatus(VoteStatusEnum.REVIEWING.getCode(), VoteExecuteEnum.COMMITTED.name());
-        sign(maybeNotSigns);
+        if (!envService.getPlatformType().equals(PlatformTypeEnum.AUTONOMY)) {
+            sign(maybeNotSigns);
+        }
         List<VoteRequestDO> notExecutedTasks = voteRequestRepository.findByStatusAndExecuteStatus(VoteStatusEnum.APPROVED.getCode(), VoteExecuteEnum.COMMITTED.name());
         LOGGER.debug("notExecutedTasks = {} size = {}", notExecutedTasks, notExecutedTasks.size());
         if (!CollectionUtils.isEmpty(notExecutedTasks)) {
-            LOGGER.debug("voteRequestDOS not empty,start sync");
-            notExecutedTasks.forEach(e -> voteTypeHandlerMap.get(VoteTypeEnum.valueOf(e.getType())).doCallBack(e));
-            LOGGER.debug("voteRequestDOS not empty,end sync");
+            LOGGER.debug("notExecutedTasks not empty,start sync");
+            notExecutedTasks.forEach(e -> voteTypeHandlerMap.get(VoteTypeEnum.valueOf(e.getType())).doCallBackApproved(e));
+            LOGGER.debug("notExecutedTasks not empty,end sync");
         }
+        List<VoteRequestDO> rejectedTasks = voteRequestRepository.findByStatusAndExecuteStatus(VoteStatusEnum.REJECTED.getCode(), VoteExecuteEnum.COMMITTED.name());
+        if (!CollectionUtils.isEmpty(rejectedTasks)) {
+            LOGGER.info("rejectedTasks not empty,start sync");
+            rejectedTasks.forEach(e -> voteTypeHandlerMap.get(VoteTypeEnum.valueOf(e.getType())).doCallBackRejected(e));
+            LOGGER.info("rejectedTasks not empty,end sync");
+        }
+
     }
 
     //center  alice
@@ -127,10 +137,12 @@ public class VoteRequestStatusMonitor {
                         //center，direct write db
                         voteRequestRepository.save(voteRequestDO);
                     } else {
+                        LOGGER.info("this is edge , data sync to center");
+
                         voteRequestDO.setGmtModified(null);
                         voteRequestDO.setGmtCreate(null);
-                        VoteSyncRequest voteSyncRequest = VoteSyncRequest.builder().syncDataType(VoteSyncTypeEnum.VOTE_REQUEST.name()).projectNodesInfo(voteRequestDO).build();
-                        PushToCenterUtil.dataPushToCenter(voteSyncRequest);
+                        DbSyncRequest dbSyncRequest = DbSyncRequest.builder().syncDataType(VoteSyncTypeEnum.VOTE_REQUEST.name()).projectNodesInfo(voteRequestDO).build();
+                        DbSyncUtil.dbDataSyncToCenter(dbSyncRequest);
                     }
                 }
             }

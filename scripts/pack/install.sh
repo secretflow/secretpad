@@ -25,6 +25,7 @@ TEE_DM_IMAGE=""
 CAPSULE_MANAGER_SIM_IMAGE=""
 
 LITE_INSTALL_DIR="$HOME/kuscia/lite"
+P2P_DEFAULT_DIR="$HOME/kuscia/p2p"
 TEE_DOMAIN="tee"
 
 set -e
@@ -56,7 +57,7 @@ example:
 
 mode="master"
 case  "$1" in
-master | lite | tee)
+master | lite | tee | p2p)
   mode=$1
   shift
   ;;
@@ -158,16 +159,28 @@ function start_master() {
   docker run --rm -v $(pwd):/tmp/kuscia "$1" cp -f /home/kuscia/scripts/deploy/start_standalone.sh /tmp/kuscia
   echo "bash $(pwd)/start_standalone.sh -u web"
   bash $(pwd)/start_standalone.sh -u web
+  echo "delete alice bob dp domain data"
+  docker exec -it  ${USER}-kuscia-master kubectl delete domaindata alice-dp-table -n alice
+  docker exec -it  ${USER}-kuscia-master kubectl delete domaindata bob-dp-table -n bob
 }
 function start_secretpad() {
     edge_opt="-n ${domain_id} -s ${edge_domain_host_port}"
-
     # initialize start_edge.sh
     docker run --rm --entrypoint /bin/bash -v $(pwd):/tmp/secretpad $SECRETPAD_IMAGE -c 'cp -R /app/scripts/start_edge.sh /tmp/secretpad/'
     echo "bash $(pwd)/start_edge.sh ${edge_opt}"
     bash $(pwd)/start_edge.sh ${edge_opt}
 }
+function start_p2p_secretpad() {
+    KUSCIA_NAME="${USER}-kuscia-autonomy-${domain_id}"
+    edge_opt="-n ${domain_id} -s ${edge_domain_host_port} -m ${KUSCIA_NAME}:8083 "
+
+    # initialize start_p2p.sh
+    docker run --rm --entrypoint /bin/bash -v $(pwd):/tmp/secretpad $SECRETPAD_IMAGE -c 'cp -R /app/scripts/start_p2p.sh /tmp/secretpad/'
+    echo "bash $(pwd)/start_p2p.sh ${edge_opt}"
+    bash $(pwd)/start_p2p.sh ${edge_opt}
+}
 function loadTeeDmImage2Container() {
+  local image_tar
   for file in images/*; do
     if [ -f "$file" ]; then
       someimage=$(basename "$file")
@@ -175,11 +188,23 @@ function loadTeeDmImage2Container() {
       if [[ $someimage == *sf-tee-dm-sim* ]]; then
         tee_dm_image_tar=$someimage
       	cp images/$tee_dm_image_tar /tmp/$tee_dm_image_tar
+	image_tar=/tmp/$tee_dm_image_tar
       fi
     fi
   done
+  echo "Start importing image '${TEE_DM_IMAGE}' Please be patient..."
+  if [ -n "$image_tar" ]; then
+    echo "load by local image"
+  else
+    docker pull ${TEE_DM_IMAGE}
+    local image_id
+    image_id=$(docker images --filter="reference=${TEE_DM_IMAGE}" --format "{{.ID}}")
+    image_tar=/tmp/$(echo ${TEE_DM_IMAGE} | sed 's/\//_/g').${image_id}.tar
+  fi
+  if [ ! -e $image_tar ]; then
+    docker save $TEE_DM_IMAGE -o $image_tar
+  fi
   local container_id=$1
-  local image_tar=/tmp/$tee_dm_image_tar
   local CTR_ROOT=/home/kuscia
   docker exec -it $container_id ctr -a=${CTR_ROOT}/containerd/run/containerd.sock -n=k8s.io images import $image_tar
 }
@@ -246,7 +271,65 @@ function start_lite() {
   echo "bash $(pwd)/deploy.sh lite ${cmd_opt}"
   bash $(pwd)/deploy.sh lite ${cmd_opt}
   local domain_ctr=${USER}-kuscia-lite-${domain_id}
+  echo "init_kusciaapi_client_cert to ${domain_ctr}"
+  docker exec -it ${domain_ctr} scripts/deploy/init_kusciaapi_client_certs.sh
   loadTeeDmImage2Container "$domain_ctr"
+}
+
+function start_kuscia() {
+  if [[ ${domain_id} == "" ]]; then
+    printf "empty domain id\n" >&2
+    exit 1
+  fi
+
+  if [[ ${domain_host_ip} == "" ]]; then
+    domain_host_ip="127.0.0.1"
+  fi
+
+  if [[ ${domain_host_port} == "" ]]; then
+    domain_host_port="8080"
+  fi
+
+  if [[ ${lite_api_http_port} == "" ]]; then
+    lite_api_http_port="8081"
+  fi
+
+  if [[ ${lite_api_grpc_port} == "" ]]; then
+    lite_api_grpc_port="8082"
+  fi
+
+  if [[ ${install_dir} == "" ]]; then
+    install_dir=${P2P_DEFAULT_DIR}
+  fi
+
+  # set intall dir of the deploy.sh
+  # the datapath is ${ROOT}/kuscia-${deploy_mode}-${DOMAIN_ID}-data
+  # the certpath is ${ROOT}/kuscia-${deploy_mode}-${DOMAIN_ID}-certs
+  export ROOT=${install_dir}
+
+  cmd_opt="-n ${domain_id} -p ${domain_host_port} -k ${lite_api_http_port} -g ${lite_api_grpc_port} -d ${ROOT}/kuscia-autonomy-${domain_id}-data/${domain_id} -l ${ROOT}/kuscia-autonomy-${domain_id}-log"
+
+  # set the certpath of lite is ${ROOT}/domain-id/certs
+  if [[ ${domain_certs_dir} == "" ]]; then
+    domain_certs_dir=${ROOT}/kuscia-autonomy-${domain_id}-certs
+  fi
+  rm -rf domain_certs_dir
+  cmd_opt="${cmd_opt} -c ${domain_certs_dir}"
+  # set host ip
+  if [[ ${domain_host_ip} != "" ]]; then
+    cmd_opt="${cmd_opt} -i ${domain_host_ip}"
+  fi
+
+  # copy deploy.sh from kuscia image
+  docker run --rm -v $(pwd):/tmp/kuscia $KUSCIA_IMAGE cp -f /home/kuscia/scripts/deploy/deploy.sh /tmp/kuscia
+  # execute deploy lite shell
+  echo "bash $(pwd)/deploy.sh autonomy ${cmd_opt}"
+  bash $(pwd)/deploy.sh autonomy ${cmd_opt}
+  # add external name svc
+  docker exec -it  ${USER}-kuscia-autonomy-${domain_id} scripts/deploy/create_secretpad_svc.sh ${USER}-kuscia-autonomy-secretpad-${domain_id} ${domain_id}
+  # delete alice bob domain data  mach kuscia dp alice-dp-table  bob-dp-table
+  echo "delete alice bob domain data"
+  docker exec -it  ${USER}-kuscia-autonomy-${domain_id} kubectl delete domaindata alice-table bob-table alice-dp-table bob-dp-table -n ${domain_id}
 }
 
 function getIPV4Address() {
@@ -289,6 +372,9 @@ function start_lite_tee() {
   token=$(docker exec -it ${USER}-kuscia-master kubectl get domain $domain_id  -o=jsonpath='{.status.deployTokenStatuses[?(@.state=="unused")].token}')
   # init tee
   start_lite
+  docker run --rm --entrypoint /bin/bash -v $(pwd):/tmp/secretpad $SECRETPAD_IMAGE -c 'cp -R /app/scripts/pack/tee/init_tee.sh /tmp/secretpad/'
+  docker run --rm --entrypoint /bin/bash -v $(pwd):/tmp/secretpad $SECRETPAD_IMAGE -c 'cp -R /app/scripts/pack/tee/tee-capsule-manager.yaml /tmp/secretpad/'
+  docker run --rm --entrypoint /bin/bash -v $(pwd):/tmp/secretpad $SECRETPAD_IMAGE -c 'cp -R /app/scripts/pack/tee/tee-image.yaml /tmp/secretpad/'
   bash ./init_tee.sh
 }
 
@@ -329,6 +415,22 @@ if [[ ${mode} == "tee" ]]; then
   exit 0
 fi
 
+if [[ ${mode} == "p2p" ]]; then
+  # init kuscia
+  start_kuscia
+  start_p2p_secretpad
+  exit 0
+fi
+
+if [[ ${mode} == "lite" ]]; then
+  # init kuscia
+  start_lite
+  start_secretpad
+  exit 0
+fi
+
 # create lite with secretpad
 start_lite
+start_kuscia
 start_secretpad
+start_p2p_secretpad

@@ -19,16 +19,13 @@ package org.secretflow.secretpad.web.controller;
 import org.secretflow.secretpad.common.annotation.resource.ApiResource;
 import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.service.AuthService;
 import org.secretflow.secretpad.service.model.auth.LoginRequest;
-import org.secretflow.secretpad.service.model.auth.LogoutRequest;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
-import org.secretflow.secretpad.web.constant.AuthConstants;
 import org.secretflow.secretpad.web.util.AuthUtils;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -42,8 +39,6 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping(value = "/api")
 public class AuthController {
-
-    private final static int MAX_COOKIE_AGE = 24 * 60 * 60;
     private final AuthService authService;
 
     @Autowired
@@ -54,35 +49,32 @@ public class AuthController {
     /**
      * User login api
      *
-     * @param response http servlet response
-     * @param request  login request
+     * @param request login request
      * @return successful SecretPadResponse with token
      */
     @ResponseBody
     @PostMapping(value = "/login", consumes = "application/json")
-    @ApiResource(code = ApiResourceCodeConstants.AUTH_LOGIN)
-    public SecretPadResponse<UserContextDTO> login(HttpServletResponse response, @Valid @RequestBody LoginRequest request) {
+    public SecretPadResponse<UserContextDTO> login(@Valid @RequestBody LoginRequest request) {
         UserContextDTO login = authService.login(request.getName(), request.getPasswordHash());
-        Cookie cookie = new Cookie(AuthConstants.TOKEN_NAME, login.getToken());
-        cookie.setMaxAge(MAX_COOKIE_AGE);
-        response.addCookie(cookie);
         return SecretPadResponse.success(login);
     }
 
     /**
      * User logout api
      *
-     * @param request       http servlet request
-     * @param logoutRequest logout request
-     * @return successful SecretPadResponse with user name
+     * @param request http servlet request
+     * @return {@link SecretPadResponse }<{@link String }>
+     * @author lihaixin
+     * @date 2023/12/15
      */
+
     @ResponseBody
     @PostMapping(value = "/logout", consumes = "application/json")
     @ApiResource(code = ApiResourceCodeConstants.AUTH_LOGOUT)
-    public SecretPadResponse<String> logout(HttpServletRequest request, @Valid @RequestBody LogoutRequest logoutRequest) {
-        Cookie cookie = AuthUtils.findTokenCookie(request.getCookies());
-        authService.logout(logoutRequest.getName(), cookie.getValue());
-        return SecretPadResponse.success(logoutRequest.getName());
+    public SecretPadResponse<String> logout(HttpServletRequest request) {
+        UserContextDTO userContextDTO = UserContext.getUser();
+        String token = AuthUtils.findTokenInHeader(request);
+        authService.logout(userContextDTO.getName(), token);
+        return SecretPadResponse.success(userContextDTO.getName());
     }
-
 }

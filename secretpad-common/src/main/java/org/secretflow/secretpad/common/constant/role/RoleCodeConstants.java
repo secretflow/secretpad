@@ -22,8 +22,9 @@ package org.secretflow.secretpad.common.constant.role;
  * @author yuexie
  * @date 2023-11-17
  */
-public interface RoleCodeConstants {
+public class RoleCodeConstants {
 
-    String EDGE_NODE = "EDGE_NODE";
-    String EDGE_USER = "EDGE_USER";
+    public static final String EDGE_NODE = "EDGE_NODE";
+    public static final String EDGE_USER = "EDGE_USER";
+    public static final String P2P_NODE = "P2P_NODE";
 }

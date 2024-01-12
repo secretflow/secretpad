@@ -22,5 +22,5 @@ package org.secretflow.secretpad.service.model.message;
  * @author cml
  * @date 2023/09/22
  */
-public abstract class AbstractInitiatingTypeMessage {
+public class AbstractInitiatingTypeMessage {
 }

@@ -40,7 +40,11 @@ public enum NodeRouteErrorCode implements ErrorCode {
     /**
      * route update error
      */
-    NODE_ROUTE_UPDATE_ERROR(202012905);
+    NODE_ROUTE_UPDATE_ERROR(202012905),
+    /**
+     * route config error
+     */
+    NODE_ROUTE_CONFIG_ERROR(202012906);
 
     private final int code;
 

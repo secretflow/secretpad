@@ -41,7 +41,11 @@ public interface VoteTypeHandler {
 
     void createApproval(String nodeID, AbstractVoteConfig voteConfig);
 
-    List<PartyVoteStatus> getPartyStatusByVoteID(String voteID);
+    List<? extends PartyVoteStatus> getPartyStatusByVoteID(String voteID);
 
-    void doCallBack(VoteRequestDO voteRequestDO);
+    void doCallBackApproved(VoteRequestDO voteRequestDO);
+
+    void doCallBackRejected(VoteRequestDO voteRequestDO);
+
+    void flushVoteStatus(String voteID);
 }

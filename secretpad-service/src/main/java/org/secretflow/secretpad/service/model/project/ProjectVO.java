@@ -22,6 +22,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Project view object
@@ -78,4 +79,38 @@ public class ProjectVO {
      */
     @Schema(description = "teeNodeId", requiredMode = Schema.RequiredMode.REQUIRED)
     private String teeNodeId;
+
+    /**
+     * project approval status
+     * {@link org.secretflow.secretpad.common.enums.ProjectStatusEnum}
+     */
+    private String status;
+
+    /**
+     * project initiator nodeId
+     */
+    private String initiator;
+
+
+    /**
+     * project initiator nodeName
+     */
+    private String initiatorName;
+
+    /**
+     * vote invite patties's vote information
+     */
+    Set<PartyVoteInfoVO> partyVoteInfos;
+
+    /**
+     * computeFunc
+     * {@link org.secretflow.secretpad.common.constant.ProjectConstants.ComputeFuncEnum}
+     */
+    private String computeFunc;
+
+    /**
+     * project vote id
+     */
+    private String voteId;
+
 }

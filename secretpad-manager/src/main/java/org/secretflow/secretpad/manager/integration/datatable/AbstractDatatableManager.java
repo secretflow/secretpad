@@ -34,6 +34,8 @@ public abstract class AbstractDatatableManager {
 
     public static final String DATA_VENDOR_MANUAL = "manual";
 
+    public static final String DATA_VENDOR_GRANT = "grant";
+
     /**
      * Find Optional of DatatableDTO by nodeDatatableId
      *

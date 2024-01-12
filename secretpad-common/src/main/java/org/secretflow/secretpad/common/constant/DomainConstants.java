@@ -70,4 +70,13 @@ public class DomainConstants {
             this.code = code;
         }
     }
+
+    public enum DomainEmbeddedNodeEnum {
+        // alice
+        alice,
+        // bob
+        bob,
+        //tee
+        tee
+    }
 }

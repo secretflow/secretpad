@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service.graph.converter;
 
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.service.constant.JobConstants;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
@@ -54,6 +55,12 @@ public class KusciaJobConverter implements JobConverter {
     private int maxParallelism;
     private static String crossSiloCommBackend;
 
+    @Value("${secretpad.platform-type}")
+    private String plaformType;
+    @Value("${secretpad.node-id}")
+    private String localNodeId;
+
+    @SuppressWarnings("unused")
     @Value("${sfcluster-desc.ray-fed-config.cross-silo-comm-backend:brpc_link}")
     private void setCrossSiloCommBackend(String crossSiloCommBackend) {
         KusciaJobConverter.crossSiloCommBackend = crossSiloCommBackend;
@@ -82,6 +89,10 @@ public class KusciaJobConverter implements JobConverter {
                 List<String> parties = task.getParties();
                 if (!CollectionUtils.isEmpty(parties)) {
                     initiator = parties.get(0);
+                    if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))) {
+                        initiator = localNodeId;
+                        log.info("KusciaJobConverter converter parties {} initiator {}", parties, initiator);
+                    }
                     taskParties = parties.stream().map(party -> Job.Party.newBuilder().setDomainId(party).build()).collect(Collectors.toList());
                 }
                 String taskInputConfig = renderTaskInputConfig(task);

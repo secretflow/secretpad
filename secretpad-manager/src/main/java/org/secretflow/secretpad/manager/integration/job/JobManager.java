@@ -118,7 +118,7 @@ public class JobManager extends AbstractJobManager {
             LOGGER.info("starter jobEvent ... ");
             responses.forEachRemaining(this::syncJob);
         } catch (Exception e) {
-            LOGGER.error("startSync exception: {}, while restart", e.getMessage());
+            LOGGER.error("startSync exception: {}, while restart", e.getMessage(), e);
         }
     }
 
@@ -157,7 +157,7 @@ public class JobManager extends AbstractJobManager {
      *
      * @param taskDO
      */
-    private void syncResult(ProjectTaskDO taskDO) {
+    public void syncResult(ProjectTaskDO taskDO) {
         LOGGER.info("watched jobEvent: sync result {}", taskDO.toString());
         if (taskDO.getStatus() != GraphNodeTaskStatus.SUCCEED) {
             return;
@@ -189,7 +189,7 @@ public class JobManager extends AbstractJobManager {
                 }
             }
         }
-        LOGGER.info("look up nodeDatatableIds from kusciaapi, size: {}", nodeDatatableIds.size());
+        LOGGER.info("look up nodeDatatableIds from kusciaapi, msg: {}", nodeDatatableIds);
         if (!CollectionUtils.isEmpty(nodeDatatableIds)) {
             Map<DatatableDTO.NodeDatatableId, DatatableDTO> datatableDTOMap = datatableManager.findByIds(nodeDatatableIds);
             LOGGER.info("looked up nodeDatatableIds from kusciaapi, datatableDTOMap size: {}", datatableDTOMap.size());
@@ -345,6 +345,7 @@ public class JobManager extends AbstractJobManager {
         }
         // update result
         TeeNodeDatatableManagementDO managementDO = updateTeeJob(it, managementOptional.get());
+        // TODO(zhiyin): disabled all in edge
         if (PlatformTypeEnum.CENTER.equals(getPlaformType())) {
             managementRepository.save(managementDO);
 

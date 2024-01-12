@@ -17,7 +17,6 @@
 package org.secretflow.secretpad.service;
 
 import org.secretflow.secretpad.service.model.common.SecretPadPageResponse;
-import org.secretflow.secretpad.service.model.node.NodeVO;
 import org.secretflow.secretpad.service.model.noderoute.CreateNodeRouterRequest;
 import org.secretflow.secretpad.service.model.noderoute.NodeRouterVO;
 import org.secretflow.secretpad.service.model.noderoute.PageNodeRouteRequest;
@@ -25,7 +24,6 @@ import org.secretflow.secretpad.service.model.noderoute.UpdateNodeRouterRequest;
 
 import org.springframework.data.domain.Pageable;
 
-import java.util.List;
 import java.util.Set;
 
 /**
@@ -40,8 +38,6 @@ public interface NodeRouterService {
     void updateNodeRouter(UpdateNodeRouterRequest request);
 
     NodeRouterVO getNodeRouter(String nodeId);
-
-    List<NodeVO> listNode();
 
     NodeRouterVO refreshRouter(String routerId);
 

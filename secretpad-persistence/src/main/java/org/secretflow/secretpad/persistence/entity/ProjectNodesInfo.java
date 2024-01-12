@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -24,7 +25,7 @@ import java.util.List;
  * @author zhiyin
  * @date 2023/10/19
  */
-public interface ProjectNodesInfo {
+public interface ProjectNodesInfo extends Serializable {
     /**
      * if getNodeIds() == null use projectId find project_node_do get nodeIds
      *

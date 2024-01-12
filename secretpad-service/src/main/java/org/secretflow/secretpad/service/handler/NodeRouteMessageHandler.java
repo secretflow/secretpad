@@ -25,13 +25,12 @@ import org.secretflow.secretpad.common.errorcode.VoteErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.Base64Utils;
 import org.secretflow.secretpad.common.util.JsonUtils;
-import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.repository.*;
+import org.secretflow.secretpad.service.CertificateService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.NodeRouterService;
-import org.secretflow.secretpad.service.enums.VoteExecuteEnum;
 import org.secretflow.secretpad.service.enums.VoteStatusEnum;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.model.approval.AbstractVoteConfig;
@@ -72,8 +71,8 @@ public class NodeRouteMessageHandler extends AbstractVoteTypeHandler {
     private final NodeRouteRepository nodeRouteRepository;
 
 
-    public NodeRouteMessageHandler(VoteInviteRepository voteInviteRepository, NodeRepository nodeRepository, EnvService envService, NodeRouteAuditConfigRepository nodeRouteAuditConfigRepository, VoteRequestRepository voteRequestRepository, NodeRouterService nodeRouterService, NodeRouteRepository nodeRouteRepository) {
-        super(voteInviteRepository, voteRequestRepository, nodeRepository, envService);
+    public NodeRouteMessageHandler(VoteInviteRepository voteInviteRepository, NodeRepository nodeRepository, EnvService envService, NodeRouteAuditConfigRepository nodeRouteAuditConfigRepository, VoteRequestRepository voteRequestRepository, NodeRouterService nodeRouterService, NodeRouteRepository nodeRouteRepository, CertificateService certificateService, ProjectRepository projectRepository) {
+        super(voteInviteRepository, voteRequestRepository, nodeRepository, envService, certificateService, projectRepository);
         this.nodeRouteAuditConfigRepository = nodeRouteAuditConfigRepository;
         this.nodeRouterService = nodeRouterService;
         this.nodeRouteRepository = nodeRouteRepository;
@@ -158,7 +157,7 @@ public class NodeRouteMessageHandler extends AbstractVoteTypeHandler {
     }
 
     @Override
-    public void createApproval(String nodeID, AbstractVoteConfig voteConfig) {
+    protected void preCheck(String nodeID, AbstractVoteConfig voteConfig) {
         checkDataPermissions(nodeID);
         NodeRouteVoteConfig nodeRouteVoteConfig = (NodeRouteVoteConfig) voteConfig;
         String srcNodeID = nodeRouteVoteConfig.getSrcNodeId();
@@ -169,16 +168,13 @@ public class NodeRouteMessageHandler extends AbstractVoteTypeHandler {
         if (nodeRouteDOOptional.isPresent()) {
             throw SecretpadException.of(NodeRouteErrorCode.NODE_ROUTE_ALREADY_EXISTS, desNodeID + " -> " + srcNodeID);
         }
-        //generate unique vote id
-        String voteID = UUIDUtils.newUUID();
-        List<String> executors = new ArrayList<>();
+    }
 
-        NodeDO descNodeNO = nodeRepository.findByNodeId(desNodeID);
-        String requestDesc = descNodeNO.getName();
-        NodeDO srcNodeDO = nodeRepository.findByNodeId(srcNodeID);
-        String inviteDesc = srcNodeDO.getName();
-        executors.add(srcNodeID);
-        executors.add(desNodeID);
+    @Override
+    protected void createVoteConfig(String voteID, String nodeID, AbstractVoteConfig voteConfig) {
+        NodeRouteVoteConfig nodeRouteVoteConfig = (NodeRouteVoteConfig) voteConfig;
+        String srcNodeID = nodeRouteVoteConfig.getSrcNodeId();
+        String desNodeID = nodeRouteVoteConfig.getDesNodeId();
         NodeRouteApprovalConfigDO nodeRouteApprovalConfigDO = NodeRouteApprovalConfigDO.builder()
                 .desNodeID(desNodeID)
                 .srcNodeID(srcNodeID)
@@ -189,57 +185,83 @@ public class NodeRouteMessageHandler extends AbstractVoteTypeHandler {
                 .allParticipants(Lists.newArrayList(nodeID, nodeRouteVoteConfig.getDesNodeId()))
                 .build();
         nodeRouteAuditConfigRepository.saveAndFlush(nodeRouteApprovalConfigDO);
+    }
+
+    @Override
+    protected String getApprovedAction(String nodeID, AbstractVoteConfig voteConfig) {
+        NodeRouteVoteConfig nodeRouteVoteConfig = (NodeRouteVoteConfig) voteConfig;
+        String desNodeID = nodeRouteVoteConfig.getDesNodeId();
+        return "NODE_ROUTE," + desNodeID;
+    }
+
+    @Override
+    protected String getRejectAction(String nodeID, AbstractVoteConfig voteConfig) {
+        return null;
+    }
+
+    @Override
+    protected List<String> getExecutors(String nodeId, AbstractVoteConfig voteConfig) {
+        NodeRouteVoteConfig nodeRouteVoteConfig = (NodeRouteVoteConfig) voteConfig;
+        String srcNodeID = nodeRouteVoteConfig.getSrcNodeId();
+        String desNodeID = nodeRouteVoteConfig.getDesNodeId();
+        List<String> executors = new ArrayList<>();
+        executors.add(srcNodeID);
+        executors.add(desNodeID);
+        return executors;
+    }
+
+    @Override
+    protected List<String> getVoters(String nodeID, AbstractVoteConfig voteConfig) {
+        NodeRouteVoteConfig nodeRouteVoteConfig = (NodeRouteVoteConfig) voteConfig;
+        String desNodeID = nodeRouteVoteConfig.getDesNodeId();
+        return Lists.newArrayList(desNodeID);
+    }
+
+    @Override
+    protected String getVoteType() {
+        return supportTypes().get(0).name();
+    }
+
+    @Override
+    protected String getRequestDesc(String nodeID, AbstractVoteConfig voteConfig) {
+        NodeRouteVoteConfig nodeRouteVoteConfig = (NodeRouteVoteConfig) voteConfig;
+        String desNodeID = nodeRouteVoteConfig.getDesNodeId();
+        NodeDO descNodeNO = nodeRepository.findByNodeId(desNodeID);
+        return descNodeNO.getName();
+    }
+
+    @Override
+    protected String getInviteDesc(String nodeID, AbstractVoteConfig voteConfig) {
+        NodeRouteVoteConfig nodeRouteVoteConfig = (NodeRouteVoteConfig) voteConfig;
+        String srcNodeID = nodeRouteVoteConfig.getSrcNodeId();
+        NodeDO srcNodeDO = nodeRepository.findByNodeId(srcNodeID);
+        return srcNodeDO.getName();
+    }
+
+    @Override
+    protected String generateVoteRequestMsg(String nodeID, AbstractVoteConfig voteConfig, String voteID) {
+        List<String> voters = getVoters(nodeID, voteConfig);
         VoteRequestBody voteRequestBody = VoteRequestBody.builder()
-                .rejectedAction("NODE")
-                .approvedAction("NODE_ROUTE," + nodeRouteApprovalConfigDO.getDesNodeID())
-                .type(VoteTypeEnum.NODE_ROUTE.name())
-                .approvedThreshold(1)
+                .rejectedAction(getRejectAction(nodeID, voteConfig))
+                .approvedAction(getApprovedAction(nodeID, voteConfig))
+                .type(getVoteType())
+                .approvedThreshold(voters.size())
                 .initiator(nodeID)
                 .voteRequestID(voteID)
-                .voteCounter("master")
-                .voters(Lists.newArrayList(desNodeID))
-                .executors(executors)
+                .voteCounter(nodeID)
+                .voters(voters)
+                .executors(Lists.newArrayList(nodeID))
                 .build();
+        String voteRequestBodyBase64 = Base64Utils.encode(JsonUtils.toJSONString(voteRequestBody).getBytes());
         VoteRequestMessage voteRequestMessage = VoteRequestMessage.builder()
-                .body(Base64Utils.encode(JsonUtils.toJSONString(voteRequestBody).getBytes()))
+                .body(voteRequestBodyBase64)
                 .build();
-        String voteMsg = JsonUtils.toJSONString(voteRequestMessage);
-        //vote participant info
-        List<VoteInviteDO> voteInviteDOS = new ArrayList<>();
-
-        VoteInviteDO voteInviteDO = VoteInviteDO.builder()
-                .upk(VoteInviteDO.UPK.builder().voteID(voteID).votePartitionID(desNodeID).build())
-                .initiator(nodeID)
-                .desc(inviteDesc)
-                .action(VoteStatusEnum.REVIEWING.name())
-                .voteMsg(voteMsg)
-                .type(VoteTypeEnum.NODE_ROUTE.name())
-                .build();
-        voteInviteDOS.add(voteInviteDO);
-
-        voteInviteRepository.saveAllAndFlush(voteInviteDOS);
-
-
-        //vote initiator info
-        VoteRequestDO voteRequestDO = VoteRequestDO.builder()
-                .voteID(voteID)
-                .initiator(nodeID)
-                .type(VoteTypeEnum.NODE_ROUTE.name())
-                .voters(Lists.newArrayList(desNodeID))
-                .voteCounter("master")
-                .requestMsg(voteMsg)
-                .executeStatus(VoteExecuteEnum.COMMITTED.name())
-                .executors(executors)
-                .approvedThreshold(1)
-                .status(VoteStatusEnum.REVIEWING.getCode())
-                .desc(requestDesc)
-                .build();
-        voteRequestRepository.saveAndFlush(voteRequestDO);
+        return JsonUtils.toJSONString(voteRequestMessage);
     }
 
     @Override
     @Transactional
-    public void doCallBack(VoteRequestDO voteRequestDO) {
+    public void doCallBackApproved(VoteRequestDO voteRequestDO) {
         LOGGER.info("start do callback of node route,voteID = {}", voteRequestDO.getVoteID());
         String voteID = voteRequestDO.getVoteID();
         Optional<NodeRouteApprovalConfigDO> nodeRouteApprovalConfigDOOptional = nodeRouteAuditConfigRepository.findById(voteID);
@@ -339,10 +361,8 @@ public class NodeRouteMessageHandler extends AbstractVoteTypeHandler {
 
     private void checkDataPermissions(String nodeId) {
         UserContextDTO user = UserContext.getUser();
-        if (user.getPlatformType().equals(PlatformTypeEnum.EDGE)) {
-            if (!user.getOwnerId().equals(nodeId)) {
-                throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "no Permissions");
-            }
+        if (user.getPlatformType().equals(PlatformTypeEnum.EDGE) && !user.getOwnerId().equals(nodeId)) {
+            throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "no Permissions");
         }
     }
 

@@ -17,8 +17,8 @@
 package org.secretflow.secretpad.service.sync.edge;
 
 import org.secretflow.secretpad.common.constant.SystemConstants;
+import org.secretflow.secretpad.common.dto.SyncDataDTO;
 import org.secretflow.secretpad.common.util.JsonUtils;
-import org.secretflow.secretpad.manager.integration.model.SyncDataDTO;
 import org.secretflow.secretpad.persistence.model.DataSyncConfig;
 import org.secretflow.secretpad.service.sync.JpaSyncDataService;
 

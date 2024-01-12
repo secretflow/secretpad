@@ -39,10 +39,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.TimeZone;
+import java.util.*;
 
 /**
  * Json utils
@@ -386,6 +383,22 @@ public class JsonUtils {
      * Convert string to java target class list
      *
      * @param content
+     * @param clazz
+     * @param <E>
+     * @return target class list
+     */
+    public static <E> Set<E> toJavaSet(String content, Class<E> clazz) {
+        return toJavaObject(content, makeJavaType(Set.class, clazz));
+    }
+
+    public static <E> Set<E> toJavaSet(Object obj, Class<E> clazz) {
+        return toJavaObject(toJSONString(obj), makeJavaType(Set.class, clazz));
+    }
+
+    /**
+     * Convert string to java target class list
+     *
+     * @param content
      * @return target class list
      */
     public static List<Object> toJavaList(String content) {
@@ -416,8 +429,48 @@ public class JsonUtils {
         });
     }
 
+    /**
+     * deep copy list
+     *
+     * @param list
+     * @param clazz
+     * @param <E>
+     * @return
+     */
     public static <E> List<E> deepCopyList(List<E> list, Class<E> clazz) {
         if (CollectionUtils.isEmpty(list)) return list;
         return toJavaObject(toJSONString(list), makeJavaType(List.class, clazz));
     }
+
+    /**
+     * deep copy set
+     *
+     * @param set
+     * @param clazz
+     * @param <E>
+     * @return
+     */
+    public static <E> Set<E> deepCopySet(Set<E> set, Class<E> clazz) {
+        if (CollectionUtils.isEmpty(set)) return set;
+        return toJavaObject(toJSONString(set), makeJavaType(Set.class, clazz));
+    }
+
+    /**
+     * deep copy object
+     *
+     * @param value
+     * @param clazz
+     * @param <T>
+     * @return
+     */
+    public static <T> T deepCopy(T value, Class<T> clazz) {
+        try {
+            String json = OM.writeValueAsString(value);
+            return OM.readValue(json, clazz);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Deep copy failed", e);
+        }
+    }
+
+
 }

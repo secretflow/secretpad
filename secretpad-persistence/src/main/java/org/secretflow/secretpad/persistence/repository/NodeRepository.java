@@ -24,6 +24,7 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Node repository
@@ -42,6 +43,16 @@ public interface NodeRepository extends BaseRepository<NodeDO, String> {
      */
     @Query("from NodeDO nd where nd.nodeId=:nodeId")
     NodeDO findByNodeId(String nodeId);
+
+    /**
+     * Query deleted node result by nodeId
+     *
+     * @param nodeId target nodeId
+     * @return node result optional
+     */
+    @Query(value = "select id,node_id,name,auth,description,control_node_id,net_address,token,type,mode,master_node_id,is_deleted,gmt_create,gmt_modified from node " +
+            "where node_id=:nodeId and is_deleted = 1", nativeQuery = true)
+    Optional<NodeDO> findDeletedRecordByNodeId(String nodeId);
 
     /**
      * Delete node

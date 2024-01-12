@@ -238,6 +238,7 @@ insert into sys_resource(resource_type, resource_code, resource_name) values('IN
 insert into sys_resource(resource_type, resource_code, resource_name) values('INTERFACE', 'NODE_USER_OTHER_NODE_BASE_INFO_LIST','NODE_USER_OTHER_NODE_BASE_INFO_LIST');
 insert into sys_resource(resource_type, resource_code, resource_name) values('INTERFACE', 'AUTH_LOGIN','AUTH_LOGIN');
 insert into sys_resource(resource_type, resource_code, resource_name) values('INTERFACE', 'AUTH_LOGOUT','AUTH_LOGOUT');
+insert into sys_resource(resource_type, resource_code, resource_name) values('INTERFACE', 'USER_UPDATE_PWD','USER_UPDATE_PWD');
 insert into sys_resource(resource_type, resource_code, resource_name) values('INTERFACE', 'ENV_GET','ENV_GET');
 
 -----------
@@ -278,6 +279,8 @@ insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_NODE', 
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'AUTH_LOGIN');
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'AUTH_LOGOUT');
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'USER_GET');
+insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'USER_UPDATE_PWD');
+
 -- Edge user permission
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'GRAPH_COMM_BATH');
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'GRAPH_COMM_GET');

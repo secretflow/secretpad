@@ -16,11 +16,11 @@
 
 package org.secretflow.secretpad.service.sync;
 
+import org.secretflow.secretpad.common.dto.SyncDataDTO;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.UserContext;
-import org.secretflow.secretpad.manager.integration.model.SyncDataDTO;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.DbChangeAction;
 import org.secretflow.secretpad.persistence.repository.*;
@@ -84,10 +84,12 @@ public class JpaSyncDataService {
     private final VoteInviteRepository voteInviteRepository;
     private final VoteRequestRepository voteRequestRepository;
     private final NodeRouteAuditConfigRepository nodeRouteAuditConfigRepository;
+
+    private final ProjectApprovalConfigRepository projectApprovalConfigRepository;
     @PersistenceContext
     private final EntityManager entityManager;
 
-    @SuppressWarnings(value={"rawtypes"})
+    @SuppressWarnings(value = {"rawtypes"})
     private static Map<String, BaseRepository> doAndRepository;
 
     @PostConstruct
@@ -117,6 +119,7 @@ public class JpaSyncDataService {
         doAndRepository.put(VoteInviteDO.class.getTypeName(), voteInviteRepository);
         doAndRepository.put(VoteRequestDO.class.getTypeName(), voteRequestRepository);
         doAndRepository.put(NodeRouteApprovalConfigDO.class.getTypeName(), nodeRouteAuditConfigRepository);
+        doAndRepository.put(ProjectApprovalConfigDO.class.getTypeName(), projectApprovalConfigRepository);
     }
 
     @SuppressWarnings(value={"rawtypes"})
@@ -137,7 +140,22 @@ public class JpaSyncDataService {
         UserContext.remove();
     }
 
-    private boolean ignore(@SuppressWarnings(value={"rawtypes"}) SyncDataDTO dto) {
+    @SuppressWarnings(value = {"rawtypes"})
+    public void syncDataP2p(SyncDataDTO dto) {
+        UserContext.setBaseUser(UserContextDTO.builder().name("admin").build());
+        String action = dto.getAction();
+        Object data = dto.getData();
+        BaseRepository baseRepository = doAndRepository.get(dto.getTableName());
+        // todo check last update version
+        switch (action) {
+            case "create", "update" -> baseRepository.save(data);
+            case "remove" -> baseRepository.delete(data);
+            default -> log.error("can not find action:{}", action);
+        }
+        UserContext.remove();
+    }
+
+    private boolean ignore(@SuppressWarnings(value = {"rawtypes"}) SyncDataDTO dto) {
         String tableName = dto.getTableName();
         if (VoteRequestDO.class.getTypeName().equals(tableName)) {
             Object data = dto.getData();

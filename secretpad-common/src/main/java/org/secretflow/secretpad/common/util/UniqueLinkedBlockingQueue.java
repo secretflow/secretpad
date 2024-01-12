@@ -28,6 +28,7 @@ public class UniqueLinkedBlockingQueue<E> extends LinkedBlockingQueue<E> {
     private static final long serialVersionUID = 6523405086129214113L;
     private final ReentrantLock putLock = new ReentrantLock();
 
+    @Override
     public void put(E e) throws InterruptedException {
         putLock.lock();
         try {

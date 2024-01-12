@@ -70,8 +70,18 @@ public interface NodeRouteRepository extends BaseRepository<NodeRouteDO, String>
     Optional<NodeRouteDO> findBySrcNodeIdAndDstNodeId(@Param("srcNodeId") String srcNodeId,
                                                       @Param("dstNodeId") String dstNodeId);
 
+    /**
+     * Delete node route by srcNodeId
+     *
+     * @param srcNodeId source node id
+     */
     void deleteBySrcNodeId(@Param("srcNodeId") String srcNodeId);
 
+    /**
+     * Delete node route by dstNodeId
+     *
+     * @param dstNodeId destination node id
+     */
     void deleteByDstNodeId(@Param("dstNodeId") String dstNodeId);
 
     @Query(value = "from NodeRouteDO a join NodeDO b on a.srcNodeId=b.nodeId " +

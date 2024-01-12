@@ -17,10 +17,12 @@
 package org.secretflow.secretpad.common.util;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Map;
@@ -32,9 +34,14 @@ import java.util.Map;
  * @date 2023-11-17
  */
 @Slf4j
+@Service
 public class RestTemplateUtil {
-    private static final RestTemplate REST_TEMPLATE = new RestTemplate();
+    private static RestTemplate REST_TEMPLATE;
 
+    @Autowired
+    public void setRestTemplate(RestTemplate restTemplate) {
+        RestTemplateUtil.REST_TEMPLATE = restTemplate;
+    }
 
     public static <T> T sendPostJson(String url, Object objReq, Map<String, String> headMap, Class<T> clazz) {
         ResponseEntity<String> stringResponseEntity = sendPostJson(url, objReq, headMap);

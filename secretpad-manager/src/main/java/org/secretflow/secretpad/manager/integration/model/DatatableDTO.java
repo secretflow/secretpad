@@ -95,7 +95,7 @@ public class DatatableDTO {
         return DatatableDTO.builder()
                 .datatableId(domainData.getDomaindataId())
                 .datatableName(domainData.getName())
-                .nodeId(domainData.getDomainId())
+                .nodeId(domainData.getAuthor())
                 .relativeUri(domainData.getRelativeUri())
                 .datasourceId(domainData.getDatasourceId())
                 .attributes(domainData.getAttributesMap())
@@ -154,6 +154,7 @@ public class DatatableDTO {
     @Getter
     @Setter
     @EqualsAndHashCode
+    @ToString
     public static class NodeDatatableId {
 
         /**

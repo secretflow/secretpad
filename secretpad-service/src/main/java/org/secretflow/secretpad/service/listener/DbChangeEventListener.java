@@ -16,20 +16,17 @@
 
 package org.secretflow.secretpad.service.listener;
 
-import org.secretflow.secretpad.common.constant.SystemConstants;
-import org.secretflow.secretpad.manager.integration.model.SyncDataDTO;
+import org.secretflow.secretpad.common.dto.SyncDataDTO;
+import org.secretflow.secretpad.persistence.datasync.buffer.DataSyncDataBufferTemplate;
+import org.secretflow.secretpad.persistence.datasync.listener.EntityChangeListener;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
-import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
-import org.secretflow.secretpad.persistence.listener.EntityChangeListener;
 import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
 import org.secretflow.secretpad.service.sync.center.SseSession;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
-import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;
@@ -43,16 +40,15 @@ import java.util.List;
  * @date 2023/10/19
  */
 @Slf4j
-@Component
 @RequiredArgsConstructor
-@Profile(value = {SystemConstants.DEV, SystemConstants.DEFAULT})
 @SuppressWarnings(value = {"rawtypes"})
 public class DbChangeEventListener {
     private final ProjectNodeRepository projectNodeRepository;
+    private final DataSyncDataBufferTemplate dataSyncDataBufferTemplate;
 
-    private void sync(EntityChangeListener.DbChangeEvent event) {
+    private void sync(EntityChangeListener.DbChangeEvent event) throws InterruptedException {
         if (event.getSource() instanceof NodeDO) {
-            log.info("*** get data sync , filter {} will be send",SseSession.sessionMap.keySet());
+            log.info("*** get data sync , filter {} will be send", SseSession.sessionMap.keySet());
             SseSession.sendAll(SyncDataDTO.builder()
                     .tableName(event.getDType())
                     .action(event.getAction())
@@ -64,15 +60,13 @@ public class DbChangeEventListener {
             nodeIds = new ArrayList<>();
             String projectId = event.getProjectId();
             if (StringUtils.isNotEmpty(projectId)) {
-                List<ProjectNodeDO> byProjectId = projectNodeRepository.findByProjectId(projectId);
+                List<String> byProjectId = projectNodeRepository.findProjectNodesByProjectId(projectId);
                 if (!CollectionUtils.isEmpty(byProjectId)) {
-                    for (ProjectNodeDO p : byProjectId) {
-                        nodeIds.add(p.getNodeId());
-                    }
+                    nodeIds.addAll(byProjectId);
                 }
             }
         }
-        log.info("*** get data sync , filter {} will be send",nodeIds);
+        log.info("*** get data sync , filter {} will be send", nodeIds);
         nodeIds.forEach(n -> {
             List<SyncDataDTO> syncDataDTOList = SseSession.sessionTableMap.get(n);
             if (!CollectionUtils.isEmpty(syncDataDTOList)) {
@@ -96,9 +90,9 @@ public class DbChangeEventListener {
     public void sync() throws InterruptedException {
         //noinspection InfiniteLoopStatement
         while (true) {
-            EntityChangeListener.DbChangeEvent e = EntityChangeListener.queue.take();
+            EntityChangeListener.DbChangeEvent e = dataSyncDataBufferTemplate.peek(null);
             sync(e);
-            log.info("*** get data sync , start to send *** {} , {} wait to sync", e, EntityChangeListener.queue.size());
+            log.info("*** get data sync , start to send *** {} , {} wait to sync", e, dataSyncDataBufferTemplate.size(null));
         }
     }
 }

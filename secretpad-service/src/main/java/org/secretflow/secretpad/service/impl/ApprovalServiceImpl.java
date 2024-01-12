@@ -18,10 +18,13 @@ package org.secretflow.secretpad.service.impl;
 
 import org.secretflow.secretpad.common.errorcode.JobErrorCode;
 import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
+import org.secretflow.secretpad.common.errorcode.VoteErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.ApprovalService;
+import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.enums.VoteStatusEnum;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.handler.VoteTypeHandler;
@@ -31,6 +34,7 @@ import org.secretflow.secretpad.service.model.approval.PullStatusVO;
 
 import jakarta.transaction.Transactional;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -67,13 +71,16 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     private final ProjectNodeRepository projectNodeRepository;
 
+    private final EnvService envService;
+
     public ApprovalServiceImpl(VoteRequestRepository voteRequestRepository,
                                TeeDownLoadAuditConfigRepository teeDownLoadAuditConfigRepository,
                                NodeRepository nodeRepository,
                                Map<VoteTypeEnum, VoteTypeHandler> voteTypeHandlerMap,
                                VoteInviteRepository voteInviteRepository,
                                ProjectJobRepository projectJobRepository,
-                               ProjectNodeRepository projectNodeRepository) {
+                               ProjectNodeRepository projectNodeRepository,
+                               EnvService envService) {
         this.voteRequestRepository = voteRequestRepository;
         this.teeDownLoadAuditConfigRepository = teeDownLoadAuditConfigRepository;
         this.voteInviteRepository = voteInviteRepository;
@@ -81,11 +88,13 @@ public class ApprovalServiceImpl implements ApprovalService {
         this.voteTypeHandlerMap = voteTypeHandlerMap;
         this.projectJobRepository = projectJobRepository;
         this.projectNodeRepository = projectNodeRepository;
+        this.envService = envService;
     }
 
     @Transactional
     @Override
     public void createApproval(String nodeID, AbstractVoteConfig voteConfig, String voteType) {
+        identityVerification(nodeID);
         //check node exists
         NodeDO nodeDO = nodeRepository.findByNodeId(nodeID);
         if (ObjectUtils.isEmpty(nodeDO)) {
@@ -172,5 +181,13 @@ public class ApprovalServiceImpl implements ApprovalService {
                 .resourceID(resourceID)
                 .parties(participants)
                 .build();
+    }
+
+    private void identityVerification(String nodeId) {
+        if (envService.isAutonomy()) {
+            if (!StringUtils.equals(UserContext.getUser().getPlatformNodeId(), nodeId)) {
+                throw SecretpadException.of(VoteErrorCode.VOTE_CHECK_FAILED);
+            }
+        }
     }
 }

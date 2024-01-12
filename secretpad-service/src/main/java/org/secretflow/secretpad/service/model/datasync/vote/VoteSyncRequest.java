@@ -16,22 +16,14 @@
 
 package org.secretflow.secretpad.service.model.datasync.vote;
 
-import org.secretflow.secretpad.common.annotation.OneOfType;
-import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
-import org.secretflow.secretpad.persistence.entity.ProjectNodesInfo;
-import org.secretflow.secretpad.persistence.entity.VoteInviteDO;
-import org.secretflow.secretpad.persistence.entity.VoteRequestDO;
-
-import com.fasterxml.jackson.annotation.JsonSubTypes;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import lombok.*;
 
+import java.util.List;
+
 /**
- * VoteSyncRequest.
- *
  * @author cml
- * @date 2023/11/02
+ * @date 2023/11/28
  */
 @Builder
 @Setter
@@ -40,24 +32,12 @@ import lombok.*;
 @AllArgsConstructor
 public class VoteSyncRequest {
 
-    @OneOfType(types = {"VOTE_REQUEST", "VOTE_INVITE", "NODE_ROUTE", "TEE_NODE_DATATABLE_MANAGEMENT"})
-    @NotBlank
-    private String syncDataType;
-
-
-    @JsonTypeInfo(
-            use = JsonTypeInfo.Id.NAME,
-            include = JsonTypeInfo.As.EXTERNAL_PROPERTY,
-            property = "syncDataType",
-            defaultImpl = VoteInviteDO.class
-    )
-    @JsonSubTypes({
-            @JsonSubTypes.Type(value = VoteRequestDO.class, name = "VOTE_REQUEST"),
-            @JsonSubTypes.Type(value = VoteInviteDataSyncRequest.class, name = "VOTE_INVITE"),
-            @JsonSubTypes.Type(value = NodeRouteDO.class, name = "NODE_ROUTE"),
-            @JsonSubTypes.Type(value = TeeNodeDatatableManagementSyncRequest.class, name = "TEE_NODE_DATATABLE_MANAGEMENT")
-
-    })
-    private ProjectNodesInfo projectNodesInfo;
-
+    /**
+     * vote request
+     * vote result
+     * <p>
+     * vote
+     */
+    @NotEmpty(message = "dbSyncRequest can not be empty")
+    private List<DbSyncRequest> dbSyncRequests;
 }

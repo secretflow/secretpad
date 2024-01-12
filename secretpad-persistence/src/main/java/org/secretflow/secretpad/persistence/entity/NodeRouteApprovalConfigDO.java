@@ -44,6 +44,7 @@ public class NodeRouteApprovalConfigDO extends BaseAggregationRoot<NodeRouteAppr
     @Id
     @Column(name = "vote_id", nullable = false, length = 64)
     private String voteID;
+
     @Column(name = "is_single", nullable = false, length = 1)
     private Boolean isSingle;
 

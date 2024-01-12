@@ -42,7 +42,7 @@ import java.util.List;
 @Table(name = "project_fed_table")
 @SQLDelete(sql = "update project_fed_table set is_deleted = 1 where fed_table_id = ? and project_id = ?")
 @Where(clause = "is_deleted = 0")
-public class ProjectFedTableDO {
+public class ProjectFedTableDO implements Serializable{
 
     /**
      * Project federal table unique primary key

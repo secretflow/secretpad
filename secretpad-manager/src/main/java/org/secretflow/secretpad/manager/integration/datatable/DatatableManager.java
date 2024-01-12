@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.manager.integration.datatable;
 
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
@@ -27,6 +28,7 @@ import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 
 import javax.annotation.Nullable;
 import java.util.List;
@@ -45,7 +47,10 @@ import static org.secretflow.secretpad.manager.integration.model.Constants.STATU
  * @date 2023/5/23
  */
 public class DatatableManager extends AbstractDatatableManager {
-
+    @Value("${secretpad.platform-type}")
+    private String plaformType;
+    @Value("${secretpad.node-id}")
+    private String localNodeId;
     private final static Logger LOGGER = LoggerFactory.getLogger(DatatableManager.class);
 
     /**
@@ -59,13 +64,23 @@ public class DatatableManager extends AbstractDatatableManager {
 
     @Override
     public Optional<DatatableDTO> findById(DatatableDTO.NodeDatatableId nodeDatatableId) {
-        Domaindata.QueryDomainDataResponse response = dataStub.queryDomainData(
-                Domaindata.QueryDomainDataRequest.newBuilder()
-                        .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
-                                .setDomainId(nodeDatatableId.getNodeId())
-                                .setDomaindataId(nodeDatatableId.getDatatableId())
-                                .build())
-                        .build());
+        Domaindata.QueryDomainDataRequest queryDomainDataRequest;
+        if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))) {
+            queryDomainDataRequest = Domaindata.QueryDomainDataRequest.newBuilder()
+                    .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
+                            .setDomainId(localNodeId)
+                            .setDomaindataId(nodeDatatableId.getDatatableId())
+                            .build())
+                    .build();
+        } else {
+            queryDomainDataRequest = Domaindata.QueryDomainDataRequest.newBuilder()
+                    .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
+                            .setDomainId(nodeDatatableId.getNodeId())
+                            .setDomaindataId(nodeDatatableId.getDatatableId())
+                            .build())
+                    .build();
+        }
+        Domaindata.QueryDomainDataResponse response = dataStub.queryDomainData(queryDomainDataRequest);
         if (response.getStatus().getCode() != 0) {
             LOGGER.error("lock up from kusciaapi failed: code={}, message={}, request={}",
                     response.getStatus().getCode(), response.getStatus().getMessage(), JsonUtils.toJSONString(nodeDatatableId));
@@ -76,20 +91,34 @@ public class DatatableManager extends AbstractDatatableManager {
 
     @Override
     public Map<DatatableDTO.NodeDatatableId, DatatableDTO> findByIds(List<DatatableDTO.NodeDatatableId> nodeDatatableIds) {
-        Domaindata.BatchQueryDomainDataResponse responses = dataStub.batchQueryDomainData(
-                Domaindata.BatchQueryDomainDataRequest.newBuilder()
-                        .addAllData(nodeDatatableIds.stream().map(
-                                it -> Domaindata.QueryDomainDataRequestData.newBuilder()
-                                        .setDomainId(it.getNodeId()).setDomaindataId(it.getDatatableId()).build()).collect(Collectors.toList()))
-                        .build());
+        Domaindata.BatchQueryDomainDataRequest batchQueryDomainDataRequest;
+        if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))) {
+            batchQueryDomainDataRequest = Domaindata.BatchQueryDomainDataRequest.newBuilder()
+                    .addAllData(nodeDatatableIds.stream().map(
+                            it -> Domaindata.QueryDomainDataRequestData.newBuilder()
+                                    // todo: if is output table then set domain id as node id
+                                    .setDomainId(it.getDatatableId().contains("output") ? it.getNodeId() : localNodeId)
+                                    .setDomaindataId(it.getDatatableId()).build()).collect(Collectors.toList()))
+                    .build();
+        } else {
+            batchQueryDomainDataRequest = Domaindata.BatchQueryDomainDataRequest.newBuilder()
+                    .addAllData(nodeDatatableIds.stream().map(
+                            it -> Domaindata.QueryDomainDataRequestData.newBuilder()
+                                    .setDomainId(it.getNodeId()).setDomaindataId(it.getDatatableId()).build()).collect(Collectors.toList()))
+                    .build();
+        }
+        Domaindata.BatchQueryDomainDataResponse responses = dataStub.batchQueryDomainData(batchQueryDomainDataRequest);
         if (responses.getStatus().getCode() != 0) {
             LOGGER.error("lock up from kusciaapi failed: code={}, message={}, request={}",
                     responses.getStatus().getCode(), responses.getStatus().getMessage(), JsonUtils.toJSONString(nodeDatatableIds));
             throw SecretpadException.of(DatatableErrorCode.QUERY_DATATABLE_FAILED);
         }
-        Map<DatatableDTO.NodeDatatableId, DatatableDTO> result = responses.getData().getDomaindataListList().stream().map(DatatableDTO::fromDomainData)
+        List<Domaindata.DomainData> domaindataListList = responses.getData().getDomaindataListList();
+        Map<DatatableDTO.NodeDatatableId, DatatableDTO> result = domaindataListList.stream().map(DatatableDTO::fromDomainData)
                 .collect(Collectors.toMap(it -> DatatableDTO.NodeDatatableId.from(it.getNodeId(), it.getDatatableId()), Function.identity()));
-        LOGGER.info("request table size={}, and response table size={}", nodeDatatableIds.size(), result.size());
+        LOGGER.debug("request table  responses {} ", responses);
+        LOGGER.debug("request table  result {} ", result);
+        LOGGER.info("request table size={}, and response table size={} ", nodeDatatableIds.size(), result.size());
         return result;
     }
 

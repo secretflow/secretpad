@@ -16,20 +16,16 @@
 
 package org.secretflow.secretpad.service.impl;
 
-import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
-import org.secretflow.secretpad.persistence.entity.ProjectNodesInfo;
-import org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO;
-import org.secretflow.secretpad.persistence.entity.VoteRequestDO;
-import org.secretflow.secretpad.persistence.repository.NodeRouteRepository;
-import org.secretflow.secretpad.persistence.repository.TeeNodeDatatableManagementRepository;
-import org.secretflow.secretpad.persistence.repository.VoteInviteRepository;
-import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
+import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.VoteSyncService;
 import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
+import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
 import org.secretflow.secretpad.service.model.datasync.vote.TeeNodeDatatableManagementSyncRequest;
-import org.secretflow.secretpad.service.model.datasync.vote.VoteInviteDataSyncRequest;
 
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 /**
  * VoteSyncServiceImpl.
@@ -47,28 +43,47 @@ public class VoteSyncServiceImpl implements VoteSyncService {
 
     private final TeeNodeDatatableManagementRepository teeNodeDatatableManagementRepository;
 
+    private final ProjectRepository projectRepository;
+
+    private final ProjectNodeRepository projectNodeRepository;
+
+    private final ProjectApprovalConfigRepository projectApprovalConfigRepository;
+
     public VoteSyncServiceImpl(VoteRequestRepository voteRequestRepository, VoteInviteRepository voteInviteRepository,
-                               NodeRouteRepository nodeRouteRepository, TeeNodeDatatableManagementRepository teeNodeDatatableManagementRepository) {
+                               NodeRouteRepository nodeRouteRepository, TeeNodeDatatableManagementRepository teeNodeDatatableManagementRepository,
+                               ProjectRepository projectRepository, ProjectNodeRepository projectNodeRepository,
+                               ProjectApprovalConfigRepository projectApprovalConfigRepository) {
         this.voteRequestRepository = voteRequestRepository;
         this.voteInviteRepository = voteInviteRepository;
         this.nodeRouteRepository = nodeRouteRepository;
         this.teeNodeDatatableManagementRepository = teeNodeDatatableManagementRepository;
+        this.projectRepository = projectRepository;
+        this.projectNodeRepository = projectNodeRepository;
+        this.projectApprovalConfigRepository = projectApprovalConfigRepository;
     }
 
     @Override
-    public void sync(String syncDataType, ProjectNodesInfo projectNodesInfo) {
-        if (VoteSyncTypeEnum.VOTE_REQUEST.name().equals(syncDataType)) {
-            voteRequestRepository.save((VoteRequestDO) projectNodesInfo);
-        } else if (VoteSyncTypeEnum.VOTE_INVITE.name().equals(syncDataType)) {
-            VoteInviteDataSyncRequest voteInviteDataSyncRequest = (VoteInviteDataSyncRequest) projectNodesInfo;
-            voteInviteRepository.save(VoteInviteDataSyncRequest.parse2DO(voteInviteDataSyncRequest));
-        } else if (VoteSyncTypeEnum.NODE_ROUTE.name().equals(syncDataType)) {
-            nodeRouteRepository.save((NodeRouteDO) projectNodesInfo);
-        } else if (VoteSyncTypeEnum.TEE_NODE_DATATABLE_MANAGEMENT.name().equals(syncDataType)) {
-            TeeNodeDatatableManagementSyncRequest teeNodeDatatableManagementSyncRequest =
-                    (TeeNodeDatatableManagementSyncRequest) projectNodesInfo;
-            TeeNodeDatatableManagementDO mngDO = TeeNodeDatatableManagementSyncRequest.parse2DO(teeNodeDatatableManagementSyncRequest);
-            teeNodeDatatableManagementRepository.save(mngDO);
+    public void sync(List<DbSyncRequest> dbSyncRequests) {
+        for (DbSyncRequest dbSyncRequest : dbSyncRequests) {
+            String syncDataType = dbSyncRequest.getSyncDataType();
+            ProjectNodesInfo projectNodesInfo = dbSyncRequest.getProjectNodesInfo();
+            switch (VoteSyncTypeEnum.valueOf(syncDataType)) {
+                case VOTE_REQUEST -> voteRequestRepository.save((VoteRequestDO) projectNodesInfo);
+                case VOTE_INVITE -> voteInviteRepository.save((VoteInviteDO) projectNodesInfo);
+                case NODE_ROUTE -> nodeRouteRepository.save((NodeRouteDO) projectNodesInfo);
+                case TEE_NODE_DATATABLE_MANAGEMENT -> {
+                    TeeNodeDatatableManagementSyncRequest teeNodeDatatableManagementSyncRequest =
+                            (TeeNodeDatatableManagementSyncRequest) projectNodesInfo;
+                    TeeNodeDatatableManagementDO mngDO = TeeNodeDatatableManagementSyncRequest.parse2DO(teeNodeDatatableManagementSyncRequest);
+                    teeNodeDatatableManagementRepository.save(mngDO);
+                }
+                case PROJECT -> projectRepository.save((ProjectDO) projectNodesInfo);
+                case PROJECT_NODE -> projectNodeRepository.save((ProjectNodeDO) projectNodesInfo);
+                case PROJECT_APPROVAL_CONFIG ->
+                        projectApprovalConfigRepository.save((ProjectApprovalConfigDO) projectNodesInfo);
+            }
+
         }
+
     }
 }

@@ -22,6 +22,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
 
+import java.io.Serializable;
+
 /**
  * @author yutu
  * @date 2023/10/26
@@ -34,7 +36,7 @@ import lombok.*;
 @ToString
 @Getter
 @Setter
-public class EdgeDataSyncLogDO {
+public class EdgeDataSyncLogDO implements Serializable {
 
     @Id
     @Column(name = "table_name", nullable = false)

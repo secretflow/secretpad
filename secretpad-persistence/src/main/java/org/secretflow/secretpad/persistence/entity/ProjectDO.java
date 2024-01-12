@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
+import org.secretflow.secretpad.common.constant.ProjectConstants;
+import org.secretflow.secretpad.common.enums.ProjectStatusEnum;
 import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.persistence.converter.ProjectInfoConverter;
 
@@ -67,6 +69,8 @@ public class ProjectDO extends BaseAggregationRoot<ProjectDO> {
      */
     private String computeMode;
 
+    @Column(name = "compute_func", length = 64)
+    private String computeFunc;
     /**
      * projectInfo tee dag runtimeParams
      */
@@ -74,13 +78,37 @@ public class ProjectDO extends BaseAggregationRoot<ProjectDO> {
     private ProjectInfoDO projectInfo;
 
     /**
+     * project owner
+     */
+    @Column(name = "owner_id", nullable = false, length = 64)
+    private String ownerId;
+
+    @Column(name = "status", nullable = false, length = 1)
+    private Integer status;
+
+    /**
      * Create a new project DO class
      */
     public static class Factory {
-        public static ProjectDO newProject(String name, String desc, String computeMode, ProjectInfoDO projectInfoDO) {
-            return ProjectDO.builder().projectId(UUIDUtils.random(8)).name(name).description(desc)
+        public static ProjectDO newProject(String name, String desc, String computeMode, ProjectInfoDO projectInfoDO, String ownerId) {
+            ProjectDO projectDO = ProjectDO.builder().projectId(UUIDUtils.random(8)).name(name).description(desc)
                     .computeMode(computeMode).projectInfo(projectInfoDO).build();
+            projectDO.setOwnerId(ownerId);
+            projectDO.setStatus(ProjectStatusEnum.APPROVED.getCode());
+            projectDO.setComputeFunc(ProjectConstants.ComputeFuncEnum.ALL.name());
+            return projectDO;
+        }
+
+        public static ProjectDO newP2PProject(String name, String desc, String computeMode, String computeFunc, ProjectInfoDO projectInfoDO, String ownerId) {
+            ProjectDO projectDO = newProject(name, desc, computeMode, projectInfoDO, ownerId);
+            projectDO.setComputeFunc(computeFunc);
+            projectDO.setStatus(ProjectStatusEnum.REVIEWING.getCode());
+            return projectDO;
         }
     }
 
+    @Override
+    public String getProjectId() {
+        return this.projectId;
+    }
 }

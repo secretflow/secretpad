@@ -23,14 +23,13 @@ import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.Base64Utils;
 import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
-import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.persistence.repository.*;
+import org.secretflow.secretpad.service.CertificateService;
 import org.secretflow.secretpad.service.DatatableService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.ProjectService;
-import org.secretflow.secretpad.service.enums.VoteExecuteEnum;
 import org.secretflow.secretpad.service.enums.VoteStatusEnum;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.model.approval.*;
@@ -65,8 +64,6 @@ public class TeeDownLoadMessageHandler extends AbstractVoteTypeHandler {
 
     private final ProjectDatatableRepository projectDatatableRepository;
 
-    private final ProjectRepository projectRepository;
-
     private final ProjectNodeRepository projectNodeRepository;
 
     private final ProjectJobTaskRepository jobTaskRepository;
@@ -76,16 +73,15 @@ public class TeeDownLoadMessageHandler extends AbstractVoteTypeHandler {
 
     private final EnvService envService;
 
-    public TeeDownLoadMessageHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, EnvService envService, TeeDownLoadAuditConfigRepository teeDownLoadAuditConfigRepository, ProjectDatatableRepository projectDatatableRepository, ProjectRepository projectRepository, ProjectNodeRepository projectNodeRepository, ProjectJobTaskRepository jobTaskRepository, ProjectService projectService, DatatableService datatableService, EnvService envService1) {
-        super(voteInviteRepository, voteRequestRepository, nodeRepository, envService);
+    public TeeDownLoadMessageHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, EnvService envService, TeeDownLoadAuditConfigRepository teeDownLoadAuditConfigRepository, ProjectDatatableRepository projectDatatableRepository, ProjectRepository projectRepository, ProjectNodeRepository projectNodeRepository, ProjectJobTaskRepository jobTaskRepository, ProjectService projectService, DatatableService datatableService, CertificateService certificateService) {
+        super(voteInviteRepository, voteRequestRepository, nodeRepository, envService, certificateService, projectRepository);
         this.teeDownLoadAuditConfigRepository = teeDownLoadAuditConfigRepository;
         this.projectDatatableRepository = projectDatatableRepository;
-        this.projectRepository = projectRepository;
         this.projectNodeRepository = projectNodeRepository;
         this.jobTaskRepository = jobTaskRepository;
         this.projectService = projectService;
         this.datatableService = datatableService;
-        this.envService = envService1;
+        this.envService = envService;
     }
 
     @Override
@@ -165,18 +161,22 @@ public class TeeDownLoadMessageHandler extends AbstractVoteTypeHandler {
         if (!teeDownLoadAuditConfigDOOptional.isPresent()) {
             throw SecretpadException.of(VoteErrorCode.VOTE_NOT_EXISTS);
         }
-        return TeeListMessage.builder().projectID(teeDownLoadAuditConfigDOOptional.get().getProjectId()).build();
+        return TeeListCustomizedMessage.builder().projectID(teeDownLoadAuditConfigDOOptional.get().getProjectId()).build();
     }
 
     @Override
-    public void createApproval(String nodeID, AbstractVoteConfig voteConfig) {
-        //generate unique vote id
-        String voteID = UUIDUtils.newUUID();
-        List<String> executors = new ArrayList<>();
-        executors.add(nodeID);
+    protected void preCheck(String nodeID, AbstractVoteConfig voteConfig) {
         TeeDownLoadVoteConfig teeDownLoadVoteConfig = (TeeDownLoadVoteConfig) voteConfig;
-        String requestDesc = teeDownLoadVoteConfig.getResourceID();
+        List<ProjectNodeDO> projectNodeDOS = projectNodeRepository.findByProjectId(teeDownLoadVoteConfig.getProjectID());
+        List<String> nodeIds = projectNodeDOS.stream().map(e -> e.getUpk().getNodeId()).collect(Collectors.toList());
+        if (!nodeIds.contains(nodeID)) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_INST_NOT_EXISTS);
+        }
+    }
 
+    @Override
+    protected void createVoteConfig(String voteID, String nodeID, AbstractVoteConfig voteConfig) {
+        TeeDownLoadVoteConfig teeDownLoadVoteConfig = (TeeDownLoadVoteConfig) voteConfig;
         List<ProjectNodeDO> projectNodeDOS = projectNodeRepository.findByProjectId(teeDownLoadVoteConfig.getProjectID());
         List<String> nodeIds = projectNodeDOS.stream().map(e -> e.getUpk().getNodeId()).collect(Collectors.toList());
         TeeDownLoadAuditConfigDO teeDownLoadAuditConfigDO = TeeDownLoadAuditConfigDO.builder()
@@ -190,62 +190,73 @@ public class TeeDownLoadMessageHandler extends AbstractVoteTypeHandler {
                 .allParticipants(Lists.newArrayList(nodeIds))
                 .build();
         teeDownLoadAuditConfigRepository.saveAndFlush(teeDownLoadAuditConfigDO);
-        if (!nodeIds.contains(nodeID)) {
-            throw SecretpadException.of(ProjectErrorCode.PROJECT_INST_NOT_EXISTS);
-        }
-        List<String> copyList = JsonUtils.deepCopyList(nodeIds, String.class);
-        copyList.remove(nodeID);
-        VoteRequestBody voteRequestBody = VoteRequestBody.builder()
-                .rejectedAction("NODE")
-                .approvedAction("TEE_DOWNLOAD," + teeDownLoadAuditConfigDO.getResourceID())
-                .type(VoteTypeEnum.TEE_DOWNLOAD.name())
-                .approvedThreshold(copyList.size())
-                .initiator(nodeID)
-                .voteRequestID(voteID)
-                .voteCounter("master")
-                .voters(copyList)
-                .executors(Lists.newArrayList(nodeID))
-                .build();
-        VoteRequestMessage voteRequestMessage = VoteRequestMessage.builder()
-                .body(Base64Utils.encode(JsonUtils.toJSONString(voteRequestBody).getBytes()))
-                .build();
-        String voteMsg = JsonUtils.toJSONString(voteRequestMessage);
-        //vote participant info
-        List<VoteInviteDO> voteInviteDOS = new ArrayList<>();
-        String finalInviteDesc = requestDesc;
-        copyList.forEach(voter -> {
-            VoteInviteDO voteInviteDO = VoteInviteDO.builder()
-                    .upk(VoteInviteDO.UPK.builder().voteID(voteID).votePartitionID(voter).build())
-                    .initiator(nodeID)
-                    .desc(finalInviteDesc)
-                    .type(VoteTypeEnum.TEE_DOWNLOAD.name())
-                    .action(VoteStatusEnum.REVIEWING.name())
-                    .voteMsg(voteMsg)
-                    .build();
-            voteInviteDOS.add(voteInviteDO);
-        });
-        voteInviteRepository.saveAllAndFlush(voteInviteDOS);
-
-
-        //vote initiator info
-        VoteRequestDO voteRequestDO = VoteRequestDO.builder()
-                .voteID(voteID)
-                .initiator(nodeID)
-                .type(VoteTypeEnum.TEE_DOWNLOAD.name())
-                .voters(copyList)
-                .voteCounter("master")
-                .requestMsg(voteMsg)
-                .executeStatus(VoteExecuteEnum.COMMITTED.name())
-                .executors(executors)
-                .approvedThreshold(copyList.size())
-                .status(VoteStatusEnum.REVIEWING.getCode())
-                .desc(requestDesc)
-                .build();
-        voteRequestRepository.saveAndFlush(voteRequestDO);
     }
 
     @Override
-    public void doCallBack(VoteRequestDO voteRequestDO) {
+    protected String getApprovedAction(String nodeID, AbstractVoteConfig voteConfig) {
+        TeeDownLoadVoteConfig teeDownLoadVoteConfig = (TeeDownLoadVoteConfig) voteConfig;
+        return "TEE_DOWNLOAD," + teeDownLoadVoteConfig.getResourceID();
+    }
+
+    @Override
+    protected String getRejectAction(String nodeID, AbstractVoteConfig voteConfig) {
+        return "NONE";
+    }
+
+    @Override
+    protected List<String> getExecutors(String nodeId, AbstractVoteConfig voteConfig) {
+        return Lists.newArrayList(nodeId);
+    }
+
+    @Override
+    protected List<String> getVoters(String nodeID, AbstractVoteConfig voteConfig) {
+        TeeDownLoadVoteConfig teeDownLoadVoteConfig = (TeeDownLoadVoteConfig) voteConfig;
+        List<ProjectNodeDO> projectNodeDOS = projectNodeRepository.findByProjectId(teeDownLoadVoteConfig.getProjectID());
+        List<String> nodeIds = projectNodeDOS.stream().map(e -> e.getUpk().getNodeId()).collect(Collectors.toList());
+        List<String> copyList = JsonUtils.deepCopyList(nodeIds, String.class);
+        copyList.remove(nodeID);
+        return copyList;
+    }
+
+    @Override
+    protected String getVoteType() {
+        return supportTypes().get(0).name();
+    }
+
+    @Override
+    protected String getRequestDesc(String nodeID, AbstractVoteConfig voteConfig) {
+        TeeDownLoadVoteConfig teeDownLoadVoteConfig = (TeeDownLoadVoteConfig) voteConfig;
+        return teeDownLoadVoteConfig.getResourceID();
+    }
+
+    @Override
+    protected String getInviteDesc(String nodeID, AbstractVoteConfig voteConfig) {
+        return getRequestDesc(nodeID, voteConfig);
+    }
+
+    @Override
+    protected String generateVoteRequestMsg(String nodeID, AbstractVoteConfig voteConfig, String voteID) {
+        List<String> voters = getVoters(nodeID, voteConfig);
+        VoteRequestBody voteRequestBody = VoteRequestBody.builder()
+                .rejectedAction(getRejectAction(nodeID, voteConfig))
+                .approvedAction(getApprovedAction(nodeID, voteConfig))
+                .type(getVoteType())
+                .approvedThreshold(voters.size())
+                .initiator(nodeID)
+                .voteRequestID(voteID)
+                .voteCounter(nodeID)
+                .voters(voters)
+                .executors(Lists.newArrayList(nodeID))
+                .build();
+        String voteRequestBodyBase64 = Base64Utils.encode(JsonUtils.toJSONString(voteRequestBody).getBytes());
+        VoteRequestMessage voteRequestMessage = VoteRequestMessage.builder()
+                .body(voteRequestBodyBase64)
+                .build();
+        return JsonUtils.toJSONString(voteRequestMessage);
+    }
+
+    @Override
+    public void doCallBackApproved(VoteRequestDO voteRequestDO) {
 
         String requestMsg = voteRequestDO.getRequestMsg();
         VoteRequestMessage voteRequestMessage = JsonUtils.toJavaObject(requestMsg, VoteRequestMessage.class);

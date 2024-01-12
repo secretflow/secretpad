@@ -26,6 +26,7 @@ import org.secretflow.secretpad.persistence.entity.VoteInviteDO;
 import org.secretflow.secretpad.persistence.entity.VoteRequestDO;
 import org.secretflow.secretpad.persistence.repository.VoteInviteRepository;
 import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
+import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.enums.VoteStatusEnum;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.model.approval.VoteReplyBody;
@@ -63,53 +64,70 @@ public class VoteInviteStatusMonitor {
     @Resource
     private NodeManager nodeManager;
 
-    @Scheduled(initialDelay = 6000, fixedDelay = 5000)
-    public void sync() {
+    @Resource
+    private EnvService envService;
 
+    private static final List<String> AUTONOMY_VOTE = Lists.newArrayList(VoteTypeEnum.PROJECT_CREATE.name(), VoteTypeEnum.PROJECT_ARCHIVE.name());
+
+    private static final List<String> CENTER_VOTE = Lists.newArrayList(VoteTypeEnum.TEE_DOWNLOAD.name(), VoteTypeEnum.NODE_ROUTE.name());
+
+
+    @Scheduled(initialDelay = 6000, fixedDelay = 1000)
+    public void sync() {
         List<VoteRequestDO> voteRequestDOS = voteRequestRepository.findByStatus(VoteStatusEnum.REVIEWING.getCode());
         if (!CollectionUtils.isEmpty(voteRequestDOS)) {
-            LOGGER.debug("voteRequestDOS not empty,start sync");
             voteRequestDOS.forEach(voteRequestDO -> {
                 String voteID = voteRequestDO.getVoteID();
-                LOGGER.debug("voteID :{} start sync", voteID);
                 List<VoteInviteDO> voteInviteDOS = voteInviteRepository.findByVoteID(voteID);
-                LOGGER.debug("-----voteInviteDOS--- = {}, {}", voteInviteDOS, voteInviteDOS.size());
                 if (CollectionUtils.isEmpty(voteInviteDOS)) {
                     LOGGER.debug("maybe voteInvite is embedded node!");
                     return;
                 }
                 String type = voteRequestDO.getType();
                 List<String> executors = voteRequestDO.getExecutors();
-                boolean teeNodeRoute = (StringUtils.equals(VoteTypeEnum.NODE_ROUTE.name(), type) && executors.contains("tee"));
-                LOGGER.debug("before each verify, check is teeNodeRoute------------------------------- teeNodeRoute = {}", teeNodeRoute);
-                if (!teeNodeRoute) {
-                    for (VoteInviteDO voteInviteDO : voteInviteDOS) {
-                        if (!VoteStatusEnum.REVIEWING.name().equals(voteInviteDO.getAction())) {
-                            if (!verify(voteInviteDO, voteRequestDO)) {
-                                LOGGER.info("in voteID->{} voteInvite participant {} verify fail", voteInviteDO.getUpk().getVoteID(), voteInviteDO.getUpk().getVotePartitionID());
-                                String msg = String.format("in voteID-> %s,voteInvite participant %s verify fail", voteInviteDO.getUpk().getVoteID(), voteInviteDO.getUpk().getVotePartitionID());
-                                voteRequestDO.setMsg(msg);
-                                voteRequestDO.setStatus(VoteStatusEnum.REJECTED.getCode());
-                                voteRequestRepository.save(voteRequestDO);
-                                voteInviteDO.setAction(VoteStatusEnum.REJECTED.name());
-                                voteInviteRepository.save(voteInviteDO);
-                                break;
+                if (CENTER_VOTE.contains(type)) {
+                    boolean teeNodeRoute = (StringUtils.equals(VoteTypeEnum.NODE_ROUTE.name(), type) && executors.contains("tee"));
+                    if (!teeNodeRoute) {
+                        verify(voteRequestDO, voteInviteDOS);
+                    }
+                } else if (AUTONOMY_VOTE.contains(type)) {
+                    String initiator = voteRequestDO.getInitiator();
+                    //only initiator can calculate the vote in project create vote
+                    if (envService.isCurrentNodeEnvironment(initiator)) {
+                        for (String executor : executors) {
+                            if (StringUtils.equals(executor, initiator)) {
+                                verify(voteRequestDO, voteInviteDOS);
                             }
                         }
                     }
                 }
                 if (voteInviteDOS.stream().anyMatch(e -> VoteStatusEnum.REJECTED.name().equals(e.getAction()))) {
                     voteRequestDO.setStatus(VoteStatusEnum.REJECTED.getCode());
-                    voteRequestRepository.save(voteRequestDO);
-                    LOGGER.info("voteID :{} REJECTED", voteID);
                 } else if (voteInviteDOS.stream().allMatch(e -> VoteStatusEnum.APPROVED.name().equals(e.getAction()))) {
                     voteRequestDO.setStatus(VoteStatusEnum.APPROVED.getCode());
-                    voteRequestRepository.save(voteRequestDO);
-                    LOGGER.info("voteID :{} APPROVED", voteID);
                 }
-                LOGGER.debug("voteID :{} end sync", voteID);
+                voteRequestRepository.save(voteRequestDO);
+                LOGGER.debug("{} monitor------,voteID = {}", type, voteRequestDO.getVoteID());
             });
-            LOGGER.debug("voteRequestDOS not empty,end sync");
+        }
+
+    }
+
+    private void verify(VoteRequestDO voteRequestDO, List<VoteInviteDO> voteInviteDOS) {
+        for (VoteInviteDO voteInviteDO : voteInviteDOS) {
+            if (!VoteStatusEnum.REVIEWING.name().equals(voteInviteDO.getAction())
+                    && !verify(voteInviteDO, voteRequestDO)
+            ) {
+                //verify fail
+                LOGGER.info("in voteID->{} voteInvite participant {} verify fail", voteInviteDO.getUpk().getVoteID(), voteInviteDO.getUpk().getVotePartitionID());
+                String msg = String.format("in voteID-> %s,voteInvite participant %s verify fail", voteInviteDO.getUpk().getVoteID(), voteInviteDO.getUpk().getVotePartitionID());
+                voteRequestDO.setMsg(msg);
+                voteRequestDO.setStatus(VoteStatusEnum.REJECTED.getCode());
+                voteRequestRepository.save(voteRequestDO);
+                voteInviteDO.setAction(VoteStatusEnum.REJECTED.name());
+                voteInviteRepository.save(voteInviteDO);
+                break;
+            }
         }
     }
 
@@ -140,7 +158,8 @@ public class VoteInviteStatusMonitor {
         try {
             voteReplyBody = JsonUtils.toJavaObject(new String(Base64Utils.decode(bodyBase64)), VoteReplyBody.class);
         } catch (Exception e) {
-            throw SecretpadException.of(SystemErrorCode.ENCODE_ERROR);
+            LOGGER.error("verify error", e);
+            throw SecretpadException.of(SystemErrorCode.ENCODE_ERROR, e);
         }
         String voter = voteReplyBody.getVoter();
         String cert = nodeManager.getCert(voter);
@@ -158,5 +177,6 @@ public class VoteInviteStatusMonitor {
         LOGGER.info("verify success");
         return true;
     }
+
 }
 

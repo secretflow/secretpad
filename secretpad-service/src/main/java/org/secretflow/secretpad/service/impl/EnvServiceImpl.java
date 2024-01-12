@@ -17,8 +17,8 @@
 package org.secretflow.secretpad.service.impl;
 
 import org.secretflow.secretpad.common.constant.DomainConstants;
-import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.dto.EnvDTO;
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.service.EnvService;
 
@@ -44,7 +44,7 @@ public class EnvServiceImpl implements EnvService {
     @Resource
     private NodeRepository nodeRepository;
     @Value("${secretpad.platform-type}")
-    private String plaformType;
+    private String platformType;
 
     @Value("${secretpad.node-id}")
     private String nodeId;
@@ -53,7 +53,7 @@ public class EnvServiceImpl implements EnvService {
 
     @Override
     public PlatformTypeEnum getPlatformType() {
-        return PlatformTypeEnum.valueOf(plaformType);
+        return PlatformTypeEnum.valueOf(platformType);
     }
 
     @Override
@@ -65,23 +65,33 @@ public class EnvServiceImpl implements EnvService {
     public EnvDTO getEnv() {
         EnvDTO envDTO = new EnvDTO();
         envDTO.setPlatformNodeId(nodeId);
-        envDTO.setPlatformType(PlatformTypeEnum.valueOf(plaformType));
+        envDTO.setPlatformType(PlatformTypeEnum.valueOf(platformType));
         return envDTO;
     }
 
     @Override
     public Boolean isCenter() {
-        return PlatformTypeEnum.CENTER.name().equals(plaformType);
+        return PlatformTypeEnum.CENTER.name().equals(platformType);
+    }
+
+    @Override
+    public Boolean isAutonomy() {
+        return PlatformTypeEnum.AUTONOMY.name().equals(platformType);
     }
 
     @Override
     public Boolean isEmbeddedNode(String nodeID) {
-        return EMBEDDED_NODE.contains(nodeID) || (DomainConstants.DomainTypeEnum.embedded.name().equals(nodeRepository.findByNodeId(nodeID).getType()) && isCenter());
+        return (EMBEDDED_NODE.contains(nodeID) || DomainConstants.DomainTypeEnum.embedded.name().equals(nodeRepository.findByNodeId(nodeID).getType())) && isCenter();
     }
 
     @Override
     public Boolean isCurrentNodeEnvironment(String nodeID) {
         LOGGER.debug("platformNodeId = {}", this.nodeId);
         return StringUtils.equals(this.nodeId, nodeID) || isEmbeddedNode(nodeID);
+    }
+
+    @Override
+    public Boolean isP2pEdge() {
+        return true;
     }
 }

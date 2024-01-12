@@ -51,7 +51,7 @@ public class MessageDetailRequest {
     @NotNull
     private Boolean isInitiator;
 
-    @OneOfType(types = {"TEE_DOWNLOAD", "NODE_ROUTE"})
+    @OneOfType(types = {"TEE_DOWNLOAD", "NODE_ROUTE", "PROJECT_CREATE", "PROJECT_ARCHIVE"})
     @NotBlank
     private String voteType;
 

@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.manager.integration.noderoute;
 
 import org.secretflow.secretpad.common.constant.DomainRouterConstants;
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.NodeRouteErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
@@ -33,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.secretflow.v1alpha1.kusciaapi.DomainRoute;
 import org.secretflow.v1alpha1.kusciaapi.DomainRouteServiceGrpc;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,13 +55,16 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
 
     private final AbstractNodeManager nodeManager;
     private final DomainRouteServiceGrpc.DomainRouteServiceBlockingStub routeServiceBlockingStub;
-    
+
+    @Value("${secretpad.platform-type}")
+    private String platformType;
+
     @Override
     public void createNodeRouteInKuscia(CreateNodeRouteParam param, NodeDO srcNode, NodeDO dstNode, boolean check) {
-        if (DomainRouterConstants.DomainRouterTypeEnum.FullDuplex.name().equals(param.getRouteType())) {
-            if (!routeExist(param.getDstNodeId(), param.getSrcNodeId())) {
-                createNodeRoute(param, dstNode, srcNode);
-            }
+        if (DomainRouterConstants.DomainRouterTypeEnum.FullDuplex.name().equals(param.getRouteType())
+                && !routeExist(param.getDstNodeId(), param.getSrcNodeId())
+        ) {
+            createNodeRoute(param, dstNode, srcNode);
         }
         if (check) {
             checkRouteExist(param.getSrcNodeId(), param.getDstNodeId());
@@ -170,19 +175,16 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
         String[] split = netAddress.split(":");
         String host = split[0];
         int port = Integer.parseInt(split[1]);
+        DomainRoute.EndpointPort.Builder builder = DomainRoute.EndpointPort.newBuilder();
+        // p2p mode must be https
+        if (getPlatformType().equals(PlatformTypeEnum.AUTONOMY)) {
+            builder.setPort(port).setName("https").setProtocol("HTTPS").setIsTLS(true).build();
+        } else {
+            builder.setPort(port).setName("http").setProtocol("HTTP").setIsTLS(true).build();
+        }
         // isTLS: true name: http port: 1080 protocol: HTTP
-        DomainRoute.EndpointPort endpointPort = DomainRoute.EndpointPort.newBuilder().setPort(port).setName("http")
-                .setProtocol("HTTP").setIsTLS(true).build();
+        DomainRoute.EndpointPort endpointPort = builder.build();
         return DomainRoute.RouteEndpoint.newBuilder().setHost(host).addPorts(endpointPort).build();
-    }
-
-    private void checkNode(NodeDO node) {
-        if (ObjectUtils.isEmpty(node)) {
-            throw SecretpadException.of(NodeRouteErrorCode.NODE_ROUTE_CREATE_ERROR, "node do not exit");
-        }
-        if (!nodeManager.checkNodeReady(node.getNodeId())) {
-            throw SecretpadException.of(NodeRouteErrorCode.NODE_ROUTE_CREATE_ERROR, "node status not ready: " + node.getNodeId());
-        }
     }
 
     private DomainRoute.QueryDomainRouteResponse queryDomainRouter(String srcNodeId, String dstNodeId) {
@@ -203,8 +205,11 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
     }
 
     private void deleteDomainRouter(NodeRouteDO nodeRouteDO) {
+        // if platformType is AUTONOMY, delete route node id is opposite. later version will delete
+        String srcNodeId = getPlatformType().equals(PlatformTypeEnum.AUTONOMY) ? nodeRouteDO.getDstNodeId() : nodeRouteDO.getSrcNodeId();
+        String dstNodeId = getPlatformType().equals(PlatformTypeEnum.AUTONOMY) ? nodeRouteDO.getSrcNodeId() : nodeRouteDO.getDstNodeId();
         DomainRoute.DeleteDomainRouteRequest request =
-                DomainRoute.DeleteDomainRouteRequest.newBuilder().setSource(nodeRouteDO.getSrcNodeId()).setDestination(nodeRouteDO.getDstNodeId()).build();
+                DomainRoute.DeleteDomainRouteRequest.newBuilder().setSource(srcNodeId).setDestination(dstNodeId).build();
         DomainRoute.DeleteDomainRouteResponse response = routeServiceBlockingStub.deleteDomainRoute(request);
         if (response.getStatus().getCode() == 11404) {
             nodeRouteRepository.deleteById(nodeRouteDO.getRouteId());
@@ -235,5 +240,9 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
             throw SecretpadException.of(NodeRouteErrorCode.NODE_ROUTE_NOT_EXIST_ERROR,
                     "route not exist " + srcNodeId + "->" + dstNodeId);
         }
+    }
+
+    private PlatformTypeEnum getPlatformType() {
+        return PlatformTypeEnum.valueOf(platformType);
     }
 }

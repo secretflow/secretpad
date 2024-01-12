@@ -39,7 +39,7 @@ public interface ProjectGraphRepository extends BaseRepository<ProjectGraphDO, P
      * @param projectId target projectId
      * @return project graph results
      */
-    @Query("from ProjectGraphDO pd where pd.upk.projectId=:projectId")
+    @Query("from ProjectGraphDO pd where pd.upk.projectId=:projectId order by pd.gmtModified desc")
     List<ProjectGraphDO> findByProjectId(@Param("projectId") String projectId);
 
     /**

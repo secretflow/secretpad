@@ -49,8 +49,8 @@ public class VoteSyncController {
      * @return
      */
     @PostMapping(value = "/create", consumes = "application/json")
-    public SecretPadResponse<Object> createAudit(@Valid @RequestBody VoteSyncRequest voteSyncRequest) {
-        voteSyncService.sync(voteSyncRequest.getSyncDataType(), voteSyncRequest.getProjectNodesInfo());
+    public SecretPadResponse<Object> sync(@Valid @RequestBody VoteSyncRequest voteSyncRequest) {
+        voteSyncService.sync(voteSyncRequest.getDbSyncRequests());
         return SecretPadResponse.success();
     }
 }

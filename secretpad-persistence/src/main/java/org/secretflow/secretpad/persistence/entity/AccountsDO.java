@@ -16,11 +16,16 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
+import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
+import org.secretflow.secretpad.persistence.converter.SqliteLocalDateTimeConverter;
+
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
-import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
+
+import java.time.LocalDateTime;
 
 /**
  * User account data object
@@ -64,5 +69,34 @@ public class AccountsDO extends BaseAggregationRoot<AccountsDO> {
      */
     @Column(name = "owner_id", nullable = false)
     private String ownerId;
+
+    /**
+     * login failed attempts
+     */
+    @Column(name = "failed_attempts")
+    private Integer failedAttempts;
+
+    /**
+     * locked invalid time
+     */
+    @Column(name = "locked_invalid_time")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Convert(converter = SqliteLocalDateTimeConverter.class)
+    private LocalDateTime lockedInvalidTime;
+
+    /**
+     * reset password failed attempts
+     */
+    @Column(name = "passwd_reset_failed_attempts")
+    private Integer passwdResetFailedAttempts;
+
+    /**
+     * reset password lock release time
+     */
+    @Column(name = "gmt_passwd_reset_release")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Convert(converter = SqliteLocalDateTimeConverter.class)
+    private LocalDateTime gmtPasswdResetRelease;
+
 
 }

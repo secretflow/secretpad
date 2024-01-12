@@ -22,9 +22,9 @@ package org.secretflow.secretpad.service.constant;
  * @author yansi
  * @date 2023/6/9
  */
-public interface ComponentConstants {
-    String READ_DATA = "read_data";
-    String DATA_TABLE = "datatable";
+public class ComponentConstants {
+    public static final String READ_DATA = "read_data";
+    public static final String DATA_TABLE = "datatable";
 
-    String SECRETPAD = "secretpad";
+    public static final String SECRETPAD = "secretpad";
 }

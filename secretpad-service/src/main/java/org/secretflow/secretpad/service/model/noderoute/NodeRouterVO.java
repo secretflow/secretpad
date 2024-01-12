@@ -97,6 +97,12 @@ public class NodeRouterVO {
     private String gmtModified;
 
     /**
+     * if running project job exists
+     */
+    @Schema(description = "isProjectJobRunning")
+    private Boolean isProjectJobRunning;
+
+    /**
      * routeType： :FullDuplex :HalfDuplex
      */
     @NotBlank

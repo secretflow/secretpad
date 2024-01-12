@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.KusciaGrpcErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.manager.kuscia.EmbeddedNodeConfigProperties;
@@ -58,7 +59,7 @@ public class CertificateServiceImpl implements CertificateService, InitializingB
     @Override
     public Certificate.GenerateKeyCertsResponse generateCertByNodeID(String nodeID) {
         Certificate.GenerateKeyCertsResponse generateKeyCertsResponse;
-        if (envService.isEmbeddedNode(nodeID)) {
+        if (!PlatformTypeEnum.AUTONOMY.equals(envService.getPlatformType()) && envService.isEmbeddedNode(nodeID)) {
             generateKeyCertsResponse = certificateServiceBlockingStubMap.get(nodeID).generateKeyCerts(Certificate.GenerateKeyCertsRequest.newBuilder().setCommonName("vote").setKeyType("PKCS#8").build());
             if (generateKeyCertsResponse.getStatus().getCode() != 0) {
                 throw SecretpadException.of(KusciaGrpcErrorCode.RPC_ERROR, generateKeyCertsResponse.getStatus().getMessage());

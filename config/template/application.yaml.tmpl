@@ -102,6 +102,9 @@ secretpad:
     max-request-size: -1 # -1 means not limit, e.g.  200MB, 1GB
     data:
       dir-path: /app/data/
+  datasync:
+      center: true
+      p2p: false
 
 sfclusterDesc:
   deviceConfig:
@@ -133,3 +136,4 @@ inner-port:
     - /api/v1alpha1/vote_sync/create
     - /api/v1alpha1/user/node/resetPassword
     - /sync
+    - /api/v1alpha1/data/sync

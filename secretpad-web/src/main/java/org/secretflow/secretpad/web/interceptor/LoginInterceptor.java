@@ -22,7 +22,6 @@ import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.enums.ResourceTypeEnum;
 import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.errorcode.AuthErrorCode;
-import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
@@ -31,6 +30,7 @@ import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
 import org.secretflow.secretpad.persistence.repository.UserTokensRepository;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.SysResourcesBizService;
+import org.secretflow.secretpad.web.constant.AuthConstants;
 import org.secretflow.secretpad.web.util.AuthUtils;
 
 import jakarta.annotation.Resource;
@@ -46,6 +46,8 @@ import org.springframework.http.HttpMethod;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
 
+import java.io.IOException;
+import java.io.PrintWriter;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -97,14 +99,14 @@ public class LoginInterceptor implements HandlerInterceptor {
         this.projectNodeRepository = projectNodeRepository;
     }
 
-    private UserContextDTO createTmpUserForPlaformType(PlatformTypeEnum plaformType) {
+    private UserContextDTO createTmpUserForPlatformType(PlatformTypeEnum platformType) {
         if (envService.getPlatformType().equals(PlatformTypeEnum.CENTER)) {
             UserContextDTO userContextDTO = new UserContextDTO();
             userContextDTO.setName("admin");
             userContextDTO.setOwnerId("kuscia-system");
             userContextDTO.setOwnerType(UserOwnerTypeEnum.CENTER);
             userContextDTO.setToken("token");
-            userContextDTO.setPlatformType(plaformType);
+            userContextDTO.setPlatformType(platformType);
             userContextDTO.setPlatformNodeId(envService.getPlatformNodeId());
             userContextDTO.setDeployMode(deployMode);
             return userContextDTO;
@@ -116,7 +118,7 @@ public class LoginInterceptor implements HandlerInterceptor {
         userContextDTO.setOwnerId("nodeId");
         userContextDTO.setOwnerType(UserOwnerTypeEnum.EDGE);
         userContextDTO.setToken("token");
-        userContextDTO.setPlatformType(plaformType);
+        userContextDTO.setPlatformType(platformType);
         userContextDTO.setPlatformNodeId(envService.getPlatformNodeId());
         userContextDTO.setDeployMode(deployMode);
         return userContextDTO;
@@ -132,8 +134,9 @@ public class LoginInterceptor implements HandlerInterceptor {
      */
     @Override
     public boolean preHandle(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull Object handler) {
+        csrfDefense(response);
         if (!enable) {
-            UserContextDTO admin = createTmpUserForPlaformType(envService.getPlatformType());
+            UserContextDTO admin = createTmpUserForPlatformType(envService.getPlatformType());
             UserContext.setBaseUser(admin);
             return true;
         }
@@ -146,9 +149,21 @@ public class LoginInterceptor implements HandlerInterceptor {
         if (innerHttpPort.equals(request.getLocalPort())) {
             processByNodeRpcRequest(request);
         } else {
-            processByUserRequest(request);
+            processByUserRequest(request, response);
         }
         return true;
+    }
+
+    private void csrfDefense(HttpServletResponse response) {
+        String setCookie = response.getHeader("Set-Cookie");
+        if (StringUtils.isBlank(setCookie)) {
+            Cookie cookie = new Cookie(AuthConstants.CSRF_SAME_SITE, AuthConstants.CSRF_SAME_SITE_VALUE);
+            response.addCookie(cookie);
+        } else {
+            StringBuilder cookie = new StringBuilder();
+            cookie.append("; ").append(AuthConstants.CSRF_SAME_SITE).append("=").append(AuthConstants.CSRF_SAME_SITE_VALUE);
+            response.addHeader("Set-Cookie", cookie.toString());
+        }
     }
 
     private void processByNodeRpcRequest(HttpServletRequest request) {
@@ -181,10 +196,9 @@ public class LoginInterceptor implements HandlerInterceptor {
         UserContext.setBaseUser(virtualUser);
     }
 
-    private void processByUserRequest(HttpServletRequest request) {
-        refuseByOutPortInvokeInnerPort(request);
-        Cookie cookie = AuthUtils.findTokenCookie(request.getCookies());
-        String token = cookie.getValue();
+    private void processByUserRequest(HttpServletRequest request, HttpServletResponse response) {
+        refuseByOutPortInvokeInnerPort(request, response);
+        String token = AuthUtils.findTokenInHeader(request);
         Optional<TokensDO> tokensDO = userTokensRepository.findByToken(token);
         if (tokensDO.isEmpty()) {
             throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "login is required");
@@ -227,10 +241,26 @@ public class LoginInterceptor implements HandlerInterceptor {
      *
      * @param request request
      */
-    private void refuseByOutPortInvokeInnerPort(HttpServletRequest request) {
+    private void refuseByOutPortInvokeInnerPort(HttpServletRequest request, HttpServletResponse response) {
         if (innerPortPathConfig.getPath().contains(request.getServletPath())) {
-            throw SecretpadException.of(SystemErrorCode.HTTP_404_ERROR);
+            returnJson(response, "404");
         }
     }
 
+    private void returnJson(HttpServletResponse response, String json) {
+        PrintWriter writer = null;
+        response.setCharacterEncoding("UTF-8");
+        response.setStatus(HttpServletResponse.SC_NOT_FOUND);
+        try {
+            writer = response.getWriter();
+            writer.print(json);
+            writer.flush();
+        } catch (IOException e) {
+            log.error("LoginInterceptor refuseByOutPortInvokeInnerPort returnJson error.", e);
+        } finally {
+            if (writer != null) {
+                writer.close();
+            }
+        }
+    }
 }

@@ -58,4 +58,7 @@ public class CreateProjectRequest {
     @Schema(description = "teeNodeId", requiredMode = Schema.RequiredMode.REQUIRED)
     @NotBlank(message = "teeNodeId not empty", groups = {Update.class})
     private String teeNodeId;
+
+    private String computeFunc = ProjectConstants.ComputeFuncEnum.ALL.name();
+
 }

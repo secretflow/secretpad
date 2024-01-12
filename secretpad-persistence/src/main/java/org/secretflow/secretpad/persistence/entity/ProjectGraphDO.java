@@ -73,6 +73,12 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
     private List<ProjectGraphNodeDO> nodes;
 
     /**
+     * project owner
+     */
+    @Column(name = "owner_id", nullable = false, length = 64)
+    private String ownerId;
+
+    /**
      * Project graph unique primary key
      */
     @Getter
@@ -110,5 +116,10 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
             return Objects.hash(projectId, graphId);
         }
 
+    }
+
+    @Override
+    public String getProjectId() {
+        return this.upk.projectId;
     }
 }

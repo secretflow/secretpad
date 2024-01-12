@@ -29,4 +29,7 @@ public class SystemConstants {
     public static final String TEST = "test";
 
     public static final String SKIP_TEST = "!test";
+
+    public static final String P2P = "p2p";
+    public static final String SKIP_TEST_P2P = "!test&&!p2p";
 }

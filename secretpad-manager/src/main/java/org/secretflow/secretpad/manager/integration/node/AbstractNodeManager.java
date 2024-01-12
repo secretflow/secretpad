@@ -50,6 +50,14 @@ public abstract class AbstractNodeManager {
     public abstract String createNode(CreateNodeParam param);
 
     /**
+     * Create node for p2p mode
+     *
+     * @param param create parma
+     * @return nodeId
+     */
+    public abstract String createP2pNode(CreateNodeParam param);
+
+    /**
      * Delete node
      *
      * @param nodeId nodeId
@@ -137,4 +145,26 @@ public abstract class AbstractNodeManager {
      */
     public abstract List<NodeDTO> listTeeNode();
 
+    /**
+     * Check srcAddress and dstAddress
+     *
+     * @param srcNodeAddress net address of platform nodeId
+     * @param dstNodeAddress net address of collaborative node
+     */
+    public abstract void checkSrcAddressAndDstAddressEquals(String srcNodeAddress, String dstNodeAddress);
+
+    /**
+     * Check node cert
+     *
+     * @param nodeId  target nodeId
+     * @param request create node param request
+     */
+    public abstract void checkNodeCert(String nodeId, CreateNodeParam request);
+
+    /**
+     * Initial node for p2p mode
+     *
+     * @param nodeId target nodeId
+     */
+    public abstract void initialNode(String nodeId);
 }

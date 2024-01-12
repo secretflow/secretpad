@@ -38,10 +38,10 @@ import org.secretflow.secretpad.persistence.repository.TeeNodeDatatableManagemen
 import org.secretflow.secretpad.service.DatatableService;
 import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
 import org.secretflow.secretpad.service.graph.converter.KusciaTeeDataManagerConverter;
+import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
 import org.secretflow.secretpad.service.model.datasync.vote.TeeNodeDatatableManagementSyncRequest;
-import org.secretflow.secretpad.service.model.datasync.vote.VoteSyncRequest;
 import org.secretflow.secretpad.service.model.datatable.*;
-import org.secretflow.secretpad.service.util.PushToCenterUtil;
+import org.secretflow.secretpad.service.util.DbSyncUtil;
 
 import com.google.common.collect.Lists;
 import jakarta.transaction.Transactional;
@@ -58,7 +58,6 @@ import org.springframework.util.CollectionUtils;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 import static org.secretflow.secretpad.manager.integration.model.Constants.PUSH_TO_TEE_JOB_ID;
 import static org.secretflow.secretpad.service.constant.TeeJobConstants.MOCK_VOTE_RESULT;
 import static org.secretflow.secretpad.service.impl.DataServiceImpl.DEFAULT_DATASOURCE;
@@ -366,8 +365,8 @@ public class DatatableServiceImpl implements DatatableService {
     private void saveTeeNodeDatatableManagementOrPush(TeeNodeDatatableManagementDO saveDO) {
         if (PlatformTypeEnum.EDGE.equals(PlatformTypeEnum.valueOf(plaformType))) {
             TeeNodeDatatableManagementSyncRequest request = TeeNodeDatatableManagementSyncRequest.parse2VO(saveDO);
-            VoteSyncRequest voteSyncRequest = VoteSyncRequest.builder().syncDataType(VoteSyncTypeEnum.TEE_NODE_DATATABLE_MANAGEMENT.name()).projectNodesInfo(request).build();
-            PushToCenterUtil.dataPushToCenter(voteSyncRequest);
+            DbSyncRequest dbSyncRequest = DbSyncRequest.builder().syncDataType(VoteSyncTypeEnum.TEE_NODE_DATATABLE_MANAGEMENT.name()).projectNodesInfo(request).build();
+            DbSyncUtil.dbDataSyncToCenter(dbSyncRequest);
         } else {
             teeNodeDatatableManagementRepository.save(saveDO);
         }
