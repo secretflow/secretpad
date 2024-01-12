@@ -34,7 +34,12 @@ public enum UserOwnerTypeEnum {
     /**
      * Center
      */
-    CENTER
+    CENTER,
+
+    /**
+     * P2p
+     */
+    P2P
     ;
 
     public PermissionUserTypeEnum toPermissionUserType() {
@@ -43,6 +48,9 @@ public enum UserOwnerTypeEnum {
         }
         if (CENTER.equals(this)) {
             return PermissionUserTypeEnum.USER;
+        }
+        if (P2P.equals(this)) {
+            return PermissionUserTypeEnum.NODE;
         }
         throw SecretpadException.of(SystemErrorCode.VALIDATION_ERROR, "Invalidate user owner type: " + this);
     }

@@ -56,11 +56,13 @@ public class NodeDTO {
      */
     private String description;
     private String controlNodeId;
+    private String masterNodeId;
     private String netAddress;
     private String token;
     private String type;
     private Integer mode;
     private String cert;
+    private String certText;
     private String tokenStatus;
     private String nodeRole;
     private String nodeStatus;
@@ -90,6 +92,7 @@ public class NodeDTO {
         nodeDTO.setGmtModified(DateTimes.toRfc3339(nodeDO.getGmtModified()));
         nodeDTO.setNodeName(nodeDO.getName());
         nodeDTO.setMode(nodeDO.getMode());
+        nodeDTO.setMasterNodeId(nodeDO.getMasterNodeId());
         return nodeDTO;
     }
 

@@ -69,8 +69,7 @@ public class VoteInviteCustomRepository {
         TypedQuery<VoteInviteDO> query1 = entityManager.createQuery(query);
         query1.setFirstResult(page.getPageNumber() * page.getPageSize());
         query1.setMaxResults(page.getPageSize());
-        List<VoteInviteDO> resultList = query1.getResultList();
-        return resultList;
+        return query1.getResultList();
     }
 
     public Long queryCount(String nodeID, Boolean isProcessed, String type, String keyWord) {
@@ -92,7 +91,6 @@ public class VoteInviteCustomRepository {
         }
         query.select(cb.count(root))
                 .where(cb.and(predicates.toArray(new Predicate[0])));
-        Long singleResult = entityManager.createQuery(query).getSingleResult();
-        return singleResult;
+        return entityManager.createQuery(query).getSingleResult();
     }
 }

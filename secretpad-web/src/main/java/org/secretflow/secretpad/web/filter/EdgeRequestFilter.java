@@ -21,6 +21,7 @@ import org.secretflow.secretpad.common.errorcode.AuthErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.persistence.entity.TokensDO;
 import org.secretflow.secretpad.persistence.repository.UserTokensRepository;
+import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
 import org.secretflow.secretpad.web.util.AuthUtils;
 
@@ -28,7 +29,6 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.*;
 import jakarta.servlet.annotation.WebFilter;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Data;
@@ -82,8 +82,9 @@ public class EdgeRequestFilter implements Filter, Ordered {
     private List<String> forward;
     private List<String> include;
     private final UserTokensRepository userTokensRepository;
-    private final RestTemplate restTemplate;
     private final ObjectMapper jacksonObjectMapper;
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final EnvService envService;
 
     /**
      * Expiration time
@@ -173,8 +174,7 @@ public class EdgeRequestFilter implements Filter, Ordered {
     }
 
     private void checkUserLogin(HttpServletRequest request) {
-        Cookie cookie = AuthUtils.findTokenCookie(request.getCookies());
-        String token = cookie.getValue();
+        String token = AuthUtils.findTokenInHeader(request);
         Optional<TokensDO> tokensDO = userTokensRepository.findByToken(token);
         if (tokensDO.isEmpty()) {
             throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "Cannot find token in db, user not login in.");

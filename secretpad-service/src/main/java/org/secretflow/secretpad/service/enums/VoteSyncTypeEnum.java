@@ -27,5 +27,9 @@ public enum VoteSyncTypeEnum {
     VOTE_INVITE,
     NODE_ROUTE,
     TEE_NODE_DATATABLE_MANAGEMENT,
+    PROJECT_APPROVAL_CONFIG,
+    PROJECT,
+    PROJECT_NODE,
+    PROJECT_INST,
     ;
 }

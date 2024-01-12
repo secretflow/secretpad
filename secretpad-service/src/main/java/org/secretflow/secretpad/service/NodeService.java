@@ -18,6 +18,7 @@ package org.secretflow.secretpad.service;
 
 import org.secretflow.secretpad.service.model.common.SecretPadPageResponse;
 import org.secretflow.secretpad.service.model.node.*;
+import org.secretflow.secretpad.service.model.node.p2p.P2pCreateNodeRequest;
 
 import org.springframework.data.domain.Pageable;
 
@@ -55,11 +56,26 @@ public interface NodeService {
     String createNode(CreateNodeRequest request);
 
     /**
+     * Create a node for p2p mode
+     *
+     * @param request create node request
+     * @return nodeId
+     */
+    String createP2pNode(P2pCreateNodeRequest request);
+
+    /**
      * Delete a node
      *
      * @param nodeId target nodeId
      */
     void deleteNode(String nodeId);
+
+    /**
+     * Delete a node for p2p mode
+     *
+     * @param routerId target routerId
+     */
+    void deleteP2pNode(String routerId);
 
     /**
      * List the node result products
@@ -127,9 +143,14 @@ public interface NodeService {
 
     /**
      * List Cooperating Node
+     *
      * @param nodeId current node Id
      * @return node view object list
      */
     List<NodeVO> listCooperatingNode(String nodeId);
 
+    /**
+     * Initial node for p2p mode
+     */
+    void initialNode();
 }

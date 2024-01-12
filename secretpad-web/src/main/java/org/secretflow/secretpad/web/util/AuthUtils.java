@@ -21,6 +21,8 @@ import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.web.constant.AuthConstants;
 
 import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
+import org.apache.commons.lang3.StringUtils;
 
 /**
  * Authorization utils
@@ -31,21 +33,37 @@ import jakarta.servlet.http.Cookie;
 public class AuthUtils {
 
     /**
-     * Find token cookie from cookie list by cookie name
+     * Find token from cookie list by cookie name
      *
-     * @param cookies cookie list
-     * @return the correct token cookie
+     * @param cookies   cookie list
+     * @param tokenName
+     * @return {@link String }
      */
-    public static Cookie findTokenCookie(Cookie[] cookies) {
+    @Deprecated
+    public static String findTokenInCookie(Cookie[] cookies, String tokenName) {
         if (cookies == null || cookies.length == 0) {
             throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "The request header does not contain header!");
         }
         for (Cookie c : cookies) {
-            if (AuthConstants.TOKEN_NAME.equals(c.getName())) {
-                return c;
+            if (c.getName().equals(tokenName)) {
+                return c.getValue();
             }
         }
         throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "The request header does not contain header!");
+    }
+
+    /**
+     * Find token from http header
+     *
+     * @param request request
+     * @return {@link String }
+     */
+    public static String findTokenInHeader(HttpServletRequest request) {
+        String token = request.getHeader(AuthConstants.TOKEN_NAME);
+        if (StringUtils.isEmpty(token)) {
+            throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "The request header does not contain header!");
+        }
+        return token;
     }
 
 }

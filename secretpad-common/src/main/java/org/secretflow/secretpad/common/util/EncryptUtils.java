@@ -67,7 +67,8 @@ public class EncryptUtils {
             signature.update(data);
             return Base64Utils.encode(signature.sign());
         } catch (Exception e) {
-            throw SecretpadException.of(SystemErrorCode.SIGNATURE_ERROR);
+            LOGGER.error("signSHA256withRSA error", e);
+            throw SecretpadException.of(SystemErrorCode.SIGNATURE_ERROR, e);
         }
 
     }
@@ -114,7 +115,7 @@ public class EncryptUtils {
             subCert.verify(publicKey);
             return true;
         } catch (Exception e) {
-            LOGGER.info("cert_chain validate error,{}", e.getMessage());
+            LOGGER.error("cert_chain validate error", e);
             return false;
         }
     }

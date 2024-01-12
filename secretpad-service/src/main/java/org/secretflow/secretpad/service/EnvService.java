@@ -16,8 +16,8 @@
 
 package org.secretflow.secretpad.service;
 
-import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.dto.EnvDTO;
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 
 /**
  * environment service
@@ -36,24 +36,34 @@ public interface EnvService {
 
     /**
      * get platform nade id
+     *
      * @return platform node id
      */
     String getPlatformNodeId();
 
     /**
      * get environment value
+     *
      * @return {@link EnvDTO}
      */
     EnvDTO getEnv();
 
     /**
      * check center platform
+     *
      * @return boolean
      */
     Boolean isCenter();
 
     /**
+     * check autonomy platform
+     * @return boolean
+     */
+    Boolean isAutonomy();
+
+    /**
      * check embedded node
+     *
      * @param nodeID nodeID
      * @return boolean
      */
@@ -61,9 +71,12 @@ public interface EnvService {
 
     /**
      * check Current Node Environment
+     *
      * @param nodeID nodeId
      * @return boolean
      */
     Boolean isCurrentNodeEnvironment(String nodeID);
+
+    Boolean isP2pEdge();
 
 }

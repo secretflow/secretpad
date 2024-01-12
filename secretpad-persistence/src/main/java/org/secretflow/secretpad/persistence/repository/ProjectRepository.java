@@ -18,7 +18,11 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 /**
  * Project repository
@@ -28,4 +32,13 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface ProjectRepository extends BaseRepository<ProjectDO, String> {
+
+    /**
+     * Query project list by status for p2p mode
+     *
+     * @param status target status
+     * @return project list
+     */
+    @Query("from ProjectDO pj where pj.status=:status")
+    List<ProjectDO> findByStatus(@Param("status") Integer status);
 }

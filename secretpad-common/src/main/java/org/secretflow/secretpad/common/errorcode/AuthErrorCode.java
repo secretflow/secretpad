@@ -23,14 +23,27 @@ package org.secretflow.secretpad.common.errorcode;
  * @date 2023/05/25
  */
 public enum AuthErrorCode implements ErrorCode {
+
     /**
-     * User or password error
+     * User not found
      */
-    USER_OR_PASSWORD_ERROR(202011601),
+    USER_NOT_FOUND(202011600),
+
+    /**
+     * User password error
+     */
+    USER_PASSWORD_ERROR(202011601),
     /**
      * Authorization failure
      */
     AUTH_FAILED(202011602),
+
+    /**
+     * User is locked
+     */
+    USER_IS_LOCKED(202011603),
+
+    RESET_PASSWORD_IS_LOCKED(202011604),
     ;
 
     private final int code;

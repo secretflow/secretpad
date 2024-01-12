@@ -16,7 +16,7 @@
 
 package org.secretflow.secretpad.service.sync.center;
 
-import org.secretflow.secretpad.manager.integration.model.SyncDataDTO;
+import org.secretflow.secretpad.common.dto.SyncDataDTO;
 
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 

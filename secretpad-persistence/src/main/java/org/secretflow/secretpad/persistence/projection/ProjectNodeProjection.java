@@ -18,10 +18,7 @@ package org.secretflow.secretpad.persistence.projection;
 
 import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 /**
  * Project node projection data
@@ -33,6 +30,7 @@ import lombok.Setter;
 @Setter
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 public class ProjectNodeProjection {
     /**
      * Project node DO information

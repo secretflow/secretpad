@@ -44,6 +44,7 @@ import java.util.List;
 @Table(name = "project_job_task")
 @SQLDelete(sql = "update project_job_task set is_deleted = 1 where job_id = ? and project_id = ? and task_id = ?")
 @Where(clause = "is_deleted = 0")
+@ToString
 public class ProjectTaskDO extends BaseAggregationRoot {
 
     /**
@@ -90,7 +91,7 @@ public class ProjectTaskDO extends BaseAggregationRoot {
 
     @Override
     public String getProjectId() {
-        return null;
+        return this.upk.projectId;
     }
 
     @Override

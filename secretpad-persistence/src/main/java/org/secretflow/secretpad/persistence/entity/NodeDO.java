@@ -67,6 +67,12 @@ public class NodeDO extends BaseAggregationRoot<NodeDO> {
     @Column(name = "description", columnDefinition = "text")
     private String description;
 
+    /**
+     * Master node id
+     */
+    @Column(name = "master_node_id", length = 64)
+    private String masterNodeId;
+
     private String controlNodeId;
     private String netAddress;
     private String token;

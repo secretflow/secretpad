@@ -55,12 +55,17 @@ public enum SystemErrorCode implements ErrorCode {
     ENCODE_ERROR(202011106),
 
     SIGNATURE_ERROR(2020111107),
+    VERIFY_SIGNATURE_ERROR(2020111108),
     /**
      * sse error
      */
-    SSE_ERROR(202011108),
+    SSE_ERROR(202011109),
 
-    REMOTE_CALL_ERROR(202011109),
+    /**
+     * sync error
+     */
+    SYNC_ERROR(202011110),
+    REMOTE_CALL_ERROR(2020111011),
 
     ;
 

@@ -25,5 +25,8 @@ package org.secretflow.secretpad.service.enums;
 public enum VoteTypeEnum {
     TEE_DOWNLOAD,
     NODE_ROUTE,
+    PROJECT_CREATE,
+    PROJECT_ARCHIVE,
+    PROJECT_NODE_ADD,
     ;
 }

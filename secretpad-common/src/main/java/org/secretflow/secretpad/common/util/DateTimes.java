@@ -23,6 +23,7 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
 
 /**
  * DateTime utils
@@ -78,6 +79,17 @@ public class DateTimes {
      */
     public static LocalDateTime utcFromRfc3339(String rfc3339) {
         return LocalDateTime.ofInstant(Instant.parse(rfc3339), ZoneId.of("UTC"));
+    }
+
+    /**
+     * Convert string to localDateTime by zone eight
+     *
+     * @param rfc3339
+     * @return LocalDateTime
+     */
+    public static LocalDateTime eightUtcFromRfc3339(String rfc3339) {
+        TemporalAccessor parse = RFC_3339_FORMATTER.parse(rfc3339);
+        return LocalDateTime.from(parse);
     }
 
     /**

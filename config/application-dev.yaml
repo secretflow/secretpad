@@ -103,6 +103,9 @@ secretpad:
     max-request-size: -1 # -1 means not limit, e.g.  200MB, 1GB
   data:
     dir-path: ../tmp/data/
+  datasync:
+    center: false
+    p2p: true
 
 sfclusterDesc:
   deviceConfig:
@@ -113,3 +116,18 @@ sfclusterDesc:
 
 tee:
   capsule-manager: capsule-manager.#.svc # tee capsule-manager service
+
+data:
+  sync:
+    - org.secretflow.secretpad.persistence.entity.ProjectDO
+    - org.secretflow.secretpad.persistence.entity.ProjectNodeDO
+    - org.secretflow.secretpad.persistence.entity.NodeDO
+    - org.secretflow.secretpad.persistence.entity.NodeRouteDO
+    - org.secretflow.secretpad.persistence.entity.ProjectJobDO
+    - org.secretflow.secretpad.persistence.entity.ProjectTaskDO
+    - org.secretflow.secretpad.persistence.entity.ProjectDatatableDO
+    - org.secretflow.secretpad.persistence.entity.VoteRequestDO
+    - org.secretflow.secretpad.persistence.entity.VoteInviteDO
+    - org.secretflow.secretpad.persistence.entity.TeeDownLoadAuditConfigDO
+    - org.secretflow.secretpad.persistence.entity.NodeRouteApprovalConfigDO
+    - org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO

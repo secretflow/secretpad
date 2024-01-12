@@ -22,35 +22,35 @@ package org.secretflow.secretpad.service.constant;
  * @author xujiening
  * @date 2023/9/19
  */
-public interface TeeJobConstants {
+public class TeeJobConstants {
 
-    String DATA_MANAGEMENT = "data_management";
-    String TEE_PUSH_NAME = "upload";
-    String TEE_AUTH_NAME = "authorize";
-    String TEE_PULL_NAME = "download";
-    String TEE_DELETE_NAME = "delete";
-    String VERSION = "0.0.1";
+    public static final String DATA_MANAGEMENT = "data_management";
+    public static final String TEE_PUSH_NAME = "upload";
+    public static final String TEE_AUTH_NAME = "authorize";
+    public static final String TEE_PULL_NAME = "download";
+    public static final String TEE_DELETE_NAME = "delete";
+    public static final String VERSION = "0.0.1";
 
-    String TEE_PUSH_ATTR_PATH_DOMAIN = "uploader/domain_id";
-    String TEE_PUSH_ATTR_PATH_CERT = "uploader/cert_chain";
-    String TEE_AUTH_ATTR_OWNER_DOMAIN = "owner/domain_id";
-    String TEE_AUTH_ATTR_AUTH_DOMAINS = "authorization_info/domain_ids";
-    String TEE_AUTH_ATTR_ROOT_CERTS = "authorization_info/root_certs";
-    String TEE_AUTH_ATTR_PROJECT_ID = "authorization_info/project_id";
-    String TEE_AUTH_ATTR_COLUMNS = "authorization_info/columns";
-    String TEE_PULL_ATTR_PATH_DOMAIN = "receiver/domain_id";
-    String TEE_PULL_ATTR_VOTE_RESULT = "receiver/vote_result";
-    String TEE_DELETE_ATTR_PATH_DOMAIN = "deleter/domain_id";
+    public static final String TEE_PUSH_ATTR_PATH_DOMAIN = "uploader/domain_id";
+    public static final String TEE_PUSH_ATTR_PATH_CERT = "uploader/cert_chain";
+    public static final String TEE_AUTH_ATTR_OWNER_DOMAIN = "owner/domain_id";
+    public static final String TEE_AUTH_ATTR_AUTH_DOMAINS = "authorization_info/domain_ids";
+    public static final String TEE_AUTH_ATTR_ROOT_CERTS = "authorization_info/root_certs";
+    public static final String TEE_AUTH_ATTR_PROJECT_ID = "authorization_info/project_id";
+    public static final String TEE_AUTH_ATTR_COLUMNS = "authorization_info/columns";
+    public static final String TEE_PULL_ATTR_PATH_DOMAIN = "receiver/domain_id";
+    public static final String TEE_PULL_ATTR_VOTE_RESULT = "receiver/vote_result";
+    public static final String TEE_DELETE_ATTR_PATH_DOMAIN = "deleter/domain_id";
 
-    String PUSH_INPUT_NAME = "uploader_input";
-    String AUTH_INPUT_NAME = "authorize_input";
-    String PULL_INPUT_NAME = "downloader_input";
-    String DELETE_INPUT_NAME = "deleter_input";
-    String PUSH_INPUT_TYPE = "sf.table.individual";
-    String DATA_REF = "dm://input?id=";
-    String OUTPUT_DATASOURCE_REF = "dm://output?datasource_id=";
-    String OUTPUT_ID_REF = "&id=";
-    String OUTPUT_RELATIVE_URI_REF = "&uri=";
+    public static final String PUSH_INPUT_NAME = "uploader_input";
+    public static final String AUTH_INPUT_NAME = "authorize_input";
+    public static final String PULL_INPUT_NAME = "downloader_input";
+    public static final String DELETE_INPUT_NAME = "deleter_input";
+    public static final String PUSH_INPUT_TYPE = "sf.table.individual";
+    public static final String DATA_REF = "dm://input?id=";
+    public static final String OUTPUT_DATASOURCE_REF = "dm://output?datasource_id=";
+    public static final String OUTPUT_ID_REF = "&id=";
+    public static final String OUTPUT_RELATIVE_URI_REF = "&uri=";
 
-    String MOCK_VOTE_RESULT = "";
+    public static final String MOCK_VOTE_RESULT = "";
 }

@@ -34,7 +34,7 @@ public class InitiatorMessage extends AbstractInitiatingTypeMessage {
     /**
      * as initiator,will receive multi-party vote status
      */
-    private List<PartyVoteStatus> partyVoteStatuses;
+    private List<? extends PartyVoteStatus> partyVoteStatuses;
 
 
 }

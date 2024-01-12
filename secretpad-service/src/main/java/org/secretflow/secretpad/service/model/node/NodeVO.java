@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service.model.node;
 
+import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.model.NodeDTO;
 import org.secretflow.secretpad.manager.integration.model.NodeInstanceDTO;
@@ -25,6 +26,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import org.springframework.util.CollectionUtils;
 
+import java.util.Base64;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,6 +59,11 @@ public class NodeVO {
     @Schema(description = "controlNodeId")
     private String controlNodeId;
     /**
+     * masterNodeId
+     */
+    @Schema(description = "masterNodeId")
+    private String masterNodeId;
+    /**
      * description
      */
     @Schema(description = "description")
@@ -71,6 +78,16 @@ public class NodeVO {
      */
     @Schema(description = "cert")
     private String cert;
+    /**
+     * real cert, base64
+     */
+    @Schema(description = "certText")
+    private String certText;
+    /**
+     * node authentication code
+     */
+    @Schema(description = "nodeAuthenticationCode")
+    private String nodeAuthenticationCode;
     /**
      * token
      */
@@ -141,6 +158,9 @@ public class NodeVO {
                 .tokenStatus(nodeDTO.getTokenStatus()).nodeRole(nodeDTO.getNodeRole()).nodeStatus(nodeDTO.getNodeStatus())
                 .type(nodeDTO.getType()).gmtCreate(nodeDTO.getGmtCreate()).gmtModified(nodeDTO.getGmtModified())
                 .nodeInstances(nodeDTO.getNodeInstances()).mode(nodeDTO.getMode())
+                .masterNodeId(nodeDTO.getMasterNodeId())
+                .certText(nodeDTO.getCertText())
+                .nodeAuthenticationCode(buildNodeAuthenticationCode(nodeDTO))
                 .datatables(CollectionUtils.isEmpty(datatables) ? null
                         : datatables.stream().map(it -> new NodeDatatableVO(it.getDatatableId(), it.getDatatableName()))
                         .collect(Collectors.toList()))
@@ -166,7 +186,25 @@ public class NodeVO {
         nodeVO.setGmtModified(nodeDTO.getGmtModified());
         nodeVO.setNodeInstances(nodeDTO.getNodeInstances());
         nodeVO.setMode(nodeDTO.getMode());
+        nodeVO.setMasterNodeId(nodeDTO.getMasterNodeId());
+        nodeVO.setCertText(nodeDTO.getCertText());
+        nodeVO.setNodeAuthenticationCode(buildNodeAuthenticationCode(nodeDTO));
         return nodeVO;
     }
 
+    /**
+     * Build node authentication code
+     *
+     * @param nodeDTO node data transfer object
+     * @return node authentication code
+     */
+    private static String buildNodeAuthenticationCode(NodeDTO nodeDTO) {
+        NodeAuthenticationCode nodeAuthenticationCode = NodeAuthenticationCode.builder()
+                .masterNodeId(nodeDTO.getMasterNodeId())
+                .dstNodeId(nodeDTO.getNodeId())
+                .dstNetAddress(nodeDTO.getNetAddress())
+                .name(nodeDTO.getNodeName())
+                .certText(nodeDTO.getCertText()).build();
+        return Base64.getEncoder().encodeToString(JsonUtils.toJSONString(nodeAuthenticationCode).getBytes());
+    }
 }

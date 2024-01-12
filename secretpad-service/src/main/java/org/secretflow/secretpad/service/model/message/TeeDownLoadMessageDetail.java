@@ -34,7 +34,7 @@ import java.util.List;
 @Builder
 public class TeeDownLoadMessageDetail extends MessageDetailVO {
 
-    private List<PartyVoteStatus> partyVoteStatuses;
+    private List<? extends PartyVoteStatus> partyVoteStatuses;
     private String graphName;
 
     private List<TableColumnVO> tableColumns;

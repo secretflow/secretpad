@@ -22,6 +22,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
@@ -37,7 +38,7 @@ import java.time.LocalDateTime;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class ProjectJobTaskLogDO {
+public class ProjectJobTaskLogDO implements Serializable {
     /**
      * Project job task start time
      */

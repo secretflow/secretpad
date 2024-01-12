@@ -20,6 +20,7 @@ import org.secretflow.secretpad.common.annotation.OneOfType;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 import lombok.Setter;
@@ -36,7 +37,7 @@ public class CreateApprovalRequest {
     @NotBlank
     private String nodeID;
 
-    @OneOfType(types = {"TEE_DOWNLOAD", "NODE_ROUTE"})
+    @OneOfType(types = {"TEE_DOWNLOAD", "NODE_ROUTE", "PROJECT_CREATE", "PROJECT_ARCHIVE"})
     @NotBlank
     private String voteType;
 
@@ -48,9 +49,11 @@ public class CreateApprovalRequest {
     )
     @JsonSubTypes({
             @JsonSubTypes.Type(value = NodeRouteVoteConfig.class, name = "NODE_ROUTE"),
-            @JsonSubTypes.Type(value = TeeDownLoadVoteConfig.class, name = "TEE_DOWNLOAD")
+            @JsonSubTypes.Type(value = TeeDownLoadVoteConfig.class, name = "TEE_DOWNLOAD"),
+            @JsonSubTypes.Type(value = ProjectCreateApprovalConfig.class, name = "PROJECT_CREATE"),
+            @JsonSubTypes.Type(value = ProjectArchiveConfig.class, name = "PROJECT_ARCHIVE")
 
     })
-    private AbstractVoteConfig voteConfig;
+    private @Valid AbstractVoteConfig voteConfig;
 
 }

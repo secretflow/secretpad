@@ -47,6 +47,16 @@ public enum ProjectErrorCode implements ErrorCode {
      * The project graph is not empty
      */
     PROJECT_GRAPH_NOT_EMPTY(202011506),
+
+    PROJECT_ARCHIVE_FAIL(202011507),
+
+    PROJECT_UPDATE_FAIL(202011508),
+
+    PROJECT_CAN_NOT_ARCHIVE(202011509),
+
+    PROJECT_CAN_NOT_CREATE_ARCHIVE_VOTE(202011510),
+
+
     ;
 
 

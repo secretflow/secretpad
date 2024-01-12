@@ -35,6 +35,10 @@ public class DefaultApiResourceAuth implements ApiResourceAuth {
      */
     @Override
     public boolean check(String resourceCode) {
+        // Ignore for current platform manager
+        if (UserContext.getUser().getOwnerId().equals(UserContext.getUser().getPlatformNodeId())) {
+            return true;
+        }
         if (UserContext.getUser().containInterfaceResource(ApiResourceCodeConstants.ALL_INTERFACE_RESOURCE)){
             return true;
         }

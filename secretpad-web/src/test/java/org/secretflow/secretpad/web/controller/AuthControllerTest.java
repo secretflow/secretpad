@@ -17,7 +17,9 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.util.JsonUtils;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.AccountsDO;
 import org.secretflow.secretpad.persistence.repository.UserAccountsRepository;
 import org.secretflow.secretpad.persistence.repository.UserTokensRepository;
@@ -26,9 +28,7 @@ import org.secretflow.secretpad.service.model.auth.LogoutRequest;
 import org.secretflow.secretpad.web.constant.AuthConstants;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -60,7 +60,7 @@ class AuthControllerTest extends ControllerTest {
             AccountsDO accountsDO = FakerUtils.fake(AccountsDO.class);
             accountsDO.setPasswordHash(loginRequest.getPasswordHash());
             when(userAccountsRepository.findByName(loginRequest.getName())).thenReturn(Optional.of(accountsDO));
-            return MockMvcRequestBuilders.post(getMappingUrl(AuthController.class, "login", HttpServletResponse.class, LoginRequest.class))
+            return MockMvcRequestBuilders.post(getMappingUrl(AuthController.class, "login", LoginRequest.class))
                     .content(JsonUtils.toJSONString(loginRequest));
         });
     }
@@ -69,9 +69,13 @@ class AuthControllerTest extends ControllerTest {
     void logout() throws Exception {
         assertResponse(() -> {
             LogoutRequest logoutRequest = FakerUtils.fake(LogoutRequest.class);
+            logoutRequest.setName("alice");
+            UserContextDTO user = UserContext.getUser();
+            user.setPlatformNodeId("alice");
+            user.setName("alice");
             doNothing().when(userTokensRepository).deleteByNameAndToken(logoutRequest.getName(), "token");
-            return MockMvcRequestBuilders.post(getMappingUrl(AuthController.class, "logout", HttpServletRequest.class, LogoutRequest.class))
-                    .content(JsonUtils.toString(logoutRequest)).cookie(new Cookie(AuthConstants.TOKEN_NAME, logoutRequest.getName()));
+            return MockMvcRequestBuilders.post(getMappingUrl(AuthController.class, "logout", HttpServletRequest.class))
+                    .content(JsonUtils.toString(logoutRequest)).header(AuthConstants.TOKEN_NAME, "token");
         });
     }
 }

@@ -27,7 +27,7 @@ import lombok.Setter;
  */
 @Getter
 @Setter
-public abstract class AbstractPageResponse {
+public class AbstractPageResponse {
 
     private Integer pageSize;
 

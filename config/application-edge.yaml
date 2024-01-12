@@ -80,6 +80,9 @@ secretpad:
     max-request-size: -1 # -1 means not limit, e.g.  200MB, 1GB
   data:
     dir-path: /app/data/
+  datasync:
+    center: true
+    p2p: false
 
 sfclusterDesc:
   deviceConfig:
@@ -108,7 +111,7 @@ edge:
   forward:
     - /api/v1alpha1/project/datatable/add
     - /api/v1alpha1/project/datatable/delete
-    - /api/v1alpha1/data/createData
+    # -/api/v1alpha1/data/createData
     - /api/v1alpha1/approval/create
     - /api/v1alpha1/node/update
     - /api/v1alpha1/datatable/delete

@@ -24,4 +24,22 @@ package org.secretflow.secretpad.web.constant;
  */
 public class AuthConstants {
     public static final String TOKEN_NAME = "User-Token";
+
+
+    /**
+     * get tokenName
+     *
+     * @param platformType
+     * @param platformNodeId
+     * @return {@link String }
+     */
+
+    @Deprecated
+    public static String getTokenName(String platformType, String platformNodeId) {
+        return TOKEN_NAME + "_" + platformType + "_" + platformNodeId;
+    }
+
+    public static final String CSRF_SAME_SITE = "SameSite";
+
+    public static final String CSRF_SAME_SITE_VALUE = "Strict";
 }

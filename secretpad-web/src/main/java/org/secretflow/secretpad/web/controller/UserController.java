@@ -21,10 +21,13 @@ import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstant
 import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.service.UserService;
+import org.secretflow.secretpad.service.model.auth.UserUpdatePwdRequest;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
 
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -48,6 +51,23 @@ public class UserController {
     @ApiResource(code = ApiResourceCodeConstants.USER_GET)
     public SecretPadResponse<UserContextDTO> get() {
         return SecretPadResponse.success(UserContext.getUser());
+    }
+
+
+    /**
+     * Update user pwd by userName
+     *
+     * @param userUpdatePwdRequest
+     * @return {@link SecretPadResponse }<{@link Boolean }>
+     */
+
+    @PostMapping(value = "/updatePwd")
+    @ApiResource(code = ApiResourceCodeConstants.USER_UPDATE_PWD)
+    public SecretPadResponse<Boolean> updatePwd(@Valid @RequestBody UserUpdatePwdRequest userUpdatePwdRequest) {
+        UserContextDTO userContextDTO = UserContext.getUser();
+        userUpdatePwdRequest.setName(userContextDTO.getName());
+        userService.updatePwd(userUpdatePwdRequest);
+        return SecretPadResponse.success(Boolean.TRUE);
     }
 
 }

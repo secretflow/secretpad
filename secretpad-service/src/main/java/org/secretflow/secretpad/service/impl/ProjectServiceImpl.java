@@ -17,8 +17,9 @@
 package org.secretflow.secretpad.service.impl;
 
 import org.secretflow.secretpad.common.constant.DatabaseConstants;
-import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.constant.ProjectConstants;
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
+import org.secretflow.secretpad.common.enums.ProjectStatusEnum;
 import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.errorcode.*;
 import org.secretflow.secretpad.common.exception.SecretpadException;
@@ -45,9 +46,10 @@ import org.secretflow.secretpad.service.DatatableService;
 import org.secretflow.secretpad.service.ProjectService;
 import org.secretflow.secretpad.service.constant.DemoConstants;
 import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
+import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.graph.converter.KusciaTeeDataManagerConverter;
+import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
 import org.secretflow.secretpad.service.model.datasync.vote.TeeNodeDatatableManagementSyncRequest;
-import org.secretflow.secretpad.service.model.datasync.vote.VoteSyncRequest;
 import org.secretflow.secretpad.service.model.datatable.PushDatatableToTeeRequest;
 import org.secretflow.secretpad.service.model.datatable.TableColumnConfigVO;
 import org.secretflow.secretpad.service.model.datatable.TeeJob;
@@ -56,15 +58,17 @@ import org.secretflow.secretpad.service.model.graph.GraphEdge;
 import org.secretflow.secretpad.service.model.graph.GraphNodeDetail;
 import org.secretflow.secretpad.service.model.graph.GraphNodeTaskLogsVO;
 import org.secretflow.secretpad.service.model.project.*;
-import org.secretflow.secretpad.service.util.PushToCenterUtil;
+import org.secretflow.secretpad.service.util.DbSyncUtil;
 
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import jakarta.annotation.Resource;
 import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.sql.Update;
 import org.secretflow.v1alpha1.kusciaapi.Job;
@@ -80,6 +84,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -93,6 +98,7 @@ import static org.secretflow.secretpad.service.impl.DataServiceImpl.DEFAULT_DATA
  * @author yansi
  * @date 2023/5/4
  */
+@Slf4j
 @Service
 public class ProjectServiceImpl implements ProjectService {
 
@@ -158,6 +164,12 @@ public class ProjectServiceImpl implements ProjectService {
     @Autowired
     private DatatableService datatableService;
 
+    @Resource
+    private ProjectApprovalConfigRepository projectApprovalConfigRepository;
+
+    @Resource
+    private VoteRequestRepository voteRequestRepository;
+
     @Value("${tee.domain-id:tee}")
     private String teeNodeId;
 
@@ -183,7 +195,7 @@ public class ProjectServiceImpl implements ProjectService {
             }
         }
         ProjectDO projectDO =
-                ProjectDO.Factory.newProject(request.getName(), request.getDescription(), request.getComputeMode(), ProjectInfoDO.builder().teeDomainId(request.getTeeNodeId()).build());
+                ProjectDO.Factory.newProject(request.getName(), request.getDescription(), request.getComputeMode(), ProjectInfoDO.builder().teeDomainId(request.getTeeNodeId()).build(), UserContext.getUser().getOwnerId());
         projectRepository.save(projectDO);
         String projectId = projectDO.getProjectId();
         addInstToProject(new AddInstToProjectRequest(projectId, DemoConstants.DEMO_ALICE_INST_ID));
@@ -229,6 +241,16 @@ public class ProjectServiceImpl implements ProjectService {
     public ProjectVO getProject(String projectId) {
         ProjectDO project = openProject(projectId);
         List<ProjectNodeProjection> pnps = projectNodeRepository.findProjectionByProjectId(project.getProjectId());
+        // autonomy project nodes may be deleted when project is archived, need to query
+        if (CollectionUtils.isEmpty(pnps) && UserContext.getUser().getPlatformType().equals(PlatformTypeEnum.AUTONOMY)) {
+            List<ProjectNodeDO> deletedProjectNodes = projectNodeRepository.findDeletedProjectNodesByProjectId(project.getProjectId());
+            if (!CollectionUtils.isEmpty(deletedProjectNodes)) {
+                List<NodeDO> nodes = nodeRepository.findByNodeIdIn(deletedProjectNodes.stream().map(ProjectNodeDO::getNodeId).toList());
+                pnps.addAll(deletedProjectNodes.stream().map(t -> new ProjectNodeProjection(ProjectNodeDO.builder().upk(t.getUpk()).build(),
+                        nodes.stream().filter(node -> StringUtils.equals(node.getNodeId(), t.getNodeId())).toList().get(0).getName(),
+                        nodes.stream().filter(node -> StringUtils.equals(node.getNodeId(), t.getNodeId())).toList().get(0).getType())).toList());
+            }
+        }
         Map<DatatableDTO.NodeDatatableId, DatatableDTO> dtoMap = getProjectDatatableDtos(projectId);
         Map<String, List<DatatableDTO>> nodeDtos =
                 dtoMap.values().stream().collect(Collectors.groupingBy(DatatableDTO::getNodeId));
@@ -246,6 +268,22 @@ public class ProjectServiceImpl implements ProjectService {
     @Transactional
     public void updateProject(UpdateProjectRequest request) {
         ProjectDO project = openProject(request.getProjectId());
+        if (!Strings.isNullOrEmpty(request.getName())) {
+            project.setName(request.getName());
+        }
+        if (!Strings.isNullOrEmpty(request.getDescription())) {
+            project.setDescription(request.getDescription());
+        }
+        projectRepository.save(project);
+    }
+
+    @Override
+    @Transactional
+    public void updateP2PProject(UpdateProjectRequest request) {
+        ProjectDO project = openProject(request.getProjectId());
+        if (!StringUtils.equals(UserContext.getUser().getOwnerId(), project.getOwnerId())) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_UPDATE_FAIL);
+        }
         if (!Strings.isNullOrEmpty(request.getName())) {
             project.setName(request.getName());
         }
@@ -276,9 +314,11 @@ public class ProjectServiceImpl implements ProjectService {
     private Map<DatatableDTO.NodeDatatableId, DatatableDTO> getProjectDatatableDtos(String projectId) {
         List<ProjectDatatableDO.UPK> pdUpks = projectDatatableRepository.findUpkByProjectId(projectId,
                 ProjectDatatableDO.ProjectDatatableSource.IMPORTED);
-        return datatableManager.findByIds(
-                pdUpks.stream().map(upk -> DatatableDTO.NodeDatatableId.from(upk.getNodeId(), upk.getDatatableId()))
-                        .collect(Collectors.toList()));
+        log.debug("--- getProjectDatatableDtos pdUpks {}", pdUpks);
+        List<DatatableDTO.NodeDatatableId> nodeDatatableIds = pdUpks.stream().map(upk -> DatatableDTO.NodeDatatableId.from(upk.getNodeId(), upk.getDatatableId()))
+                .collect(Collectors.toList());
+        log.debug("--- getProjectDatatableDtos nodeDatatableIds {}", nodeDatatableIds);
+        return datatableManager.findByIds(nodeDatatableIds);
     }
 
     @Override
@@ -293,11 +333,13 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional
     public void addNodeToProject(AddNodeToProjectRequest request) {
-        openProject(request.getProjectId());
+        ProjectDO projectDO = openProject(request.getProjectId());
         // openProjectInst(request.getProjectId(), xxx)  // TODO: check inst id
         openNode(request.getNodeId());
         // Note: we don't check whether node is in project, so this operation is idempotent.
         projectNodeRepository.save(ProjectNodeDO.Factory.newProjectNode(request.getProjectId(), request.getNodeId()));
+        projectDO.setGmtModified(LocalDateTime.now());
+        projectRepository.save(projectDO);
     }
 
     @Override
@@ -353,8 +395,8 @@ public class ProjectServiceImpl implements ProjectService {
                 LOGGER.info("this is edge , tee datatable push to center");
                 // is the edge, do not drop the library, send HTTP requests to the center, synchronize data
                 TeeNodeDatatableManagementSyncRequest syncRequest = TeeNodeDatatableManagementSyncRequest.parse2VO(authToTeeDO);
-                VoteSyncRequest voteSyncRequest = VoteSyncRequest.builder().syncDataType(VoteSyncTypeEnum.TEE_NODE_DATATABLE_MANAGEMENT.name()).projectNodesInfo(syncRequest).build();
-                PushToCenterUtil.dataPushToCenter(voteSyncRequest);
+                DbSyncRequest dbSyncRequest = DbSyncRequest.builder().syncDataType(VoteSyncTypeEnum.TEE_NODE_DATATABLE_MANAGEMENT.name()).projectNodesInfo(syncRequest).build();
+                DbSyncUtil.dbDataSyncToCenter(dbSyncRequest);
             } else {
                 teeNodeDatatableManagementRepository.save(authToTeeDO);
             }
@@ -504,6 +546,84 @@ public class ProjectServiceImpl implements ProjectService {
     public boolean checkNodeInProject(String projectId, String nodeId) {
         return projectNodeRepository.findById(new ProjectNodeDO.UPK(projectId, nodeId)).isPresent();
     }
+
+    @Override
+    public String createP2PProject(CreateProjectRequest request) {
+        String ownerId = UserContext.getUser().getOwnerId();
+        ProjectDO projectDO =
+                ProjectDO.Factory.newP2PProject(request.getName(), request.getDescription(), request.getComputeMode(), request.getComputeFunc(), ProjectInfoDO.builder().teeDomainId(request.getTeeNodeId()).build(), ownerId);
+        projectRepository.save(projectDO);
+        return projectDO.getProjectId();
+    }
+
+    @Override
+    public List<ProjectVO> listP2PProject() {
+        //approved project
+        List<ProjectNodeDO> projectNodeDOList = projectNodeRepository.findByNodeId(UserContext.getUser().getOwnerId());
+        Set<String> approvedProjectIds = new HashSet<>();
+        if (!CollectionUtils.isEmpty(projectNodeDOList)) {
+            approvedProjectIds.addAll(projectNodeDOList.stream().map(pn -> pn.getUpk().getProjectId()).collect(Collectors.toSet()));
+        }
+        //archived and reviewing project
+        List<ProjectApprovalConfigDO> projectApprovalConfigDOS = projectApprovalConfigRepository.listProjectApprovalConfigByType(VoteTypeEnum.PROJECT_CREATE.name());
+        Set<String> notApprovedProjectIds = projectApprovalConfigDOS.stream().map(pa -> pa.getProjectId()).collect(Collectors.toSet());
+        approvedProjectIds.addAll(notApprovedProjectIds);
+        List<ProjectDO> projects = projectRepository.findAllById(approvedProjectIds);
+        List<ProjectApprovalConfigDO> allProjectVote = projectApprovalConfigRepository.findByType(VoteTypeEnum.PROJECT_CREATE.name());
+        Map<String, String> projectIdVoteId = allProjectVote.stream().collect(Collectors.toMap(e -> e.getProjectId(), e -> e.getVoteID()));
+        List<VoteRequestDO> voteRequestDOS = voteRequestRepository.findAllById(projectIdVoteId.values());
+        Map<String, Set<VoteRequestDO.PartyVoteInfo>> voteIdPartyInfoMap = voteRequestDOS.stream().collect(Collectors.toMap(e -> e.getVoteID(), e -> e.getPartyVoteInfos()));
+        // TODO: merge find.
+        return projects.stream().map(projectDO -> {
+            String projectId = projectDO.getProjectId();
+            List<ProjectNodeProjection> pnps =
+                    projectNodeRepository.findProjectionByProjectId(projectId);
+            Integer graphCount = projectGraphDORepository.countByProjectId(projectId);
+            Integer jobCount = projectJobRepository.countByProjectId(projectId);
+            if (!projectIdVoteId.containsKey(projectId)) {
+                throw SecretpadException.of(VoteErrorCode.PROJECT_VOTE_NOT_EXISTS, projectDO.getName());
+            }
+            Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = voteIdPartyInfoMap.get(projectIdVoteId.get(projectId));
+            Set<PartyVoteInfoVO> partyVoteInfoVOS = JsonUtils.toJavaSet(partyVoteInfos, PartyVoteInfoVO.class);
+            List<String> nodeIds = partyVoteInfoVOS.stream().map(e -> e.getNodeId()).collect(Collectors.toList());
+            Map<String, String> nodeMap = nodeRepository.findByNodeIdIn(nodeIds).stream().collect(Collectors.toMap(e -> e.getNodeId(), e -> e.getName()));
+            partyVoteInfoVOS = partyVoteInfoVOS.stream().filter(e -> !StringUtils.equals(e.getNodeId(), projectDO.getOwnerId())).collect(Collectors.toSet());
+            partyVoteInfoVOS.stream().forEach(e -> e.setNodeName(nodeMap.get(e.getNodeId())));
+            return ProjectVO.builder().projectId(projectId).projectName(projectDO.getName())
+                    .description(projectDO.getDescription()).computeMode(projectDO.getComputeMode())
+                    .teeNodeId(ObjectUtils.isEmpty(projectDO.getProjectInfo()) ? null : projectDO.getProjectInfo().getTeeDomainId())
+                    .nodes(pnps.stream().map(it -> ProjectNodeVO.from(it, null)).collect(Collectors.toList()))
+                    .graphCount(graphCount).jobCount(jobCount).gmtCreate(DateTimes.toRfc3339(projectDO.getGmtCreate()))
+                    .status(ProjectStatusEnum.parse(projectDO.getStatus()))
+                    .initiator(projectDO.getOwnerId())
+                    .initiatorName(nodeMap.get(projectDO.getOwnerId()))
+                    .partyVoteInfos(partyVoteInfoVOS)
+                    .computeFunc(projectDO.getComputeFunc())
+                    .voteId(projectIdVoteId.get(projectId))
+                    .build();
+        }).sorted(Comparator.comparing(ProjectVO::getGmtCreate).reversed()).collect(Collectors.toList());
+    }
+
+    @Transactional
+    @Override
+    public void archiveProject(ArchiveProjectRequest archiveProjectRequest) {
+        Optional<ProjectDO> projectDOOptional = projectRepository.findById(archiveProjectRequest.getProjectId());
+        if (!projectDOOptional.isPresent()) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_NOT_EXISTS);
+        }
+        String ownerId = projectDOOptional.get().getOwnerId();
+        if (!StringUtils.equals(ownerId, UserContext.getUser().getOwnerId())) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_ARCHIVE_FAIL);
+        }
+        if (!ProjectStatusEnum.REVIEWING.getCode().equals(projectDOOptional.get().getStatus())) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_CAN_NOT_ARCHIVE);
+        }
+        projectNodeRepository.deleteByProjectId(archiveProjectRequest.getProjectId());
+        ProjectDO projectDO = projectDOOptional.get();
+        projectDO.setStatus(ProjectStatusEnum.ARCHIVED.getCode());
+        projectRepository.save(projectDO);
+    }
+
 
     /**
      * Open the project information by projectId

@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -104,6 +105,7 @@ public class ProjectInstDO extends BaseAggregationRoot<ProjectInstDO> {
     }
 
     @Override
+    @JsonIgnore
     public String getProjectId() {
         return this.upk.projectId;
     }

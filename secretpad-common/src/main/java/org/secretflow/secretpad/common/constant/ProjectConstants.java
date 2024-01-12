@@ -27,4 +27,10 @@ public interface ProjectConstants {
         TEE
     }
 
+    enum ComputeFuncEnum {
+        DAG,
+        PSI,
+        ALL
+    }
+
 }

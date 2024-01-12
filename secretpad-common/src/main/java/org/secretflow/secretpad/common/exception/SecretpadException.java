@@ -59,6 +59,17 @@ public final class SecretpadException extends RuntimeException {
     }
 
     /**
+     * Build SecretPad Exception with args
+     *
+     * @param errorCode
+     * @param args
+     * @return SecretPad exception
+     */
+    public static SecretpadException of(ErrorCode errorCode, Throwable cause, String... args) {
+        return new SecretpadException(errorCode, cause, args);
+    }
+
+    /**
      * Build SecretPad Exception with cause
      *
      * @param errorCode

@@ -53,8 +53,35 @@ public interface ProjectNodeRepository extends BaseRepository<ProjectNodeDO, Pro
             + "on pn.upk.nodeId=n.nodeId and pn.upk.projectId=:projectId")
     List<ProjectNodeProjection> findProjectionByProjectId(@Param("projectId") String projectId);
 
+    /**
+     * Query deleted projectNodeProjection list in project node table by projectId for p2p mode
+     *
+     * @param projectId target projectId
+     * @return ProjectNodeProjection list in project node table
+     */
+    @Query(value = "select * from project_node where project_id=:projectId and is_deleted = 1", nativeQuery = true)
+    List<ProjectNodeDO> findDeletedProjectNodesByProjectId(@Param("projectId") String projectId);
+
+    @Query(value = "select distinct node_id from project_node where project_id=:projectId and is_deleted in (0,1)", nativeQuery = true)
+    List<String> findProjectNodesByProjectId(@Param("projectId") String projectId);
+
+    /**
+     * Query project node results by nodeId
+     *
+     * @param nodeId target nodeId
+     * @return project node results
+     */
     @Query("from ProjectNodeDO pn where pn.upk.nodeId=:nodeId")
     List<ProjectNodeDO> findByNodeId(@Param("nodeId") String nodeId);
+
+    /**
+     * Query project node results by nodeId list
+     *
+     * @param nodeIds target nodeId list
+     * @return project node results
+     */
+    @Query("from ProjectNodeDO pn where pn.upk.nodeId in :nodeIds")
+    List<ProjectNodeDO> findByNodeIds(@Param("nodeIds") List<String> nodeIds);
 
     /**
      * Delete all ProjectNode in project node table by projectId
@@ -62,6 +89,6 @@ public interface ProjectNodeRepository extends BaseRepository<ProjectNodeDO, Pro
      * @param projectId target projectId
      */
     @Modifying
-    @Query("delete from ProjectNodeDO pn where pn.upk.projectId=:projectId")
+    @Query(value = "update ProjectNodeDO pn set pn.isDeleted = true where pn.upk.projectId=:projectId")
     void deleteByProjectId(@Param("projectId") String projectId);
 }

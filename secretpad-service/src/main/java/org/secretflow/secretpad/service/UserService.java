@@ -16,7 +16,9 @@
 
 package org.secretflow.secretpad.service;
 
+import org.secretflow.secretpad.persistence.entity.AccountsDO;
 import org.secretflow.secretpad.service.model.auth.UserCreateRequest;
+import org.secretflow.secretpad.service.model.auth.UserUpdatePwdRequest;
 
 /**
  * @author beiwei
@@ -25,6 +27,47 @@ import org.secretflow.secretpad.service.model.auth.UserCreateRequest;
 public interface UserService {
 
 
+    /**
+     * Create user
+     *
+     * @param userCreateRequest
+     */
+
     void create(UserCreateRequest userCreateRequest);
+
+
+    /**
+     * Update user pwd by userName
+     *
+     * @param userUpdatePwdRequest
+     */
+    void updatePwd(UserUpdatePwdRequest userUpdatePwdRequest);
+
+
+    /**
+     * Get user by userName
+     *
+     * @param userName
+     * @return {@link AccountsDO }
+     */
+
+    AccountsDO getUserByName(String userName);
+
+
+    /**
+     * user lock
+     *
+     * @param accountsDO
+     */
+
+    void userLock(AccountsDO accountsDO);
+
+    /**
+     * user unlock
+     *
+     * @param accountsDO
+     */
+
+    void userUnlock(AccountsDO accountsDO);
 
 }

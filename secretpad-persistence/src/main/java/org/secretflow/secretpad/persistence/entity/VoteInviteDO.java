@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -89,6 +90,7 @@ public class VoteInviteDO extends BaseAggregationRoot<VoteInviteDO> {
     @Builder
     @AllArgsConstructor
     @NoArgsConstructor
+    @ToString
     public static class UPK implements Serializable {
         @Column(name = "vote_id", nullable = false, length = 64)
         private String voteID;
@@ -117,15 +119,21 @@ public class VoteInviteDO extends BaseAggregationRoot<VoteInviteDO> {
     }
 
     @Override
+    @JsonIgnore
     public String getNodeId() {
         return this.upk.votePartitionID;
     }
 
     @Override
+    @JsonIgnore
     public List<String> getNodeIds() {
         List<String> nodeIds = new ArrayList<>();
         nodeIds.add(initiator);
         nodeIds.add(this.upk.votePartitionID);
         return nodeIds;
+    }
+
+    public String obtainVoteID() {
+        return this.upk.getVoteID();
     }
 }

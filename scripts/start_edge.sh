@@ -37,7 +37,7 @@ NC='\033[0m'
 NODE_ID=""
 CTR_PREFIX=${USER}-kuscia
 CTR_ROOT=/home/kuscia
-CTR_CERT_ROOT=${CTR_ROOT}/etc/certs
+CTR_CERT_ROOT=${CTR_ROOT}/var/certs
 FORCE_START=false
 KUSCIA_LITE_CTR=${CTR_PREFIX}-lite
 NETWORK_NAME="kuscia-exchange"
@@ -323,7 +323,7 @@ function start_edge() {
       ${SECRETPAD_IMAGE}
     probe_secret_pad ${secretpad_ctr}
     log "Web server started successfully"
-    log "Please visit the website http://localhost:8080} (or http://{the IPAddress of this machine}:$port) to experience the Kuscia web's functions ."
+    log "Please visit the website http://localhost:${port} (or http://{the IPAddress of this machine}:$port) to experience the Kuscia web's functions ."
     log "The login name:'${SECRETPAD_USER_NAME}' ,The login password:'${SECRETPAD_PASSWORD}' ."
     log "The demo data would be stored in the path: ${VOLUME_PATH} ."
   fi

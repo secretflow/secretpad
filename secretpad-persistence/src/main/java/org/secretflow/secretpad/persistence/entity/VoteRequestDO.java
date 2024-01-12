@@ -16,14 +16,19 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
+import org.secretflow.secretpad.persistence.converter.PartyVoteInfoSetJsonConverter;
 import org.secretflow.secretpad.persistence.converter.StringListJsonConverter;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.Hibernate;
 
+import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.Set;
 
 /**
  * VoteRequestDO.
@@ -115,6 +120,10 @@ public class VoteRequestDO extends BaseAggregationRoot<VoteRequestDO> {
     @Column(name = "desc", nullable = false, length = 64)
     private String desc;
 
+    @Column(name = "party_vote_info")
+    @Convert(converter = PartyVoteInfoSetJsonConverter.class)
+    private Set<PartyVoteInfo> partyVoteInfos;
+
     @JsonIgnore
     @Override
     public List<String> getNodeIds() {
@@ -122,5 +131,34 @@ public class VoteRequestDO extends BaseAggregationRoot<VoteRequestDO> {
         nodeIds.add(initiator);
         nodeIds.addAll(voters);
         return nodeIds;
+    }
+
+
+    @Getter
+    @Setter
+    @Builder
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class PartyVoteInfo implements Serializable {
+        private String nodeId;
+        private String action;
+        private String reason;
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || Hibernate.getClass(this) != Hibernate.getClass(o)) {
+                return false;
+            }
+            PartyVoteInfo that = (PartyVoteInfo) o;
+            return this.nodeId.equals(that.nodeId);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(nodeId);
+        }
     }
 }

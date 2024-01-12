@@ -34,6 +34,7 @@ CTR_ROOT=/home/kuscia
 tee_app_image_tar=""
 tee_dm_image_tar=""
 capsule_manager_sim_image_tar=""
+image_tar_path=""
 
 function init_images_version_from_files() {
     for file in images/*; do
@@ -62,7 +63,7 @@ function save_image() {
   if [ ! -e $image_tar ]; then
     docker save $image -o $image_tar
   fi
-  return $image_tar
+  image_tar_path=$image_tar
 }
 
 function loadTeeImage2Container() {
@@ -107,8 +108,7 @@ function loadFormLocal() {
 function saveAndLoad2Container() {
   local image_basename=$1
   local container_id=$2
-
-  image_tar_path=$(save_image $image_basename)
+  save_image $image_basename
   log "Save image: $image_basename path: $image_tar_path"
   log "loadTeeImage2Container $container_id $image_tar_path"
 

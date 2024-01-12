@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.common.util;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.util.ResourceUtils;
 
@@ -30,6 +31,7 @@ import java.io.IOException;
  * @author yansi
  * @date 2023/5/4
  */
+@Slf4j
 public class FileUtils {
 
     /**
@@ -72,5 +74,4 @@ public class FileUtils {
     public static String readFile2String(File file) throws IOException {
         return FileCopyUtils.copyToString(new FileReader(file));
     }
-
 }

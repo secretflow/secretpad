@@ -138,9 +138,36 @@ public interface ProjectService {
      * check the project contain node.
      *
      * @param projectId project resource ID
-     * @param nodeId node ID
+     * @param nodeId    node ID
      * @return boolean
      */
     boolean checkNodeInProject(String projectId, String nodeId);
+
+    /**
+     * create a project in Autonomy mode
+     *
+     * @param request
+     * @return
+     */
+    String createP2PProject(CreateProjectRequest request);
+
+    /**
+     * Lists all current projects in Autonomy mode
+     *
+     * @return
+     */
+    List<ProjectVO> listP2PProject();
+
+    /**
+     * Update the project by update project request
+     *
+     * @param request update project request
+     */
+    void updateP2PProject(UpdateProjectRequest request);
+
+    /**
+     * archive the project by give projectId
+     */
+    void archiveProject(ArchiveProjectRequest archiveProjectRequest);
 
 }

@@ -33,6 +33,12 @@ import lombok.*;
 public class RouterIdRequest {
 
     /**
+     * nodeId
+     */
+    @Schema(description = "nodeId")
+    private String nodeId;
+
+    /**
      * routerId
      */
     @Schema(description = "routerId")

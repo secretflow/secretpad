@@ -16,8 +16,7 @@
 
 package org.secretflow.secretpad.service.model.message;
 
-import lombok.Builder;
-import lombok.Data;
+import lombok.*;
 
 /**
  * PartyVoteStatus.
@@ -26,8 +25,11 @@ import lombok.Data;
  * @date 2023/09/22
  */
 
-@Data
+@Getter
+@Setter
 @Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class PartyVoteStatus {
 
     private String nodeID;

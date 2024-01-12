@@ -273,10 +273,8 @@ public class DataServiceImpl implements DataService {
 
     private void checkDataPermissions(String nodeId) {
         UserContextDTO user = UserContext.getUser();
-        if (user.getPlatformType().equals(PlatformTypeEnum.EDGE)) {
-            if (!user.getOwnerId().equals(nodeId)) {
-                throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "no Permissions");
-            }
+        if (user.getPlatformType().equals(PlatformTypeEnum.EDGE) && !user.getOwnerId().equals(nodeId)) {
+            throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "no Permissions");
         }
     }
 }

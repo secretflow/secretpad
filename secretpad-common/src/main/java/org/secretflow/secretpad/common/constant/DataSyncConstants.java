@@ -22,8 +22,23 @@ package org.secretflow.secretpad.common.constant;
  * @author cml
  * @date 2023/11/02
  */
-public interface DataSyncConstants {
+public class DataSyncConstants {
 
-    String VOTE_DATA_SYNC = "/api/v1alpha1/vote_sync/create";
+    public static final String VOTE_DATA_SYNC = "/api/v1alpha1/vote_sync/create";
+
+    public static final String VOTE_REQUEST = "VOTE_REQUEST";
+
+    public static final String VOTE_INVITE = "VOTE_INVITE";
+
+    public static final String NODE_ROUTE = "NODE_ROUTE";
+
+    public static final String TEE_NODE_DATATABLE_MANAGEMENT = "TEE_NODE_DATATABLE_MANAGEMENT";
+
+    public static final String PROJECT_APPROVAL_CONFIG = "PROJECT_APPROVAL_CONFIG";
+
+    public static final String PROJECT = "PROJECT";
+
+    public static final String PROJECT_NODE = "PROJECT_NODE";
+
 
 }

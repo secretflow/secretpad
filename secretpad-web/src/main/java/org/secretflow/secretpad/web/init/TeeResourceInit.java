@@ -18,6 +18,7 @@ package org.secretflow.secretpad.web.init;
 
 import org.secretflow.secretpad.common.constant.DeployModeConstants;
 import org.secretflow.secretpad.common.constant.DomainConstants;
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainRpc;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
@@ -33,7 +34,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_TEST;
+import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_TEST_P2P;
 
 /**
  * @author yutu
@@ -42,7 +43,7 @@ import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_TEST
 @Slf4j
 @RequiredArgsConstructor
 @Service
-@Profile(SKIP_TEST)
+@Profile(SKIP_TEST_P2P)
 public class TeeResourceInit implements CommandLineRunner {
     private final NodeRepository nodeRepository;
     private final NodeRouteRepository nodeRouteRepository;
@@ -50,12 +51,15 @@ public class TeeResourceInit implements CommandLineRunner {
 
     @Value("${secretpad.deploy-mode}")
     private String deployMode;
+    @Value("${secretpad.platform-type}")
+    private String platformType;
 
     @Override
     public void run(String... args) throws Exception {
         // init tee domain
-        if (DeployModeConstants.ALL_IN_ONE.equals(deployMode)
-                || DeployModeConstants.TEE.equals(deployMode)) {
+        if ((DeployModeConstants.ALL_IN_ONE.equals(deployMode) || DeployModeConstants.TEE.equals(deployMode))
+                && PlatformTypeEnum.CENTER.name().equals(platformType)
+        ) {
             initTeeNodeInKuscia(initTeeNodeInDb());
             initTeeNodeRouteInDb();
         }

@@ -19,18 +19,21 @@ package org.secretflow.secretpad.service.impl;
 import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
+import org.secretflow.secretpad.common.errorcode.NodeRouteErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.JpaQueryHelper;
 import org.secretflow.secretpad.common.util.Sha256Utils;
-import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.model.*;
 import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
+import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
+import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
 import org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO;
 import org.secretflow.secretpad.persistence.model.TeeJobKind;
 import org.secretflow.secretpad.persistence.repository.NodeRepository;
+import org.secretflow.secretpad.persistence.repository.NodeRouteRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectResultRepository;
 import org.secretflow.secretpad.persistence.repository.TeeNodeDatatableManagementRepository;
 import org.secretflow.secretpad.service.*;
@@ -39,6 +42,8 @@ import org.secretflow.secretpad.service.model.common.SecretPadPageResponse;
 import org.secretflow.secretpad.service.model.data.DataSourceVO;
 import org.secretflow.secretpad.service.model.datatable.TableColumnVO;
 import org.secretflow.secretpad.service.model.node.*;
+import org.secretflow.secretpad.service.model.node.p2p.P2pCreateNodeRequest;
+import org.secretflow.secretpad.service.model.noderoute.CreateNodeRouterRequest;
 import org.secretflow.secretpad.service.model.project.ProjectJobVO;
 
 import jakarta.validation.constraints.NotBlank;
@@ -72,6 +77,9 @@ public class NodeServiceImpl implements NodeService {
     private AbstractNodeManager nodeManager;
 
     @Autowired
+    private AbstractNodeRouteManager nodeRouteManager;
+
+    @Autowired
     private AbstractDatatableManager datatableManager;
 
     @Autowired
@@ -79,6 +87,9 @@ public class NodeServiceImpl implements NodeService {
 
     @Autowired
     private NodeUserService nodeUserService;
+
+    @Autowired
+    private NodeRouterService nodeRouterService;
 
     /**
      * Todo: part of the projectService logic should be brought into use in projectManager
@@ -94,7 +105,11 @@ public class NodeServiceImpl implements NodeService {
     @Autowired
     private NodeRepository nodeRepository;
     @Autowired
+    private NodeRouteRepository nodeRouteRepository;
+    @Autowired
     public DataService dataService;
+    @Autowired
+    private EnvService envService;
 
     @Autowired
     private TeeNodeDatatableManagementRepository teeNodeDatatableManagementRepository;
@@ -102,14 +117,24 @@ public class NodeServiceImpl implements NodeService {
     @Value("${tee.domain-id:tee}")
     private String teeNodeId;
 
+    @Value("${secretpad.master-node-id:master}")
+    private String masterNodeId;
+
     @Override
     public List<NodeVO> listNodes() {
         final String userOwnerId = UserContext.getUser().getOwnerId();
+        List<NodeDTO> nodeDTOList;
+        if (
+                envService.isCenter() && StringUtils.equals(UserContext.getUser().getOwnerType().name(), UserOwnerTypeEnum.EDGE.name())
+        ) {
+            nodeDTOList = nodeManager.listCooperatingNode(userOwnerId);
+        } else {
+            nodeDTOList = nodeManager.listNode();
+        }
 
-        List<NodeDTO> nodeDTOList = nodeManager.listNode();
         return nodeDTOList.stream()
                 .map(it -> {
-                    if (UserOwnerTypeEnum.CENTER.equals(UserContext.getUser().getOwnerType()) || Objects.equals(it.getNodeId(), userOwnerId)) {
+                    if (envService.isCenter() || Objects.equals(it.getNodeId(), userOwnerId)) {
                         return NodeVO.from(it,
                                 datatableManager.findByNodeId(it.getNodeId(), AbstractDatatableManager.DATA_VENDOR_MANUAL),
                                 nodeManager.findBySrcNodeId(it.getNodeId()),
@@ -134,15 +159,56 @@ public class NodeServiceImpl implements NodeService {
         NodeUserCreateRequest nodeUserCreateParam = new NodeUserCreateRequest();
         nodeUserCreateParam.setNodeId(nodeId);
         nodeUserCreateParam.setName(nodeId);
-        nodeUserCreateParam.setPasswordHash(Sha256Utils.hash(UUIDUtils.newUUID()));
+        nodeUserCreateParam.setPasswordHash(Sha256Utils.hash(nodeId + "12#$qwER"));
         nodeUserService.create(nodeUserCreateParam);
 
         return nodeId;
     }
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
+    public String createP2pNode(P2pCreateNodeRequest request) {
+        // check address equals
+        nodeManager.checkSrcAddressAndDstAddressEquals(request.getSrcNetAddress(), request.getDstNetAddress());
+        CreateNodeParam param = CreateNodeParam.builder()
+                .nodeId(request.getDstNodeId())
+                .name(request.getName())
+                .mode(request.getMode())
+                .netAddress(request.getDstNetAddress())
+                .certText(request.getCertText())
+                .masterNodeId(StringUtils.isBlank(request.getMasterNodeId()) ? masterNodeId : request.getMasterNodeId())
+                .build();
+        // check node cert
+        nodeManager.checkNodeCert(UserContext.getUser().getPlatformNodeId(), param);
+        // create node
+        String nodeId = nodeManager.createP2pNode(param);
+        // create node route
+        nodeRouterService.createNodeRouter(CreateNodeRouterRequest.builder()
+                .srcNodeId(UserContext.getUser().getPlatformNodeId())
+                .dstNodeId(request.getDstNodeId())
+                .srcNetAddress(request.getSrcNetAddress())
+                .dstNetAddress(request.getDstNetAddress())
+                .build());
+        return nodeId;
+    }
+
+    @Override
     public void deleteNode(String nodeId) {
         nodeManager.deleteNode(nodeId);
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void deleteP2pNode(String routerId) {
+        NodeRouteDO nodeRouteDO = nodeRouteRepository.findByRouteId(routerId);
+        if (ObjectUtils.isEmpty(nodeRouteDO)) {
+            throw SecretpadException.of(NodeRouteErrorCode.NODE_ROUTE_NOT_EXIST_ERROR,
+                    "route not exist " + routerId);
+        }
+        // delete route first, avoid NPE
+        nodeRouteManager.deleteNodeRoute(routerId);
+        // delete node id is srcNodeId this version. later version will be dstNodeId
+        nodeManager.deleteNode(nodeRouteDO.getSrcNodeId());
     }
 
     @Override
@@ -258,6 +324,11 @@ public class NodeServiceImpl implements NodeService {
                         datatableManager.findByNodeId(it.getNodeId(), AbstractDatatableManager.DATA_VENDOR_MANUAL),
                         nodeManager.findBySrcNodeId(it.getNodeId()), resultRepository.countByNodeId(it.getNodeId())))
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public void initialNode() {
+        nodeManager.initialNode(envService.getPlatformNodeId());
     }
 
     /**

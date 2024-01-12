@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
 import jakarta.persistence.Entity;
@@ -25,6 +26,7 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
 import java.io.Serializable;
+import java.util.List;
 
 /**
  * Project node data object
@@ -41,6 +43,7 @@ import java.io.Serializable;
 @Table(name = "project_node")
 @SQLDelete(sql = "update project_node set is_deleted = 1 where node_id = ? and project_id = ?")
 @Where(clause = "is_deleted = 0")
+@ToString
 public class ProjectNodeDO extends BaseAggregationRoot<ProjectNodeDO> {
 
     /**
@@ -83,13 +86,21 @@ public class ProjectNodeDO extends BaseAggregationRoot<ProjectNodeDO> {
     }
 
     @Override
+    @JsonIgnore
     public String getProjectId() {
         return this.upk.projectId;
     }
 
     @Override
+    @JsonIgnore
     public String getNodeId() {
         return this.upk.nodeId;
+    }
+
+    @Override
+    @JsonIgnore
+    public List<String> getNodeIds() {
+        return super.getNodeIds();
     }
 }
 

@@ -21,6 +21,7 @@ import org.secretflow.secretpad.common.annotation.resource.DataResource;
 import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
 import org.secretflow.secretpad.common.enums.DataResourceTypeEnum;
 import org.secretflow.secretpad.service.NodeRouterService;
+import org.secretflow.secretpad.service.NodeService;
 import org.secretflow.secretpad.service.model.common.SecretPadPageResponse;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
 import org.secretflow.secretpad.service.model.node.NodeVO;
@@ -47,6 +48,8 @@ import java.util.List;
 @RequestMapping(value = "/api/v1alpha1/nodeRoute")
 public class NodeRouteController {
     private final NodeRouterService nodeRouterService;
+
+    private final NodeService nodeService;
 
     /**
      * page request for query domain route
@@ -94,7 +97,7 @@ public class NodeRouteController {
     @PostMapping(value = "/listNode")
     @ApiResource(code = ApiResourceCodeConstants.NODE_ROUTE_LIST_NODE)
     public SecretPadResponse<List<NodeVO>> listNode() {
-        List<NodeVO> nodes = nodeRouterService.listNode();
+        List<NodeVO> nodes = nodeService.listNodes();
         return SecretPadResponse.success(nodes);
     }
 

@@ -18,8 +18,9 @@ package org.secretflow.secretpad.persistence.entity;
 
 import org.secretflow.secretpad.persistence.converter.Boolean2IntConverter;
 import org.secretflow.secretpad.persistence.converter.SqliteLocalDateTimeConverter;
-import org.secretflow.secretpad.persistence.listener.EntityChangeListener;
+import org.secretflow.secretpad.persistence.datasync.listener.EntityChangeListener;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.EntityListeners;
@@ -63,6 +64,7 @@ public abstract class BaseAggregationRoot<A extends AbstractAggregateRoot<A>> ex
      * Start time
      */
     @Column(name = "gmt_create", nullable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Convert(converter = SqliteLocalDateTimeConverter.class)
     LocalDateTime gmtCreate = parseNow();
 
@@ -70,10 +72,12 @@ public abstract class BaseAggregationRoot<A extends AbstractAggregateRoot<A>> ex
      * Update time
      */
     @Column(name = "gmt_modified", nullable = false)
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Convert(converter = SqliteLocalDateTimeConverter.class)
     LocalDateTime gmtModified = parseNow();
 
     // Default get project id method
+    @Override
     public String getProjectId() {
         return null;
     }
@@ -84,6 +88,7 @@ public abstract class BaseAggregationRoot<A extends AbstractAggregateRoot<A>> ex
     }
 
     // Default get node id list method
+    @Override
     public List<String> getNodeIds() {
         List<String> nodeIds = new ArrayList<>();
 

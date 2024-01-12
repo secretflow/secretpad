@@ -16,12 +16,15 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
+import org.secretflow.secretpad.common.constant.DomainConstants;
 import org.secretflow.secretpad.persistence.converter.BaseObjectListJsonConverter;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import lombok.*;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.Where;
 
 import java.io.Serializable;
@@ -43,6 +46,7 @@ import java.util.stream.Collectors;
 @Getter
 @Table(name = "project_datatable")
 @Where(clause = "is_deleted = 0")
+@ToString
 public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> {
 
     /**
@@ -129,6 +133,7 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
     @AllArgsConstructor
     @NoArgsConstructor
     @EqualsAndHashCode
+    @ToString
     public static class UPK implements Serializable {
         /**
          * Project id
@@ -154,7 +159,8 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
-    public static class TableColumn {
+    @ToString
+    public static class TableColumn implements Serializable {
         /**
          * Column name
          */
@@ -174,6 +180,7 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
      */
     @Setter
     @Getter
+    @ToString
     public static class TableColumnConfig extends TableColumn {
         /**
          * Whether association key
@@ -224,16 +231,23 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
     }
 
     @Override
+    @JsonIgnore
     public String getProjectId() {
         return this.upk.projectId;
     }
 
     @Override
+    @JsonIgnore
     public String getNodeId() {
-        //TODO should check the this node is tee node,not only by 'node_id';
-        if ("tee".equals(this.upk.nodeId)) {
+        if (StringUtils.equals(DomainConstants.DomainEmbeddedNodeEnum.tee.name(), this.upk.nodeId)) {
             return null;
         }
         return this.upk.nodeId;
+    }
+
+    @Override
+    @JsonIgnore
+    public List<String> getNodeIds() {
+        return super.getNodeIds();
     }
 }

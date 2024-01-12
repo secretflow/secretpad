@@ -41,6 +41,7 @@ create table if not exists `node`
     token           varchar(100),                                   -- aging token used by node deploy
     type            varchar(10) default 'normal',                   -- node type :embedded、normal
     mode            integer     default '0' not null,               -- node feature 0 - mpc | 1 - tee | 2 mpc&tee
+    master_node_id  varchar(64) default 'master',                   -- master node id
     is_deleted      tinyint(1)  default '0' not null,               -- delete flag
     gmt_create      datetime    default CURRENT_TIMESTAMP not null, -- create time
     gmt_modified    datetime    default CURRENT_TIMESTAMP not null  -- modified time
@@ -71,8 +72,11 @@ create table if not exists `project`
     project_id   varchar(64)  not null,                           -- project ID
     name         varchar(256) not null,                           -- project name
     compute_mode varchar(64)  default 'mpc' not null,             -- compute_mode: mpc,tee
+    compute_func varchar(64)  default 'ALL' not null,             -- compute_func: DAG,PSI,ALL
     project_info text         default '' not null,                -- tee dag runtimeParams
     description  text         default '',                         -- project description
+    owner_id     varchar(64)  not null default '',
+    status       tinyint(1)   default '0' not null,               -- archive flag
     is_deleted   tinyint(1)   default '0' not null,               -- delete flag
     gmt_create   datetime     default CURRENT_TIMESTAMP not null, -- create time
     gmt_modified datetime     default CURRENT_TIMESTAMP not null  -- modified time
@@ -219,6 +223,7 @@ create table if not exists `project_graph`
     graph_id     varchar(64) not null,
     name         varchar(128),
     edges        text,
+    owner_id     varchar(64)  not null default '',
     is_deleted   tinyint(1) default '0' not null,               -- delete flag
     gmt_create   datetime   default CURRENT_TIMESTAMP not null, -- create time
     gmt_modified datetime   default CURRENT_TIMESTAMP not null  -- modified time
@@ -262,9 +267,13 @@ create table if not exists 'user_accounts'
     password_hash varchar(128) not null,                         -- password_hash
     owner_type    varchar(16)  not null default 'CENTER',
     owner_id      varchar(64)  not null default 'kuscia-system',
+    passwd_reset_failed_attempts  integer     default null,  -- modified time
+    gmt_passwd_reset_release       datetime     default null,  -- modified time
     is_deleted    tinyint(1)   default '0' not null,               -- delete flag
     gmt_create    datetime     default CURRENT_TIMESTAMP not null, -- create time
-    gmt_modified  datetime     default CURRENT_TIMESTAMP not null  -- modified time
+    gmt_modified  datetime     default CURRENT_TIMESTAMP not null,  -- modified time
+    failed_attempts  integer     default null,  -- modified time
+    locked_invalid_time  datetime     default null  -- modified time
 );
 
 create table if not exists 'user_tokens'
@@ -371,6 +380,7 @@ create table if not exists `vote_request`
   status                tinyint(1)   not null, --vote status
   execute_status        varchar(16)  default 'COMMITTED' not null, -- executors call back status
   msg                   text         default null,-- error msg
+  party_vote_info       text        default null,
   desc                  varchar(64)  not null, --vote desc
   is_deleted            tinyint(1)   default '0' not null,
   gmt_create            datetime     default CURRENT_TIMESTAMP not null,
@@ -410,6 +420,22 @@ create table if not exists `node_route_approval_config`
   gmt_modified          datetime    default CURRENT_TIMESTAMP not null  -- modified time
 );
 create unique index `upk_node_route_approval_config_vote_id` on node_route_approval_config (`vote_id`);
+
+create table if not exists `project_approval_config`
+(
+  id                    integer primary key autoincrement,
+  vote_id               varchar(64)  not null, --unique vote id
+  initiator             varchar(64)  not null, --vote initiator
+  type                  varchar(16)  not null, --vote type
+  parties				text      	 default null, --all parties node id
+  project_id			varchar(64)	 default null,  --projectID
+  invite_node_id		varchar(64)  default null,
+  is_deleted            tinyint(1)   default '0' not null,            -- delete flag
+  gmt_create            datetime     default CURRENT_TIMESTAMP not null, -- create time
+  gmt_modified          datetime     default CURRENT_TIMESTAMP not null  -- modified time
+);
+create unique index `upk_project_approval_config_vote_id` on project_approval_config (`vote_id`);
+
 
 create table if not exists `vote_invite`
 (
@@ -588,6 +614,9 @@ insert into sys_resource(resource_type, resource_code, resource_name)
 values ('API', 'AUTH_LOGOUT', 'AUTH_LOGOUT');
 insert into sys_resource(resource_type, resource_code, resource_name)
 values ('API', 'ENV_GET', 'ENV_GET');
+insert into sys_resource(resource_type, resource_code, resource_name)
+values ('API', 'USER_UPDATE_PWD', 'USER_UPDATE_PWD');
+
 
 -----------
 --  role --
@@ -597,6 +626,8 @@ insert into sys_role(role_code, role_name)
 values ('EDGE_NODE', 'Edge node rpc');
 insert into sys_role(role_code, role_name)
 values ('EDGE_USER', 'Edge 用户');
+insert into sys_role(role_code, role_name)
+values('P2P_NODE', 'P2P 用户');
 
 -----------
 -- role resource --
@@ -634,6 +665,7 @@ insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_NODE', 
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'AUTH_LOGIN');
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'AUTH_LOGOUT');
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'USER_GET');
+insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'USER_UPDATE_PWD');
 -- Edge user permission
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'GRAPH_COMM_BATH');
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'GRAPH_COMM_GET');

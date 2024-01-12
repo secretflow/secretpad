@@ -18,11 +18,12 @@ package org.secretflow.secretpad.web.controller;
 
 import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
+import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.errorcode.ErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
-import org.secretflow.secretpad.service.util.PushToCenterUtil;
+import org.secretflow.secretpad.service.util.DbSyncUtil;
 import org.secretflow.secretpad.web.SecretPadApplication;
 
 import org.apache.commons.lang3.StringUtils;
@@ -75,7 +76,7 @@ public class ControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
-    public static MockedStatic<PushToCenterUtil> pushToCenterUtilMockedStatic;
+    public static MockedStatic<DbSyncUtil> pushToCenterUtilMockedStatic;
 
     @BeforeAll
     public static void setup() throws IOException, InterruptedException {
@@ -90,8 +91,9 @@ public class ControllerTest {
     public void initSession() {
         UserContext.setBaseUser(UserContextDTO.builder().ownerId("alice")
                 .platformType(PlatformTypeEnum.CENTER)
+                .ownerType(UserOwnerTypeEnum.CENTER)
                 .projectIds(Set.of(PROJECT_ID)).build());
-        pushToCenterUtilMockedStatic = Mockito.mockStatic(PushToCenterUtil.class);
+        pushToCenterUtilMockedStatic = Mockito.mockStatic(DbSyncUtil.class);
     }
 
     @AfterEach

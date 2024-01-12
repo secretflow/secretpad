@@ -22,6 +22,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 
 /**
@@ -36,6 +37,9 @@ public interface VoteInviteRepository extends BaseRepository<VoteInviteDO, VoteI
 
     @Query("from VoteInviteDO d where d.upk.voteID=:voteID")
     List<VoteInviteDO> findByVoteID(@Param("voteID") String voteID);
+
+    @Query("from VoteInviteDO d where d.upk.voteID in :voteIds")
+    List<VoteInviteDO> findByIdVoteIDIn(@Param("voteIds") Collection<String> voteIds);
 
     @Query(value = "select count(*) from VoteInviteDO d where d.upk.votePartitionID=:votePartitionID and action=:action")
     Long queryPendingCount(@Param("votePartitionID") String votePartitionID, @Param("action") String action);

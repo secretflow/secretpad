@@ -16,7 +16,7 @@
 
 package org.secretflow.secretpad.service.sync.center;
 
-import org.secretflow.secretpad.manager.integration.model.SyncDataDTO;
+import org.secretflow.secretpad.common.dto.SyncDataDTO;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;

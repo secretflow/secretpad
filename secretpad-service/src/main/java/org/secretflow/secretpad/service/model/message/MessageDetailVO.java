@@ -25,12 +25,12 @@ import lombok.Data;
  * @date 2023/09/28
  */
 @Data
-public abstract class MessageDetailVO {
-    private String messageName;
+public class MessageDetailVO {
+    protected String messageName;
 
-    private String type;
+    protected String type;
 
-    private String status;
+    protected String status;
 
 
 }

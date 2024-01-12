@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.VoteErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.*;
@@ -24,6 +25,7 @@ import org.secretflow.secretpad.persistence.entity.VoteInviteDO;
 import org.secretflow.secretpad.persistence.entity.VoteRequestDO;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.CertificateService;
+import org.secretflow.secretpad.service.DispatchService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.MessageService;
 import org.secretflow.secretpad.service.enums.VoteStatusEnum;
@@ -34,10 +36,9 @@ import org.secretflow.secretpad.service.model.approval.VoteReplyBody;
 import org.secretflow.secretpad.service.model.approval.VoteReplyMessage;
 import org.secretflow.secretpad.service.model.approval.VoteRequestBody;
 import org.secretflow.secretpad.service.model.approval.VoteRequestMessage;
-import org.secretflow.secretpad.service.model.datasync.vote.VoteInviteDataSyncRequest;
-import org.secretflow.secretpad.service.model.datasync.vote.VoteSyncRequest;
+import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
 import org.secretflow.secretpad.service.model.message.*;
-import org.secretflow.secretpad.service.util.PushToCenterUtil;
+import org.secretflow.secretpad.service.util.DbSyncUtil;
 
 import jakarta.transaction.Transactional;
 import org.apache.commons.lang3.StringUtils;
@@ -47,9 +48,11 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -79,8 +82,10 @@ public class MessageServiceImpl implements MessageService {
 
     private final CertificateService certificateService;
 
+    private final DispatchService dispatchService;
 
-    public MessageServiceImpl(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, Map<VoteTypeEnum, VoteTypeHandler> voteTypeHandlerMap, VoteRequestCustomRepository voteRequestCustomRepository, VoteInviteCustomRepository voteInviteCustomRepository, EnvService envService, CertificateService certificateService) {
+
+    public MessageServiceImpl(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, Map<VoteTypeEnum, VoteTypeHandler> voteTypeHandlerMap, VoteRequestCustomRepository voteRequestCustomRepository, VoteInviteCustomRepository voteInviteCustomRepository, EnvService envService, CertificateService certificateService, DispatchService dispatchService) {
         this.voteInviteRepository = voteInviteRepository;
         this.voteRequestRepository = voteRequestRepository;
         this.nodeRepository = nodeRepository;
@@ -89,11 +94,14 @@ public class MessageServiceImpl implements MessageService {
         this.voteInviteCustomRepository = voteInviteCustomRepository;
         this.envService = envService;
         this.certificateService = certificateService;
+        this.dispatchService = dispatchService;
     }
 
     @Transactional
     @Override
     public void reply(String action, String reason, String voteParticipantID, String voteID) {
+        identityVerification(voteParticipantID);
+
         Optional<VoteInviteDO> voteInviteDOOptional = voteInviteRepository.findById(new VoteInviteDO.UPK(voteID, voteParticipantID));
         if (!voteInviteDOOptional.isPresent()) {
             LOGGER.error("Cannot find vote info by voteID {} and voteParticipantID {}.", voteID, voteParticipantID);
@@ -149,20 +157,42 @@ public class MessageServiceImpl implements MessageService {
             voteInviteDO.setAction(action);
         }
         voteInviteDO.setReason(reason);
-        if (envService.isCenter()) {
-            voteInviteRepository.saveAndFlush(voteInviteDO);
-        } else {
-            VoteInviteDataSyncRequest request = VoteInviteDataSyncRequest.parse2VO(voteInviteDO);
-            VoteSyncRequest voteSyncRequest = VoteSyncRequest.builder().syncDataType(VoteSyncTypeEnum.VOTE_INVITE.name()).projectNodesInfo(request).build();
-            PushToCenterUtil.dataPushToCenter(voteSyncRequest);
 
+        PlatformTypeEnum platformType = envService.getPlatformType();
+        DbSyncRequest dbSyncRequest = DbSyncRequest.builder().syncDataType(VoteSyncTypeEnum.VOTE_INVITE.name()).projectNodesInfo(voteInviteDO).build();
+        switch (platformType) {
+            //center,it is embedded node
+            case CENTER -> voteInviteRepository.saveAndFlush(voteInviteDO);
+            //send to center, center sync data to edge
+            case EDGE -> DbSyncUtil.dbDataSyncToCenter(dbSyncRequest);
+            //p2p,according to node id rule sync
+            case AUTONOMY -> {
+                voteInviteRepository.saveAndFlush(voteInviteDO);
+                Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = voteRequestDO.getPartyVoteInfos();
+                VoteRequestDO.PartyVoteInfo partyVoteInfo = VoteRequestDO.PartyVoteInfo.builder().action(voteInviteDO.getAction()).nodeId(voteInviteDO.getUpk().getVotePartitionID()).reason(voteInviteDO.getReason()).build();
+                partyVoteInfos.remove(partyVoteInfo);
+                partyVoteInfos.add(partyVoteInfo);
+                if (partyVoteInfos.stream().allMatch(e -> StringUtils.equals(e.getAction(), VoteStatusEnum.APPROVED.name()))) {
+                    voteTypeHandlerMap.get(VoteTypeEnum.valueOf(voteType)).flushVoteStatus(voteID);
+                }
+                voteRequestDO.setGmtModified(LocalDateTime.now());
+                voteRequestRepository.saveAndFlush(voteRequestDO);
+            }
         }
+    }
 
+    private void identityVerification(String nodeId) {
+        if (envService.isAutonomy()) {
+            if (!StringUtils.equals(UserContext.getUser().getPlatformNodeId(), nodeId)) {
+                throw SecretpadException.of(VoteErrorCode.VOTE_CHECK_FAILED);
+            }
+        }
     }
 
     @Override
     @Transactional
     public MessageListVO list(Boolean isInitiator, String nodeID, String type, String keyWord, Boolean isProcessed, Pageable page) {
+        identityVerification(nodeID);
         if (!isInitiator) {
             List<VoteInviteDO> voteInviteDOS = voteInviteCustomRepository.pageQuery(nodeID, isProcessed, type, keyWord, page);
             Long total = voteInviteCustomRepository.queryCount(nodeID, isProcessed, type, keyWord);
@@ -178,12 +208,14 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public MessageDetailVO detail(Boolean isInitiator, String nodeID, String voteID, String voteType) {
+        identityVerification(nodeID);
         VoteTypeHandler voteTypeHandler = voteTypeHandlerMap.get(VoteTypeEnum.valueOf(voteType));
         return voteTypeHandler.getVoteMessageDetail(isInitiator, nodeID, voteID);
     }
 
     @Override
     public Long pendingCount(String nodeID) {
+        identityVerification(nodeID);
         return voteInviteRepository.queryPendingCount(nodeID, VoteStatusEnum.REVIEWING.name());
     }
 
@@ -208,7 +240,7 @@ public class MessageServiceImpl implements MessageService {
 
     private MessageVO convert2VO(VoteRequestDO requestDO) {
         String voteID = requestDO.getVoteID();
-        List<PartyVoteStatus> partyVoteStatuses = voteTypeHandlerMap.get(VoteTypeEnum.valueOf(requestDO.getType())).getPartyStatusByVoteID(voteID);
+        List<? extends PartyVoteStatus> partyVoteStatuses = voteTypeHandlerMap.get(VoteTypeEnum.valueOf(requestDO.getType())).getPartyStatusByVoteID(voteID);
         InitiatorMessage initiatorMessage = InitiatorMessage.builder()
                 .partyVoteStatuses(partyVoteStatuses)
                 .build();

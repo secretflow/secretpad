@@ -16,13 +16,13 @@
 
 package org.secretflow.secretpad.service.impl;
 
-import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
+import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.ResourceTypeEnum;
 import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
-import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.errorcode.AuthErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.UUIDUtils;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.AccountsDO;
 import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
 import org.secretflow.secretpad.persistence.entity.TokensDO;
@@ -32,17 +32,17 @@ import org.secretflow.secretpad.persistence.repository.UserTokensRepository;
 import org.secretflow.secretpad.service.AuthService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.SysResourcesBizService;
+import org.secretflow.secretpad.service.UserService;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -55,7 +55,8 @@ import java.util.stream.Collectors;
 @Service
 public class AuthServiceImpl implements AuthService {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(AuthServiceImpl.class);
+    @Autowired
+    private UserService userService;
 
     @Autowired
     private UserAccountsRepository userAccountsRepository;
@@ -75,27 +76,28 @@ public class AuthServiceImpl implements AuthService {
     @Value("${secretpad.deploy-mode}")
     private String deployMode;
 
+
+    @Value("${secretpad.account-error-max-attempts:5}")
+    private Integer maxAttempts;
+
+    @Value("${secretpad.account-error-lock-time-minutes:30}")
+    private Integer lockTimeMinutes;
+
     @Override
     public UserContextDTO login(String name, String passwordHash) {
-        PlatformTypeEnum plaformType = envService.getPlatformType();
-
-        AccountsDO user = getUserAccount(name);
-        if (!user.getPasswordHash().equals(passwordHash)) {
-            LOGGER.error("Password not correct! UserName = {}", name);
-            throw SecretpadException.of(AuthErrorCode.USER_OR_PASSWORD_ERROR);
-        }
+        //check password and lock
+        AccountsDO user = accountLockedCheck(name, passwordHash);
         String token = UUIDUtils.newUUID();
-
         UserContextDTO userContextDTO = new UserContextDTO();
         userContextDTO.setName(user.getName());
         userContextDTO.setOwnerId(user.getOwnerId());
         userContextDTO.setOwnerType(user.getOwnerType());
         userContextDTO.setToken(token);
-        userContextDTO.setPlatformType(plaformType);
+        userContextDTO.setPlatformType(envService.getPlatformType());
         userContextDTO.setPlatformNodeId(envService.getPlatformNodeId());
 
         // fill project id and resource codes
-        if (UserOwnerTypeEnum.EDGE.equals(user.getOwnerType())){
+        if (UserOwnerTypeEnum.EDGE.equals(user.getOwnerType())) {
             List<ProjectNodeDO> byNodeId = projectNodeRepository.findByNodeId(user.getOwnerId());
             Set<String> projectIds = byNodeId.stream().map(t -> t.getUpk().getProjectId()).collect(Collectors.toSet());
             userContextDTO.setProjectIds(projectIds);
@@ -105,14 +107,9 @@ public class AuthServiceImpl implements AuthService {
         }
 
         userContextDTO.setDeployMode(deployMode);
-        TokensDO tokensDO = TokensDO.builder()
-                .name(user.getName())
-                .token(token)
-                .gmtToken(LocalDateTime.now())
-                .sessionData(userContextDTO.toJsonStr())
-                .build();
+        TokensDO tokensDO = TokensDO.builder().name(user.getName()).token(token).gmtToken(LocalDateTime.now()).sessionData(userContextDTO.toJsonStr()).build();
         userTokensRepository.saveAndFlush(tokensDO);
-
+        UserContext.setBaseUser(userContextDTO);
         return userContextDTO;
     }
 
@@ -122,19 +119,56 @@ public class AuthServiceImpl implements AuthService {
         userTokensRepository.deleteByNameAndToken(name, token);
     }
 
-    /**
-     * Get user account data object by userName
-     *
-     * @param name userName
-     * @return user account data object
-     */
-    private AccountsDO getUserAccount(String name) {
-        Optional<AccountsDO> user = userAccountsRepository.findByName(name);
-        if (user.isEmpty()) {
-            LOGGER.error("Cannot find user {}", name);
-            throw SecretpadException.of(AuthErrorCode.USER_OR_PASSWORD_ERROR);
-        }
-        return user.get();
-    }
 
+    /**
+     * account lock check
+     *
+     * @param userName
+     */
+
+    private AccountsDO accountLockedCheck(String userName, String passwordHash) {
+        AccountsDO user = userService.getUserByName(userName);
+        LocalDateTime currentTime = LocalDateTime.now();
+        Boolean isUnlock = Boolean.FALSE;
+        //check lock
+        if (Objects.nonNull(user.getLockedInvalidTime())) {
+            Duration duration = Duration.between(currentTime, user.getLockedInvalidTime());
+            if (duration.toMinutes() > 0) {
+                if (user.getFailedAttempts() >= maxAttempts) {
+                    Long minutes = duration.toMinutes();
+                    throw SecretpadException.of(AuthErrorCode.USER_IS_LOCKED, String.valueOf(minutes));
+                }
+            } else {
+                isUnlock = Boolean.TRUE;
+                //lock invalid
+                AccountsDO accountsDO = new AccountsDO();
+                accountsDO.setGmtModified(LocalDateTime.now());
+                user.setLockedInvalidTime(null);
+                user.setFailedAttempts(null);
+                userAccountsRepository.save(user);
+            }
+        }
+
+        //checkPassword success
+        if (user.getPasswordHash().equals(passwordHash)) {
+            //lock invalid
+            if (!isUnlock) {
+                AccountsDO accountsDO = new AccountsDO();
+                accountsDO.setGmtModified(LocalDateTime.now());
+                user.setLockedInvalidTime(null);
+                user.setFailedAttempts(null);
+                userAccountsRepository.save(user);
+            }
+            return user;
+        }
+
+        user.setFailedAttempts(Objects.isNull(user.getFailedAttempts()) ? 1 : user.getFailedAttempts() + 1);
+        if (user.getFailedAttempts() >= maxAttempts) {
+            user.setLockedInvalidTime(currentTime.plusMinutes(lockTimeMinutes));
+            userService.userLock(user);
+            throw SecretpadException.of(AuthErrorCode.USER_IS_LOCKED, String.valueOf(lockTimeMinutes));
+        }
+        userService.userLock(user);
+        throw SecretpadException.of(AuthErrorCode.USER_PASSWORD_ERROR, String.valueOf(maxAttempts - user.getFailedAttempts()));
+    }
 }

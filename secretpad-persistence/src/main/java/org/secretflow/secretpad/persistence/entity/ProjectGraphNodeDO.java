@@ -135,4 +135,9 @@ public class ProjectGraphNodeDO extends BaseAggregationRoot<ProjectGraphNodeDO> 
             return Objects.hash(projectId, graphId, graphId);
         }
     }
+
+    @Override
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
 }

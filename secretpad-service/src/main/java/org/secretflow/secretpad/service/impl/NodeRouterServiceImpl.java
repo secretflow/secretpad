@@ -21,26 +21,29 @@ import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.AuthErrorCode;
 import org.secretflow.secretpad.common.errorcode.NodeRouteErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
+import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.manager.integration.model.CreateNodeRouteParam;
 import org.secretflow.secretpad.manager.integration.model.UpdateNodeRouteParam;
+import org.secretflow.secretpad.manager.integration.node.NodeManager;
 import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
+import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
 import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.NodeRouteRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.NodeRouterService;
-import org.secretflow.secretpad.service.NodeService;
 import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
 import org.secretflow.secretpad.service.model.common.SecretPadPageResponse;
-import org.secretflow.secretpad.service.model.datasync.vote.VoteSyncRequest;
+import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
 import org.secretflow.secretpad.service.model.node.NodeVO;
 import org.secretflow.secretpad.service.model.noderoute.CreateNodeRouterRequest;
 import org.secretflow.secretpad.service.model.noderoute.NodeRouterVO;
 import org.secretflow.secretpad.service.model.noderoute.PageNodeRouteRequest;
 import org.secretflow.secretpad.service.model.noderoute.UpdateNodeRouterRequest;
-import org.secretflow.secretpad.service.util.PushToCenterUtil;
+import org.secretflow.secretpad.service.util.DbSyncUtil;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,9 +58,8 @@ import org.springframework.util.ObjectUtils;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author yutu
@@ -69,10 +71,11 @@ import java.util.Set;
 public class NodeRouterServiceImpl implements NodeRouterService {
 
     private final AbstractNodeRouteManager nodeRouteManager;
+    private final NodeManager nodeManager;
     private final NodeRouteRepository nodeRouteRepository;
-    private final NodeService nodeService;
 
     private final NodeRepository nodeRepository;
+    private final ProjectNodeRepository projectNodeRepository;
 
     private final EnvService envService;
 
@@ -105,7 +108,12 @@ public class NodeRouterServiceImpl implements NodeRouterService {
         log.info("start create route in kusica");
         nodeRouteManager.createNodeRouteInKuscia(param, srcNode, dstNode, false);
         log.info("start create route in db");
-        createNodeRouteInDB(srcNode, dstNode);
+        // if platformType is AUTONOMY, save opposite result this version. later version will delete
+        if (envService.getPlatformType().equals(PlatformTypeEnum.AUTONOMY)) {
+            createNodeRouteInDB(dstNode, srcNode);
+        } else {
+            createNodeRouteInDB(srcNode, dstNode);
+        }
     }
 
     public Long createNodeRouteInDB(NodeDO srcNode, NodeDO dstNode) {
@@ -116,14 +124,16 @@ public class NodeRouterServiceImpl implements NodeRouterService {
             nodeRouteDO = NodeRouteDO.builder().srcNodeId(srcNode.getNodeId()).dstNodeId(dstNode.getNodeId()).routeId(srcNode.getNodeId() + "__" + dstNode.getNodeId()).build();
         } else {
             nodeRouteDO = optionalNodeRouteDO.get();
+            nodeRouteDO.setGmtModified(DateTimes.utcFromRfc3339(DateTimes.nowRfc3339()));
         }
         nodeRouteDO.setSrcNetAddress(srcNode.getNetAddress());
         nodeRouteDO.setDstNetAddress(dstNode.getNetAddress());
-        if (!envService.isCenter()) {
+        // autonomy will save
+        if (!envService.isCenter() && !envService.isAutonomy()) {
             nodeRouteDO.setGmtCreate(null);
             nodeRouteDO.setGmtModified(null);
-            VoteSyncRequest voteSyncRequest = VoteSyncRequest.builder().syncDataType(VoteSyncTypeEnum.NODE_ROUTE.name()).projectNodesInfo(nodeRouteDO).build();
-            PushToCenterUtil.dataPushToCenter(voteSyncRequest);
+            DbSyncRequest dbSyncRequest = DbSyncRequest.builder().syncDataType(VoteSyncTypeEnum.NODE_ROUTE.name()).projectNodesInfo(nodeRouteDO).build();
+            DbSyncUtil.dbDataSyncToCenter(dbSyncRequest);
         } else {
             log.info("this is center ,save node route ! {}", nodeRouteDO);
             nodeRouteDO = nodeRouteRepository.save(nodeRouteDO);
@@ -136,13 +146,27 @@ public class NodeRouterServiceImpl implements NodeRouterService {
     public SecretPadPageResponse<NodeRouterVO> queryPage(PageNodeRouteRequest request, Pageable pageable) {
         Page<NodeRouteDO> page = nodeRouteRepository.pageQuery(request.getNodeId(), "%".concat(request.getSearch()).concat("%"), pageable);
         SecretPadPageResponse<NodeRouterVO> data = SecretPadPageResponse.toPage(page.map(NodeRouterVO::fromDo));
+        // query if running project job exists
+        // this version is srcNodeId, later version will be dstNodeId
+        List<String> nodeIds = data.getList().stream().map(NodeRouterVO::getSrcNodeId).toList();
+        Map<String, List<ProjectNodeDO>> projectNodeMap = new HashMap<>(nodeIds.size());
+        if (!CollectionUtils.isEmpty(nodeIds)) {
+            List<ProjectNodeDO> projectNodeDOList = projectNodeRepository.findByNodeIds(nodeIds);
+            projectNodeMap = projectNodeDOList.stream().collect(Collectors.groupingBy(ProjectNodeDO::getNodeId));
+        }
+        Map<String, List<ProjectNodeDO>> finalProjectNodeMap = projectNodeMap;
         data.getList().forEach(d -> {
-            d.setSrcNode(nodeService.getNode(d.getSrcNodeId()));
-            d.setDstNode(nodeService.getNode(d.getDstNodeId()));
-            DomainRoute.RouteStatus routeStatus = nodeRouteManager.getRouteStatus(d.getSrcNodeId(), d.getDstNodeId());
+            d.setSrcNode(NodeVO.from(nodeManager.getNode(d.getSrcNodeId()), null, null, null));
+            d.setDstNode(NodeVO.from(nodeManager.getNode(d.getDstNodeId()), null, null, null));
+            // if platformType is AUTONOMY, save opposite result this version. later version will delete
+            String srcNodeId = UserContext.getUser().getPlatformType().equals(PlatformTypeEnum.AUTONOMY) ? d.getDstNodeId() : d.getSrcNodeId();
+            String dstNodeId = UserContext.getUser().getPlatformType().equals(PlatformTypeEnum.AUTONOMY) ? d.getSrcNodeId() : d.getDstNodeId();
+            DomainRoute.RouteStatus routeStatus = nodeRouteManager.getRouteStatus(srcNodeId, dstNodeId);
             if (!ObjectUtils.isEmpty(routeStatus)) {
                 d.setStatus(routeStatus.getStatus());
             }
+            // this version is srcNodeId, later version will be dstNodeId
+            d.setIsProjectJobRunning(!CollectionUtils.isEmpty(finalProjectNodeMap) && finalProjectNodeMap.containsKey(d.getSrcNodeId()));
         });
         return data;
     }
@@ -162,9 +186,19 @@ public class NodeRouterServiceImpl implements NodeRouterService {
         NodeDO srcNode = nodeRepository.findByNodeId(nodeRouteDO.getSrcNodeId());
         NodeDO dstNode = nodeRepository.findByNodeId(nodeRouteDO.getDstNodeId());
         checkDataPermissions(dstNode.getNodeId());
-        nodeRouteManager.updateNodeRoute(nodeRouteDO, srcNode, dstNode);
         if (StringUtils.isNotEmpty(param.getDstNetAddress())) {
             dstNode.setNetAddress(param.getDstNetAddress());
+        }
+        // p2p mode this version must do, later version will unify and delete
+        if (UserContext.getUser().getPlatformType().equals(PlatformTypeEnum.AUTONOMY) && StringUtils.isNotBlank(param.getSrcNetAddress())) {
+            srcNode.setNetAddress(param.getSrcNetAddress());
+        }
+        // p2p mode this version is opposite, later version will unify
+        // p2p mode update unidirectional authorization in kuscia
+        if (UserContext.getUser().getPlatformType().equals(PlatformTypeEnum.AUTONOMY)) {
+            nodeRouteManager.updateNodeRoute(nodeRouteDO, dstNode, srcNode);
+        } else {
+            nodeRouteManager.updateNodeRoute(nodeRouteDO, srcNode, dstNode);
         }
         log.info("updateNodeRouter {} {}", srcNode, dstNode);
         createNodeRouteInDB(srcNode, dstNode);
@@ -178,19 +212,21 @@ public class NodeRouterServiceImpl implements NodeRouterService {
         }
         checkDataPermissions(byRouteId.getDstNodeId());
         NodeRouterVO nodeRouterVO = NodeRouterVO.fromDo(byRouteId);
-        nodeRouterVO.setSrcNode(nodeService.getNode(nodeRouterVO.getSrcNodeId()));
-        nodeRouterVO.setDstNode(nodeService.getNode(nodeRouterVO.getDstNodeId()));
+        nodeRouterVO.setSrcNode(NodeVO.from(nodeManager.getNode(nodeRouterVO.getSrcNodeId()), null, null, null));
+        nodeRouterVO.setDstNode(NodeVO.from(nodeManager.getNode(nodeRouterVO.getDstNodeId()), null, null, null));
+        // if platformType is AUTONOMY, save opposite result this version. later version will delete
+        String srcNodeId = UserContext.getUser().getPlatformType().equals(PlatformTypeEnum.AUTONOMY) ? nodeRouterVO.getDstNodeId() : nodeRouterVO.getSrcNodeId();
+        String dstNodeId = UserContext.getUser().getPlatformType().equals(PlatformTypeEnum.AUTONOMY) ? nodeRouterVO.getSrcNodeId() : nodeRouterVO.getDstNodeId();
         DomainRoute.RouteStatus routeStatus =
-                nodeRouteManager.getRouteStatus(nodeRouterVO.getSrcNodeId(), nodeRouterVO.getDstNodeId());
+                nodeRouteManager.getRouteStatus(srcNodeId, dstNodeId);
         if (!ObjectUtils.isEmpty(routeStatus)) {
             nodeRouterVO.setStatus(routeStatus.getStatus());
         }
+        // query if running project job exists
+        // this version is srcNodeId, later version will be dstNodeId
+        List<ProjectNodeDO> projectNodeDOList = projectNodeRepository.findByNodeId(nodeRouterVO.getSrcNodeId());
+        nodeRouterVO.setIsProjectJobRunning(!CollectionUtils.isEmpty(projectNodeDOList));
         return nodeRouterVO;
-    }
-
-    @Override
-    public List<NodeVO> listNode() {
-        return nodeService.listNodes();
     }
 
     @Override
@@ -229,10 +265,8 @@ public class NodeRouterServiceImpl implements NodeRouterService {
 
     private void checkDataPermissions(String nodeId) {
         UserContextDTO user = UserContext.getUser();
-        if (user.getPlatformType().equals(PlatformTypeEnum.EDGE)) {
-            if (!user.getOwnerId().equals(nodeId)) {
-                throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "no Permissions");
-            }
+        if (user.getPlatformType().equals(PlatformTypeEnum.EDGE) && !user.getOwnerId().equals(nodeId)) {
+            throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "no Permissions");
         }
     }
 }

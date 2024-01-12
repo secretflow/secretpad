@@ -16,15 +16,13 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
 import org.secretflow.secretpad.common.errorcode.JobErrorCode;
 import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
-import org.secretflow.secretpad.common.util.DateTimes;
-import org.secretflow.secretpad.common.util.JsonUtils;
-import org.secretflow.secretpad.common.util.ProtoUtils;
-import org.secretflow.secretpad.common.util.UUIDUtils;
+import org.secretflow.secretpad.common.util.*;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
@@ -126,6 +124,11 @@ public class GraphServiceImpl implements GraphService {
     @Value("${tee.domain-id:tee}")
     private String teeNodeId;
 
+    @Value("${secretpad.platform-type}")
+    private String plaformType;
+    @Value("${secretpad.node-id}")
+    private String localNodeId;
+
     @Override
     public Map<String, CompListVO> listComponents() {
         return componentService.listComponents();
@@ -152,7 +155,8 @@ public class GraphServiceImpl implements GraphService {
         String projectId = request.getProjectId();
         String name = request.getName();
         String graphId = UUIDUtils.random(8);
-        ProjectGraphDO graphDO = ProjectGraphDO.builder().upk(new ProjectGraphDO.UPK(projectId, graphId)).name(name).build();
+        String ownerId = UserContext.getUser().getOwnerId();
+        ProjectGraphDO graphDO = ProjectGraphDO.builder().upk(new ProjectGraphDO.UPK(projectId, graphId)).name(name).ownerId(ownerId).build();
         List<GraphNode> nodes = request.getNodes();
         if (!CollectionUtils.isEmpty(nodes)) {
             graphDO.setNodes(nodes.stream().map(node -> GraphNode.toDO(projectId, graphId, node)).collect(Collectors.toList()));
@@ -598,6 +602,20 @@ public class GraphServiceImpl implements GraphService {
 
     public void verifyNodeAndRouteHealthy(Set<String> parties) {
         log.info("before graph run healthy check: {}", parties);
+        if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))) {
+            if (!parties.contains(localNodeId)) {
+                throw SecretpadException.of(GraphErrorCode.GRAPH_JOB_INVALID, "parties must contains " + localNodeId);
+            }
+            for (String party : parties) {
+                if (StringUtils.equals(party, localNodeId)) {
+                    continue;
+                }
+                if (!nodeRouteManager.checkNodeRouteReady(party, localNodeId)) {
+                    throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_ROUTE_NOT_EXISTS, party + "->" + localNodeId);
+                }
+            }
+            return;
+        }
         parties.forEach(node -> {
             if (!nodeManager.checkNodeReady(node)) {
                 NodeDO nodeDO = nodeRepository.findByNodeId(node);

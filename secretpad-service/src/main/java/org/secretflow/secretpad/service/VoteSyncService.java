@@ -16,7 +16,9 @@
 
 package org.secretflow.secretpad.service;
 
-import org.secretflow.secretpad.persistence.entity.ProjectNodesInfo;
+import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
+
+import java.util.List;
 
 /**
  * VoteSyncService.
@@ -27,5 +29,5 @@ import org.secretflow.secretpad.persistence.entity.ProjectNodesInfo;
 public interface VoteSyncService {
 
 
-    void sync(String syncDataType, ProjectNodesInfo projectNodesInfo);
+    void sync(List<DbSyncRequest> dbSyncRequests);
 }

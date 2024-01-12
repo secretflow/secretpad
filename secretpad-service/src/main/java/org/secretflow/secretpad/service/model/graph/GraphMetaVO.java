@@ -42,6 +42,10 @@ public class GraphMetaVO {
      * Graph name
      */
     private String name;
+    /**
+     * Graph owner id
+     */
+    private String ownerId;
 
     /**
      * Build graph meta view object from project graph data object
@@ -54,6 +58,7 @@ public class GraphMetaVO {
                 .projectId(graphDO.getUpk().getProjectId())
                 .graphId(graphDO.getUpk().getGraphId())
                 .name(graphDO.getName())
+                .ownerId(graphDO.getOwnerId())
                 .build();
     }
 }

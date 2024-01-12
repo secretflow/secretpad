@@ -36,5 +36,10 @@ public enum PlatformTypeEnum {
     /**
      * Test
      */
-    TEST
+    TEST,
+
+    /**
+     * Autonomy
+     */
+    AUTONOMY
 }

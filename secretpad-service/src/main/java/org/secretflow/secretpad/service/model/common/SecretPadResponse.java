@@ -43,7 +43,7 @@ public class SecretPadResponse<T> {
      * @return successful secretPad response with data
      */
     public static <T> SecretPadResponse<T> success(T data) {
-        return new SecretPadResponse<>(new SecretPadResponseStatus(0, "操作成功"), data);
+        return new SecretPadResponse<>(new SecretPadResponseStatus(0, "success"), data);
     }
 
     /**
