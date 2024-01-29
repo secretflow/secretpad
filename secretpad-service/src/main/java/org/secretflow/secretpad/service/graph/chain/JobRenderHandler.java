@@ -32,15 +32,19 @@ import org.secretflow.secretpad.service.graph.ComponentTools;
 import org.secretflow.secretpad.service.graph.DistDataVO;
 import org.secretflow.secretpad.service.graph.GraphBuilder;
 import org.secretflow.secretpad.service.graph.GraphContext;
+import org.secretflow.secretpad.service.graph.adapter.NodeDefAdapterFactory;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
 import org.secretflow.secretpad.service.util.JobUtils;
 
 import com.secretflow.spec.v1.DistData;
+import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.secretflow.proto.pipeline.Pipeline;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.ObjectUtils;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -51,6 +55,7 @@ import java.util.stream.Collectors;
  * @author yansi
  * @date 2023/6/8
  */
+@Slf4j
 @Component
 public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
     @Autowired
@@ -62,6 +67,9 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
     @Autowired
     private ProjectJobTaskRepository taskRepository;
 
+    @Resource
+    private NodeDefAdapterFactory nodeDefAdapterFactory;
+
     /**
      * Render job inputs, outputs and prune the secretpad component job
      *
@@ -72,6 +80,7 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
         ProjectJob newJob = JsonUtils.toJavaObject(JsonUtils.toJSONString(job), ProjectJob.class);
         renderInputs(newJob);
         renderOutputs(newJob);
+        renderCustomizeSpec(newJob);
         pruneJob(newJob);
         if (next != null) {
             next.doHandler(newJob);
@@ -93,15 +102,13 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
             List<String> newInputs = new ArrayList<>();
             List<String> inputs = graphNodeInfo.getInputs();
             List<String> dependencies = new ArrayList<>();
-
             if (componentService.isSecretpadComponent(graphNodeInfo)) {
                 continue;
             }
 
-
             Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
             ProtoUtils.fromObject(graphNodeInfo.getNodeDef(), nodeDefBuilder);
-
+            nodeDefBuilder = ComponentTools.coverAttrByCustomAttr(nodeDefBuilder.build()).toBuilder();
             if (!CollectionUtils.isEmpty(inputs)) {
                 for (String input : inputs) {
                     GraphNodeInfo dependencyGraphNode = graphBuilder.getNodeByInputId(input);
@@ -153,8 +160,8 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
                     }
                 }
             }
-            graphNodeInfo.setInputs(newInputs);
             graphNodeInfo.setNodeDef(nodeDefBuilder.build());
+            graphNodeInfo.setInputs(newInputs);
             task.setDependencies(dependencies);
         }
     }
@@ -209,6 +216,39 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
     void pruneJob(ProjectJob job) {
         List<ProjectJob.JobTask> newTasks = job.getTasks().stream().filter(task -> !componentService.isSecretpadComponent(task.getNode())).collect(Collectors.toList());
         job.setTasks(newTasks);
+    }
+
+    /**
+     * Render CustomizeSpec job
+     *
+     * @param job target job
+     */
+    void renderCustomizeSpec(ProjectJob job) {
+        List<ProjectJob.JobTask> jobTasks = job.getTasks();
+        List<ProjectJob.JobTask> tasks = new ArrayList<>(jobTasks);
+        Map<Integer, ProjectJob.JobTask> map = new HashMap<>();
+        for (int i = 0; i < tasks.size(); i++) {
+            ProjectJob.JobTask task = tasks.get(i);
+            GraphNodeInfo graphNodeInfo = task.getNode();
+            Object nodeDef = graphNodeInfo.getNodeDef();
+            Pipeline.NodeDef pipelineNodeDef;
+            if (nodeDef instanceof Pipeline.NodeDef) {
+                pipelineNodeDef = (Pipeline.NodeDef) nodeDef;
+            } else {
+                Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
+                pipelineNodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeDef, nodeDefBuilder);
+            }
+            ProjectJob.JobTask process = nodeDefAdapterFactory.process(pipelineNodeDef, graphNodeInfo, task);
+            if (!ObjectUtils.isEmpty(process)) {
+                log.info("extendTask tasks :{} ", process);
+                map.put(i, process);
+            } else {
+                jobTasks.set(i, task);
+            }
+        }
+        for (Map.Entry<Integer, ProjectJob.JobTask> entry : map.entrySet()) {
+            jobTasks.add(entry.getKey(), entry.getValue());
+        }
     }
 
     @Override

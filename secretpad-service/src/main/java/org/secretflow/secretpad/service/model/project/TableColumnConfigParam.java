@@ -59,4 +59,10 @@ public class TableColumnConfigParam {
     @Schema(description = "label key or not, false by default")
     @JsonProperty("isLabelKey")
     private boolean isLabelKey = false;
+    /**
+     * key protection or not, false by default
+     */
+    @Schema(description = "key protection or not, false by default")
+    @JsonProperty("isProtection")
+    private boolean isProtection = false;
 }

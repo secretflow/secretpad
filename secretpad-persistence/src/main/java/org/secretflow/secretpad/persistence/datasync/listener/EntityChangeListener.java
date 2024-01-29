@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.persistence.datasync.listener;
 
+import org.secretflow.secretpad.common.util.DataSyncConsumerContext;
 import org.secretflow.secretpad.common.util.SpringContextUtil;
 import org.secretflow.secretpad.persistence.datasync.producer.AbstractDataSyncProducerTemplate;
 import org.secretflow.secretpad.persistence.entity.BaseAggregationRoot;
@@ -52,19 +53,25 @@ public class EntityChangeListener {
     @PostUpdate
     public void postUpdate(BaseAggregationRoot o) {
         loadAbstractDataSyncProducerTemplate();
-        dataSyncProducerTemplate.push(DbChangeEvent.of(DbChangeAction.UPDATE, o));
+        if (!DataSyncConsumerContext.sync()) {
+            dataSyncProducerTemplate.push(DbChangeEvent.of(DbChangeAction.UPDATE, o));
+        }
     }
 
     @PostRemove
     public void postRemove(BaseAggregationRoot o) {
         loadAbstractDataSyncProducerTemplate();
-        dataSyncProducerTemplate.push(DbChangeEvent.of(DbChangeAction.REMOVE, o));
+        if (!DataSyncConsumerContext.sync()) {
+            dataSyncProducerTemplate.push(DbChangeEvent.of(DbChangeAction.REMOVE, o));
+        }
     }
 
     @PostPersist
     public void postCreate(BaseAggregationRoot o) {
         loadAbstractDataSyncProducerTemplate();
-        dataSyncProducerTemplate.push(DbChangeEvent.of(DbChangeAction.CREATE, o));
+        if (!DataSyncConsumerContext.sync()) {
+            dataSyncProducerTemplate.push(DbChangeEvent.of(DbChangeAction.CREATE, o));
+        }
     }
 
     private void loadAbstractDataSyncProducerTemplate() {

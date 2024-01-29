@@ -20,6 +20,6 @@ package org.secretflow.v1alpha1.constant;
  * @author yansi
  * @date 2023/6/20
  */
-public interface KusciaAPIConstants {
-    String TOKEN_HEADER = "Token";
+public class KusciaAPIConstants {
+    public static final String TOKEN_HEADER = "Token";
 }

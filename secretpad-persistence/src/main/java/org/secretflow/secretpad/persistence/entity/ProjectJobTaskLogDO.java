@@ -22,8 +22,10 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 /**
  * Project job task data object
@@ -39,6 +41,8 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProjectJobTaskLogDO implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 291568296509217011L;
     /**
      * Project job task start time
      */
@@ -142,5 +146,22 @@ public class ProjectJobTaskLogDO implements Serializable {
                 .log(ProjectJobTaskLogDO.makeLog(String.format("the jobId=%s, taskId=%s failed: %s",
                         task.getUpk().getJobId(), task.getUpk().getTaskId(), errMsg)))
                 .build();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (!(o instanceof ProjectJobTaskLogDO)) {
+            return false;
+        }
+        ProjectJobTaskLogDO that = (ProjectJobTaskLogDO) o;
+        return Objects.equals(id, that.id) && Objects.equals(projectId, that.projectId) && Objects.equals(jobId, that.jobId) && Objects.equals(taskId, that.taskId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, projectId, jobId, taskId);
     }
 }

@@ -23,6 +23,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.Hibernate;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 import java.util.Objects;
@@ -100,6 +101,8 @@ public class ProjectGraphNodeDO extends BaseAggregationRoot<ProjectGraphNodeDO> 
     @AllArgsConstructor
     @NoArgsConstructor
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
         /**
          * Project id
          */

@@ -26,11 +26,11 @@ import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.auth.DataResourceAuth;
 import org.secretflow.secretpad.web.init.config.WhiteListMethodConfig;
+import org.secretflow.secretpad.web.util.RequestUtils;
 
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
-import org.aspectj.lang.Signature;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Pointcut;
@@ -71,13 +71,11 @@ public class DataResourceAspect {
             // ignore check for edge platform
             return joinPoint.proceed();
         }
-        if (PlatformTypeEnum.AUTONOMY.equals(UserContext.getUser().getPlatformType())) {
-            Signature signature = joinPoint.getSignature();
-            String methodSignature = signature.getDeclaringTypeName().concat(".").concat(signature.getName());
+        if (PlatformTypeEnum.AUTONOMY.equals(UserContext.getUser().getPlatformType())
+                && !CollectionUtils.isEmpty(whiteListMethodConfig.getPaths()) && whiteListMethodConfig.getPaths().contains(RequestUtils.getCurrentRequestMethodURI())
+        ) {
             // ignore check for p2p user
-            if (!CollectionUtils.isEmpty(whiteListMethodConfig.getMethods()) && whiteListMethodConfig.getMethods().contains(methodSignature)) {
-                return joinPoint.proceed();
-            }
+            return joinPoint.proceed();
         }
         if (UserOwnerTypeEnum.CENTER.equals(UserContext.getUser().getOwnerType())) {
             // ignore check for center user

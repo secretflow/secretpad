@@ -16,12 +16,11 @@
 
 package org.secretflow.secretpad.service.model.datatable;
 
-import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO.TableColumnConfig;
-
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.Setter;
+import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO.TableColumnConfig;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -56,6 +55,13 @@ public class TableColumnConfigVO extends TableColumnVO {
     private boolean isLabelKey;
 
     /**
+     * key protection or not, false by default
+     */
+    @Schema(description = "key protection or not")
+    @JsonProperty("isProtection")
+    private boolean isProtection;
+
+    /**
      * Convert table column config view object from table column config
      *
      * @param columnConfig table column config
@@ -69,6 +75,7 @@ public class TableColumnConfigVO extends TableColumnVO {
         configVO.isAssociateKey = columnConfig.isAssociateKey();
         configVO.isGroupKey = columnConfig.isGroupKey();
         configVO.isLabelKey = columnConfig.isLabelKey();
+        configVO.isProtection = columnConfig.isProtection();
         return configVO;
     }
 

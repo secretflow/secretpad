@@ -26,6 +26,7 @@ import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 import org.springframework.util.CollectionUtils;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -92,6 +93,8 @@ public class ProjectInstDO extends BaseAggregationRoot<ProjectInstDO> {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
         /**
          * Project id
          */

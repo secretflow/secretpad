@@ -23,7 +23,9 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.Hibernate;
 
+import java.io.Serial;
 import java.io.Serializable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
@@ -39,6 +41,7 @@ import java.util.Objects;
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
+@ToString
 @Table(name = "project_graph")
 public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
     /**
@@ -63,7 +66,7 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
     /**
      * Project graph node DO list
      */
-    @OneToMany(fetch = FetchType.LAZY, cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
     @JoinColumns(
             value = {
                     @JoinColumn(name = "project_id", referencedColumnName = "project_id", nullable = false, updatable = false, insertable = false),
@@ -78,6 +81,14 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
     @Column(name = "owner_id", nullable = false, length = 64)
     private String ownerId;
 
+    public void setNodes(List<ProjectGraphNodeDO> nodes) {
+        if (this.nodes == null) {
+            this.nodes = new ArrayList<>();
+        }
+        this.nodes.clear();
+        this.nodes = nodes;
+    }
+
     /**
      * Project graph unique primary key
      */
@@ -86,6 +97,8 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 5005877919773504643L;
         /**
          * Project id
          */

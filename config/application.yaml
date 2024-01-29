@@ -44,7 +44,10 @@ spring:
       fail-on-empty-beans: false
   web:
     locale: zh_CN # default locale, overridden by request "Accept-Language" header.
-
+  cache:
+    jcache:
+      config:
+        classpath:ehcache.xml
 springdoc:
   api-docs:
     enabled: false
@@ -57,7 +60,7 @@ logging:
         type: info
 
 kusciaapi:
-  address: 127.0.0.1:8083
+  address: root-kuscia-master:8083
   tls:
     cert-file: config/certs/client.crt
     key-file: config/certs/client.pem
@@ -65,7 +68,7 @@ kusciaapi:
   token-file: config/certs/token
 
 kusciaapi-lite-alice:
-  address: 127.0.0.1:8061
+  address: root-kuscia-lite-alice:8061
   tls:
     cert-file: config/certs/alice/client.crt
     key-file: config/certs/alice/client.pem
@@ -73,7 +76,7 @@ kusciaapi-lite-alice:
   token-file: config/certs/alice/token
 
 kusciaapi-lite-bob:
-  address: 127.0.0.1:8061
+  address: root-kuscia-lite-bob:8061
   tls:
     cert-file: config/certs/bob/client.crt
     key-file: config/certs/bob/client.pem
@@ -102,6 +105,11 @@ secretpad:
   datasync:
     center: true
     p2p: false
+  component:
+    hide:
+      - secretflow/io/read_data:0.0.1
+      - secretflow/io/write_data:0.0.1
+      - secretflow/io/identity:0.0.1
 
 sfclusterDesc:
   deviceConfig:

@@ -18,6 +18,7 @@ package org.secretflow.secretpad.persistence.entity;
 
 import lombok.*;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -31,7 +32,8 @@ import java.io.Serializable;
 @AllArgsConstructor
 @ToString
 public class ProjectInfoDO implements Serializable {
-
+    @Serial
+    private static final long serialVersionUID = 291568296509217011L;
     /**
      * tee domain id
      */

@@ -29,11 +29,15 @@ import org.secretflow.secretpad.web.constant.AuthConstants;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.Optional;
+
+import static org.secretflow.secretpad.common.errorcode.AuthErrorCode.USER_IS_LOCKED;
+import static org.secretflow.secretpad.common.errorcode.AuthErrorCode.USER_PASSWORD_ERROR;
 
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
@@ -63,6 +67,25 @@ class AuthControllerTest extends ControllerTest {
             return MockMvcRequestBuilders.post(getMappingUrl(AuthController.class, "login", LoginRequest.class))
                     .content(JsonUtils.toJSONString(loginRequest));
         });
+    }
+
+    @RepeatedTest(5)
+    void loginWithUserNotExit() throws Exception {
+        assertErrorCodeWithAny(() -> {
+            LoginRequest loginRequest = LoginRequest.builder().name("admin1").passwordHash("0").build();
+            when(userAccountsRepository.findByName(loginRequest.getName())).thenReturn(Optional.empty());
+            return MockMvcRequestBuilders.post(getMappingUrl(AuthController.class, "login", LoginRequest.class))
+                    .content(JsonUtils.toJSONString(loginRequest));
+        }, USER_PASSWORD_ERROR, USER_IS_LOCKED);
+    }
+
+    @RepeatedTest(6)
+    void loginWithUserExitButWrongPwd() throws Exception {
+        assertErrorCodeWithAny(() -> {
+            LoginRequest loginRequest = LoginRequest.builder().name("admin").passwordHash("0").build();
+            return MockMvcRequestBuilders.post(getMappingUrl(AuthController.class, "login", LoginRequest.class))
+                    .content(JsonUtils.toJSONString(loginRequest));
+        }, USER_PASSWORD_ERROR, USER_IS_LOCKED);
     }
 
     @Test

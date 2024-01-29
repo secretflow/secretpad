@@ -22,11 +22,15 @@ import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
 import org.secretflow.secretpad.persistence.repository.ProjectJobTaskLogRepository;
 
 import com.google.common.collect.Lists;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -35,6 +39,7 @@ import java.util.stream.Collectors;
  * @author yansi
  * @date 2023/6/12
  */
+@Slf4j
 @Component
 public class JobTaskLogEventListener {
 
@@ -48,6 +53,7 @@ public class JobTaskLogEventListener {
      */
     @EventListener
     public void onApplicationEvent(ProjectJobDO.TaskStatusTransformEvent event) {
+        log.info("*** JobTaskLogEventListener {} {} {}", event.getTaskId(), event.getFromStatus(), event.getToStatus());
         List<ProjectJobTaskLogDO> logs = Lists.newArrayList();
         ProjectTaskDO task = event.getSource().getTasks().get(event.getTaskId());
         switch (event.getFromStatus()) {
@@ -91,6 +97,9 @@ public class JobTaskLogEventListener {
             default:
                 // do nothing
         }
+        // remove duplicated logs
+        Set<ProjectJobTaskLogDO> setWithoutDuplicates = new HashSet<>(logs);
+        logs = new ArrayList<>(setWithoutDuplicates);
         logRepository.saveAll(logs);
     }
 

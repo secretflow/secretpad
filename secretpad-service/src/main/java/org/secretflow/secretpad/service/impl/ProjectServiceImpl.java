@@ -184,6 +184,9 @@ public class ProjectServiceImpl implements ProjectService {
     @Value("${secretpad.platform-type}")
     private String plaformType;
 
+    @Autowired
+    private ProjectGraphNodeRepository projectGraphNodeRepository;
+
     @Override
     @Transactional
     public String createProject(CreateProjectRequest request) {
@@ -429,7 +432,8 @@ public class ProjectServiceImpl implements ProjectService {
                                         new ProjectDatatableDO.TableColumn(c.getColName(), c.getColType(), c.getColComment()),
                                         configs.containsKey(c.getColName()) && configs.get(c.getColName()).isAssociateKey(),
                                         configs.containsKey(c.getColName()) && configs.get(c.getColName()).isGroupKey(),
-                                        configs.containsKey(c.getColName()) && configs.get(c.getColName()).isLabelKey()
+                                        configs.containsKey(c.getColName()) && configs.get(c.getColName()).isLabelKey(),
+                                        configs.containsKey(c.getColName()) && configs.get(c.getColName()).isProtection()
                                 ))
                         .collect(Collectors.toList()));
         projectDatatableRepository.save(projectDatatable);
@@ -537,9 +541,14 @@ public class ProjectServiceImpl implements ProjectService {
     public GraphNodeTaskLogsVO getProjectJobTaskLogs(GetProjectJobTaskLogRequest request) {
         openProject(request.getProjectId());
         ProjectJobDO job = openProjectJob(request.getProjectId(), request.getJobId());
-        return new GraphNodeTaskLogsVO(job.getTasks().get(request.getTaskId()).getStatus(),
+        GraphNodeTaskLogsVO graphNodeTaskLogsVO = new GraphNodeTaskLogsVO(job.getTasks().get(request.getTaskId()).getStatus(),
                 jobTaskLogRepository.findAllByJobTaskId(request.getJobId(), request.getTaskId())
                         .stream().map(ProjectJobTaskLogDO::getLog).collect(Collectors.toList()));
+        String logPrefix = String.format("INFO the jobId=%s, taskId=%s", request.getJobId(), request.getTaskId());
+        LOGGER.info("log de duplication matching， {}", logPrefix);
+        distinctLogs(graphNodeTaskLogsVO, logPrefix + " start");
+        distinctLogs(graphNodeTaskLogsVO, logPrefix + " succeed");
+        return graphNodeTaskLogsVO;
     }
 
     @Override
@@ -727,6 +736,72 @@ public class ProjectServiceImpl implements ProjectService {
             throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
         }
         return datatableOpt.get();
+    }
+
+    /**
+     * project_graph_node  outputs fix derived fields for chexian
+     *
+     * @param projectId project resource ID
+     * @param graphId   project graphId
+     * @return ProjectOutputVO
+     */
+    @Override
+    public ProjectOutputVO getProjectAllOutTable(String projectId, String graphId) {
+        ProjectDO project = openProject(projectId);
+        List<ProjectGraphNodeDO> projectGraphNodeDOS = projectGraphNodeRepository.findByProjectIdAndGraphId(projectId, graphId);
+        return ProjectOutputVO.builder().projectId(project.getProjectId()).projectName(project.getName())
+                .description(project.getDescription()).computeMode(project.getComputeMode())
+                .nodes(projectGraphNodeDOS.stream().map(ProjectGraphOutputVO::from).collect(Collectors.toList()))
+                .build();
+    }
+
+    @Override
+    public void updateProjectTableConfig(AddProjectDatatableRequest request) {
+        List<ProjectDatatableDO> datatableDOS = projectDatatableRepository.findByDatableId(request.getProjectId(), request.getDatatableId());
+        if (CollectionUtils.isEmpty(datatableDOS)) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_DATATABLE_NOT_EXISTS);
+        }
+
+        ProjectDatatableDO projectDatatableDO = datatableDOS.get(0);
+        Map<String, TableColumnConfigParam> configs = Maps.newHashMap();
+        if (!CollectionUtils.isEmpty(request.getConfigs())) {
+            request.getConfigs().forEach(
+                    it -> configs.put(it.getColName(), it)
+            );
+        }
+        // for column that not exist in table, just ignore
+        projectDatatableDO.setTableConfig(
+                projectDatatableDO.getTableConfig().stream().map(c ->
+                                ProjectDatatableDO.TableColumnConfig.from(
+                                        new ProjectDatatableDO.TableColumn(c.getColName(), c.getColType(), c.getColComment()),
+                                        configs.containsKey(c.getColName()) && configs.get(c.getColName()).isAssociateKey(),
+                                        configs.containsKey(c.getColName()) && configs.get(c.getColName()).isGroupKey(),
+                                        configs.containsKey(c.getColName()) && configs.get(c.getColName()).isLabelKey(),
+                                        configs.containsKey(c.getColName()) && configs.get(c.getColName()).isProtection()
+                                ))
+                        .collect(Collectors.toList())
+        );
+        projectDatatableRepository.save(projectDatatableDO);
+    }
+
+    private List<String> distinctLogs(GraphNodeTaskLogsVO graphNodeTaskLogsVO, String index) {
+        List<String> logs = graphNodeTaskLogsVO.getLogs();
+        List<String> uniqueList = new ArrayList<>();
+        boolean flag = false;
+        for (String str : logs) {
+            if (str.contains(index) && !str.contains("failed")) {
+                if (!flag) {
+                    uniqueList.add(str);
+                } else {
+                    LOGGER.info("remove log {}", str);
+                }
+                flag = true;
+            } else {
+                uniqueList.add(str);
+            }
+        }
+        graphNodeTaskLogsVO.setLogs(uniqueList);
+        return uniqueList;
     }
 }
 

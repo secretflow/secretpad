@@ -137,12 +137,22 @@ unregister-mapping:
     - /api/v1alpha1/node/page
     - /api/v1alpha1/nodeRoute/delete
     - /api/v1alpha1/nodeRoute/listNode
+
+#the path in p2p mode will not be interception,let go
 white-list:
-  methods:
-    - org.secretflow.secretpad.web.controller.p2p.P2pNodeController.deleteP2pNode
-    - org.secretflow.secretpad.web.controller.p2p.P2PProjectController.updateProject
-    - org.secretflow.secretpad.web.controller.GraphController.listGraph
-    - org.secretflow.secretpad.web.controller.ProjectController.getProject
-    - org.secretflow.secretpad.web.controller.ProjectController.listJob
-    - org.secretflow.secretpad.web.controller.DataController.createData
-    - org.secretflow.secretpad.web.controller.DatatableController.listDatatables
+  paths:
+    - /api/v1alpha1/p2p/node/delete
+    - /api/v1alpha1/p2p/project/update
+    - /api/v1alpha1/graph/list
+    - /api/v1alpha1/project/get
+    - /api/v1alpha1/project/job/list
+    - /api/v1alpha1/project/job/get
+    - /api/v1alpha1/project/datatable/get
+    - /api/v1alpha1/project/job/task/output
+    - /api/v1alpha1/project/job/task/logs
+    - /api/v1alpha1/data/create
+    - /api/v1alpha1/datatable/list
+    - /api/v1alpha1/graph/node/status
+    - /api/v1alpha1/graph/detail
+    - /api/v1alpha1/graph/node/output
+    - /api/v1alpha1/graph/node/logs

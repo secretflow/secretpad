@@ -77,9 +77,11 @@ public class ManagerConfiguration {
             ProjectModelRepository modelRepository,
             ProjectReportRepository reportRepository,
             TeeNodeDatatableManagementRepository managementRepository,
-            JobServiceGrpc.JobServiceBlockingStub jobStub
+            JobServiceGrpc.JobServiceBlockingStub jobStub,
+            ProjectReadDtaRepository readDtaRepository,
+            ProjectJobTaskRepository taskRepository
     ) {
-        return new JobManager(projectJobRepository, datatableManager, resultRepository, fedTableRepository, datatableRepository, ruleRepository, modelRepository, reportRepository, managementRepository, jobStub);
+        return new JobManager(projectJobRepository, datatableManager, resultRepository, fedTableRepository, datatableRepository, ruleRepository, modelRepository, reportRepository, managementRepository, jobStub, readDtaRepository, taskRepository);
     }
 
     /**

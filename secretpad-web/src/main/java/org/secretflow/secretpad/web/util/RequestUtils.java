@@ -17,9 +17,12 @@
 package org.secretflow.secretpad.web.util;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.util.Objects;
 
 /**
  * Request utils
@@ -39,5 +42,18 @@ public class RequestUtils {
             return ((ServletRequestAttributes) requestAttributes).getRequest();
         }
         return null;
+    }
+
+    /**
+     * Get current request URI from request
+     *
+     * @return
+     */
+    public static String getCurrentRequestMethodURI() {
+        HttpServletRequest currentHttpRequest = getCurrentHttpRequest();
+        if (Objects.isNull(currentHttpRequest)) {
+            return StringUtils.EMPTY;
+        }
+        return currentHttpRequest.getRequestURI();
     }
 }

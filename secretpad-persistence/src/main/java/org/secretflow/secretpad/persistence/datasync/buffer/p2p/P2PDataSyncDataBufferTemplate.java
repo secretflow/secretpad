@@ -21,6 +21,7 @@ import org.secretflow.secretpad.persistence.datasync.buffer.DataSyncDataBufferTe
 import org.secretflow.secretpad.persistence.datasync.event.P2pDataSyncSendEvent;
 import org.secretflow.secretpad.persistence.datasync.listener.EntityChangeListener;
 import org.secretflow.secretpad.persistence.entity.BaseAggregationRoot;
+import org.secretflow.secretpad.persistence.model.DbChangeAction;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ import org.springframework.util.ObjectUtils;
 import org.springframework.util.ResourceUtils;
 
 import java.io.*;
+import java.util.Iterator;
 import java.util.List;
 
 /**
@@ -65,8 +67,21 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
                     return;
                 }
                 event.setDstNode(nodeId);
-                log.info("p2pDayaSyncDataBufferTemplate push data {} {}", nodeId, event);
+                log.debug("p2pDayaSyncDataBufferTemplate push data {} {}", nodeId, event);
                 UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> queue = QUEUE_MAP.getOrDefault(nodeId, new UniqueLinkedBlockingQueue<>());
+                Iterator<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> iterator = queue.iterator();
+                while (iterator.hasNext()) {
+                    EntityChangeListener.DbChangeEvent<BaseAggregationRoot> next = iterator.next();
+                    BaseAggregationRoot nextSource = next.getSource();
+                    BaseAggregationRoot eventSource = event.getSource();
+                    if (ObjectUtils.isEmpty(nextSource.getId()) || ObjectUtils.isEmpty(eventSource.getId())) {
+                        continue;
+                    }
+                    if (next.getAction().equals(DbChangeAction.UPDATE.val) && next.getDType().equals(event.getDType()) && nextSource.getId().equals(eventSource.getId())) {
+                        iterator.remove();
+                        log.debug("data sync queue remove some update db action {}", iterator);
+                    }
+                }
                 queue.add(event);
                 QUEUE_MAP.put(nodeId, queue);
                 endurance(nodeId);
@@ -96,7 +111,7 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
     public void commit(String nodeId, EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> queue =
                 QUEUE_MAP.getOrDefault(nodeId, null);
-        if (ObjectUtils.isEmpty(queue) || queue.remove(event)) {
+        if (queue.remove(event)) {
             endurance(nodeId);
             log.info("{} commit {}", nodeId, event);
         }
@@ -104,10 +119,10 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
 
     @Async
     @Override
-    public void endurance(String nodeId) {
+    public synchronized void endurance(String nodeId) {
         UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> queue =
                 QUEUE_MAP.getOrDefault(nodeId, null);
-        if (!ObjectUtils.isEmpty(queue)) {
+        if (queue != null) {
             try {
                 serializableWrite(nodeId, queue);
             } catch (Exception e) {

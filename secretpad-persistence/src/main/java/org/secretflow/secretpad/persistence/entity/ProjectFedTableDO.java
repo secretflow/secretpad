@@ -23,6 +23,7 @@ import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +43,9 @@ import java.util.List;
 @Table(name = "project_fed_table")
 @SQLDelete(sql = "update project_fed_table set is_deleted = 1 where fed_table_id = ? and project_id = ?")
 @Where(clause = "is_deleted = 0")
-public class ProjectFedTableDO implements Serializable{
+public class ProjectFedTableDO implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 291568296509217011L;
 
     /**
      * Project federal table unique primary key
@@ -66,6 +69,9 @@ public class ProjectFedTableDO implements Serializable{
     @NoArgsConstructor
     @EqualsAndHashCode
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
+
         /**
          * Project id
          */
@@ -86,6 +92,9 @@ public class ProjectFedTableDO implements Serializable{
     @AllArgsConstructor
     @NoArgsConstructor
     public static class JoinItem implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
+
         /**
          * Node id
          */

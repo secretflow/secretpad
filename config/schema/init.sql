@@ -166,6 +166,23 @@ create table if not exists `project_report`
 );
 create unique index `upk_project_report_id` on project_report (`project_id`, `report_id`);
 
+create table if not exists `project_read_data`
+(
+    id           integer primary key autoincrement,
+    project_id   varchar(64) not null,
+    output_id    varchar(64) not null,
+    report_id    varchar(64) not null,
+    hash         varchar(64) default '' not null,               -- read_data hash
+    task         varchar(64) default '' not null,               -- read_data task
+    grap_node_id varchar(64) default '' not null,               -- read_data grap node id
+    content      varchar(64) not null,                          -- read_data info
+    raw          varchar(64) not null,                          -- read_data raw info
+    is_deleted   tinyint(1) default '0' not null,               -- delete flag
+    gmt_create   datetime   default CURRENT_TIMESTAMP not null, -- create time
+    gmt_modified datetime   default CURRENT_TIMESTAMP not null  -- modified time
+);
+create unique index `upk_project_read_data_id` on project_read_data (`project_id`, `report_id`);
+
 create table if not exists `project_result`
 (
     id           integer primary key autoincrement,
@@ -380,7 +397,7 @@ create table if not exists `vote_request`
   status                tinyint(1)   not null, --vote status
   execute_status        varchar(16)  default 'COMMITTED' not null, -- executors call back status
   msg                   text         default null,-- error msg
-  party_vote_info       text        default null,
+  party_vote_info       text         default null,
   desc                  varchar(64)  not null, --vote desc
   is_deleted            tinyint(1)   default '0' not null,
   gmt_create            datetime     default CURRENT_TIMESTAMP not null,
@@ -660,6 +677,7 @@ insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_NODE', 
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_NODE', 'NODE_ROUTE_DELETE');
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_NODE', 'DATATABLE_DELETE');
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_NODE', 'PRJ_DATATABLE_DELETE');
+insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_NODE', 'PRJ_UPDATE');
 
 -- Edge user login permission
 insert into sys_role_resource_rel(role_code, resource_code) values('EDGE_USER', 'AUTH_LOGIN');

@@ -16,12 +16,15 @@
 
 package org.secretflow.secretpad.service.graph.converter;
 
+import org.secretflow.secretpad.common.constant.ComponentConstants;
 import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.service.constant.JobConstants;
 import org.secretflow.secretpad.service.model.datatable.TeeJob;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
 
 import com.google.common.collect.Lists;
+import com.google.protobuf.ListValue;
+import com.google.protobuf.Struct;
 import com.secretflow.spec.v1.Attribute;
 import com.secretflow.spec.v1.DistData;
 import org.apache.commons.lang3.StringUtils;
@@ -141,8 +144,14 @@ public class KusciaTeeDataManagerConverter implements JobConverter {
                         .setName(TEE_PUSH_NAME)
                         .setVersion(VERSION)
                         .addAllAttrPaths(List.of(TEE_PUSH_ATTR_PATH_DOMAIN, TEE_PUSH_ATTR_PATH_CERT))
-                        .addAllAttrs(List.of(Attribute.newBuilder().setS(job.getNodeId()).build(),
-                                Attribute.newBuilder().addAllSs(Collections.emptyList()).build()))
+                        .addAllAttrs(List.of(
+                                Struct.newBuilder().putFields(ComponentConstants.ATTRIBUTE_S, com.google.protobuf.Value.newBuilder().setStringValue(job.getNodeId()).build()).build(),
+                                Struct.newBuilder().
+                                        putFields(
+                                                ComponentConstants.ATTRIBUTE_SS,
+                                                com.google.protobuf.Value.newBuilder().setListValue(ListValue.newBuilder().addAllValues(Collections.emptyList()).build()).build())
+                                        .build()
+                        ))
                         .addAllInputs(List.of(distDataBuilder.build()))
                         .addAllOutputUris(List.of(outputUri));
                 taskInputConfigBuilder.setSfNodeEvalParam(nodeEvalParamBuilder.build());
@@ -159,7 +168,9 @@ public class KusciaTeeDataManagerConverter implements JobConverter {
                         .setName(TEE_DELETE_NAME)
                         .setVersion(VERSION)
                         .addAllAttrPaths(List.of(TEE_DELETE_ATTR_PATH_DOMAIN))
-                        .addAllAttrs(List.of(Attribute.newBuilder().setS(job.getNodeId()).build()))
+                        .addAllAttrs(List.of(
+                                Struct.newBuilder().mergeFrom(Attribute.newBuilder().setS(job.getNodeId()).build()).build()
+                        ))
                         .addAllInputs(List.of(distDataBuilder.build()));
                 taskInputConfigBuilder.setSfNodeEvalParam(nodeEvalParamBuilder.build());
             }
@@ -170,17 +181,38 @@ public class KusciaTeeDataManagerConverter implements JobConverter {
                         .addAllDataRefs(List.of(DistData.DataRef.newBuilder()
                                 .setUri(buildUri(job.getDatatableId(), "")).build()));
 
+                //
+                List<String> authNodeIds = job.getAuthNodeIds();
+                List<com.google.protobuf.Value> authNodeIdValueList = new ArrayList<>();
+                authNodeIds.forEach(authNodeId -> {
+                    authNodeIdValueList.add(com.google.protobuf.Value.newBuilder().setStringValue(authNodeId).build());
+                });
+                List<String> authNodeCerts = job.getAuthNodeCerts();
+                List<com.google.protobuf.Value> authNodeCertValueList = new ArrayList<>();
+                authNodeCerts.forEach(authNodeCert -> {
+                    authNodeCertValueList.add(com.google.protobuf.Value.newBuilder().setStringValue(authNodeCert).build());
+                });
                 // build node eval param
                 nodeEvalParamBuilder.setDomain(DATA_MANAGEMENT)
                         .setName(TEE_AUTH_NAME)
                         .setVersion(VERSION)
                         .addAllAttrPaths(Lists.newArrayList(TEE_AUTH_ATTR_OWNER_DOMAIN, TEE_AUTH_ATTR_AUTH_DOMAINS,
                                 TEE_AUTH_ATTR_ROOT_CERTS, TEE_AUTH_ATTR_COLUMNS, TEE_AUTH_ATTR_PROJECT_ID))
-                        .addAllAttrs(Lists.newArrayList(Attribute.newBuilder().setS(job.getNodeId()).build(),
-                                Attribute.newBuilder().addAllSs(Lists.newArrayList(job.getAuthNodeIds())).build(),
-                                Attribute.newBuilder().addAllSs(Lists.newArrayList(job.getAuthNodeCerts())).build(),
-                                Attribute.newBuilder().addAllSs(Lists.newArrayList("*")).build(),
-                                Attribute.newBuilder().setS(job.getProjectId()).build()))
+                        .addAllAttrs(
+                                Lists.newArrayList(
+                                        Struct.newBuilder().putFields(ComponentConstants.ATTRIBUTE_S, com.google.protobuf.Value.newBuilder().setStringValue(job.getNodeId()).build()).build(),
+                                        Struct.newBuilder().
+                                                putFields(ComponentConstants.ATTRIBUTE_SS, com.google.protobuf.Value.newBuilder().setListValue(ListValue.newBuilder().addAllValues(authNodeIdValueList).build()).build())
+                                                .build(),
+                                        Struct.newBuilder().
+                                                putFields(ComponentConstants.ATTRIBUTE_SS, com.google.protobuf.Value.newBuilder().setListValue(ListValue.newBuilder().addAllValues(authNodeCertValueList).build()).build())
+                                                .build(),
+                                        Struct.newBuilder().
+                                                putFields(ComponentConstants.ATTRIBUTE_SS, com.google.protobuf.Value.newBuilder().setListValue(ListValue.newBuilder().addAllValues(Lists.newArrayList(com.google.protobuf.Value.newBuilder().setStringValue("*").build())).build()).build())
+                                                .build(),
+                                        Struct.newBuilder().putFields(ComponentConstants.ATTRIBUTE_S, com.google.protobuf.Value.newBuilder().setStringValue(job.getProjectId()).build()).build()
+                                )
+                        )
                         .addAllInputs(List.of(distDataBuilder.build()));
                 taskInputConfigBuilder.setSfNodeEvalParam(nodeEvalParamBuilder.build());
                 taskConfigBuilder.setScope(job.getProjectId());
@@ -199,8 +231,10 @@ public class KusciaTeeDataManagerConverter implements JobConverter {
                         .setName(TEE_PULL_NAME)
                         .setVersion(VERSION)
                         .addAllAttrPaths(List.of(TEE_PULL_ATTR_PATH_DOMAIN, TEE_PULL_ATTR_VOTE_RESULT))
-                        .addAllAttrs(List.of(Attribute.newBuilder().setS(job.getNodeId()).build(),
-                                Attribute.newBuilder().setS(job.getVoteResult()).build()))
+                        .addAllAttrs(List.of(
+                                Struct.newBuilder().mergeFrom(Attribute.newBuilder().setS(job.getNodeId()).build()).build(),
+                                Struct.newBuilder().mergeFrom(Attribute.newBuilder().setS(job.getVoteResult()).build()).build()
+                        ))
                         .addAllInputs(List.of(distDataBuilder.build()))
                         .addAllOutputUris(List.of(outputUri));
                 taskInputConfigBuilder.setSfNodeEvalParam(nodeEvalParamBuilder.build());

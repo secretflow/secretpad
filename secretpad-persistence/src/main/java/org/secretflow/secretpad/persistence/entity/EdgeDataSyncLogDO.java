@@ -22,6 +22,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -37,6 +38,8 @@ import java.io.Serializable;
 @Getter
 @Setter
 public class EdgeDataSyncLogDO implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 291568296509217011L;
 
     @Id
     @Column(name = "table_name", nullable = false)

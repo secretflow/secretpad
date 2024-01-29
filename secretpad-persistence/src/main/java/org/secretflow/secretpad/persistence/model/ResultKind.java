@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.persistence.model;
 
+import java.util.Locale;
+
 /**
  * Result kind enum
  *
@@ -38,7 +40,11 @@ public enum ResultKind {
     /**
      * report
      */
-    Report("report");
+    Report("report"),
+    /**
+     * read_data
+     */
+    READ_DATA("read_data");
 
     private final String name;
 
@@ -48,24 +54,16 @@ public enum ResultKind {
 
     /**
      * Convert result kind from datatable type
-     *
-     * @param type
-     * @return
      */
     public static ResultKind fromDatatable(String type) {
-        if ("table".equalsIgnoreCase(type)) {
-            return FedTable;
-        }
-        if ("model".equalsIgnoreCase(type)) {
-            return Model;
-        }
-        if ("rule".equalsIgnoreCase(type)) {
-            return Rule;
-        }
-        if ("report".equals(type)) {
-            return Report;
-        }
-        return null;
+        return switch (type.toLowerCase(Locale.getDefault())) {
+            case "table" -> FedTable;
+            case "model" -> Model;
+            case "rule" -> Rule;
+            case "report" -> Report;
+            case "read_data" -> READ_DATA;
+            default -> null;
+        };
     }
 
     public String getName() {

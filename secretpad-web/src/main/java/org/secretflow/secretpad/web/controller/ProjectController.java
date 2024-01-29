@@ -20,6 +20,12 @@ import org.secretflow.secretpad.common.annotation.resource.ApiResource;
 import org.secretflow.secretpad.common.annotation.resource.DataResource;
 import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
 import org.secretflow.secretpad.common.enums.DataResourceTypeEnum;
+import io.swagger.v3.oas.annotations.Operation;
+import jakarta.validation.Valid;
+import org.secretflow.secretpad.common.annotation.resource.ApiResource;
+import org.secretflow.secretpad.common.annotation.resource.DataResource;
+import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
+import org.secretflow.secretpad.common.enums.DataResourceTypeEnum;
 import org.secretflow.secretpad.service.GraphService;
 import org.secretflow.secretpad.service.NodeService;
 import org.secretflow.secretpad.service.ProjectService;
@@ -293,6 +299,33 @@ public class ProjectController {
     @Operation(summary = "tee list", description = "tee list")
     public SecretPadResponse<List<NodeVO>> getTeeNodeList() {
         return SecretPadResponse.success(nodeService.listTeeNode());
+    }
+
+    /**
+     * project_graph_node  outputs fix derived fields for chexian
+     *
+     * @param request projectId graphId
+     * @return ProjectOutputVO
+     */
+    @PostMapping(value = "/getOutTable", consumes = "application/json")
+    public SecretPadResponse<ProjectOutputVO> getProjectAllOutTable(@Valid @RequestBody GetProjectGraphRequest request) {
+        return SecretPadResponse.success(projectService.getProjectAllOutTable(request.getProjectId(), request.getGraphId()));
+    }
+
+    /**
+     * Update project schema api
+     *
+     * @param request update project request
+     * @return successful SecretPadResponse with null data
+     */
+    @ResponseBody
+    @PostMapping(value = "/update/tableConfig", consumes = "application/json")
+    @Operation(summary = "update project table config", description = "update project table config")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_UPDATE)
+    public SecretPadResponse<Void> updateProjectTableConfig(@Valid @RequestBody AddProjectDatatableRequest request) {
+        projectService.updateProjectTableConfig(request);
+        return SecretPadResponse.success();
     }
 
 }

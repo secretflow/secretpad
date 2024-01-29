@@ -27,6 +27,7 @@ import lombok.*;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.Where;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -135,6 +136,9 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
     @EqualsAndHashCode
     @ToString
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
+
         /**
          * Project id
          */
@@ -161,6 +165,9 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
     @AllArgsConstructor
     @ToString
     public static class TableColumn implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
+
         /**
          * Column name
          */
@@ -200,6 +207,12 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
         @JsonInclude(JsonInclude.Include.NON_DEFAULT)
         @JsonProperty("isLabelKey")
         private boolean isLabelKey = false;
+        /**
+         * key protection or not, false by default
+         */
+        @JsonProperty("isProtection")
+        @JsonInclude(JsonInclude.Include.NON_DEFAULT)
+        private boolean isProtection = false;
 
         /**
          * Create a new project datatable configuration via params
@@ -211,7 +224,7 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
          * @return project datatable configuration
          */
         public static TableColumnConfig from(TableColumn column, boolean isAssociateKey,
-                                             boolean isGroupKey, boolean isLabelKey) {
+                                             boolean isGroupKey, boolean isLabelKey, boolean isProtection) {
             TableColumnConfig configVO = new TableColumnConfig();
             configVO.setColName(column.getColName());
             configVO.setColType(column.getColType());
@@ -219,6 +232,7 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
             configVO.isAssociateKey = isAssociateKey;
             configVO.isGroupKey = isGroupKey;
             configVO.isLabelKey = isLabelKey;
+            configVO.isProtection = isProtection;
             return configVO;
         }
     }

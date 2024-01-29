@@ -16,12 +16,19 @@
 
 package org.secretflow.secretpad.service.graph;
 
+import org.secretflow.secretpad.common.constant.ComponentConstants;
 import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 
-import com.secretflow.spec.v1.Attribute;
+import com.google.protobuf.Struct;
+import com.google.protobuf.Value;
+import com.google.protobuf.util.JsonFormat;
+import com.secretflow.spec.v1.IndividualTable;
+import lombok.extern.slf4j.Slf4j;
 import org.secretflow.proto.pipeline.Pipeline;
+import org.springframework.util.CollectionUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
@@ -30,6 +37,7 @@ import java.util.List;
  * @author yansi
  * @date 2023/6/6
  */
+@Slf4j
 public class ComponentTools {
     /**
      * Get datatableId from graph node information
@@ -45,11 +53,42 @@ public class ComponentTools {
             Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
             nodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeInfo.getNodeDef(), nodeDefBuilder);
         }
-        List<Attribute> attributes = nodeDef.getAttrsList();
+        List<Struct> attrsList = nodeDef.getAttrsList();
         String tableId = "";
-        if (!attributes.isEmpty()) {
-            tableId = attributes.get(0).getS();
+        if (!CollectionUtils.isEmpty(attrsList)) {
+            for (Struct attr : attrsList) {
+                if (!attr.containsFields(ComponentConstants.CUSTOM_PROTOBUF_CLS)) {
+                    tableId = attr.getFieldsOrDefault(ComponentConstants.ATTRIBUTE_S, Value.newBuilder().build()).getStringValue();
+                }
+            }
         }
         return tableId;
+    }
+
+    /**
+     * cover
+     *
+     * @param nodeDef nodeDef
+     * @return nodeDef
+     */
+    public static Pipeline.NodeDef coverAttrByCustomAttr(Pipeline.NodeDef nodeDef) {
+        List<Struct> attrsList = new ArrayList<>(nodeDef.getAttrsList());
+        if (!attrsList.isEmpty()) {
+            for (int i = 0; i < attrsList.size(); i++) {
+                Struct struct = attrsList.get(i);
+                if (struct.containsFields(ComponentConstants.CUSTOM_PROTOBUF_CLS)) {
+                    JsonFormat.TypeRegistry typeRegistry = JsonFormat.TypeRegistry.newBuilder().add(IndividualTable.getDescriptor()).build();
+                    String custom_value = ProtoUtils.toJsonString(struct.getFieldsOrThrow(ComponentConstants.CUSTOM_VALUE).getStructValue(), typeRegistry);
+                    Struct s = Struct.newBuilder()
+                            .putFields(
+                                    ComponentConstants.ATTRIBUTE_S,
+                                    Value.newBuilder().setStringValue(custom_value).build())
+                            .build();
+                    attrsList.set(i, s);
+                }
+            }
+        }
+        nodeDef = nodeDef.toBuilder().clearAttrs().addAllAttrs(attrsList).build();
+        return nodeDef;
     }
 }

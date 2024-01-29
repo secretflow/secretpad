@@ -106,6 +106,9 @@ message AttributeDef {
   }
 
   UnionAttrGroupDesc union = 6;
+
+  // Extras for custom protobuf attribute
+  string custom_protobuf_cls = 7;
 }
 
 // Define an input/output for component.
@@ -222,4 +225,5 @@ enum AttrType {
   AT_STRUCT_GROUP = 9;
   AT_UNION_GROUP = 10;
   AT_SF_TABLE_COL = 11;
+  AT_CUSTOM_PROTOBUF = 12;
 }

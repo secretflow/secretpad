@@ -38,6 +38,7 @@ public class P2pDataSyncRestTemplate extends DataSyncRestTemplate {
         int size = dataSyncDataBufferTemplate.size(node);
         EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event = null;
         while (size > 0) {
+            log.debug("data sync start to send {}, now size {}", node, size);
             event = dataSyncDataBufferTemplate.peek(node);
             if (!ObjectUtils.isEmpty(event)) {
                 SecretPadResponse<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> syncResp;
@@ -60,6 +61,10 @@ public class P2pDataSyncRestTemplate extends DataSyncRestTemplate {
                     onError(node, event);
                 }
                 size = dataSyncDataBufferTemplate.size(node);
+                log.debug("data sync end to send {}, now size {}", node, size);
+            } else {
+                log.warn("data sync end to send {}, now size {} event is {}", node, size, event);
+                return event;
             }
         }
         return event;

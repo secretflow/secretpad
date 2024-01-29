@@ -43,7 +43,10 @@ spring:
       fail-on-empty-beans: false
   web:
     locale: zh_CN # default locale, overridden by request "Accept-Language" header.
-
+  cache:
+    jcache:
+        config:
+          classpath:ehcache.xml
 springdoc:
   api-docs:
     enabled: false
@@ -105,6 +108,11 @@ secretpad:
   datasync:
       center: true
       p2p: false
+  component:
+    hide:
+      - secretflow/io/read_data:0.0.1
+      - secretflow/io/write_data:0.0.1
+      - secretflow/io/identity:0.0.1
 
 sfclusterDesc:
   deviceConfig:

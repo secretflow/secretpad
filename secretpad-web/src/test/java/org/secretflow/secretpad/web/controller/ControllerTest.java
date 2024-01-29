@@ -53,6 +53,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
+import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
 import java.util.regex.Matcher;
@@ -134,6 +135,21 @@ public class ControllerTest {
                 .getResponse();
         SecretPadResponse secretPadResponse = JsonUtils.toJavaObject(response.getContentAsString(), SecretPadResponse.class);
         Assertions.assertEquals(secretPadResponse.getStatus().getCode(), errorCode.getCode());
+    }
+
+    void assertErrorCodeWithAny(MvcRequestFunction<MockHttpServletRequestBuilder> f, ErrorCode... errorCode) throws Exception {
+        MockHttpServletResponse response = mockMvc.perform(f.apply()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andReturn()
+                .getResponse();
+        SecretPadResponse secretPadResponse = JsonUtils.toJavaObject(response.getContentAsString(), SecretPadResponse.class);
+        Set<Integer> codeSet = new HashSet<>();
+        for (ErrorCode code : errorCode) {
+            codeSet.add(code.getCode());
+        }
+        Assertions.assertTrue(codeSet.contains(secretPadResponse.getStatus().getCode()));
     }
 
     void assertResponseWithEmptyContent(MvcRequestFunction<MockHttpServletRequestBuilder> f) throws Exception {

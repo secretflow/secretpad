@@ -50,4 +50,14 @@ public interface UserAccountsRepository extends BaseRepository<AccountsDO, Strin
      */
     @Query("from AccountsDO nd where nd.ownerId=:ownerId")
     List<AccountsDO> findByOwnerId(@Param("ownerId") String ownerId);
+
+
+    /**
+     * Find all users that have been locked and limit 1
+     *
+     * @return {@link Optional }<{@link AccountsDO }>
+     */
+
+    @Query("from AccountsDO where lockedInvalidTime  is not null order by lockedInvalidTime desc limit 1")
+    Optional<AccountsDO> findLockedUser();
 }

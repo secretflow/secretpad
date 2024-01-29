@@ -18,7 +18,10 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectGraphNodeDO;
 
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
 
 /**
  * Project graph node repository
@@ -28,4 +31,8 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface ProjectGraphNodeRepository extends BaseRepository<ProjectGraphNodeDO, ProjectGraphNodeDO.UPK> {
+
+    @Query(value = "select id,project_id,graph_id,graph_node_id,code_name,label,x,y,inputs,outputs,node_def,is_deleted,gmt_create,gmt_modified" +
+            " from project_graph_node where project_id = ?1 and graph_id=?2", nativeQuery = true)
+    List<ProjectGraphNodeDO> findByProjectIdAndGraphId(String projectId, String graphId);
 }

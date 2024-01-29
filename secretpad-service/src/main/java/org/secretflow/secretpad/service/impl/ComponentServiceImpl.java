@@ -22,6 +22,7 @@ import org.secretflow.secretpad.common.util.FileUtils;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.service.ComponentService;
+import org.secretflow.secretpad.service.configuration.SecretpadComponentConfig;
 import org.secretflow.secretpad.service.constant.ComponentConstants;
 import org.secretflow.secretpad.service.model.graph.CompListVO;
 import org.secretflow.secretpad.service.model.graph.ComponentKey;
@@ -30,6 +31,8 @@ import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 
 import com.secretflow.spec.v1.CompListDef;
 import com.secretflow.spec.v1.ComponentDef;
+import jakarta.annotation.Resource;
+import lombok.extern.slf4j.Slf4j;
 import org.secretflow.proto.pipeline.Pipeline;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -39,11 +42,7 @@ import org.springframework.util.ResourceUtils;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.*;
 
 /**
  * Component service implementation class
@@ -51,6 +50,7 @@ import java.util.stream.Collectors;
  * @author yansi
  * @date 2023/6/7
  */
+@Slf4j
 @Service
 public class ComponentServiceImpl implements ComponentService {
 
@@ -60,10 +60,13 @@ public class ComponentServiceImpl implements ComponentService {
     @Autowired
     private List<CompListDef> components;
 
+    @Resource
+    private SecretpadComponentConfig secretpadComponentConfig;
+
     @Override
     public Map<String, CompListVO> listComponents() {
         Map<String, CompListVO> resp = new HashMap<>();
-        components.stream().forEach(compListDef -> {
+        components.forEach(compListDef -> {
             List<ComponentDef> comps = compListDef.getCompsList();
             if (!CollectionUtils.isEmpty(comps)) {
                 CompListVO compListVO = CompListVO.builder()
@@ -71,14 +74,23 @@ public class ComponentServiceImpl implements ComponentService {
                         .version(compListDef.getVersion())
                         .desc(compListDef.getDesc())
                         .comps(new ArrayList<>()).build();
-                compListVO.getComps().addAll(comps.stream().map(componentDef ->
-                                ComponentSummaryDef.builder()
-                                        .domain(componentDef.getDomain())
-                                        .name(componentDef.getName())
-                                        .version(componentDef.getVersion())
-                                        .desc(componentDef.getDesc())
-                                        .build())
-                        .collect(Collectors.toList()));
+                compListVO.getComps().addAll(comps.stream()
+                        .map(componentDef -> {
+                            //secretflow/domain/name:version
+                            String hide = compListDef.getName() + "/" + componentDef.getDomain() + "/" + componentDef.getName() + ":" + componentDef.getVersion();
+                            if (secretpadComponentConfig.getHide().contains(hide)) {
+                                log.info("hide {}", hide);
+                                SF_HIDE_COMPONENTS.put(componentDef.getName(), componentDef);
+                                return null;
+                            }
+                            return ComponentSummaryDef.builder()
+                                    .domain(componentDef.getDomain())
+                                    .name(componentDef.getName())
+                                    .version(componentDef.getVersion())
+                                    .desc(componentDef.getDesc())
+                                    .build();
+                        })
+                        .filter(Objects::nonNull).toList());
                 resp.put(compListVO.getName(), compListVO);
             }
         });
@@ -101,7 +113,7 @@ public class ComponentServiceImpl implements ComponentService {
             });
         });
         if (!CollectionUtils.isEmpty(keys)) {
-            keys.stream().forEach(key -> {
+            keys.forEach(key -> {
                 if (!componentMap.containsKey(key)) {
                     throw SecretpadException.of(GraphErrorCode.COMPONENT_NOT_EXISTS, key.toString());
                 }
@@ -133,13 +145,23 @@ public class ComponentServiceImpl implements ComponentService {
                     }
                 }
                 Map<String, Object> finalSecretpad = secretpad;
-                config.keySet().forEach(k -> {
-                    config.get(k).putAll(finalSecretpad);
-                });
+                config.keySet().forEach(k -> config.get(k).putAll(finalSecretpad));
             }
         } catch (IOException e) {
             throw SecretpadException.of(GraphErrorCode.COMPONENT_18N_ERROR, e);
         }
+        config.keySet().forEach(key -> {
+            Map<String, Object> map = config.get(key);
+            Iterator<Map.Entry<String, Object>> iterator = map.entrySet().iterator();
+            while (iterator.hasNext()) {
+                Map.Entry<String, Object> entry = iterator.next();
+                String hide = key + "/" + entry.getKey();
+                if (secretpadComponentConfig.getHide().contains(hide)) {
+                    log.info("hide {}", hide);
+                    iterator.remove();
+                }
+            }
+        });
         return config;
     }
 

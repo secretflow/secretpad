@@ -17,15 +17,23 @@
 package org.secretflow.secretpad.service;
 
 import org.secretflow.secretpad.common.util.ProtoUtils;
+import org.secretflow.secretpad.common.util.UniqueLinkedBlockingQueue;
 
 import com.google.protobuf.Any;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.secretflow.spec.v1.*;
+import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.compress.utils.IOUtils;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.secretflow.proto.pipeline.Pipeline;
+import org.springframework.util.ResourceUtils;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 
 /**
  * ProtoUtils test
@@ -33,6 +41,7 @@ import java.io.IOException;
  * @author yansi
  * @date 2023/6/1
  */
+@Slf4j
 public class ProtoUtilsTest {
     @Test
     public void testStringConvert() throws IOException {
@@ -86,5 +95,30 @@ public class ProtoUtilsTest {
         DistData.Builder distDataBuilder = DistData.newBuilder();
         JsonFormat.parser().ignoringUnknownFields().usingTypeRegistry(typeRegistry).merge(content, distDataBuilder);
         System.out.println(distDataBuilder.build().getMeta());
+    }
+
+    @Test
+    @Disabled
+    public void showSyncFileData() throws IOException {
+        serializableRead("li-test");
+    }
+
+    public UniqueLinkedBlockingQueue serializableRead(String nodeId) throws IOException {
+        ObjectInputStream in = null;
+        UniqueLinkedBlockingQueue queue = new UniqueLinkedBlockingQueue();
+        File file = ResourceUtils.getFile("/Users/zhangwenxu/cx/" + nodeId);
+        if (!file.exists()) {
+            return null;
+        }
+        try {
+            in = new ObjectInputStream(new FileInputStream(file));
+            queue = (UniqueLinkedBlockingQueue) in.readObject();
+        } catch (Exception e) {
+            log.error("serializableRead error ", e);
+        } finally {
+            IOUtils.closeQuietly(in);
+        }
+        log.info("serializableRead ---{} {}", nodeId, queue.size());
+        return queue;
     }
 }

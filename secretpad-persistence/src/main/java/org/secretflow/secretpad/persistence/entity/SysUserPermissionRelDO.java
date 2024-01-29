@@ -16,11 +16,13 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
-import jakarta.persistence.*;
-import lombok.*;
 import org.secretflow.secretpad.common.enums.PermissionTargetTypeEnum;
 import org.secretflow.secretpad.common.enums.PermissionUserTypeEnum;
 
+import jakarta.persistence.*;
+import lombok.*;
+
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -54,7 +56,6 @@ public class SysUserPermissionRelDO extends SuperBaseAggregationRoot<SysUserPerm
     private PermissionTargetTypeEnum targetType;
 
 
-
     /**
      * Project task unique primary key
      */
@@ -64,6 +65,8 @@ public class SysUserPermissionRelDO extends SuperBaseAggregationRoot<SysUserPerm
     @NoArgsConstructor
     @Embeddable
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
 
         @Column(name = "user_key", nullable = false, length = 16)
         private String userKey;

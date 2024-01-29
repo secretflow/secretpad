@@ -24,8 +24,6 @@ import org.secretflow.secretpad.persistence.datasync.producer.PaddingNodeService
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.DataSyncConfig;
 import org.secretflow.secretpad.persistence.model.DbChangeAction;
-import org.secretflow.secretpad.persistence.model.GraphJobStatus;
-import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -44,7 +42,6 @@ import java.util.Map;
 public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplate {
     private static Map<String, String> ownerId_cache = new HashMap<>();
 
-    private static Map<String, String> status_cache = new HashMap<>();
     @Value("${secretpad.node-id}")
     private String localNodeId;
 
@@ -55,11 +52,6 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
 
     @Override
     public boolean filter(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
-        List<String> sync = dataSyncConfig.getSync();
-        String dType = event.getDType();
-        if (!sync.contains(dType)) {
-            return true;
-        }
         ProjectNodesInfo source = event.getSource();
         if (source instanceof ProjectDO) {
             return filterProject(event);
@@ -99,7 +91,7 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
         String projectId = source.getProjectId();
         String ownerId = ownerId_cache.get(projectId);
         if (!StringUtils.equals(localNodeId, ownerId)) {
-            log.info("local node not initiator,stop sync");
+            log.debug("local node not initiator,stop sync");
             return true;
         }
         return false;
@@ -108,6 +100,11 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
     @Async
     @Override
     public void push(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
+        List<String> sync = dataSyncConfig.getSync();
+        String dType = event.getDType();
+        if (!sync.contains(dType)) {
+            return;
+        }
         log.debug("------- data:{} action:{} projectId: {} nodeIds: {}", event.getDType(), event.getAction(), event.getProjectId(), event.getNodeIds());
         p2pPaddingNodeServiceImpl.paddingNodes(event);
         log.debug("-------after paddingNodes data:{} action:{} projectId: {} nodeIds: {}", event.getDType(), event.getAction(), event.getProjectId(), event.getNodeIds());
@@ -137,24 +134,8 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
 
     private boolean filterProjectJobDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         ProjectJobDO source = (ProjectJobDO) event.getSource();
-        GraphJobStatus status = source.getStatus();
-        String key = source.getUpk().getProjectId() + "_" + source.getUpk().getJobId();
         String ownerId = ownerId_cache.get(source.getUpk().getProjectId() + "_" + source.getGraphId());
-        if (!StringUtils.equals(localNodeId, ownerId)) {
-            return true;
-        }
-        if (!status_cache.containsKey(key)) {
-            status_cache.put(key, status.name());
-        }
-        if (DbChangeAction.UPDATE.getVal().equals(event.getAction())) {
-            String s = status_cache.get(key);
-            if (!StringUtils.equals(s, status.name())) {
-                status_cache.put(key, status.name());
-                return false;
-            }
-            return true;
-        }
-        return false;
+        return !StringUtils.equals(localNodeId, ownerId);
     }
 
     private boolean filterProjectDatatableDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
@@ -165,24 +146,8 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
 
     private boolean filterProjectTaskDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         ProjectTaskDO source = (ProjectTaskDO) event.getSource();
-        GraphNodeTaskStatus status = source.getStatus();
-        String key = source.getUpk().getProjectId() + "_" + source.getUpk().getJobId() + "_" + source.getUpk().getTaskId();
         String ownerId = ownerId_cache.get(source.getUpk().getProjectId() + "_" + source.getGraphNode().getUpk().getGraphId());
-        if (!StringUtils.equals(localNodeId, ownerId)) {
-            return true;
-        }
-        if (!status_cache.containsKey(key)) {
-            status_cache.put(key, status.name());
-        }
-        if (DbChangeAction.UPDATE.getVal().equals(event.getAction())) {
-            String s = status_cache.get(key);
-            if (!StringUtils.equals(s, status.name())) {
-                status_cache.put(key, status.name());
-                return false;
-            }
-            return true;
-        }
-        return false;
+        return !StringUtils.equals(localNodeId, ownerId);
     }
 
     private boolean filterVoteRequestDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {

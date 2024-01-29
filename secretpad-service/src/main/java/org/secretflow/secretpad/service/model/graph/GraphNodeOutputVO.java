@@ -88,6 +88,8 @@ public class GraphNodeOutputVO {
                 return "model";
             case Rule:
                 return "rule";
+            case READ_DATA:
+                return "read_data";
             default:
                 throw SecretpadException.of(GraphErrorCode.RESULT_TYPE_NOT_SUPPORTED);
         }
