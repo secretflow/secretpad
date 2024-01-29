@@ -27,4 +27,5 @@ public class ComponentConstants {
     public static final String DATA_TABLE = "datatable";
 
     public static final String SECRETPAD = "secretpad";
+    public static final String SECRETFLOW = "secretflow";
 }

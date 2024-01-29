@@ -18,6 +18,7 @@ package org.secretflow.secretpad.persistence.model;
 
 import lombok.*;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -31,7 +32,11 @@ import java.io.Serializable;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode
+@ToString
 public class GraphEdgeDO implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 1L;
     /**
      * Edge id
      */

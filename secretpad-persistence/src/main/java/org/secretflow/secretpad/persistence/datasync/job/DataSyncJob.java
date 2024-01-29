@@ -26,9 +26,13 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
+ * data sync job
+ *
  * @author yutu
  * @date 2023/12/11
  */
@@ -39,6 +43,8 @@ public class DataSyncJob implements ApplicationListener<P2pDataSyncSendEvent> {
 
     private final DataSyncRestTemplate dataSyncRestTemplate;
     private final RouteDetection routeDetection;
+
+    private static final Map<String, String> NODE_WORK_THREAD_NAME = new ConcurrentHashMap<>();
 
 
     public void work(String node) throws InterruptedException {
@@ -64,9 +70,16 @@ public class DataSyncJob implements ApplicationListener<P2pDataSyncSendEvent> {
         String node = event.getNode();
         try {
             log.debug("start data sync to {}", node);
+            if (NODE_WORK_THREAD_NAME.containsKey(node)) {
+                log.info("{} is working now {}, skip it", node, NODE_WORK_THREAD_NAME.get(node));
+                return;
+            }
+            NODE_WORK_THREAD_NAME.put(node, Thread.currentThread().getName());
             work(node);
         } catch (Exception e) {
             log.error("dataSyncJob work error", e);
+        } finally {
+            NODE_WORK_THREAD_NAME.remove(node);
         }
     }
 }

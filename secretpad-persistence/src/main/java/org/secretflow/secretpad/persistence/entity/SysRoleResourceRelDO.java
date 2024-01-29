@@ -19,6 +19,7 @@ package org.secretflow.secretpad.persistence.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -48,6 +49,9 @@ public class SysRoleResourceRelDO extends SuperBaseAggregationRoot<SysRoleResour
     @NoArgsConstructor
     @Embeddable
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
+
         @Column(name = "resource_code", nullable = false, length = 64)
         private String resourceCode;
 

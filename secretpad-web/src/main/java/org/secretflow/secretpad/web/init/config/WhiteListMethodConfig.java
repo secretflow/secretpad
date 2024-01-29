@@ -32,5 +32,5 @@ import java.util.List;
 @Getter
 @Setter
 public class WhiteListMethodConfig {
-    private List<String> methods;
+    private List<String> paths;
 }

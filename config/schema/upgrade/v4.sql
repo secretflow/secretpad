@@ -16,7 +16,7 @@
 
  alter table project add column owner_id varchar(64)      not null default '';
  alter table project add column status   tinyint(1)    default '0' not null;
- alter table project add column compute_func varchar(64)  default '' not null,             -- compute_func: DAG,PSI,ALL
+ alter table project add column compute_func varchar(64)  default '' not null;             -- compute_func: DAG,PSI,ALL
  alter table vote_request add column party_vote_info text default null;
  alter table project_graph add column owner_id varchar(64) not null default '';
 --  node --
@@ -38,7 +38,6 @@ insert into sys_role(role_code, role_name) values('P2P_NODE', 'P2P 用户');
    gmt_modified          datetime     default CURRENT_TIMESTAMP not null  -- modified time
  );
  create unique index `upk_project_approval_config_vote_id` on project_approval_config (`vote_id`);
- create unique index `upk_project_approval_config_type_project_id` on project_approval_config (`type`, `project_id`);
 
 -- user_accounts --
  alter table user_accounts add column failed_attempts integer default null;

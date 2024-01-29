@@ -26,6 +26,7 @@ import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 
@@ -107,6 +108,8 @@ public class ProjectTaskDO extends BaseAggregationRoot {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
         /**
          * Project id
          */
@@ -129,6 +132,15 @@ public class ProjectTaskDO extends BaseAggregationRoot {
         public GraphNodeConverter() {
             super(ProjectGraphNodeDO.class);
         }
+    }
+
+    /**
+     * Whether the graph job status is finished
+     *
+     * @return whether finished
+     */
+    public boolean isFinished() {
+        return this.status == GraphNodeTaskStatus.SUCCEED || this.status == GraphNodeTaskStatus.FAILED || this.status == GraphNodeTaskStatus.STOPPED;
     }
 
     /**

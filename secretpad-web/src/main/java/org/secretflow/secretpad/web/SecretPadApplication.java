@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.web;
 
 import com.google.common.collect.Lists;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.catalina.connector.Connector;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.SpringApplication;
@@ -24,11 +25,17 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.autoconfigure.http.HttpMessageConverters;
 import org.springframework.boot.web.embedded.tomcat.TomcatServletWebServerFactory;
 import org.springframework.boot.web.servlet.server.ServletWebServerFactory;
+import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.core.env.Environment;
 import org.springframework.http.MediaType;
 import org.springframework.http.converter.protobuf.ProtobufHttpMessageConverter;
 import org.springframework.scheduling.annotation.EnableAsync;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  * SecretPad application
@@ -36,9 +43,11 @@ import org.springframework.scheduling.annotation.EnableAsync;
  * @author yansi
  * @date 2023/3/23
  */
+@Slf4j
 @ComponentScan(basePackages = "org.secretflow.secretpad.*")
 @SpringBootApplication
 @EnableAsync
+@EnableCaching
 public class SecretPadApplication {
 
     @Value("${server.http-port}")
@@ -46,8 +55,10 @@ public class SecretPadApplication {
     @Value("${server.http-port-inner}")
     private Integer innerHttpPort;
 
-    public static void main(String[] args) {
-        SpringApplication.run(SecretPadApplication.class, args);
+    public static void main(String[] args) throws UnknownHostException {
+        ConfigurableApplicationContext context = SpringApplication.run(SecretPadApplication.class, args);
+        Environment environment = context.getBean(Environment.class);
+        log.info("SecretPad start success, http://{}:{} innerHttpPort:{} Profile:{}", InetAddress.getLocalHost().getHostAddress(), environment.getProperty("server.port"), environment.getProperty("server.http-port-inner"), environment.getActiveProfiles());
     }
 
     /**

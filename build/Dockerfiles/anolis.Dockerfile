@@ -9,7 +9,7 @@ COPY config /app/config
 COPY scripts /app/scripts
 COPY demo/data /app/data
 COPY target/*.jar secretpad.jar
-ENV JAVA_OPTS="" SPRING_PROFILES_ACTIVE="default"
+ENV JAVA_OPTS="-server -Xmx3100m -Xms3100m -XX:+UseZGC" SPRING_PROFILES_ACTIVE="default"
 EXPOSE 80
 EXPOSE 8080
 EXPOSE 9001

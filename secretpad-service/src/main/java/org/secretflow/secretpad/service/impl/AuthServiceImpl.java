@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.constant.CacheConstants;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.ResourceTypeEnum;
 import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
@@ -34,13 +35,17 @@ import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.SysResourcesBizService;
 import org.secretflow.secretpad.service.UserService;
 
+import jakarta.annotation.Resource;
+import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Set;
@@ -83,7 +88,11 @@ public class AuthServiceImpl implements AuthService {
     @Value("${secretpad.account-error-lock-time-minutes:30}")
     private Integer lockTimeMinutes;
 
+    @Resource
+    private CacheManager cacheManager;
+
     @Override
+    @Transactional(rollbackFor = Exception.class, noRollbackFor = SecretpadException.class)
     public UserContextDTO login(String name, String passwordHash) {
         //check password and lock
         AccountsDO user = accountLockedCheck(name, passwordHash);
@@ -127,38 +136,32 @@ public class AuthServiceImpl implements AuthService {
      */
 
     private AccountsDO accountLockedCheck(String userName, String passwordHash) {
-        AccountsDO user = userService.getUserByName(userName);
+
         LocalDateTime currentTime = LocalDateTime.now();
-        Boolean isUnlock = Boolean.FALSE;
-        //check lock
-        if (Objects.nonNull(user.getLockedInvalidTime())) {
-            Duration duration = Duration.between(currentTime, user.getLockedInvalidTime());
-            if (duration.toMinutes() > 0) {
-                if (user.getFailedAttempts() >= maxAttempts) {
-                    Long minutes = duration.toMinutes();
-                    throw SecretpadException.of(AuthErrorCode.USER_IS_LOCKED, String.valueOf(minutes));
+        //current user is need lock
+        AccountsDO user = userService.queryUserByName(userName);
+        if (ObjectUtils.isEmpty(user)) {
+            Cache cache = cacheManager.getCache(CacheConstants.USER_LOCK_CACHE);
+            HashMap<String, Integer> lockInfo = cache.get(userName, HashMap.class);
+            int failedAttempts = 0;
+            if (lockInfo != null) {
+                failedAttempts = lockInfo.get("failedAttempts");
+                if (failedAttempts >= maxAttempts) {
+                    throw SecretpadException.of(AuthErrorCode.USER_IS_LOCKED, String.valueOf(lockTimeMinutes));
                 }
             } else {
-                isUnlock = Boolean.TRUE;
-                //lock invalid
-                AccountsDO accountsDO = new AccountsDO();
-                accountsDO.setGmtModified(LocalDateTime.now());
-                user.setLockedInvalidTime(null);
-                user.setFailedAttempts(null);
-                userAccountsRepository.save(user);
+                lockInfo = new HashMap<>();
             }
+            lockInfo.put("failedAttempts", ++failedAttempts);
+            cache.put(userName, lockInfo);
+            throw SecretpadException.of(AuthErrorCode.USER_PASSWORD_ERROR, String.valueOf(maxAttempts - --failedAttempts));
         }
-
         //checkPassword success
         if (user.getPasswordHash().equals(passwordHash)) {
             //lock invalid
-            if (!isUnlock) {
-                AccountsDO accountsDO = new AccountsDO();
-                accountsDO.setGmtModified(LocalDateTime.now());
-                user.setLockedInvalidTime(null);
-                user.setFailedAttempts(null);
-                userAccountsRepository.save(user);
-            }
+            user.setLockedInvalidTime(null);
+            user.setFailedAttempts(null);
+            userAccountsRepository.save(user);
             return user;
         }
 

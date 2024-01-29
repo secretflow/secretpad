@@ -184,10 +184,8 @@ public class ApprovalServiceImpl implements ApprovalService {
     }
 
     private void identityVerification(String nodeId) {
-        if (envService.isAutonomy()) {
-            if (!StringUtils.equals(UserContext.getUser().getPlatformNodeId(), nodeId)) {
-                throw SecretpadException.of(VoteErrorCode.VOTE_CHECK_FAILED);
-            }
+        if (envService.isAutonomy() && !StringUtils.equals(UserContext.getUser().getPlatformNodeId(), nodeId)) {
+            throw SecretpadException.of(VoteErrorCode.VOTE_CHECK_FAILED);
         }
     }
 }

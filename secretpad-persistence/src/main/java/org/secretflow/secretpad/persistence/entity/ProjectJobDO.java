@@ -31,6 +31,7 @@ import org.hibernate.annotations.Where;
 
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
+import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -46,6 +47,7 @@ import java.util.Objects;
 @Getter
 @Setter
 @Builder
+@ToString
 @AllArgsConstructor
 @NoArgsConstructor
 @Entity
@@ -170,6 +172,8 @@ public class ProjectJobDO extends BaseAggregationRoot<ProjectJobDO> {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
         /**
          * Project id
          */

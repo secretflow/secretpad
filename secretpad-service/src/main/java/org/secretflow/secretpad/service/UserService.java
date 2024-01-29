@@ -53,6 +53,14 @@ public interface UserService {
 
     AccountsDO getUserByName(String userName);
 
+    /**
+     * Get user by userName
+     *
+     * @param userName
+     * @return {@link AccountsDO }
+     */
+    AccountsDO queryUserByName(String userName);
+
 
     /**
      * user lock
@@ -70,4 +78,11 @@ public interface UserService {
 
     void userUnlock(AccountsDO accountsDO);
 
+    /**
+     * Get locked user
+     *
+     * @return {@link AccountsDO }
+     */
+
+    AccountsDO findLockedUser();
 }

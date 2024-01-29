@@ -34,25 +34,18 @@ import org.secretflow.secretpad.persistence.repository.ProjectApprovalConfigRepo
 import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
 import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
 
-import io.netty.channel.ChannelOption;
-import io.netty.handler.timeout.ReadTimeoutHandler;
-import io.netty.handler.timeout.WriteTimeoutHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.support.WebClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
-import reactor.core.publisher.Mono;
-import reactor.netty.http.client.HttpClient;
-import reactor.netty.resources.ConnectionProvider;
 
+import java.time.Duration;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -107,30 +100,15 @@ public class P2pDataSyncConfigurable {
 
     @Bean
     public P2pDataSyncRestService p2pDataSyncRestService() {
-        ConnectionProvider connectionProvider = ConnectionProvider.builder("data-sync-connection-pool")
-                .maxConnections(2048)
-                .pendingAcquireMaxCount(2048)
-                .build();
-        HttpClient httpClient = HttpClient.create(connectionProvider)
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10 * 1000)  //Connected timeout
-                .doOnConnected(conn -> {
-                    conn.addHandlerLast(new ReadTimeoutHandler(10)); //read timeout
-                    conn.addHandlerLast(new WriteTimeoutHandler(10)); //write timeout
-                });
         if (!kusciaLiteGateway.contains(":")) {
             kusciaLiteGateway = kusciaLiteGateway + ":80";
         }
         WebClient webClient = WebClient.builder()
                 .baseUrl("http://" + kusciaLiteGateway)
-                .clientConnector(new ReactorClientHttpConnector(httpClient))
-                //error callback
-                .defaultStatusHandler(HttpStatusCode::isError, clientResponse -> {
-                    log.info("p2pDataSyncRestService error,{}", clientResponse.statusCode().value());
-                    return Mono.error(new RuntimeException("p2pDataSyncRestService error" + clientResponse.statusCode().value()));
-                }).build();
+                .build();
         HttpServiceProxyFactory proxyFactory
                 = HttpServiceProxyFactory.builder(
-                WebClientAdapter.forClient(webClient)).build();
+                WebClientAdapter.forClient(webClient)).blockTimeout(Duration.ofSeconds(20)).build();
         return proxyFactory.createClient(P2pDataSyncRestService.class);
     }
 

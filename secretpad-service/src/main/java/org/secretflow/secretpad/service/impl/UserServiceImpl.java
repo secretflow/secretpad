@@ -140,9 +140,15 @@ public class UserServiceImpl implements UserService {
     public AccountsDO getUserByName(String userName) {
         Optional<AccountsDO> userOptional = userAccountsRepository.findByName(userName);
         if (userOptional.isEmpty()) {
-            throw SecretpadException.of(AuthErrorCode.USER_NOT_FOUND);
+            throw SecretpadException.of(AuthErrorCode.USER_NOT_FOUND, "9");
         }
         return userOptional.get();
+    }
+
+    @Override
+    public AccountsDO queryUserByName(String userName) {
+        Optional<AccountsDO> userOptional = userAccountsRepository.findByName(userName);
+        return userOptional.orElse(null);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -160,5 +166,14 @@ public class UserServiceImpl implements UserService {
         accountsDO.setFailedAttempts(null);
         userAccountsRepository.save(accountsDO);
 
+    }
+
+    @Override
+    public AccountsDO findLockedUser() {
+        Optional<AccountsDO> userOptional = userAccountsRepository.findLockedUser();
+        if (userOptional.isEmpty()) {
+            return null;
+        }
+        return userOptional.get();
     }
 }

@@ -30,6 +30,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.springframework.util.CollectionUtils;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -47,6 +48,8 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 @NoArgsConstructor
 public class ProjectJob implements Serializable {
+    @Serial
+    private static final long serialVersionUID = 5005877919773504643L;
     /**
      * Project id
      */
@@ -141,6 +144,8 @@ public class ProjectJob implements Serializable {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class JobTask implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
         /**
          * Task id
          */
@@ -161,5 +166,13 @@ public class ProjectJob implements Serializable {
          * Graph node information
          */
         private GraphNodeInfo node;
+
+        public static ProjectTaskDO toDO(ProjectJob job, JobTask task) {
+            return ProjectTaskDO.builder()
+                    .upk(new ProjectTaskDO.UPK(job.getProjectId(), job.getJobId(), task.getTaskId()))
+                    .graphNodeId(job.getGraphId())
+                    .parties(task.getParties())
+                    .build();
+        }
     }
 }

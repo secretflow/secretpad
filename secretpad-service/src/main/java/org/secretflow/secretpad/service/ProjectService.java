@@ -170,4 +170,19 @@ public interface ProjectService {
      */
     void archiveProject(ArchiveProjectRequest archiveProjectRequest);
 
+    /**
+     * project_graph_node  outputs fix derived fields for chexian
+     *
+     * @param projectId project resource ID
+     * @param graphId   project graphId
+     * @return ProjectOutputVO
+     */
+    ProjectOutputVO getProjectAllOutTable(String projectId, String graphId);
+
+    /**
+     * update project table config
+     *
+     * @param request
+     */
+    void updateProjectTableConfig(AddProjectDatatableRequest request);
 }

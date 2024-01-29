@@ -30,6 +30,10 @@ import org.secretflow.secretpad.persistence.model.*;
 import org.secretflow.secretpad.persistence.repository.*;
 
 import com.google.common.base.Strings;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.secretflow.v1alpha1.common.Common;
@@ -79,6 +83,10 @@ public class JobManager extends AbstractJobManager {
     private final ProjectReportRepository reportRepository;
     private final TeeNodeDatatableManagementRepository managementRepository;
 
+    private final ProjectReadDtaRepository readDtaRepository;
+    private final ProjectJobTaskRepository taskRepository;
+
+
     public JobManager(ProjectJobRepository projectJobRepository,
                       AbstractDatatableManager datatableManager,
                       ProjectResultRepository resultRepository,
@@ -88,7 +96,9 @@ public class JobManager extends AbstractJobManager {
                       ProjectModelRepository modelRepository,
                       ProjectReportRepository reportRepository,
                       TeeNodeDatatableManagementRepository managementRepository,
-                      JobServiceGrpc.JobServiceBlockingStub jobStub) {
+                      JobServiceGrpc.JobServiceBlockingStub jobStub,
+                      ProjectReadDtaRepository readDtaRepository,
+                      ProjectJobTaskRepository taskRepository) {
         this.projectJobRepository = projectJobRepository;
         this.datatableManager = datatableManager;
         this.resultRepository = resultRepository;
@@ -99,6 +109,8 @@ public class JobManager extends AbstractJobManager {
         this.reportRepository = reportRepository;
         this.managementRepository = managementRepository;
         this.jobStub = jobStub;
+        this.readDtaRepository = readDtaRepository;
+        this.taskRepository = taskRepository;
     }
 
     private PlatformTypeEnum getPlaformType() {
@@ -106,11 +118,11 @@ public class JobManager extends AbstractJobManager {
     }
 
 
-        /**
-         * Start synchronized job
-         * <p>
-         * TODO: can be refactor to void watch(type, handler) ?
-         */
+    /**
+     * Start synchronized job
+     * <p>
+     * TODO: can be refactor to void watch(type, handler) ?
+     */
     @Override
     public void startSync() {
         try {
@@ -251,6 +263,68 @@ public class JobManager extends AbstractJobManager {
                                 .build();
                         reportRepository.save(reportDO);
                         break;
+                    // todo rule json
+                    case READ_DATA:
+                        // find this input id mack which task and use task output to judge
+                        String inputId = taskDO.getGraphNode().getInputs().get(0);
+                        String graphNodeId = inputId;
+                        int i = graphNodeId.lastIndexOf("-");
+                        graphNodeId = graphNodeId.substring(0, i);
+                        i = graphNodeId.lastIndexOf("-");
+                        graphNodeId = graphNodeId.substring(0, i);
+                        LOGGER.debug("-- inputId {} graphNodeId {}", inputId, graphNodeId);
+                        Optional<ProjectTaskDO> projectTaskDOOptional = taskRepository.findLatestTasks(projectId, graphNodeId);
+                        if (projectTaskDOOptional.isEmpty()) {
+                            throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
+                        }
+                        String taskId = projectTaskDOOptional.get().getUpk().getJobId();
+                        String taskOutputId = genTaskOutputId(taskId, inputId);
+
+                        ProjectReadDataDO projectReadDataDO = readDtaRepository.findByProjectIdAndOutputIdLaste(projectId, taskOutputId);
+                        LOGGER.debug("readDataOptional aleady exist {} ", ObjectUtils.isEmpty(projectReadDataDO));
+                        String raw = ObjectUtils.isEmpty(projectReadDataDO) ? null : projectReadDataDO.getRaw();
+                        LOGGER.debug("projectReadDataDO.raw is {}", raw);
+                        ProjectReadDataDO readDataDO;
+                        Gson gson = new Gson();
+                        JsonElement jsonElement = gson.fromJson(distData, JsonElement.class);
+                        distData = gson.toJson(jsonElement.getAsJsonObject().getAsJsonObject("meta"));
+
+                        String modelHash = jsonElement.getAsJsonObject().getAsJsonObject("meta").get("modelHash").getAsString();
+                        String outPutId = taskDO.getUpk().getTaskId().substring(0, 4);
+                        LOGGER.debug("read modelHash  {} task {} graphNodeId {} datatableId {}", modelHash, outPutId, taskDO.getGraphNodeId(), datatableId);
+
+                        JsonArray jsonArray = new JsonArray();
+                        if (ObjectUtils.isEmpty(projectReadDataDO)) {
+                            jsonArray.add(distData);
+                            jsonArray.add(distData);
+                            readDataDO = ProjectReadDataDO.builder()
+                                    .upk(new ProjectReadDataDO.UPK(projectId, datatableId))
+                                    .content(gson.toJson(jsonArray))
+                                    .raw(distData)
+                                    .hash(modelHash)
+                                    .task(outPutId)
+                                    .grapNodeId(taskDO.getGraphNodeId())
+                                    .outputId(taskOutputId)
+                                    .build();
+                        } else {
+                            jsonArray.add(projectReadDataDO.getRaw());
+                            jsonArray.add(distData);
+                            LOGGER.debug("disData is :{}", distData);
+                            LOGGER.debug("raw is {}", projectReadDataDO.getRaw());
+                            readDataDO = ProjectReadDataDO.builder()
+                                    .upk(new ProjectReadDataDO.UPK(projectId, datatableId))
+                                    .content(gson.toJson(jsonArray))
+                                    .raw(projectReadDataDO.getRaw())
+                                    .hash(modelHash)
+                                    .task(outPutId)
+                                    .grapNodeId(taskDO.getGraphNodeId())
+                                    .outputId(taskOutputId)
+                                    .build();
+                            readDataDO.setContent(gson.toJson(jsonArray));
+                        }
+
+                        readDtaRepository.save(readDataDO);
+                        break;
                     default:
                         throw SecretpadException.of(DatatableErrorCode.UNSUPPORTED_DATATABLE_TYPE);
                 }
@@ -284,22 +358,25 @@ public class JobManager extends AbstractJobManager {
                     projectJob.setFinishedTime(DateTimes.utcFromRfc3339(it.getObject().getStatus().getEndTime()));
                 }
                 LOGGER.info("watched jobEvent: each job status");
-
+                Map<String, Job.TaskStatus> map = new HashMap<>();
                 kusciaJobStatus.getTasksList().forEach(kusciaTaskStatus -> {
-                        LOGGER.info("watched jobEvent: kuscia status {}", kusciaTaskStatus.toString());
-                        ProjectTaskDO task = projectJob.getTasks().get(kusciaTaskStatus.getTaskId());
-                        if (task == null) {
-                            LOGGER.error("watched jobEvent: taskId={} secretpad not exist but kuscia exist, now just skip", kusciaTaskStatus.getTaskId());
-                            // TODO: exception, secretpad not exist but kuscia exist, now skip
-                            return;
+                            LOGGER.info("watched jobEvent: kuscia status {}", kusciaTaskStatus.toString());
+                            String rawTaskId = kusciaTaskStatus.getTaskId();
+                            String taskId = removeContentAfterUnderscore(kusciaTaskStatus.getTaskId(), map, kusciaTaskStatus);
+                            ProjectTaskDO task = projectJob.getTasks().get(taskId);
+                            if (task == null) {
+                                LOGGER.error("watched jobEvent: taskId={} secretpad not exist but kuscia exist, now just skip", taskId);
+                                // TODO: exception, secretpad not exist but kuscia exist, now skip
+                                return;
+                            }
+                            kusciaTaskStatus = mergeKusciaTaskStatus(rawTaskId, taskId, map, kusciaTaskStatus);
+                            GraphNodeTaskStatus currentTaskStatus = GraphNodeTaskStatus.formKusciaTaskStatus(kusciaTaskStatus.getState());
+                            LOGGER.info("watched jobEvent: kuscia status {} {} {}", taskId, currentTaskStatus, kusciaTaskStatus);
+                            projectJob.transformTaskStatus(taskId, currentTaskStatus, currentTaskStatus == GraphNodeTaskStatus.FAILED ? taskFailedReason(kusciaTaskStatus) : null);
+                            task.setStatus(GraphNodeTaskStatus.formKusciaTaskStatus(kusciaTaskStatus.getState()));
+                            task.setErrMsg(kusciaTaskStatus.getErrMsg());
+                            syncResult(task); // TODO do what for delete?
                         }
-                        GraphNodeTaskStatus currentTaskStatus = GraphNodeTaskStatus.formKusciaTaskStatus(kusciaTaskStatus.getState());
-                        projectJob.transformTaskStatus(kusciaTaskStatus.getTaskId(), currentTaskStatus,
-                                currentTaskStatus == GraphNodeTaskStatus.FAILED ? taskFailedReason(kusciaTaskStatus) : null);
-                        task.setStatus(GraphNodeTaskStatus.formKusciaTaskStatus(kusciaTaskStatus.getState()));
-                        task.setErrMsg(kusciaTaskStatus.getErrMsg());
-                        syncResult(task); // TODO do what for delete?
-                    }
                 );
                 return projectJob;
             default:
@@ -411,7 +488,7 @@ public class JobManager extends AbstractJobManager {
      * @return status whether finished
      */
     private boolean isFinishedState(String state) {
-        return "Failed".equals(state) || "Succeeded".equals(state);
+        return "Failed" .equals(state) || "Succeeded" .equals(state);
     }
 
     /**
@@ -450,5 +527,44 @@ public class JobManager extends AbstractJobManager {
         if (status.getCode() != 0 || (!StringUtils.isEmpty(message) && !SUCCESS_STATUS_MESSAGE.equalsIgnoreCase(message))) {
             throw SecretpadException.of(JobErrorCode.PROJECT_JOB_CREATE_ERROR, status.getMessage());
         }
+    }
+
+    public static String removeContentAfterUnderscore(String str, Map<String, Job.TaskStatus> map, Job.TaskStatus kusciaTaskStatus) {
+        int commaIndex = str.indexOf("--");
+        if (commaIndex != -1) {
+            String taskId = str.substring(0, commaIndex);
+            map.put(taskId, kusciaTaskStatus);
+            return taskId;
+        } else {
+            return str;
+        }
+    }
+
+    public static Job.TaskStatus mergeKusciaTaskStatus(String rawTaskId, String taskId, Map<String, Job.TaskStatus> map, Job.TaskStatus kusciaTaskStatus) {
+        Job.TaskStatus.Builder builder = kusciaTaskStatus.toBuilder();
+        GraphNodeTaskStatus rawGraphNodeTaskStatus = GraphNodeTaskStatus.formKusciaTaskStatus(kusciaTaskStatus.getState());
+        if (!Objects.equals(rawTaskId, taskId) && rawTaskId.contains(taskId)) {
+            switch (rawGraphNodeTaskStatus) {
+                case SUCCEED, RUNNING -> builder.setState("Running");
+            }
+        } else {
+            if (map.containsKey(taskId)) {
+                Job.TaskStatus taskStatus = map.get(taskId);
+                GraphNodeTaskStatus graphNodeTaskStatus = GraphNodeTaskStatus.formKusciaTaskStatus(taskStatus.getState());
+                if (graphNodeTaskStatus == GraphNodeTaskStatus.FAILED) {
+                    builder.setState("Failed").setErrMsg(taskStatus.getErrMsg());
+                }
+                if (rawGraphNodeTaskStatus == GraphNodeTaskStatus.INITIALIZED) {
+                    if (graphNodeTaskStatus != GraphNodeTaskStatus.INITIALIZED) {
+                        builder.setState("Running");
+                    }
+                }
+            }
+        }
+        return builder.build();
+    }
+
+    public static String genTaskOutputId(String jobId, String outputId) {
+        return String.format("%s-%s", jobId, outputId);
     }
 }

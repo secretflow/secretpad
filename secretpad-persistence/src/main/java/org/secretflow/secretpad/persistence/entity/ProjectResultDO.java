@@ -23,6 +23,7 @@ import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -68,6 +69,8 @@ public class ProjectResultDO extends BaseAggregationRoot<ProjectResultDO> {
     @NoArgsConstructor
     @EqualsAndHashCode
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
         /**
          * Project id
          */

@@ -19,10 +19,12 @@ package org.secretflow.secretpad.persistence.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
  * system user and node rel
+ *
  * @author beiwei
  * @date 2023/9/13
  */
@@ -48,6 +50,9 @@ public class SysUserNodeRelDO extends SuperBaseAggregationRoot<SysUserNodeRelDO>
     @NoArgsConstructor
     @Embeddable
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
+
         @Column(name = "user_id", nullable = false, length = 64)
         private String userId;
 

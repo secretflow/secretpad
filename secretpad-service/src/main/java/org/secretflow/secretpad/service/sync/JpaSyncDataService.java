@@ -20,6 +20,7 @@ import org.secretflow.secretpad.common.dto.SyncDataDTO;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
+import org.secretflow.secretpad.common.util.DataSyncConsumerContext;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.DbChangeAction;
@@ -122,7 +123,7 @@ public class JpaSyncDataService {
         doAndRepository.put(ProjectApprovalConfigDO.class.getTypeName(), projectApprovalConfigRepository);
     }
 
-    @SuppressWarnings(value={"rawtypes"})
+    @SuppressWarnings(value = {"rawtypes"})
     public void syncData(SyncDataDTO dto) {
         if (ignore(dto)) {
             log.info(" ****** sync ignore dto {}", dto);
@@ -147,12 +148,16 @@ public class JpaSyncDataService {
         Object data = dto.getData();
         BaseRepository baseRepository = doAndRepository.get(dto.getTableName());
         // todo check last update version
+        if (!(data instanceof VoteRequestDO || data instanceof VoteInviteDO || data instanceof ProjectApprovalConfigDO)) {
+            DataSyncConsumerContext.setConsumerSync();
+        }
         switch (action) {
             case "create", "update" -> baseRepository.save(data);
             case "remove" -> baseRepository.delete(data);
-            default -> log.error("can not find action:{}", action);
+            default -> log.warn("can not find action:{}", action);
         }
         UserContext.remove();
+        DataSyncConsumerContext.remove();
     }
 
     private boolean ignore(@SuppressWarnings(value = {"rawtypes"}) SyncDataDTO dto) {
@@ -172,7 +177,7 @@ public class JpaSyncDataService {
             return "0";
         }
         Query nativeQuery = entityManager.createNativeQuery("select max(gmt_create) from " + name, String.class);
-        @SuppressWarnings(value={"rawtypes"})
+        @SuppressWarnings(value = {"rawtypes"})
         List resultList = nativeQuery.getResultList();
         Object lastUpdateTime = "0";
         if (!CollectionUtils.isEmpty(resultList)) {
@@ -187,7 +192,7 @@ public class JpaSyncDataService {
 
     @Async
     public void syncByLastUpdateTime(String nodeId) {
-        @SuppressWarnings(value={"rawtypes"})
+        @SuppressWarnings(value = {"rawtypes"})
         List<SyncDataDTO> syncDataDTOList = SseSession.sessionTableMap.get(nodeId);
         if (!CollectionUtils.isEmpty(syncDataDTOList)) {
             syncDataDTOList.forEach(s -> {
@@ -212,7 +217,7 @@ public class JpaSyncDataService {
         }
     }
 
-    @SuppressWarnings(value={"rawtypes"})
+    @SuppressWarnings(value = {"rawtypes"})
     public List<ProjectNodesInfo> findDoByTime(SyncDataDTO s) {
         String tableName = s.getTableName();
         String lastUpdateTime = s.getLastUpdateTime();
@@ -222,7 +227,7 @@ public class JpaSyncDataService {
             LocalDateTime parse = LocalDateTime.parse(s.getLastUpdateTime(), DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
             gmtModified = (root, query, criteriaBuilder) -> criteriaBuilder.greaterThan(root.get("gmtModified"), parse);
         }
-        List<ProjectNodesInfo> resultList = ObjectUtils.isEmpty(gmtModified)?baseRepository.findAll():baseRepository.findAll(gmtModified);
+        List<ProjectNodesInfo> resultList = ObjectUtils.isEmpty(gmtModified) ? baseRepository.findAll() : baseRepository.findAll(gmtModified);
         log.info("data sync start table: {} ,lastUpdateTime:{}, num: {}", tableName, lastUpdateTime, resultList.size());
         return resultList;
     }

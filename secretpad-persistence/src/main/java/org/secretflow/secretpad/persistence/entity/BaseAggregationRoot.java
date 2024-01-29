@@ -27,8 +27,10 @@ import jakarta.persistence.EntityListeners;
 import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.domain.AbstractAggregateRoot;
 
+import java.io.Serial;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
@@ -43,9 +45,12 @@ import java.util.List;
  */
 @Getter
 @Setter
+@ToString
 @MappedSuperclass
 @EntityListeners(EntityChangeListener.class)
 public abstract class BaseAggregationRoot<A extends AbstractAggregateRoot<A>> extends AbstractAggregateRoot<A> implements ProjectNodesInfo {
+    @Serial
+    private static final long serialVersionUID = 5005877919773504643L;
 
     /**
      * The id of the database is automatically added

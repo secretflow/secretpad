@@ -346,9 +346,9 @@ function start_edge() {
     log "Please visit the website http://localhost:${port} (or http://{the IPAddress of this machine}:${port}) to experience the Kuscia web's functions ."
     log "The login name:'${SECRETPAD_USER_NAME}' ,The login password:'${SECRETPAD_PASSWORD}' ."
     log "The demo data would be stored in the path: ${VOLUME_PATH} ."
-    log "the SECRETPAD_IMAGE is: ${SECRETPAD_TAG} ."
-    log "the KUSCIA_IMAGE is: ${KUSCIA_TAG} ."
-    log "the SECRETFLOW_TAG is: ${SECRETFLOW_TAG} ."
+    log "the SECRETPAD_IMAGE is: ${SECRETPAD_IMAGE} ."
+    log "the KUSCIA_IMAGE is: ${KUSCIA_IMAGE} ."
+    log "the SECRETFLOW_TAG is: ${SECRETFLOW_IMAGE} ."
   fi
 }
 

@@ -25,6 +25,7 @@ import org.secretflow.secretpad.service.graph.converter.KusciaJobConverter;
 import org.secretflow.secretpad.service.graph.converter.KusciaTrustedFlowJobConverter;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
 
+import lombok.extern.slf4j.Slf4j;
 import org.secretflow.v1alpha1.kusciaapi.Job;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -36,6 +37,7 @@ import org.springframework.util.CollectionUtils;
  * @author yansi
  * @date 2023/6/8
  */
+@Slf4j
 @Component
 public class JobSubmittedHandler extends AbstractJobHandler<ProjectJob> {
     @Autowired
@@ -71,6 +73,7 @@ public class JobSubmittedHandler extends AbstractJobHandler<ProjectJob> {
         } else {
             request = jobConverter.converter(job);
         }
+        log.info("kuscia job  request :{}", request);
         jobManager.createJob(request);
         if (next != null) {
             next.doHandler(job);

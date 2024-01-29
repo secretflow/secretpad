@@ -44,4 +44,15 @@ public class JobUtils {
     public static String genTaskOutputId(String jobId, String outputId) {
         return String.format("%s-%s", jobId, outputId);
     }
+
+    /**
+     * Generate extend taskId via jobId and graph nodeId
+     *
+     * @param jobId  target jobId
+     * @param extend target graph nodeId
+     * @return taskId
+     */
+    public static String genExtendTaskId(String jobId, String extend) {
+        return String.format("%s--%s", jobId, extend);
+    }
 }

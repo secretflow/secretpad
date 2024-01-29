@@ -24,6 +24,7 @@ import jakarta.persistence.Table;
 import lombok.*;
 import org.hibernate.Hibernate;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -92,6 +93,9 @@ public class VoteInviteDO extends BaseAggregationRoot<VoteInviteDO> {
     @NoArgsConstructor
     @ToString
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
+
         @Column(name = "vote_id", nullable = false, length = 64)
         private String voteID;
 

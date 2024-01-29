@@ -24,6 +24,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.Hibernate;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -140,6 +141,9 @@ public class VoteRequestDO extends BaseAggregationRoot<VoteRequestDO> {
     @AllArgsConstructor
     @NoArgsConstructor
     public static class PartyVoteInfo implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
+
         private String nodeId;
         private String action;
         private String reason;

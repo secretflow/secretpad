@@ -1,0 +1,8 @@
+                        _                   _
+                       | |                 | |      secretpad  https://www.secretflow.org.cn/
+ ___  ___  ___ _ __ ___| |_ _ __   __ _  __| |      Running in ${secretpad.deploy-mode} mode, ${secretpad.platform-type} function modules
+/ __|/ _ \/ __| '__/ _ \ __| '_ \ / _` |/ _` |      Port: ${server.http-port}
+\__ \  __/ (__| | |  __/ |_| |_) | (_| | (_| |      Pid: ${pid}
+|___/\___|\___|_|  \___|\__| .__/ \__,_|\__,_|      Console: http://127.0.0.1:${server.http-port}/
+                           | |
+                           |_|

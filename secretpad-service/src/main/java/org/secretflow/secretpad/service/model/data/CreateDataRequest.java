@@ -19,6 +19,7 @@ package org.secretflow.secretpad.service.model.data;
 import org.secretflow.secretpad.manager.integration.model.DatatableSchema;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.util.List;
@@ -39,6 +40,7 @@ public class CreateDataRequest {
     /**
      * Node id
      */
+    @NotBlank
     @Schema(description = "node id")
     private String nodeId;
 
@@ -46,6 +48,7 @@ public class CreateDataRequest {
      * The data file name, it must be the same as that of the source file
      */
     @Schema(description = "data file name")
+    @NotBlank
     private String name;
 
     /**
@@ -58,6 +61,7 @@ public class CreateDataRequest {
      * Specific table name, user manually filled
      */
     @Schema(description = "specific table name")
+    @NotBlank
     private String tableName;
 
     /**

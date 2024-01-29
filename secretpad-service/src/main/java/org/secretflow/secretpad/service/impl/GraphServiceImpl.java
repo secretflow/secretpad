@@ -42,12 +42,16 @@ import org.secretflow.secretpad.service.graph.JobChain;
 import org.secretflow.secretpad.service.model.graph.*;
 import org.secretflow.secretpad.service.model.project.GetProjectJobTaskOutputRequest;
 import org.secretflow.secretpad.service.model.project.StopProjectJobTaskRequest;
-import org.secretflow.secretpad.service.util.JobUtils;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.base.Strings;
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.secretflow.spec.v1.AttrType;
 import com.secretflow.spec.v1.ComponentDef;
 import com.secretflow.spec.v1.Table;
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -61,6 +65,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.secretflow.secretpad.service.constant.Constants.TEE_PROJECT_MODE;
+import static org.secretflow.secretpad.service.util.JobUtils.genTaskOutputId;
 
 /**
  * Graph service implementation class
@@ -119,6 +124,12 @@ public class GraphServiceImpl implements GraphService {
 
     @Autowired
     private ProjectRepository projectRepository;
+
+    @Resource
+    private ProjectReadDtaRepository projectReadDtaRepository;
+
+    @Autowired
+    private ProjectReadDtaRepository readDtaRepository;
 
 
     @Value("${tee.domain-id:tee}")
@@ -309,8 +320,10 @@ public class GraphServiceImpl implements GraphService {
             outputVO.setGraphID(projectJobDOOptional.get().getGraphId());
             List<String> outputs = taskDO.getGraphNode().getOutputs();
             if (CollectionUtils.isEmpty(outputs) || outputs.contains(outputId)) {
-                String latestOutputId = JobUtils.genTaskOutputId(jobId, outputId);
+                String latestOutputId = genTaskOutputId(jobId, outputId);
                 List<ProjectResultDO> resultDOS = resultRepository.findByOutputId(projectId, taskId, latestOutputId);
+                //task file compensation binning modifications
+                compensationBinningModifications(taskDO, outputId, outputVO);
                 if (!CollectionUtils.isEmpty(resultDOS)) {
                     for (ProjectResultDO resultDO : resultDOS) {
                         ResultKind resultKind = resultDO.getUpk().getKind();
@@ -327,8 +340,38 @@ public class GraphServiceImpl implements GraphService {
                                 }
                                 ProjectReportDO reportDO = reportDOOptional.get();
                                 String content = reportDO.getContent();
-                                Object tabs = JsonUtils.parseObject(content).get("meta").get("tabs");
-                                outputVO.setTabs(tabs);
+                                JsonNode jsonNode = JsonUtils.parseObject(content);
+                                Object tabs = null;
+                                if (ObjectUtils.isNotEmpty(jsonNode)) {
+                                    JsonNode meta = jsonNode.get("meta");
+                                    if (ObjectUtils.isNotEmpty(meta)) {
+                                        tabs = meta.get("tabs");
+                                    }
+                                }
+                                outputVO.setTabs(ObjectUtils.isEmpty(tabs) ? new ArrayList<>() : tabs);
+                                return outputVO;
+                            case READ_DATA:
+                                Optional<ProjectReadDataDO> readDataDOOptional = projectReadDtaRepository.findById(new ProjectReadDataDO.UPK(projectId, latestOutputId));
+                                if (readDataDOOptional.isEmpty()) {
+                                    throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_OUTPUT_NOT_EXISTS);
+                                }
+                                ProjectReadDataDO readDataDO = readDataDOOptional.get();
+                                content = readDataDO.getContent();
+                                log.info("content is {}", content);
+
+                                Gson gson = new Gson();
+                                String outputTabs = (String) outputVO.getTabs();
+                                String json1 = gson.toJson(outputTabs);
+                                JsonElement jsonElement = gson.fromJson(json1, JsonElement.class);
+                                log.info("json1 is {}", json1);
+
+                                JsonElement contentElement = gson.fromJson(content, JsonElement.class);
+                                JsonArray contentJsonArray = contentElement.getAsJsonArray();
+                                contentJsonArray.set(0, jsonElement);
+                                String json = gson.toJson(contentJsonArray);
+
+                                log.info("json is {}", json);
+                                outputVO.setTabs(json);
                                 return outputVO;
                             case Model:
                                 GraphNodeOutputVO.OutputResult outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(nodeId).path(latestOutputId).type(ResultKind.Model.getName()).tableId(latestOutputId).build();
@@ -356,6 +399,39 @@ public class GraphServiceImpl implements GraphService {
         GraphNodeOutputVO.FileMeta fileMeta = GraphNodeOutputVO.FileMeta.builder().headers(ProtoUtils.protosToListMap(List.of(fileHeader))).rows(outputResults).build();
         outputVO.setMeta(fileMeta);
         return outputVO;
+    }
+
+    private void compensationBinningModifications(ProjectTaskDO taskDO, String outputId, GraphNodeOutputVO outputVO) {
+        String projectId = taskDO.getUpk().getProjectId();
+        ProjectGraphNodeDO graphNode = taskDO.getGraphNode();
+        String type = outputId.substring(outputId.length() - 1);
+        log.info("Label:{} -------> outputId:{}  --------> type：{}", graphNode.getLabel(), outputId, type);
+        if ("分箱修改".equals(graphNode.getLabel()) && "1".equals(type)) {
+
+            String inputId = taskDO.getGraphNode().getInputs().get(0);
+            String graphNodeId = inputId;
+            int i = graphNodeId.lastIndexOf('-');
+            graphNodeId = graphNodeId.substring(0, i);
+            i = graphNodeId.lastIndexOf('-');
+            graphNodeId = graphNodeId.substring(0, i);
+            log.info("-- inputId {} graphNodeId {}", inputId, graphNodeId);
+            Optional<ProjectTaskDO> projectTaskDOOptional = taskRepository.findLatestTasks(projectId, graphNodeId);
+            if (projectTaskDOOptional.isEmpty()) {
+                throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
+            }
+            String taskId = projectTaskDOOptional.get().getUpk().getJobId();
+            String taskOutputId = genTaskOutputId(taskId, inputId);
+
+            ProjectReadDataDO projectReadDataDO = readDtaRepository.findByProjectIdAndOutputIdLaste(projectId, taskOutputId);
+            if (!ObjectUtils.isEmpty(projectReadDataDO)) {
+                String contentResult = projectReadDataDO.getRaw();
+                outputVO.setTabs(contentResult);
+                log.info("tabs result is {}", contentResult);
+                outputVO.setType(GraphNodeOutputVO.typeFromResultKind(ResultKind.READ_DATA));
+                outputVO.setCodeName(taskDO.getGraphNode().getCodeName());
+            }
+        }
+
     }
 
     @Override
@@ -570,9 +646,14 @@ public class GraphServiceImpl implements GraphService {
             throw SecretpadException.of(JobErrorCode.PROJECT_JOB_TASK_NOT_EXISTS);
         }
         ProjectTaskDO task = taskDOOptional.get();
-        return new GraphNodeTaskLogsVO(task.getStatus(),
+        GraphNodeTaskLogsVO graphNodeTaskLogsVO = new GraphNodeTaskLogsVO(task.getStatus(),
                 jobTaskLogRepository.findAllByJobTaskId(task.getUpk().getJobId(), task.getUpk().getTaskId())
-                        .stream().map(ProjectJobTaskLogDO::getLog).collect(Collectors.toList()));
+                        .stream().map(ProjectJobTaskLogDO::getLog).distinct().collect(Collectors.toList()));
+        String logPrefix = String.format("INFO the jobId=%s, taskId=%s-%s", task.getUpk().getJobId(), task.getUpk().getJobId(), request.getGraphNodeId());
+        log.info("log de duplication matching， {}", logPrefix);
+        distinctSpecifyLogs(graphNodeTaskLogsVO, logPrefix + " start");
+        distinctSpecifyLogs(graphNodeTaskLogsVO, logPrefix + " succeed");
+        return graphNodeTaskLogsVO;
     }
 
     @Override
@@ -634,5 +715,26 @@ public class GraphServiceImpl implements GraphService {
                 }
             }
         }
+    }
+
+
+    //Delete redundant start and succeed logs
+    private void distinctSpecifyLogs(GraphNodeTaskLogsVO graphNodeTaskLogsVO, String distinctValue) {
+        List<String> logs = graphNodeTaskLogsVO.getLogs();
+        List<String> uniqueList = new ArrayList<>();
+        boolean flag = false;
+        for (String str : logs) {
+            if (str.contains(distinctValue) && !str.contains("failed")) {
+                if (!flag) {
+                    uniqueList.add(str);
+                } else {
+                    log.info("remove log {}", str);
+                }
+                flag = true;
+            } else {
+                uniqueList.add(str);
+            }
+        }
+        graphNodeTaskLogsVO.setLogs(uniqueList);
     }
 }

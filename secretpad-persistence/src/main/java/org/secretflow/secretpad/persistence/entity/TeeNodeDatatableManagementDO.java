@@ -24,6 +24,7 @@ import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
@@ -42,7 +43,7 @@ import java.io.Serializable;
 @Table(name = "tee_node_datatable_management")
 @SQLDelete(sql = "update tee_node_datatable_management set is_deleted = 1 where job_id = ?")
 @Where(clause = "is_deleted = 0")
-public class TeeNodeDatatableManagementDO extends BaseAggregationRoot<TeeNodeDatatableManagementDO>{
+public class TeeNodeDatatableManagementDO extends BaseAggregationRoot<TeeNodeDatatableManagementDO> {
 
     /**
      * Tee node datatable management unique primary key
@@ -94,6 +95,9 @@ public class TeeNodeDatatableManagementDO extends BaseAggregationRoot<TeeNodeDat
     @NoArgsConstructor
     @EqualsAndHashCode
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 291568296509217011L;
+
         /**
          * Node id
          */

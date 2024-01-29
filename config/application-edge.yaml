@@ -117,6 +117,7 @@ edge:
     - /api/v1alpha1/datatable/delete
     - /api/v1alpha1/nodeRoute/update
     - /api/v1alpha1/nodeRoute/delete
+    - /api/v1alpha1/project/update/tableConfig
   include:
     - /api/login
     - /api/logout
@@ -145,6 +146,7 @@ edge:
     - /api/v1alpha1/project/list
     - /api/v1alpha1/project/datatable/add
     - /api/v1alpha1/project/datatable/delete
+    - /api/v1alpha1/project/datatable/get
     # nodeRoute
     - /api/v1alpha1/nodeRoute/page
     - /api/v1alpha1/nodeRoute/update

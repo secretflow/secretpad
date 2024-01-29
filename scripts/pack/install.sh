@@ -35,6 +35,7 @@ usage() {
 NETWORK_MODE:
     master       deploy master (default)
     lite         deploy lite node
+    p2p          deploy p2p  node
 
 lite OPTIONS:
     -i              [optional]  The IP address exposed by the domain. Usually the host IP, default is the IP address of interface eth0.
@@ -259,7 +260,6 @@ function start_lite() {
   if [[ ${domain_certs_dir} == "" ]]; then
     domain_certs_dir=${ROOT}/${domain_id}/certs
   fi
-  cmd_opt="${cmd_opt} -c ${domain_certs_dir}"
   # set host ip
   if [[ ${domain_host_ip} != "" ]]; then
     cmd_opt="${cmd_opt} -i ${domain_host_ip}"
@@ -313,8 +313,6 @@ function start_kuscia() {
   if [[ ${domain_certs_dir} == "" ]]; then
     domain_certs_dir=${ROOT}/kuscia-autonomy-${domain_id}-certs
   fi
-  rm -rf domain_certs_dir
-  cmd_opt="${cmd_opt} -c ${domain_certs_dir}"
   # set host ip
   if [[ ${domain_host_ip} != "" ]]; then
     cmd_opt="${cmd_opt} -i ${domain_host_ip}"

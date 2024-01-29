@@ -24,6 +24,7 @@ import com.secretflow.spec.v1.ComponentDef;
 
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Component service interface
@@ -32,6 +33,8 @@ import java.util.Map;
  * @date 2023/6/7
  */
 public interface ComponentService {
+    Map<String, ComponentDef> SF_HIDE_COMPONENTS = new ConcurrentHashMap<>();
+
     /**
      * List components and build component list view object
      *
