@@ -24,7 +24,7 @@ fi
 
 if [[ $WITH_FRONTEND_FLAG == true ]]; then
   ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
-  FRONTEND_LATEST_TAG=$(git ls-remote --sort='version:refname' --tags https://github.com/secretflow/secretpad-frontend.git | tail -n1 | sed 's/.*\///')
+  FRONTEND_LATEST_TAG=$(git ls-remote --sort='version:refname' --refs --tags https://github.com/secretflow/secretpad-frontend.git | tail -n1 | sed 's/.*\///')
   WORK_DIR="./tmp/frontend"
   mkdir -p $WORK_DIR
   wget -O $WORK_DIR/frontend.tar https://github.com/secretflow/secretpad-frontend/releases/download/"${FRONTEND_LATEST_TAG}"/"${FRONTEND_LATEST_TAG}".tar
