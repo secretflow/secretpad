@@ -21,6 +21,7 @@ import org.secretflow.secretpad.persistence.model.GraphEdgeDO;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.apache.commons.lang3.ObjectUtils;
 import org.hibernate.Hibernate;
 
 import java.io.Serial;
@@ -66,7 +67,7 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
     /**
      * Project graph node DO list
      */
-    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.EAGER, cascade = CascadeType.ALL, orphanRemoval = true)
     @JoinColumns(
             value = {
                     @JoinColumn(name = "project_id", referencedColumnName = "project_id", nullable = false, updatable = false, insertable = false),
@@ -86,7 +87,9 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
             this.nodes = new ArrayList<>();
         }
         this.nodes.clear();
-        this.nodes = nodes;
+        if (ObjectUtils.isNotEmpty(nodes)) {
+            this.nodes.addAll(nodes);
+        }
     }
 
     /**

@@ -145,6 +145,8 @@ function init_images_from_files() {
     			SECRETFLOW_IMAGE=$someimage
     		elif [[ $someimage == *sf-dev-anolis8* ]]; then
         	SECRETFLOW_IMAGE=$someimage
+        elif [[ $someimage == *secretflow-* ]]; then
+          SECRETFLOW_IMAGE=$someimage
         elif [[ $someimage == *sf-tee-dm-sim* ]]; then
           TEE_DM_IMAGE=$someimage
         elif [[ $someimage == *capsule-manager-sim* ]]; then

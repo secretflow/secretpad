@@ -216,7 +216,7 @@ public class GraphServiceImpl implements GraphService {
         }
         ProjectGraphDO graphDO = graphDOOptional.get();
         graphDO.getNodes().clear();
-        graphDO.getNodes().addAll(GraphNodeInfo.toDOList(projectId, graphId, request.getNodes()));
+        graphDO.setNodes(GraphNodeInfo.toDOList(projectId, graphId, request.getNodes()));
         graphDO.setEdges(GraphEdge.toDOList(request.getEdges()));
         graphRepository.save(graphDO);
     }
