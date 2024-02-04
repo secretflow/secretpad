@@ -111,7 +111,6 @@ edge:
   forward:
     - /api/v1alpha1/project/datatable/add
     - /api/v1alpha1/project/datatable/delete
-    # -/api/v1alpha1/data/createData
     - /api/v1alpha1/approval/create
     - /api/v1alpha1/node/update
     - /api/v1alpha1/datatable/delete
@@ -156,6 +155,7 @@ edge:
     - /api/v1alpha1/nodeRoute/get
     # other
     - /api/v1alpha1/user/remote/resetPassword
+    - /api/v1alpha1/user/updatePwd
     - /api/v1alpha1/approval/create
     - /api/v1alpha1/user/get
     - /api/v1alpha1/component/list

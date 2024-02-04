@@ -135,7 +135,7 @@ public class ProjectGraphNodeDO extends BaseAggregationRoot<ProjectGraphNodeDO> 
 
         @Override
         public int hashCode() {
-            return Objects.hash(projectId, graphId, graphId);
+            return Objects.hash(projectId, graphId, graphNodeId);
         }
     }
 

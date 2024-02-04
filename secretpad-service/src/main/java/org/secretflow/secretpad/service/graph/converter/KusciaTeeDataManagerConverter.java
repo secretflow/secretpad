@@ -25,7 +25,6 @@ import org.secretflow.secretpad.service.model.graph.ProjectJob;
 import com.google.common.collect.Lists;
 import com.google.protobuf.ListValue;
 import com.google.protobuf.Struct;
-import com.secretflow.spec.v1.Attribute;
 import com.secretflow.spec.v1.DistData;
 import org.apache.commons.lang3.StringUtils;
 import org.secretflow.proto.kuscia.TaskConfig;
@@ -169,7 +168,7 @@ public class KusciaTeeDataManagerConverter implements JobConverter {
                         .setVersion(VERSION)
                         .addAllAttrPaths(List.of(TEE_DELETE_ATTR_PATH_DOMAIN))
                         .addAllAttrs(List.of(
-                                Struct.newBuilder().mergeFrom(Attribute.newBuilder().setS(job.getNodeId()).build()).build()
+                                Struct.newBuilder().putFields(ComponentConstants.ATTRIBUTE_S, com.google.protobuf.Value.newBuilder().setStringValue(job.getNodeId()).build()).build()
                         ))
                         .addAllInputs(List.of(distDataBuilder.build()));
                 taskInputConfigBuilder.setSfNodeEvalParam(nodeEvalParamBuilder.build());
@@ -232,8 +231,10 @@ public class KusciaTeeDataManagerConverter implements JobConverter {
                         .setVersion(VERSION)
                         .addAllAttrPaths(List.of(TEE_PULL_ATTR_PATH_DOMAIN, TEE_PULL_ATTR_VOTE_RESULT))
                         .addAllAttrs(List.of(
-                                Struct.newBuilder().mergeFrom(Attribute.newBuilder().setS(job.getNodeId()).build()).build(),
-                                Struct.newBuilder().mergeFrom(Attribute.newBuilder().setS(job.getVoteResult()).build()).build()
+                                Struct.newBuilder().putFields(ComponentConstants.ATTRIBUTE_S, com.google.protobuf.Value.newBuilder().setStringValue(job.getNodeId()).build()).build(),
+                                Struct.newBuilder().
+                                        putFields(ComponentConstants.ATTRIBUTE_S, com.google.protobuf.Value.newBuilder().setStringValue(job.getVoteResult()).build())
+                                        .build()
                         ))
                         .addAllInputs(List.of(distDataBuilder.build()))
                         .addAllOutputUris(List.of(outputUri));
