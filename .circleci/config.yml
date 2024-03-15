@@ -71,7 +71,5 @@ workflows:
     jobs:
       - build-and-push:
           filters:
-            branches:
-              ignore: /.*/
             tags:
               only: /^v.*/
