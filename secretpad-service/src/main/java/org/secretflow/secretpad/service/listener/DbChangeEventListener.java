@@ -19,7 +19,11 @@ package org.secretflow.secretpad.service.listener;
 import org.secretflow.secretpad.common.dto.SyncDataDTO;
 import org.secretflow.secretpad.persistence.datasync.buffer.DataSyncDataBufferTemplate;
 import org.secretflow.secretpad.persistence.datasync.listener.EntityChangeListener;
+import org.secretflow.secretpad.persistence.entity.FeatureTableDO;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
+import org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO;
+import org.secretflow.secretpad.persistence.entity.ProjectNodesInfo;
+import org.secretflow.secretpad.persistence.repository.FeatureTableRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
 import org.secretflow.secretpad.service.sync.center.SseSession;
 
@@ -32,6 +36,7 @@ import org.springframework.util.CollectionUtils;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * Database change event listener
@@ -44,9 +49,18 @@ import java.util.List;
 @SuppressWarnings(value = {"rawtypes"})
 public class DbChangeEventListener {
     private final ProjectNodeRepository projectNodeRepository;
+    private final FeatureTableRepository featureTableRepository;
     private final DataSyncDataBufferTemplate dataSyncDataBufferTemplate;
 
-    private void sync(EntityChangeListener.DbChangeEvent event) throws InterruptedException {
+    private void sync(EntityChangeListener.DbChangeEvent event) {
+        if (event.getSource() instanceof ProjectFeatureTableDO) {
+            ProjectNodesInfo r = event.getSource();
+            Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(((ProjectFeatureTableDO) r).getUpk().getFeatureTableId(), ((ProjectFeatureTableDO) r).getUpk().getNodeId()));
+            if (featureTableDOOptional.isEmpty()) {
+                log.warn("featureTableDOOptional is empty");
+            }
+            ((ProjectFeatureTableDO) r).setFeatureTable(featureTableDOOptional.get());
+        }
         if (event.getSource() instanceof NodeDO) {
             log.info("*** get data sync , filter {} will be send", SseSession.sessionMap.keySet());
             SseSession.sendAll(SyncDataDTO.builder()
@@ -56,6 +70,7 @@ public class DbChangeEventListener {
             return;
         }
         List<String> nodeIds = event.getNodeIds();
+        log.info("*** before {} will be send to {}", event, nodeIds);
         if (CollectionUtils.isEmpty(nodeIds)) {
             nodeIds = new ArrayList<>();
             String projectId = event.getProjectId();

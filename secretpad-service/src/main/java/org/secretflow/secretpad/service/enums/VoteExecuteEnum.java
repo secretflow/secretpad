@@ -31,6 +31,5 @@ public enum VoteExecuteEnum {
     OBSERVER,
 
     FAILED,
-    ;
 
 }

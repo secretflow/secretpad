@@ -22,6 +22,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Objects;
 import java.util.function.Function;
 
 /**
@@ -35,8 +36,8 @@ public class PageUtils {
 
     public static <I, O> List<O> convert(Page<I> in, Function<I, O> function) {
         List<O> result = new ArrayList<>();
-        if (!CollectionUtils.isEmpty(in.getContent())) {
-            in.getContent().stream().forEach(e -> result.add(function.apply(e)));
+        if (Objects.nonNull(in) && !CollectionUtils.isEmpty(in.getContent())) {
+            in.getContent().forEach(e -> result.add(function.apply(e)));
         }
         return result;
     }
@@ -45,7 +46,7 @@ public class PageUtils {
     public static <I, O> List<O> convert(Collection<I> in, Function<I, O> function) {
         List<O> result = new ArrayList<>();
         if (!CollectionUtils.isEmpty(in)) {
-            in.stream().forEach(e -> result.add(function.apply(e)));
+            in.forEach(e -> result.add(function.apply(e)));
         }
         return result;
     }

@@ -153,10 +153,9 @@ public class ProjectJobTaskLogDO implements Serializable {
         if (this == o) {
             return true;
         }
-        if (!(o instanceof ProjectJobTaskLogDO)) {
+        if (!(o instanceof ProjectJobTaskLogDO that)) {
             return false;
         }
-        ProjectJobTaskLogDO that = (ProjectJobTaskLogDO) o;
         return Objects.equals(id, that.id) && Objects.equals(projectId, that.projectId) && Objects.equals(jobId, that.jobId) && Objects.equals(taskId, that.taskId);
     }
 

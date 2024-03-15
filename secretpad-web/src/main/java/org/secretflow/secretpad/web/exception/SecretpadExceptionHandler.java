@@ -22,10 +22,10 @@ import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.i18n.MessageResolver;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
 
+import jakarta.annotation.Resource;
 import org.apache.tomcat.util.http.fileupload.impl.FileSizeLimitExceededException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -44,7 +44,7 @@ import java.util.List;
 public class SecretpadExceptionHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(SecretpadExceptionHandler.class);
 
-    @Autowired
+    @Resource
     private MessageResolver messageResolver;
 
     /**
@@ -57,7 +57,7 @@ public class SecretpadExceptionHandler {
     public SecretPadResponse<Object> handlerSecretpadException(SecretpadException ex) {
         ErrorCode errorCode = ex.getErrorCode();
         String message = messageResolver.getMessage(errorCode, ex.getArgs());
-        LOGGER.error("find error: {}, message: {} ", ex.getErrorCode(), ex.getMessage());
+        LOGGER.error("find SecretpadException error: {}, message: {} ", ex.getErrorCode(), ex.getMessage(), ex);
         return new SecretPadResponse<>(new SecretPadResponse.SecretPadResponseStatus(errorCode.getCode(), message),
                 null);
     }
@@ -76,7 +76,7 @@ public class SecretpadExceptionHandler {
             String defaultMessage = fieldError.getDefaultMessage();
             collect.add(defaultMessage);
         }
-        LOGGER.error("handler argument check error: {}, cause: {}", ex.getMessage(), ex.getCause());
+        LOGGER.error("handler argument check error", ex);
         return handlerSecretpadException(SecretpadException.of(SystemErrorCode.VALIDATION_ERROR, collect.get(0)));
     }
 
@@ -88,7 +88,7 @@ public class SecretpadExceptionHandler {
      */
     @ExceptionHandler(value = Exception.class)
     public Object handleException(Exception ex) {
-        LOGGER.error("handler error: {}, cause: {}, ex: {}", ex.getMessage(), ex.getCause(), ex);
+        LOGGER.error("handler Exception error", ex);
         return handlerSecretpadException(SecretpadException.of(SystemErrorCode.UNKNOWN_ERROR, ex.getMessage()));
     }
 
@@ -100,7 +100,7 @@ public class SecretpadExceptionHandler {
      */
     @ExceptionHandler(value = FileSizeLimitExceededException.class)
     public Object handleFileSizeException(Exception ex) {
-        LOGGER.error("handler error: {}, cause: {}, ex: {}", ex.getMessage(), ex.getCause(), ex);
+        LOGGER.error("handler FileSizeLimitExceededException error", ex);
         return handlerSecretpadException(SecretpadException.of(SystemErrorCode.UNKNOWN_ERROR, ex.getMessage()));
     }
 

@@ -16,11 +16,12 @@
 
 package org.secretflow.secretpad.service.auth.impl;
 
-import lombok.extern.slf4j.Slf4j;
-import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.enums.DataResourceTypeEnum;
+import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.service.auth.DataResourceAuth;
+
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -34,25 +35,25 @@ public class DefaultDataResourceAuth implements DataResourceAuth {
 
     @Autowired
     private DataResourceProjectAuth dataResourceProjectAuth;
+
     /**
-     *
      * @param resourceType resource type
-     * @param resourceId resource id
+     * @param resourceId   resource id
      * @return result
      */
     @Override
     public boolean check(DataResourceTypeEnum resourceType, String resourceId) {
         UserOwnerTypeEnum ownerType = UserContext.getUser().getOwnerType();
-        if (UserOwnerTypeEnum.CENTER.equals(ownerType)){
+        if (UserOwnerTypeEnum.CENTER.equals(ownerType)) {
             // Center user has all data permission
             return true;
         }
 
-        if(DataResourceTypeEnum.NODE_ID.equals(resourceType)){
+        if (DataResourceTypeEnum.NODE_ID.equals(resourceType)) {
             return UserContext.getUser().getOwnerId().equals(resourceId);
         }
 
-        if(DataResourceTypeEnum.PROJECT_ID.equals(resourceType)){
+        if (DataResourceTypeEnum.PROJECT_ID.equals(resourceType)) {
             return dataResourceProjectAuth.check(resourceId);
         }
         return false;

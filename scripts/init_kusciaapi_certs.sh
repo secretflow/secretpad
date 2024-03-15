@@ -34,10 +34,10 @@ openssl genpkey -out ${CLIENT}.pem -algorithm RSA -pkeyopt rsa_keygen_bits:2048
 
 #generate the Certificate Signing Request
 openssl req -new -key ${CLIENT}.pem -days ${DAYS} -out ${CLIENT}.csr \
-    -subj "/CN=kusciaapi"
+	-subj "/CN=kusciaapi"
 
 #sign it with Root CA
-openssl x509  -req -in ${CLIENT}.csr \
-    -CA ca.crt -CAkey ca.key -out ${CLIENT}.crt -days ${DAYS} -sha256 -CAcreateserial
+openssl x509 -req -in ${CLIENT}.csr \
+	-CA ca.crt -CAkey ca.key -out ${CLIENT}.crt -days ${DAYS} -sha256 -CAcreateserial
 
 popd || exit

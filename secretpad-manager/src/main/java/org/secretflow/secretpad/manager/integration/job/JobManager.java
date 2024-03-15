@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.manager.integration.job;
 
+import org.secretflow.secretpad.common.constant.CacheConstants;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.JobErrorCode;
@@ -25,6 +26,7 @@ import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
+import org.secretflow.secretpad.manager.integration.model.ModelExportDTO;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.*;
 import org.secretflow.secretpad.persistence.repository.*;
@@ -33,6 +35,7 @@ import com.google.common.base.Strings;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import jakarta.annotation.Resource;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -42,6 +45,8 @@ import org.secretflow.v1alpha1.kusciaapi.JobServiceGrpc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Nonnull;
@@ -82,9 +87,10 @@ public class JobManager extends AbstractJobManager {
     private final ProjectModelRepository modelRepository;
     private final ProjectReportRepository reportRepository;
     private final TeeNodeDatatableManagementRepository managementRepository;
-
     private final ProjectReadDtaRepository readDtaRepository;
     private final ProjectJobTaskRepository taskRepository;
+    @Resource
+    private CacheManager cacheManager;
 
 
     public JobManager(ProjectJobRepository projectJobRepository,
@@ -126,7 +132,7 @@ public class JobManager extends AbstractJobManager {
     @Override
     public void startSync() {
         try {
-            Iterator<Job.WatchJobEventResponse> responses = jobStub.watchJob(Job.WatchJobRequest.newBuilder().build());
+            Iterator<Job.WatchJobEventResponse> responses = jobStub.watchJob(Job.WatchJobRequest.newBuilder().setTimeoutSeconds(30L).build());
             LOGGER.info("starter jobEvent ... ");
             responses.forEachRemaining(this::syncJob);
         } catch (Exception e) {
@@ -150,6 +156,11 @@ public class JobManager extends AbstractJobManager {
         // sync tee job first
         if (syncTeeJob(it)) {
             LOGGER.debug("tee job exist, sync tee job status");
+            return;
+        }
+        //sync model export job
+        if (syncModelExportJob(it)) {
+            LOGGER.debug("model export job exist, sync model export job status");
             return;
         }
         Optional<ProjectJobDO> projectJobOpt = projectJobRepository.findByJobId(it.getObject().getJobId());
@@ -187,19 +198,13 @@ public class JobManager extends AbstractJobManager {
         if (!CollectionUtils.isEmpty(outputs)) {
             for (String output : outputs) {
                 String domainDataId = String.format("%s-%s", jobId, output);
-                nodeDatatableIds.addAll(parties.stream().map(party -> DatatableDTO.NodeDatatableId.from(party, domainDataId)).collect(Collectors.toList()));
+                nodeDatatableIds.addAll(parties.stream().map(party -> DatatableDTO.NodeDatatableId.from(party, domainDataId)).toList());
                 domainDataMap.put(domainDataId, taskDO.getUpk());
             }
         }
         if (PlatformTypeEnum.EDGE.equals(getPlaformType())) {
             // remove other nodes' result
-            Iterator<DatatableDTO.NodeDatatableId> iterator = nodeDatatableIds.iterator();
-            while (iterator.hasNext()) {
-                DatatableDTO.NodeDatatableId next = iterator.next();
-                if (!nodeId.equals(next.getNodeId())) {
-                    iterator.remove();
-                }
-            }
+            nodeDatatableIds.removeIf(next -> !nodeId.equals(next.getNodeId()));
         }
         LOGGER.info("look up nodeDatatableIds from kusciaapi, msg: {}", nodeDatatableIds);
         if (!CollectionUtils.isEmpty(nodeDatatableIds)) {
@@ -263,7 +268,6 @@ public class JobManager extends AbstractJobManager {
                                 .build();
                         reportRepository.save(reportDO);
                         break;
-                    // todo rule json
                     case READ_DATA:
                         // find this input id mack which task and use task output to judge
                         String inputId = taskDO.getGraphNode().getInputs().get(0);
@@ -364,9 +368,8 @@ public class JobManager extends AbstractJobManager {
                             String rawTaskId = kusciaTaskStatus.getTaskId();
                             String taskId = removeContentAfterUnderscore(kusciaTaskStatus.getTaskId(), map, kusciaTaskStatus);
                             ProjectTaskDO task = projectJob.getTasks().get(taskId);
-                            if (task == null) {
-                                LOGGER.error("watched jobEvent: taskId={} secretpad not exist but kuscia exist, now just skip", taskId);
-                                // TODO: exception, secretpad not exist but kuscia exist, now skip
+                            if (ObjectUtils.isEmpty(task)) {
+                                LOGGER.error("watched jobEvent: jobId={} taskId={} secretpad not exist but kuscia exist, now just skip", projectJob.getUpk().getJobId(), taskId);
                                 return;
                             }
                             kusciaTaskStatus = mergeKusciaTaskStatus(rawTaskId, taskId, map, kusciaTaskStatus);
@@ -375,11 +378,12 @@ public class JobManager extends AbstractJobManager {
                             projectJob.transformTaskStatus(taskId, currentTaskStatus, currentTaskStatus == GraphNodeTaskStatus.FAILED ? taskFailedReason(kusciaTaskStatus) : null);
                             task.setStatus(GraphNodeTaskStatus.formKusciaTaskStatus(kusciaTaskStatus.getState()));
                             task.setErrMsg(kusciaTaskStatus.getErrMsg());
-                            syncResult(task); // TODO do what for delete?
+                            syncResult(task);
                         }
                 );
                 return projectJob;
             default:
+                LOGGER.error("job sync find unknown type {}", it.getType());
                 return null;
         }
     }
@@ -411,12 +415,12 @@ public class JobManager extends AbstractJobManager {
      * @return
      */
     private boolean syncTeeJob(Job.WatchJobEventResponse it) {
-        LOGGER.info("watched jobEvent: sync tee job: it={}", ProtoUtils.toJsonString(it));
         Optional<TeeNodeDatatableManagementDO> managementOptional = managementRepository.findByJobId(it.getObject().getJobId());
         if (managementOptional.isEmpty()) {
             LOGGER.debug("watched jobEvent: jobId={}, but tee job not exist, skip", it.getObject().getJobId());
             return false;
         }
+        LOGGER.info("watched jobEvent: sync tee job: it={}", ProtoUtils.toJsonString(it));
         if (managementOptional.get().isFinished()) {
             return true;
         }
@@ -488,7 +492,7 @@ public class JobManager extends AbstractJobManager {
      * @return status whether finished
      */
     private boolean isFinishedState(String state) {
-        return "Failed" .equals(state) || "Succeeded" .equals(state);
+        return "Failed".equals(state) || "Succeeded".equals(state);
     }
 
     /**
@@ -566,5 +570,38 @@ public class JobManager extends AbstractJobManager {
 
     public static String genTaskOutputId(String jobId, String outputId) {
         return String.format("%s-%s", jobId, outputId);
+    }
+
+    /**
+     * sync model export job
+     *
+     * @param it event
+     * @return whether success
+     */
+    private boolean syncModelExportJob(Job.WatchJobEventResponse it) {
+        String jobId = it.getObject().getJobId();
+        Cache cache = Objects.requireNonNull(cacheManager.getCache(CacheConstants.MODEL_EXPORT_CACHE), "ERROR " + CacheConstants.MODEL_EXPORT_CACHE + "is null");
+        Cache.ValueWrapper valueWrapper = cache.get(jobId);
+        if (ObjectUtils.isEmpty(valueWrapper)) {
+            return false;
+        }
+        LOGGER.info("watched jobEvent: sync model export job: it={}", ProtoUtils.toJsonString(it));
+        Object o = valueWrapper.get();
+        if (ObjectUtils.isNotEmpty(o)) {
+            ModelExportDTO modelExportDTO = JsonUtils.toJavaObject(String.valueOf(o), ModelExportDTO.class);
+            switch (it.getType()) {
+                case ADDED, MODIFIED -> {
+                    LOGGER.info("watched jobEvent: update model export job: it={}", ProtoUtils.toJsonString(it));
+                    Job.JobStatusDetail kusciaJobStatus = it.getObject().getStatus();
+                    if (!(isFinishedState(it.getObject().getStatus().getState()) && Strings.isNullOrEmpty(it.getObject().getStatus().getEndTime()))) {
+                        modelExportDTO.setStatus(GraphNodeTaskStatus.formKusciaTaskStatus(kusciaJobStatus.getTasks(0).getState()));
+                        modelExportDTO.setErrMsg(kusciaJobStatus.getTasks(0).getErrMsg());
+                    }
+                }
+            }
+            Objects.requireNonNull(cacheManager.getCache(CacheConstants.MODEL_EXPORT_CACHE)).put(modelExportDTO.getJobId(), JsonUtils.toString(modelExportDTO));
+            return true;
+        }
+        return false;
     }
 }

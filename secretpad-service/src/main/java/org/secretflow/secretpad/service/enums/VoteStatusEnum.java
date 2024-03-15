@@ -29,7 +29,7 @@ public enum VoteStatusEnum {
     NOT_INITIATED(3),
     ;
 
-    private Integer code;
+    private final Integer code;
 
     public Integer getCode() {
         return code;

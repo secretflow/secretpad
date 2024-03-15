@@ -32,62 +32,62 @@ GRPC_JAVA_PLUGIN=${GRPC_JAVA_ROOT}/compiler/build/exe/java_plugin/protoc-gen-grp
 #generate protoc-gen-java-grpc plugin
 #https://github.com/grpc/grpc-java/tree/master/compiler
 function prepare() {
-  if [ -e "${GRPC_JAVA_PLUGIN}" ]; then
-    echo "protoc-gen-grpc-java plugin already exists"
-    return
-  fi
-  echo "begin to generate protoc-gen-grpc-java plugin"
-  rm -rf "${GRPC_JAVA_ROOT}"
-  git clone --branch v1.54.1 --depth 1 git@github.com:grpc/grpc-java.git "${GRPC_JAVA_ROOT}"
-  pushd "${GRPC_JAVA_ROOT}/compiler" || exit
-  ../gradlew java_pluginExecutable -PskipAndroid=true
-  popd
-  echo "generate protoc-gen-grpc-java plugin successfully"
+	if [ -e "${GRPC_JAVA_PLUGIN}" ]; then
+		echo "protoc-gen-grpc-java plugin already exists"
+		return
+	fi
+	echo "begin to generate protoc-gen-grpc-java plugin"
+	rm -rf "${GRPC_JAVA_ROOT}"
+	git clone --branch v1.54.1 --depth 1 git@github.com:grpc/grpc-java.git "${GRPC_JAVA_ROOT}"
+	pushd "${GRPC_JAVA_ROOT}/compiler" || exit
+	../gradlew java_pluginExecutable -PskipAndroid=true
+	popd
+	echo "generate protoc-gen-grpc-java plugin successfully"
 }
 
 # $1: PROTO_DIR
 # $2: proto_java_out
 function generate_java_code() {
-  PROTO_DIR=$1
-  for path in "${PROTO_DIR}"/*; do
-    [[ -e "${path}" ]] || break
-    if [ -d "${path}" ]; then
-      generate_java_code "${path}"
-    elif [[ ${path} == *.proto ]]; then
-      echo "${PROTOC} --proto_path=${PROTO_ROOT_DIR}
+	PROTO_DIR=$1
+	for path in "${PROTO_DIR}"/*; do
+		[[ -e "${path}" ]] || break
+		if [ -d "${path}" ]; then
+			generate_java_code "${path}"
+		elif [[ ${path} == *.proto ]]; then
+			echo "${PROTOC} --proto_path=${PROTO_ROOT_DIR}
                       --plugin=protoc-gen-grpc-java=${GRPC_JAVA_PLUGIN}
                       --grpc-java_out=${PROTO_OUTPUT_PATH}
                       --java_out=${PROTO_OUTPUT_PATH} ${path}"
-      ${PROTOC} --proto_path="${PROTO_ROOT_DIR}" \
-        --plugin=protoc-gen-grpc-java="${GRPC_JAVA_PLUGIN}" \
-        --grpc-java_out="${PROTO_OUTPUT_PATH}" \
-        --java_out="${PROTO_OUTPUT_PATH}" "${path}"
-    fi
-  done
+			${PROTOC} --proto_path="${PROTO_ROOT_DIR}" \
+				--plugin=protoc-gen-grpc-java="${GRPC_JAVA_PLUGIN}" \
+				--grpc-java_out="${PROTO_OUTPUT_PATH}" \
+				--java_out="${PROTO_OUTPUT_PATH}" "${path}"
+		fi
+	done
 }
 
 function generate_kusciaapi_code() {
-  PROTO_ROOT_DIR=$1
-  PROTO_DIR="$1/kuscia"
-  PROTO_OUTPUT_PATH=${SECRETPAD_ROOT}/secretpad-api/client-java-kusciaapi/src/main/java
-  pushd "$PROTO_ROOT_DIR" || exit
-  generate_java_code "$PROTO_DIR"
-  popd
+	PROTO_ROOT_DIR=$1
+	PROTO_DIR="$1/kuscia"
+	PROTO_OUTPUT_PATH=${SECRETPAD_ROOT}/secretpad-api/client-java-kusciaapi/src/main/java
+	pushd "$PROTO_ROOT_DIR" || exit
+	generate_java_code "$PROTO_DIR"
+	popd
 }
 
 function generate_sf_code() {
-  PROTO_ROOT_DIR=$1
-  PROTO_DIR="$1/secretflow"
-  PROTO_OUTPUT_PATH=${SECRETPAD_ROOT}/secretpad-service/src/main/java
-  pushd "$PROTO_ROOT_DIR" || exit
-  generate_java_code "$PROTO_DIR"
-  popd
+	PROTO_ROOT_DIR=$1
+	PROTO_DIR="$1/secretflow"
+	PROTO_OUTPUT_PATH=${SECRETPAD_ROOT}/secretpad-service/src/main/java
+	pushd "$PROTO_ROOT_DIR" || exit
+	generate_java_code "$PROTO_DIR"
+	popd
 }
 
 function main() {
-  prepare
-  generate_kusciaapi_code "${SECRETPAD_ROOT}/proto"
-  generate_sf_code "${SECRETPAD_ROOT}/proto"
+	prepare
+	generate_kusciaapi_code "${SECRETPAD_ROOT}/proto"
+	generate_sf_code "${SECRETPAD_ROOT}/proto"
 }
 
 main

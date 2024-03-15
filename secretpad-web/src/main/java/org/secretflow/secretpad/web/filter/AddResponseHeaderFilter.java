@@ -16,12 +16,12 @@
 
 package org.secretflow.secretpad.web.filter;
 
+import jakarta.annotation.Resource;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
@@ -38,7 +38,7 @@ import java.util.Map;
  */
 @Component
 public class AddResponseHeaderFilter extends OncePerRequestFilter {
-    @Autowired
+    @Resource
     private SecretPadResponse secretPadResponse;
 
     /**

@@ -47,16 +47,25 @@ public class DataSyncJob implements ApplicationListener<P2pDataSyncSendEvent> {
     private static final Map<String, String> NODE_WORK_THREAD_NAME = new ConcurrentHashMap<>();
 
 
+    /**
+     * Perform data synchronization tasks
+     *
+     * @param node name
+     * @throws InterruptedException Thread Interrupt Exception
+     */
     public void work(String node) throws InterruptedException {
+        // gets a collection of available nodes
         Set<String> availableNodes = routeDetection.getAvailableNodes();
+        // get the name of the current thread
         String threadName = Thread.currentThread().getName();
+        // If the target node is included in the collection of available nodes
         if (availableNodes.contains(node)) {
             log.debug("{} start", threadName);
+            // Send a data synchronization request to the destination node
             dataSyncRestTemplate.send(node);
         } else {
             log.warn("{} dataSyncJob work ignore , because {} is not alive", threadName, node);
         }
-
     }
 
     /**

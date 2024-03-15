@@ -1,0 +1,78 @@
+// Copyright 2023 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+syntax = "proto3";
+
+import "secretflow_serving/config/tls_config.proto";
+
+package secretflow.serving;
+
+// Config for a feature source
+message FeatureSourceConfig {
+  oneof options {
+    MockOptions mock_opts = 1;
+    HttpOptions http_opts = 2;
+    CsvOptions csv_opts = 3;
+  }
+}
+
+enum MockDataType {
+  // Placeholder for proto3 default value, do not use it.
+  INVALID_MOCK_DATA_TYPE = 0;
+
+  // random value for each feature
+  MDT_RANDOM = 1;
+  // fixed value for each feature
+  MDT_FIXED = 2;
+}
+
+// Options for a mock feature source.
+// Mock feature source will generates values(random or fixed, according to type)
+// for the desired features.
+message MockOptions {
+  // default MDT_FIXED
+  MockDataType type = 1;
+}
+
+// Options for a http feature source which should implement the feature service
+// spi. The defined of spi can be found in
+// secretflow_serving/spis/batch_feature_service.proto
+message HttpOptions {
+  string endpoint = 1;
+
+  // Whether to enable round robin load balancer.
+  bool enable_lb = 2;
+
+  // Max duration for a connect. -1 means wait indefinitely.
+  // Default: 500 (ms)
+  int32 connect_timeout_ms = 3;
+
+  // Max duration of http request. -1 means wait indefinitely.
+  // Default: 1000 (ms)
+  int32 timeout_ms = 4;
+
+  // TLS related config.
+  TlsConfig tls_config = 5;
+}
+
+// Options of a csv feature source.
+message CsvOptions {
+  // Input file path, specifies where to load data
+  // Note that this will load all of the data into memory at once
+  string file_path = 1;
+  // Id column name, associated with FeatureParam::query_datas
+  // Query datas is a subset of id column
+  string id_name = 2;
+}

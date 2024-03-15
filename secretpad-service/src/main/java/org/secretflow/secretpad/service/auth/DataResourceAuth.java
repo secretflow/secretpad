@@ -28,7 +28,7 @@ public interface DataResourceAuth {
      * check auth of data resource
      *
      * @param resourceType {@link DataResourceTypeEnum}
-     * @param resourceId resource ID of checked
+     * @param resourceId   resource ID of checked
      * @return boolean
      */
     boolean check(DataResourceTypeEnum resourceType, String resourceId);

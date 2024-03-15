@@ -38,7 +38,7 @@ public final class GraphContext {
     }
 
     public static String getComputeMode() {
-        if (getProject()==null) {
+        if (getProject() == null) {
             return ProjectConstants.ComputeModeEnum.MPC.name();
         }
         return getProject().getComputeMode();
@@ -49,7 +49,7 @@ public final class GraphContext {
     }
 
     public static ProjectDO getProject() {
-        if(GRAPH_CONTEXT_BEAN_THREAD_LOCAL.get()==null){
+        if (GRAPH_CONTEXT_BEAN_THREAD_LOCAL.get() == null) {
             return null;
         }
         ProjectDO projectDO = GRAPH_CONTEXT_BEAN_THREAD_LOCAL.get().projectDO;

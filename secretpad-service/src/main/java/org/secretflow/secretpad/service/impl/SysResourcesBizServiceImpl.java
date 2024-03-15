@@ -26,6 +26,7 @@ import org.secretflow.secretpad.persistence.repository.SysResourceRepository;
 import org.secretflow.secretpad.persistence.repository.SysRoleResourceRelRepository;
 import org.secretflow.secretpad.persistence.repository.SysUserPermissionRelRepository;
 import org.secretflow.secretpad.service.SysResourcesBizService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -59,9 +60,8 @@ public class SysResourcesBizServiceImpl implements SysResourcesBizService {
     }
 
     /**
-     *
      * @param userType userType
-     * @param userId userId or userNodeId or nodeId
+     * @param userId   userId or userNodeId or nodeId
      * @return List of SysResourceDO
      */
     @Override
@@ -77,9 +77,10 @@ public class SysResourcesBizServiceImpl implements SysResourcesBizService {
 
     /**
      * query resource code by user name
-     * @param userType user type
+     *
+     * @param userType     user type
      * @param resourceType resource type
-     * @param userId user id
+     * @param userId       user id
      * @return resource code
      */
     @Override

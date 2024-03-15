@@ -31,6 +31,7 @@ target/
 !**/src/test/resources/certs/
 secretpad-api/client-java-kusciaapi/**/kusciaapi/
 secretpad-api/client-java-kusciaapi/**/common/
+secretpad-api/client-java-kusciaapi/**/serving/
 secretpad-service/**/org/secretflow/proto/
 secretpad-service/**/com/secretflow/spec/v1/
 secretpad-web/config
@@ -48,3 +49,5 @@ build/**/settings.xml
 docs/_build
 
 .java-version
+/test/TEST-secretpad.xml
+/.jpb/

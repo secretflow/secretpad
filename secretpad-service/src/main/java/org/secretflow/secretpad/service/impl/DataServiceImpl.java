@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.service.impl;
 
 
+import org.secretflow.secretpad.common.constant.KusciaDataSourceConstants;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.AuthErrorCode;
@@ -44,7 +45,6 @@ import java.io.File;
 import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -58,9 +58,10 @@ public class DataServiceImpl implements DataService {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(DataServiceImpl.class);
 
-    private final static List<String> SUPPORT_FILE_TYPE = Arrays.asList(".csv");
+    private final static List<String> SUPPORT_FILE_TYPE = List.of(".csv");
 
     public final static String DEFAULT_DATASOURCE = "default-data-source";
+    public final static String HTTP_DATASOURCE = "http-data-source";
 
     private final static String DEFAULT_DATASOURCE_TYPE = "localfs";
 
@@ -267,7 +268,7 @@ public class DataServiceImpl implements DataService {
     @Override
     public List<DataSourceVO> queryDataSources() {
         List<DataSourceVO> list = new ArrayList<>();
-        list.add(DataSourceVO.builder().name("default-data-source").path("/home/kuscia/var/storage/data").build());
+        list.add(DataSourceVO.builder().name(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE).path(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE_PATH).build());
         return list;
     }
 

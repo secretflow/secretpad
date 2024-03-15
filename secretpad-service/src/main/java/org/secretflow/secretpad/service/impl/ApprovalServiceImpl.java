@@ -32,12 +32,12 @@ import org.secretflow.secretpad.service.model.approval.AbstractVoteConfig;
 import org.secretflow.secretpad.service.model.approval.Participant;
 import org.secretflow.secretpad.service.model.approval.PullStatusVO;
 
-import jakarta.transaction.Transactional;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
@@ -91,7 +91,7 @@ public class ApprovalServiceImpl implements ApprovalService {
         this.envService = envService;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void createApproval(String nodeID, AbstractVoteConfig voteConfig, String voteType) {
         identityVerification(nodeID);

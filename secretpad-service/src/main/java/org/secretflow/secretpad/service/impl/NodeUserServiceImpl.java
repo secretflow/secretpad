@@ -64,7 +64,7 @@ public class NodeUserServiceImpl implements NodeUserService {
     @Transactional
     public void create(NodeUserCreateRequest request) {
         NodeDO byNodeId = nodeRepository.findByNodeId(request.getNodeId());
-        if (byNodeId == null){
+        if (byNodeId == null) {
             String warnStr = String.format("Cancel create user. Invalid nodeId(%s).", request.getNodeId());
             log.warn(warnStr);
             throw SecretpadException.of(SystemErrorCode.VALIDATION_ERROR, warnStr);

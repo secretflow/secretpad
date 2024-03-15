@@ -50,6 +50,7 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
     private String localNodeId;
     @Value("${secretpad.sync-path:./config/sync/}")
     private String syncPath;
+    private final Object lock = new Object();
 
     private final ApplicationEventPublisher applicationEventPublisher;
 
@@ -61,33 +62,34 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
     @Override
     public void push(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         List<String> nodeIds = event.getNodeIds();
-        if (!CollectionUtils.isEmpty(nodeIds)) {
-            nodeIds.forEach(nodeId -> {
-                if (nodeId.equals(localNodeId)) {
-                    return;
-                }
-                event.setDstNode(nodeId);
-                log.debug("p2pDayaSyncDataBufferTemplate push data {} {}", nodeId, event);
-                UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> queue = QUEUE_MAP.getOrDefault(nodeId, new UniqueLinkedBlockingQueue<>());
-                Iterator<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> iterator = queue.iterator();
-                while (iterator.hasNext()) {
-                    EntityChangeListener.DbChangeEvent<BaseAggregationRoot> next = iterator.next();
-                    BaseAggregationRoot nextSource = next.getSource();
-                    BaseAggregationRoot eventSource = event.getSource();
-                    if (ObjectUtils.isEmpty(nextSource.getId()) || ObjectUtils.isEmpty(eventSource.getId())) {
-                        continue;
-                    }
-                    if (next.getAction().equals(DbChangeAction.UPDATE.val) && next.getDType().equals(event.getDType()) && nextSource.getId().equals(eventSource.getId())) {
-                        iterator.remove();
-                        log.debug("data sync queue remove some update db action {}", iterator);
-                    }
-                }
-                queue.add(event);
-                QUEUE_MAP.put(nodeId, queue);
-                endurance(nodeId);
-                applicationEventPublisher.publishEvent(new P2pDataSyncSendEvent(this, nodeId));
-            });
+        if (CollectionUtils.isEmpty(nodeIds)) {
+            return;
         }
+        nodeIds.forEach(nodeId -> {
+            if (nodeId.equals(localNodeId)) {
+                return;
+            }
+            event.setDstNode(nodeId);
+            log.debug("p2pDayaSyncDataBufferTemplate push data {} {}", nodeId, event);
+            UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> queue = QUEUE_MAP.getOrDefault(nodeId, new UniqueLinkedBlockingQueue<>());
+            Iterator<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> iterator = queue.iterator();
+            while (iterator.hasNext()) {
+                EntityChangeListener.DbChangeEvent<BaseAggregationRoot> next = iterator.next();
+                BaseAggregationRoot nextSource = next.getSource();
+                BaseAggregationRoot eventSource = event.getSource();
+                if (ObjectUtils.isEmpty(nextSource.getId()) || ObjectUtils.isEmpty(eventSource.getId())) {
+                    continue;
+                }
+                if (next.getAction().equals(DbChangeAction.UPDATE.val) && next.getDType().equals(event.getDType()) && nextSource.getId().equals(eventSource.getId())) {
+                    iterator.remove();
+                    log.debug("data sync queue remove some update db action {}", iterator);
+                }
+            }
+            queue.add(event);
+            QUEUE_MAP.put(nodeId, queue);
+            endurance(nodeId);
+            applicationEventPublisher.publishEvent(new P2pDataSyncSendEvent(this, nodeId));
+        });
     }
 
     /**
@@ -119,14 +121,16 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
 
     @Async
     @Override
-    public synchronized void endurance(String nodeId) {
+    public void endurance(String nodeId) {
         UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> queue =
                 QUEUE_MAP.getOrDefault(nodeId, null);
-        if (queue != null) {
-            try {
-                serializableWrite(nodeId, queue);
-            } catch (Exception e) {
-                log.error("serializableWrite error", e);
+        synchronized (lock) {
+            if (queue != null) {
+                try {
+                    serializableWrite(nodeId, queue);
+                } catch (Exception e) {
+                    log.error("serializableWrite error", e);
+                }
             }
         }
     }
@@ -135,7 +139,7 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
     public void init() throws IOException {
         File file = ResourceUtils.getFile(syncPath);
         File[] files = file.listFiles();
-        if (files == null || files.length == 0) {
+        if (files == null) {
             return;
         }
         for (File f : files) {

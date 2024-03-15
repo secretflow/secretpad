@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.persistence.model;
 
+import lombok.Getter;
+
 import java.util.Locale;
 
 /**
@@ -24,6 +26,7 @@ import java.util.Locale;
  * @author yansi
  * @date 2023/5/30
  */
+@Getter
 public enum ResultKind {
     /**
      * Federal table
@@ -64,10 +67,6 @@ public enum ResultKind {
             case "read_data" -> READ_DATA;
             default -> null;
         };
-    }
-
-    public String getName() {
-        return this.name;
     }
 
 }

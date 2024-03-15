@@ -16,12 +16,15 @@
 
 package org.secretflow.secretpad.persistence.model;
 
+import lombok.Getter;
+
 /**
  * Tee job kind enum
  *
  * @author yansi
  * @date 2023/5/30
  */
+@Getter
 public enum TeeJobKind {
     /**
      * Get authorization to push data to tee node
@@ -54,7 +57,4 @@ public enum TeeJobKind {
         this.name = name;
     }
 
-    public String getName() {
-        return this.name;
-    }
 }

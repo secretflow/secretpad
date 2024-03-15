@@ -48,6 +48,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -87,6 +88,14 @@ public class JpaSyncDataService {
     private final NodeRouteAuditConfigRepository nodeRouteAuditConfigRepository;
 
     private final ProjectApprovalConfigRepository projectApprovalConfigRepository;
+    private final ProjectGraphNodeKusciaParamsRepository projectGraphNodeKusciaParamsRepository;
+    private final ProjectModelServiceRepository projectModelServiceRepository;
+
+    private final ProjectModelPackRepository projectModelPackRepository;
+
+    private final ProjectFeatureTableRepository projectFeatureTableRepository;
+
+    private final FeatureTableRepository featureTableRepository;
     @PersistenceContext
     private final EntityManager entityManager;
 
@@ -121,6 +130,11 @@ public class JpaSyncDataService {
         doAndRepository.put(VoteRequestDO.class.getTypeName(), voteRequestRepository);
         doAndRepository.put(NodeRouteApprovalConfigDO.class.getTypeName(), nodeRouteAuditConfigRepository);
         doAndRepository.put(ProjectApprovalConfigDO.class.getTypeName(), projectApprovalConfigRepository);
+        doAndRepository.put(ProjectGraphNodeKusciaParamsDO.class.getTypeName(), projectGraphNodeKusciaParamsRepository);
+        doAndRepository.put(ProjectModelServingDO.class.getTypeName(), projectModelServiceRepository);
+        doAndRepository.put(ProjectModelPackDO.class.getTypeName(), projectModelPackRepository);
+        doAndRepository.put(ProjectFeatureTableDO.class.getTypeName(), projectFeatureTableRepository);
+        doAndRepository.put(FeatureTableDO.class.getTypeName(), featureTableRepository);
     }
 
     @SuppressWarnings(value = {"rawtypes"})
@@ -201,6 +215,13 @@ public class JpaSyncDataService {
                 List<ProjectNodesInfo> resultList = findDoByTime(s);
                 resultList.forEach(r -> {
                     try {
+                        if (r instanceof ProjectFeatureTableDO) {
+                            Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(((ProjectFeatureTableDO) r).getUpk().getFeatureTableId(), ((ProjectFeatureTableDO) r).getUpk().getNodeId()));
+                            if (featureTableDOOptional.isEmpty()) {
+                                log.warn("featureTableDOOptional is empty");
+                            }
+                            ((ProjectFeatureTableDO) r).setFeatureTable(featureTableDOOptional.get());
+                        }
                         if (SseSendFlag(r, nodeId)) {
                             SseSession.send(nodeId, SyncDataDTO.builder()
                                     .data(r)

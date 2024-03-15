@@ -18,6 +18,8 @@ package org.secretflow.secretpad.manager.integration.data;
 
 import org.secretflow.secretpad.manager.integration.model.DatatableSchema;
 
+import org.secretflow.v1alpha1.kusciaapi.Domaindata;
+
 import java.util.List;
 
 /**
@@ -65,6 +67,8 @@ public abstract class AbstractDataManager {
             String description,
             List<DatatableSchema> datatableSchemaList
     );
+
+    public abstract Domaindata.DomainData queryDomainData(String domainId, String domainDataId);
 
 
     /**

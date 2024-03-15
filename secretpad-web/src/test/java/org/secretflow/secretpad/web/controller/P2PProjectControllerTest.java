@@ -70,12 +70,12 @@ public class P2PProjectControllerTest extends ControllerTest {
     @Test
     void listP2PProject() throws Exception {
         assertResponse(() -> {
+            projectRepository.deleteAllAuthentic();
             Mockito.when(projectRepository.findAll()).thenReturn(Collections.emptyList());
             Mockito.when(projectNodeRepository.findByNodeId(Mockito.anyString())).thenReturn(Collections.emptyList());
             Mockito.when(projectRepository.findAllById(Mockito.anySet())).thenReturn(Collections.emptyList());
             return MockMvcRequestBuilders.post(getMappingUrl(P2PProjectController.class, "listP2PProject"));
         });
-        UserContext.remove();
     }
 
     private ProjectNodeDO buildProjectNodeDO() {

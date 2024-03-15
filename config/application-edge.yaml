@@ -1,95 +1,11 @@
-server:
-  tomcat:
-    accesslog:
-      enabled: true
-      directory: /var/log/secretpad
-  http-port: 8080
-  port: 443
-  ssl:
-    enabled: true
-    key-store: "file:./config/server.jks"
-    key-store-password: secretpad
-    key-alias: secretpad-server
-    key-password: secretpad
-    key-store-type: JKS
-
-spring:
-  task:
-    scheduling:
-      pool:
-        size: 10
-  application:
-    name: secretpad
-  jpa:
-    database-platform: org.hibernate.community.dialect.SQLiteDialect
-    show-sql: false
-    properties:
-      hibernate:
-        format_sql: false
-  datasource:
-    hibernate.dialect: org.hibernate.dialect.SQLiteDialect
-    driver-class-name: org.sqlite.JDBC
-    url: jdbc:sqlite:./db/secretpad.sqlite
-    hikari:
-      idle-timeout: 60000
-      maximum-pool-size: 1
-      connection-timeout: 5000
-  jackson:
-    deserialization:
-      fail-on-missing-external-type-id-property: false
-      fail-on-ignored-properties: false
-      fail-on-unknown-properties: false
-    serialization:
-      fail-on-empty-beans: false
-  web:
-    locale: zh_CN # default locale, overridden by request "Accept-Language" header.
-springdoc:
-  api-docs:
-    enabled: false
-
-logging:
-  level:
-    root: info
-    org:
-      hibernate:
-        type: info
-
-kusciaapi:
-  address: ${KUSCIA_API_ADDRESS:127.0.0.1:8083}
-  tls:
-    cert-file: config/certs/client.crt
-    key-file: config/certs/client.pem
-    ca-file: config/certs/ca.crt
-  token-file: config/certs/token
-
-job:
-  max-parallelism: 1
-
 secretpad:
   platform-type: EDGE
   node-id: ${NODE_ID}
-  center-platform-service: secretpad.master.svc
-  gateway: ${KUSCIA_GW_ADDRESS:127.0.0.1:8080}
   auth:
     enabled: true
-  response:
-    extra-headers:
-      Content-Security-Policy: "base-uri 'self';frame-src 'self';worker-src blob: 'self' data:;object-src 'self';"
-  upload-file:
-    max-file-size: -1    # -1 means not limit, e.g.  200MB, 1GB
-    max-request-size: -1 # -1 means not limit, e.g.  200MB, 1GB
-  data:
-    dir-path: /app/data/
   datasync:
     center: true
     p2p: false
-
-sfclusterDesc:
-  deviceConfig:
-    spu: "{\"runtime_config\":{\"protocol\":\"SEMI2K\",\"field\":\"FM128\"},\"link_desc\":{\"connect_retry_times\":60,\"connect_retry_interval_ms\":1000,\"brpc_channel_protocol\":\"http\",\"brpc_channel_connection_type\":\"pooled\",\"recv_timeout_ms\":1200000,\"http_timeout_ms\":1200000}}"
-    heu: "{\"mode\": \"PHEU\", \"schema\": \"paillier\", \"key_size\": 2048}"
-  rayFedConfig:
-    crossSiloCommBackend: "brpc_link"
 
 data:
   sync:
@@ -105,6 +21,11 @@ data:
     - org.secretflow.secretpad.persistence.entity.TeeDownLoadAuditConfigDO
     - org.secretflow.secretpad.persistence.entity.NodeRouteApprovalConfigDO
     - org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO
+    - org.secretflow.secretpad.persistence.entity.ProjectModelServingDO
+    - org.secretflow.secretpad.persistence.entity.ProjectGraphNodeKusciaParamsDO
+    - org.secretflow.secretpad.persistence.entity.ProjectModelPackDO
+    - org.secretflow.secretpad.persistence.entity.FeatureTableDO
+    - org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO
 
 
 edge:
@@ -117,6 +38,8 @@ edge:
     - /api/v1alpha1/nodeRoute/update
     - /api/v1alpha1/nodeRoute/delete
     - /api/v1alpha1/project/update/tableConfig
+    - /api/v1alpha1/data/create
+    - /api/v1alpha1/feature_datasource/create
   include:
     - /api/login
     - /api/logout
@@ -141,6 +64,7 @@ edge:
     - /api/v1alpha1/data/upload
     - /api/v1alpha1/data/create
     - /api/v1alpha1/data/download
+    - /api/v1alpha1/feature_datasource/create
     # project
     - /api/v1alpha1/project/list
     - /api/v1alpha1/project/datatable/add

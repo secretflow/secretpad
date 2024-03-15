@@ -18,9 +18,11 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
 
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -41,4 +43,9 @@ public interface ProjectRepository extends BaseRepository<ProjectDO, String> {
      */
     @Query("from ProjectDO pj where pj.status=:status")
     List<ProjectDO> findByStatus(@Param("status") Integer status);
+
+    @Query(nativeQuery = true, value = "delete from project")
+    @Modifying
+    @Transactional
+    void deleteAllAuthentic();
 }

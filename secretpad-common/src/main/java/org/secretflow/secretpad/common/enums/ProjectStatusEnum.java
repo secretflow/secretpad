@@ -28,7 +28,7 @@ public enum ProjectStatusEnum {
     APPROVED(1),
     ARCHIVED(2),
     ;
-    private Integer code;
+    private final Integer code;
 
 
     ProjectStatusEnum(Integer code) {

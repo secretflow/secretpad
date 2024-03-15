@@ -31,6 +31,9 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 /**
@@ -45,15 +48,17 @@ public class CenterDataSyncController {
     private final JpaSyncDataService jpaSyncDataService;
 
     @GetMapping(value = "/sync", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
-    public SseEmitter sync(@RequestHeader("kuscia-origin-source") String nodeId, @RequestParam String p) {
+    public SseEmitter sync(@RequestHeader("kuscia-origin-source") String nodeId, @RequestParam String p) throws UnsupportedEncodingException {
+        p = URLDecoder.decode(p, StandardCharsets.UTF_8);
         @SuppressWarnings(value = {"rawtypes"})
         List<SyncDataDTO> syncDataDTOList = JsonUtils.toJavaList(p, SyncDataDTO.class);
         SseEmitter sseEmitter = sseServer.open(nodeId, syncDataDTOList);
         jpaSyncDataService.syncByLastUpdateTime(nodeId);
+        log.debug("CenterDataSyncController sync sseEmitter {}", sseEmitter);
         return sseEmitter;
     }
 
-    @Scheduled(initialDelay = 1000, fixedRate = 1000 * 10 * 3)
+    @Scheduled(fixedRate = 1000 * 15)
     public void ping() {
         sseServer.ping();
     }

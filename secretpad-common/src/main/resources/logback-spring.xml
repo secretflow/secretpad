@@ -18,7 +18,7 @@
 <configuration>
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
     <springProperty scope="context" name="logPath" source="secretpad.logs.path"
-                    defaultValue="${user.home}/secretpad/logs"/>
+                    defaultValue="/app/log"/>
 
     <property name="LOG_HOME" value="${logPath}"/>
 
@@ -91,7 +91,7 @@
     </appender>
 
     <root>
-        <level value="INFO"/>
+        <level value="DEBUG"/>
         <appender-ref ref="rootFile"/>
         <appender-ref ref="errorFile"/>
     </root>
@@ -146,6 +146,7 @@
             <appender-ref ref="CONSOLE"/>
             <level value="INFO"/>
         </logger>
+
         <logger name="org.apache.catalina.startup.DigesterFactory">
             <appender-ref ref="CONSOLE"/>
             <level value="INFO"/>

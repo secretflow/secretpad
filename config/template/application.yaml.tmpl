@@ -66,6 +66,7 @@ logging:
 
 kusciaapi:
   address: {{.KUSCIA_API_ADDRESS}}:8083
+  protocol: ${KUSCIA_PROTOCOL:mtls} # notls tls mtls
   tls:
     cert-file: config/certs/client.crt
     key-file: config/certs/client.pem
@@ -90,6 +91,8 @@ job:
   max-parallelism: 1
 
 secretpad:
+  logs:
+    path: ${SECRETPAD_LOG_PATH:/app/log}
   deploy-mode: ${DEPLOY_MODE:ALL-IN-ONE} # MPC TEE ALL-IN-ONE
   platform-type: CENTER
   node-id: kuscia-system
@@ -108,11 +111,18 @@ secretpad:
   datasync:
       center: true
       p2p: false
+  version:
+    secretpad-image: ${SECRETPAD_IMAGE:0.5.0b0}
+    kuscia-image: ${KUSCIA_IMAGE:0.6.0b0}
+    secretflow-image: ${SECRETFLOW_IMAGE:1.4.0b0}
   component:
     hide:
       - secretflow/io/read_data:0.0.1
       - secretflow/io/write_data:0.0.1
       - secretflow/io/identity:0.0.1
+      - secretflow/model/model_export:0.0.1
+      - secretflow/ml.train/slnn_train:0.0.1
+      - secretflow/ml.predict/slnn_predict:0.0.1
 
 sfclusterDesc:
   deviceConfig:
@@ -138,6 +148,11 @@ data:
     - org.secretflow.secretpad.persistence.entity.TeeDownLoadAuditConfigDO
     - org.secretflow.secretpad.persistence.entity.NodeRouteApprovalConfigDO
     - org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO
+    - org.secretflow.secretpad.persistence.entity.ProjectModelServingDO
+    - org.secretflow.secretpad.persistence.entity.ProjectGraphNodeKusciaParamsDO
+    - org.secretflow.secretpad.persistence.entity.ProjectModelPackDO
+    - org.secretflow.secretpad.persistence.entity.FeatureTableDO
+    - org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO
 
 inner-port:
   path:
@@ -145,3 +160,17 @@ inner-port:
     - /api/v1alpha1/user/node/resetPassword
     - /sync
     - /api/v1alpha1/data/sync
+# ip block config (None of them are allowed in the configured IP list)
+ip:
+  block:
+    enable: true
+    list:
+      - 0.0.0.0/32
+      - 127.0.0.1/8
+      - 10.0.0.0/8
+      - 11.0.0.0/8
+      - 30.0.0.0/8
+      - 100.64.0.0/10
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      - 33.0.0.0/8

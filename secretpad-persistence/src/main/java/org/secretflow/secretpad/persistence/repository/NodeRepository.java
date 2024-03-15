@@ -19,8 +19,10 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -67,5 +69,10 @@ public interface NodeRepository extends BaseRepository<NodeDO, String> {
     List<NodeDO> findByModeIn(List<Integer> modes);
 
     List<NodeDO> findByNodeIdIn(Collection<String> nodeIDS);
+
+    @Query(nativeQuery = true, value = "delete from node where node_id =:nodeId")
+    @Modifying
+    @Transactional
+    void deleteAuthentic(String nodeId);
 
 }

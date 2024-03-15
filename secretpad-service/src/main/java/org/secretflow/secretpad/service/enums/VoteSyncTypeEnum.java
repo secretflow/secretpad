@@ -31,5 +31,4 @@ public enum VoteSyncTypeEnum {
     PROJECT,
     PROJECT_NODE,
     PROJECT_INST,
-    ;
 }

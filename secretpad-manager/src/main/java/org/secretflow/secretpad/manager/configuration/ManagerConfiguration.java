@@ -46,9 +46,9 @@ public class ManagerConfiguration {
      */
     @Bean
     AbstractDatatableManager datatableManager(
-            DomainDataServiceGrpc.DomainDataServiceBlockingStub stub
+            DomainDataServiceGrpc.DomainDataServiceBlockingStub stub, FeatureTableRepository featureTableRepository
     ) {
-        return new DatatableManager(stub);
+        return new DatatableManager(stub, featureTableRepository);
     }
 
     /**

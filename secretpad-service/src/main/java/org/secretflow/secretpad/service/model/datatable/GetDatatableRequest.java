@@ -16,6 +16,9 @@
 
 package org.secretflow.secretpad.service.model.datatable;
 
+import org.secretflow.secretpad.common.annotation.OneOfType;
+import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
@@ -41,6 +44,10 @@ public class GetDatatableRequest {
      */
     @Schema(description = "datatable id")
     private String datatableId;
+
+    @Schema(description = "table type")
+    @OneOfType(types = {"HTTP", "CSV"})
+    private String type = DataSourceTypeEnum.CSV.name();
     /**
      * Tee node id, it can be blank and has default value
      */

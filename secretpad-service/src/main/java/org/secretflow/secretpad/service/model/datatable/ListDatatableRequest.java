@@ -20,6 +20,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.List;
+
 /**
  * List datatable request
  *
@@ -57,6 +59,12 @@ public class ListDatatableRequest {
     @Schema(description = "datatable name filter rule")
     @Nullable
     String datatableNameFilter;
+
+    /**
+     * Fuzzy search by table name
+     */
+    @Schema(description = "table types filter rule")
+    List<String> types;
     /**
      * Node Id
      */

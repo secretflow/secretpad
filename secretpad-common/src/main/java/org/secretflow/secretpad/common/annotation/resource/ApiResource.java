@@ -31,6 +31,7 @@ public @interface ApiResource {
 
     /**
      * api code
+     *
      * @return api resource code {@link org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants}
      */
     String code();

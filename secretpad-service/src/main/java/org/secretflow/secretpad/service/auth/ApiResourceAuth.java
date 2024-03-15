@@ -26,6 +26,7 @@ public interface ApiResourceAuth {
 
     /**
      * check api resource auth
+     *
      * @param resourceCode resource code
      * @return boolean
      */

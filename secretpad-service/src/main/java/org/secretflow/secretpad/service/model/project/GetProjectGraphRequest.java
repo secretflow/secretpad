@@ -22,6 +22,7 @@ import lombok.*;
 
 /**
  * Get project graph request
+ *
  * @author yutu
  * @date 2023/11/22
  */
@@ -42,5 +43,5 @@ public class GetProjectGraphRequest {
      */
     @Schema(description = "graphId")
     @NotBlank
-    private  String graphId;
+    private String graphId;
 }

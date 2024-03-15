@@ -18,10 +18,7 @@ package org.secretflow.secretpad.service.model.project;
 
 import org.secretflow.secretpad.persistence.model.ResultKind;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 /**
  * Project result basic view object
@@ -33,6 +30,7 @@ import lombok.Setter;
 @Setter
 @Builder
 @AllArgsConstructor
+@NoArgsConstructor
 public class ProjectResultBaseVO {
 
     /**

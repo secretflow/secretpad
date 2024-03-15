@@ -27,6 +27,7 @@ import org.secretflow.secretpad.persistence.repository.NodeRouteRepository;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.ObjectUtils;
 import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -34,16 +35,18 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_TEST_P2P;
+import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_P2P;
 
 /**
+ * Initialize the TEE resource
+ *
  * @author yutu
  * @date 2023/09/20
  */
 @Slf4j
 @RequiredArgsConstructor
 @Service
-@Profile(SKIP_TEST_P2P)
+@Profile(SKIP_P2P)
 public class TeeResourceInit implements CommandLineRunner {
     private final NodeRepository nodeRepository;
     private final NodeRouteRepository nodeRouteRepository;
@@ -53,10 +56,16 @@ public class TeeResourceInit implements CommandLineRunner {
     private String deployMode;
     @Value("${secretpad.platform-type}")
     private String platformType;
+    @Value("${secretpad.tee:true}")
+    private boolean teeEnabled;
 
     @Override
     public void run(String... args) throws Exception {
         // init tee domain
+        if (!teeEnabled) {
+            return;
+        }
+        log.info("init tee node {} {}", deployMode, platformType);
         if ((DeployModeConstants.ALL_IN_ONE.equals(deployMode) || DeployModeConstants.TEE.equals(deployMode))
                 && PlatformTypeEnum.CENTER.name().equals(platformType)
         ) {
@@ -73,9 +82,16 @@ public class TeeResourceInit implements CommandLineRunner {
         return tee;
     }
 
+    /**
+     * Initialize the TEE node in Kuscia
+     *
+     * @param tee TEE node information
+     */
     private void initTeeNodeInKuscia(NodeDO tee) {
+        // Call the query domain name operation of Kuscia to query whether a TEE node exists
         DomainOuterClass.QueryDomainResponse response = kusciaDomainRpc.queryDomainNoCheck(DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(tee.getNodeId()).build());
-        if (response.getStatus().getCode() != 0) {
+        // If the TEE node does not exist, create ith the following parameters
+        if (ObjectUtils.isNotEmpty(response) && response.getStatus().getCode() != 0) {
             DomainOuterClass.CreateDomainRequest request = DomainOuterClass.CreateDomainRequest.newBuilder().setDomainId(tee.getNodeId())
                     .setAuthCenter(DomainOuterClass.AuthCenter.newBuilder().setAuthenticationType("Token").setTokenGenMethod("UID-RSA-GEN").build())
                     .build();
@@ -87,15 +103,22 @@ public class TeeResourceInit implements CommandLineRunner {
         }
     }
 
+    /**
+     * Initialize the node routing table
+     */
     @Transactional
     public void initTeeNodeRouteInDb() {
-        NodeRouteDO alice_tee = NodeRouteDO.builder().routeId("3").srcNodeId("alice").dstNodeId("tee").srcNetAddress("127.0.0.1:28080").dstNetAddress("127.0.0.1:48080").build();
-        nodeRouteRepository.save(alice_tee);
-        NodeRouteDO tee_alice = NodeRouteDO.builder().routeId("4").srcNodeId("tee").dstNodeId("alice").srcNetAddress("127.0.0.1:48080").dstNetAddress("127.0.0.1:28080").build();
-        nodeRouteRepository.save(tee_alice);
-        NodeRouteDO bob_tee = NodeRouteDO.builder().routeId("5").srcNodeId("bob").dstNodeId("tee").srcNetAddress("127.0.0.1:38080").dstNetAddress("127.0.0.1:48080").build();
-        nodeRouteRepository.save(bob_tee);
-        NodeRouteDO tee_bob = NodeRouteDO.builder().routeId("6").srcNodeId("tee").dstNodeId("bob").srcNetAddress("127.0.0.1:48080").dstNetAddress("127.0.0.1:38080").build();
-        nodeRouteRepository.save(tee_bob);
+        // Create a route from ALICE to TEE
+        NodeRouteDO aliceTee = NodeRouteDO.builder().routeId("3").srcNodeId("alice").dstNodeId("tee").srcNetAddress("127.0.0.1:28080").dstNetAddress("127.0.0.1:48080").build();
+        nodeRouteRepository.save(aliceTee);
+        // Create a route from TEE to ALICE
+        NodeRouteDO teeAlice = NodeRouteDO.builder().routeId("4").srcNodeId("tee").dstNodeId("alice").srcNetAddress("127.0.0.1:48080").dstNetAddress("127.0.0.1:28080").build();
+        nodeRouteRepository.save(teeAlice);
+        // Create a route from BOB to TEE
+        NodeRouteDO bobTee = NodeRouteDO.builder().routeId("5").srcNodeId("bob").dstNodeId("tee").srcNetAddress("127.0.0.1:38080").dstNetAddress("127.0.0.1:48080").build();
+        nodeRouteRepository.save(bobTee);
+        // Create a route from TEE to BOB
+        NodeRouteDO teeBob = NodeRouteDO.builder().routeId("6").srcNodeId("tee").dstNodeId("bob").srcNetAddress("127.0.0.1:48080").dstNetAddress("127.0.0.1:38080").build();
+        nodeRouteRepository.save(teeBob);
     }
 }

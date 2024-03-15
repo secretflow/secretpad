@@ -41,13 +41,14 @@ public class SseServerImpl implements SseServer {
     public SseEmitter open(String userId, List<SyncDataDTO> syncDataDTOList) {
         checkClient(userId);
         if (SseSession.exists(userId)) {
-            SseSession.remove(userId, false);
+            SseSession.remove(userId);
             SseSession.sessionTableMap.remove(userId);
         }
-        SseEmitter sseEmitter = new SseEmitter(0L);
+        SseEmitter sseEmitter = new SseEmitter(Long.MAX_VALUE);
         sseEmitter.onError((err) -> {
             log.error("type: SseSession Error, msg: {} session Id : {}", err.getMessage(), userId);
             SseSession.onError(userId, err);
+            SseSession.remove(userId);
             SseSession.sessionTableMap.remove(userId);
         });
         sseEmitter.onTimeout(() -> {
@@ -69,10 +70,11 @@ public class SseServerImpl implements SseServer {
         if (SseSession.exists(userId)) {
             SseSession.remove(userId);
         }
-        SseEmitter sseEmitter = new SseEmitter(0L);
+        SseEmitter sseEmitter = new SseEmitter(Long.MAX_VALUE);
         sseEmitter.onError((err) -> {
             log.error("type: SseSession Error, msg: {} session Id : {}", err.getMessage(), userId);
             SseSession.onError(userId, err);
+            SseSession.remove(userId);
         });
         sseEmitter.onTimeout(() -> {
             log.info("type: SseSession Timeout, session Id : {}", userId);
@@ -115,13 +117,15 @@ public class SseServerImpl implements SseServer {
             try {
                 SseSession.ping(k);
             } catch (IOException e) {
-                log.error("ping sse client error {}", k, e);
+                SseSession.remove(k, true);
+                SseSession.sessionTableMap.remove(k);
+                log.error("ping sse client error {} close it", k, e);
             }
         });
     }
 
-    public void checkClient(String userId){
-        if(StringUtils.isEmpty(userId)){
+    public void checkClient(String userId) {
+        if (StringUtils.isEmpty(userId)) {
             throw SecretpadException.of(SystemErrorCode.SSE_ERROR, "Unknown client");
         }
     }

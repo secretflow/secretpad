@@ -189,6 +189,7 @@ public class NodeServiceImpl implements NodeService {
                 .srcNetAddress(request.getSrcNetAddress())
                 .dstNetAddress(request.getDstNetAddress())
                 .build());
+        LOGGER.debug("createP2pNode return {}", nodeId);
         return nodeId;
     }
 

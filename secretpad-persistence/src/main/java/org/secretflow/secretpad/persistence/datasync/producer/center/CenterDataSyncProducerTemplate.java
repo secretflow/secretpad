@@ -28,12 +28,15 @@ import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
 import org.secretflow.secretpad.persistence.model.DataSyncConfig;
 import org.secretflow.secretpad.persistence.model.DbChangeAction;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.util.List;
 
 /**
  * @author yutu
  * @date 2023/12/10
  */
+@Slf4j
 public class CenterDataSyncProducerTemplate extends AbstractDataSyncProducerTemplate {
 
     public CenterDataSyncProducerTemplate(DataSyncConfig dataSyncConfig, DataSyncDataBufferTemplate dataSyncDataBufferTemplate, PaddingNodeService p2pPaddingNodeServiceImpl) {
@@ -43,6 +46,7 @@ public class CenterDataSyncProducerTemplate extends AbstractDataSyncProducerTemp
 
     @Override
     public boolean filter(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
+        log.debug("CenterDataSyncProducerTemplate push filter {}", event);
         List<String> sync = dataSyncConfig.getSync();
         String dType = event.getDType();
         if (!sync.contains(dType)) {
@@ -58,6 +62,7 @@ public class CenterDataSyncProducerTemplate extends AbstractDataSyncProducerTemp
     @Override
     public void push(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         if (PlatformTypeEnum.valueOf(platformType).equals(PlatformTypeEnum.CENTER) && !filter(event)) {
+            log.debug("CenterDataSyncProducerTemplate push {}", event);
             dataSyncDataBufferTemplate.push(event);
         }
     }

@@ -17,13 +17,18 @@
 package org.secretflow.secretpad.service.graph.converter;
 
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
+import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.ProtoUtils;
+import org.secretflow.secretpad.persistence.entity.ProjectGraphNodeKusciaParamsDO;
+import org.secretflow.secretpad.persistence.repository.ProjectGraphNodeKusciaParamsRepository;
 import org.secretflow.secretpad.service.constant.JobConstants;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
 
 import com.google.protobuf.util.JsonFormat;
 import com.secretflow.spec.v1.IndividualTable;
+import jakarta.annotation.Resource;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.secretflow.proto.component.Cluster;
 import org.secretflow.proto.kuscia.TaskConfig;
@@ -50,13 +55,18 @@ import java.util.stream.Collectors;
 @Component
 @ConfigurationProperties(prefix = "sfcluster-desc")
 public class KusciaJobConverter implements JobConverter {
-    private final static String defaultDS = "default-data-source";
+    private final static String DEFAULTDS = "default-data-source";
     @Value("${job.max-parallelism:1}")
+    @Getter
     private int maxParallelism;
     private static String crossSiloCommBackend;
 
     @Value("${secretpad.platform-type}")
     private String plaformType;
+
+    @Resource
+    private ProjectGraphNodeKusciaParamsRepository projectGraphNodeKusciaParamsRepository;
+
     @Value("${secretpad.node-id}")
     private String localNodeId;
 
@@ -71,6 +81,8 @@ public class KusciaJobConverter implements JobConverter {
     public void setDeviceConfig(Map<String, String> deviceConfig) {
         KusciaJobConverter.deviceConfig = deviceConfig;
     }
+
+    ThreadLocal<ProjectGraphNodeKusciaParamsDO> projectGraphNodeKusciaParamsDOThreadLocal = new ThreadLocal<>();
 
     /**
      * Converter create job request from project job
@@ -95,6 +107,9 @@ public class KusciaJobConverter implements JobConverter {
                     }
                     taskParties = parties.stream().map(party -> Job.Party.newBuilder().setDomainId(party).build()).collect(Collectors.toList());
                 }
+
+                ProjectGraphNodeKusciaParamsDO.UPK upk = new ProjectGraphNodeKusciaParamsDO.UPK(job.getProjectId(), job.getGraphId(), task.getNode().getGraphNodeId());
+                projectGraphNodeKusciaParamsDOThreadLocal.set(ProjectGraphNodeKusciaParamsDO.builder().upk(upk).jobId(job.getJobId()).build());
                 String taskInputConfig = renderTaskInputConfig(task);
                 Job.Task.Builder jobTaskBuilder = Job.Task.newBuilder()
                         .setTaskId(taskId)
@@ -106,6 +121,7 @@ public class KusciaJobConverter implements JobConverter {
                     jobTaskBuilder.addAllDependencies(task.getDependencies());
                 }
                 jobTasks.add(jobTaskBuilder.build());
+                projectGraphNodeKusciaParamsDOThreadLocal.remove();
             }
         }
         return Job.CreateJobRequest.newBuilder()
@@ -128,6 +144,50 @@ public class KusciaJobConverter implements JobConverter {
         List<String> inputs = graphNode.getInputs();
         List<String> outputs = graphNode.getOutputs();
         List<String> parties = task.getParties();
+        JsonFormat.TypeRegistry typeRegistry = JsonFormat.TypeRegistry.newBuilder().add(IndividualTable.getDescriptor()).build();
+        Pipeline.NodeDef pipelineNodeDef;
+        if (nodeDef instanceof Pipeline.NodeDef) {
+            pipelineNodeDef = (Pipeline.NodeDef) nodeDef;
+        } else {
+            Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
+            pipelineNodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeDef, nodeDefBuilder);
+        }
+        Cluster.SFClusterDesc sfClusterDesc = buildSfClusterDesc(parties);
+        TaskConfig.TaskInputConfig taskInputConfig = TaskConfig.TaskInputConfig.newBuilder()
+                .putAllSfDatasourceConfig(defaultDatasourceConfig(parties))
+                .addAllSfInputIds(inputs)
+                .addAllSfOutputIds(outputs)
+                .addAllSfOutputUris(outputs)
+                .setSfClusterDesc(sfClusterDesc)
+                .setSfNodeEvalParam(pipelineNodeDef)
+                .build();
+        ProjectGraphNodeKusciaParamsDO projectGraphNodeKusciaParamsDO = projectGraphNodeKusciaParamsDOThreadLocal.get();
+        projectGraphNodeKusciaParamsDO.setTaskId(task.getTaskId());
+        projectGraphNodeKusciaParamsDO.setInputs(JsonUtils.toJSONString(inputs));
+        projectGraphNodeKusciaParamsDO.setOutputs(JsonUtils.toJSONString(outputs));
+        projectGraphNodeKusciaParamsDO.setNodeEvalParam(ProtoUtils.toJsonString(pipelineNodeDef, typeRegistry));
+        projectGraphNodeKusciaParamsRepository.saveAndFlush(projectGraphNodeKusciaParamsDO);
+        return ProtoUtils.toJsonString(taskInputConfig, typeRegistry);
+    }
+
+    /**
+     * Set default map of party and datasource config
+     *
+     * @param parties target parties
+     * @return map of party and datasource config
+     */
+    public Map<String, TaskConfig.DatasourceConfig> defaultDatasourceConfig(List<String> parties) {
+        TaskConfig.DatasourceConfig datasourceConfig = TaskConfig.DatasourceConfig.newBuilder()
+                .setId(DEFAULTDS)
+                .build();
+        Map<String, TaskConfig.DatasourceConfig> datasourceConfigMap = new HashMap<>();
+        for (String party : parties) {
+            datasourceConfigMap.put(party, datasourceConfig);
+        }
+        return datasourceConfigMap;
+    }
+
+    public Cluster.SFClusterDesc buildSfClusterDesc(List<String> parties) {
         List<Cluster.SFClusterDesc.DeviceDesc> deviceDescs = new ArrayList<>();
         deviceConfig.entrySet().forEach(entry -> {
             Cluster.SFClusterDesc.DeviceDesc deviceDesc = Cluster.SFClusterDesc.DeviceDesc.newBuilder()
@@ -141,40 +201,6 @@ public class KusciaJobConverter implements JobConverter {
         Cluster.SFClusterDesc.RayFedConfig rayFedConfig = Cluster.SFClusterDesc.RayFedConfig.newBuilder()
                 .setCrossSiloCommBackend(crossSiloCommBackend)
                 .build();
-        JsonFormat.TypeRegistry typeRegistry = JsonFormat.TypeRegistry.newBuilder().add(IndividualTable.getDescriptor()).build();
-        Pipeline.NodeDef pipelineNodeDef;
-        if (nodeDef instanceof Pipeline.NodeDef) {
-            pipelineNodeDef = (Pipeline.NodeDef) nodeDef;
-        } else {
-            Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
-            pipelineNodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeDef, nodeDefBuilder);
-        }
-        Cluster.SFClusterDesc sfClusterDesc = Cluster.SFClusterDesc.newBuilder().addAllParties(parties).setRayFedConfig(rayFedConfig).addAllDevices(deviceDescs).build();
-        TaskConfig.TaskInputConfig taskInputConfig = TaskConfig.TaskInputConfig.newBuilder()
-                .putAllSfDatasourceConfig(defaultDatasourceConfig(parties))
-                .addAllSfInputIds(inputs)
-                .addAllSfOutputIds(outputs)
-                .addAllSfOutputUris(outputs)
-                .setSfClusterDesc(sfClusterDesc)
-                .setSfNodeEvalParam(pipelineNodeDef)
-                .build();
-        return ProtoUtils.toJsonString(taskInputConfig, typeRegistry);
-    }
-
-    /**
-     * Set default map of party and datasource config
-     *
-     * @param parties target parties
-     * @return map of party and datasource config
-     */
-    private Map<String, TaskConfig.DatasourceConfig> defaultDatasourceConfig(List<String> parties) {
-        TaskConfig.DatasourceConfig datasourceConfig = TaskConfig.DatasourceConfig.newBuilder()
-                .setId(defaultDS)
-                .build();
-        Map<String, TaskConfig.DatasourceConfig> datasourceConfigMap = new HashMap<>();
-        for (String party : parties) {
-            datasourceConfigMap.put(party, datasourceConfig);
-        }
-        return datasourceConfigMap;
+        return Cluster.SFClusterDesc.newBuilder().addAllParties(parties).setRayFedConfig(rayFedConfig).addAllDevices(deviceDescs).build();
     }
 }

@@ -1,0 +1,52 @@
+// Copyright 2023 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+syntax = "proto3";
+
+package secretflow.serving;
+
+import "secretflow_serving/config/tls_config.proto";
+
+message ServerConfig {
+  // Optional.
+  // Feature name mapping rules.
+  // Key: source or predefined feature name
+  // Value: model feature name
+  map<string, string> feature_mapping = 1;
+
+  // Whether to enable tls for server
+  TlsConfig tls_config = 2;
+
+  // Brpc builtin service listen port
+  // Default: disable service
+  int32 brpc_builtin_service_port = 11;
+
+  // Whether `/metrics` service is enable/disable.
+  int32 metrics_exposer_port = 12;
+
+  // Number of pthreads that server runs on.
+  // If this option <= 0, use default value.
+  // Default: #cpu-cores
+  int32 worker_num = 13;
+
+  // Server-level max number of requests processed in parallel
+  // Default: 0 (unlimited)
+  int32 max_concurrency = 14;
+
+  // Number of pthreads that server runs to execute ops.
+  // If this option <= 0, use default value.
+  // Default: #cpu-cores
+  int32 op_exec_worker_num = 15;
+}

@@ -18,6 +18,7 @@ package org.secretflow.secretpad.service.impl;
 
 import org.secretflow.secretpad.common.constant.DatabaseConstants;
 import org.secretflow.secretpad.common.constant.ProjectConstants;
+import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.enums.ProjectStatusEnum;
 import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
@@ -64,7 +65,6 @@ import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import jakarta.annotation.Resource;
-import jakarta.transaction.Transactional;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
@@ -81,13 +81,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
-
 import static org.secretflow.secretpad.service.constant.Constants.TEE_PROJECT_MODE;
 import static org.secretflow.secretpad.service.constant.DomainDataConstants.SYSTEM_DOMAIN_ID;
 import static org.secretflow.secretpad.service.impl.DataServiceImpl.DEFAULT_DATASOURCE;
@@ -170,6 +170,12 @@ public class ProjectServiceImpl implements ProjectService {
     @Resource
     private VoteRequestRepository voteRequestRepository;
 
+    @Resource
+    private ProjectFeatureTableRepository projectFeatureTableRepository;
+
+    @Resource
+    private FeatureTableRepository featureTableRepository;
+
     @Value("${tee.domain-id:tee}")
     private String teeNodeId;
 
@@ -188,7 +194,7 @@ public class ProjectServiceImpl implements ProjectService {
     private ProjectGraphNodeRepository projectGraphNodeRepository;
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public String createProject(CreateProjectRequest request) {
         if (ProjectConstants.ComputeModeEnum.TEE.name().equals(request.getComputeMode())) {
             Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
@@ -268,7 +274,7 @@ public class ProjectServiceImpl implements ProjectService {
 
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateProject(UpdateProjectRequest request) {
         ProjectDO project = openProject(request.getProjectId());
         if (!Strings.isNullOrEmpty(request.getName())) {
@@ -281,7 +287,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void updateP2PProject(UpdateProjectRequest request) {
         ProjectDO project = openProject(request.getProjectId());
         if (!StringUtils.equals(UserContext.getUser().getOwnerId(), project.getOwnerId())) {
@@ -297,7 +303,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteProject(String projectId) {
         openProject(projectId);
         if (graphRepository.countByProjectId(projectId) != 0) {
@@ -325,7 +331,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void addInstToProject(AddInstToProjectRequest request) {
         openProject(request.getProjectId());
         openInst(request.getInstId());
@@ -334,7 +340,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void addNodeToProject(AddNodeToProjectRequest request) {
         ProjectDO projectDO = openProject(request.getProjectId());
         // openProjectInst(request.getProjectId(), xxx)  // TODO: check inst id
@@ -346,10 +352,34 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void addDatatableToProject(AddProjectDatatableRequest request) {
         ProjectDO project = openProject(request.getProjectId());
         openProjectNode(request.getProjectId(), request.getNodeId());
+        String datasourceId = StringUtils.isBlank(request.getDatasourceId()) ? DEFAULT_DATASOURCE : request.getDatasourceId();
+        Map<String, TableColumnConfigParam> configs = Maps.newHashMap();
+        if (!CollectionUtils.isEmpty(request.getConfigs())) {
+            request.getConfigs().forEach(
+                    it -> configs.put(it.getColName(), it)
+            );
+        }
+        if (DataSourceTypeEnum.HTTP.name().equals(request.getType())) {
+            FeatureTableDO featureTableDO = openFeatureTable(request.getNodeId(), request.getDatatableId());
+            ProjectFeatureTableDO projectFeatureTableDO = ProjectFeatureTableDO.Factory.newProjectFeatureTable(
+                    request.getProjectId(), request.getNodeId(), request.getDatatableId(),
+                    featureTableDO.getColumns().stream().map(c ->
+                                    ProjectDatatableDO.TableColumnConfig.from(
+                                            new ProjectDatatableDO.TableColumn(c.getColName(), c.getColType(), c.getColComment()),
+                                            configs.containsKey(c.getColName()) && configs.get(c.getColName()).isAssociateKey(),
+                                            configs.containsKey(c.getColName()) && configs.get(c.getColName()).isGroupKey(),
+                                            configs.containsKey(c.getColName()) && configs.get(c.getColName()).isLabelKey(),
+                                            configs.containsKey(c.getColName()) && configs.get(c.getColName()).isProtection()
+                                    ))
+                            .collect(Collectors.toList()));
+            projectFeatureTableDO.setFeatureTable(featureTableDO);
+            projectFeatureTableRepository.save(projectFeatureTableDO);
+            return;
+        }
         // Note: we don't check whether datatable is in project, so this operation is idempotent.
         DatatableDTO datatable = openDatatable(request.getNodeId(), request.getDatatableId());
         // create grant to other nodes
@@ -372,7 +402,6 @@ public class ProjectServiceImpl implements ProjectService {
             // check node route
             nodeRouteManager.checkRouteNotExist(request.getNodeId(), teeDomainId);
             nodeRouteManager.checkRouteNotExist(teeDomainId, request.getNodeId());
-            String datasourceId = StringUtils.isBlank(request.getDatasourceId()) ? DEFAULT_DATASOURCE : request.getDatasourceId();
             String datatableId = teeJobConverter.buildTeeDatatableId(teeDomainId, request.getDatatableId());
             // check if the file is pushed to tee
             // query last push to tee job
@@ -417,12 +446,7 @@ public class ProjectServiceImpl implements ProjectService {
             // create job
             jobManager.createJob(createJobRequest);
         }
-        Map<String, TableColumnConfigParam> configs = Maps.newHashMap();
-        if (!CollectionUtils.isEmpty(request.getConfigs())) {
-            request.getConfigs().forEach(
-                    it -> configs.put(it.getColName(), it)
-            );
-        }
+
         // for column that not exist in table, just ignore
         LOGGER.info("add datatable, configs={}, datatable={}", JsonUtils.toJSONString(configs), JsonUtils.toJSONString(datatable));
         ProjectDatatableDO projectDatatable = ProjectDatatableDO.Factory.newProjectDatatable(
@@ -462,6 +486,12 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public ProjectDatatableVO getProjectDatatable(GetProjectDatatableRequest request) {
         openProject(request.getProjectId());
+        if (DataSourceTypeEnum.HTTP.name().equals(request.getType())) {
+            ProjectFeatureTableDO projectFeatureTableDO = openProjectFeatureTable(request.getProjectId(), request.getNodeId(), request.getDatatableId());
+            FeatureTableDO featureTableDO = openFeatureTable(request.getNodeId(), request.getDatatableId());
+            return new ProjectDatatableVO(projectFeatureTableDO.getUpk().getFeatureTableId(), featureTableDO.getFeatureTableName(),
+                    projectFeatureTableDO.getTableConfig().stream().map(TableColumnConfigVO::from).collect(Collectors.toList()));
+        }
         ProjectDatatableDO projectDatatable = openProjectDatatable(request.getProjectId(), request.getNodeId(), request.getDatatableId());
         DatatableDTO datatableDto = openDatatable(request.getNodeId(), request.getDatatableId());
         return new ProjectDatatableVO(datatableDto.getDatatableId(), datatableDto.getDatatableName(),
@@ -469,8 +499,13 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void deleteDatatableToProject(DeleteProjectDatatableRequest request) {
+        if (DataSourceTypeEnum.HTTP.name().equals(request.getType())) {
+            openProjectFeatureTable(request.getProjectId(), request.getNodeId(), request.getDatatableId());
+            projectFeatureTableRepository.deleteById(new ProjectFeatureTableDO.UPK(request.getProjectId(), request.getNodeId(), request.getDatatableId()));
+            return;
+        }
         openProjectDatatable(request.getProjectId(), request.getNodeId(), request.getDatatableId());
         projectDatatableRepository.deleteById(new ProjectDatatableDO.UPK(request.getProjectId(), request.getNodeId(), request.getDatatableId()));
     }
@@ -527,7 +562,7 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public void stopProjectJob(StopProjectJobTaskRequest request) {
         openProject(request.getProjectId());
         ProjectJobDO job = openProjectJob(request.getProjectId(), request.getJobId());
@@ -554,6 +589,12 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public boolean checkNodeInProject(String projectId, String nodeId) {
         return projectNodeRepository.findById(new ProjectNodeDO.UPK(projectId, nodeId)).isPresent();
+    }
+
+    @Override
+    public boolean checkNodeArchive(String projectId) {
+        List<String> nodeIds = projectNodeRepository.findProjectNodesByProjectId(projectId);
+        return !CollectionUtils.isEmpty(nodeIds);
     }
 
     @Override
@@ -613,7 +654,7 @@ public class ProjectServiceImpl implements ProjectService {
         }).sorted(Comparator.comparing(ProjectVO::getGmtCreate).reversed()).collect(Collectors.toList());
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void archiveProject(ArchiveProjectRequest archiveProjectRequest) {
         Optional<ProjectDO> projectDOOptional = projectRepository.findById(archiveProjectRequest.getProjectId());
@@ -640,7 +681,7 @@ public class ProjectServiceImpl implements ProjectService {
      * @param projectId target projectId
      * @return project data object
      */
-    private ProjectDO openProject(String projectId) {
+    public ProjectDO openProject(String projectId) {
         Optional<ProjectDO> projectOpt = projectRepository.findById(projectId);
         if (projectOpt.isEmpty()) {
             throw SecretpadException.of(ProjectErrorCode.PROJECT_NOT_EXISTS);
@@ -709,6 +750,38 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     /**
+     * Open the project feature table information by projectId, nodeId and featureTableId
+     *
+     * @param projectId      target projectId
+     * @param nodeId         target nodeId
+     * @param featureTableId target featureTableId
+     * @return project datatable data object
+     */
+    private ProjectFeatureTableDO openProjectFeatureTable(String projectId, String nodeId, String featureTableId) {
+        Optional<ProjectFeatureTableDO> projectFeatureTableDOOptional = projectFeatureTableRepository.findById(
+                new ProjectFeatureTableDO.UPK(projectId, nodeId, featureTableId));
+        if (projectFeatureTableDOOptional.isEmpty()) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_FEATURE_TABLE_NOT_EXISTS);
+        }
+        return projectFeatureTableDOOptional.get();
+    }
+
+    /**
+     * Open the project feature table information by projectId, nodeId and featureTableId
+     *
+     * @param nodeId         target nodeId
+     * @param featureTableId target featureTableId
+     * @return project datatable data object
+     */
+    private FeatureTableDO openFeatureTable(String nodeId, String featureTableId) {
+        Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(featureTableId, nodeId));
+        if (featureTableDOOptional.isEmpty()) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_FEATURE_TABLE_NOT_EXISTS);
+        }
+        return featureTableDOOptional.get();
+    }
+
+    /**
      * Open the project job information by projectId and jobId
      *
      * @param projectId target projectId
@@ -757,18 +830,34 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Override
     public void updateProjectTableConfig(AddProjectDatatableRequest request) {
-        List<ProjectDatatableDO> datatableDOS = projectDatatableRepository.findByDatableId(request.getProjectId(), request.getDatatableId());
-        if (CollectionUtils.isEmpty(datatableDOS)) {
-            throw SecretpadException.of(ProjectErrorCode.PROJECT_DATATABLE_NOT_EXISTS);
-        }
-
-        ProjectDatatableDO projectDatatableDO = datatableDOS.get(0);
         Map<String, TableColumnConfigParam> configs = Maps.newHashMap();
         if (!CollectionUtils.isEmpty(request.getConfigs())) {
             request.getConfigs().forEach(
                     it -> configs.put(it.getColName(), it)
             );
         }
+        if (DataSourceTypeEnum.HTTP.name().equals(request.getType())) {
+            ProjectFeatureTableDO projectFeatureTableDO = openProjectFeatureTable(request.getProjectId(), request.getNodeId(), request.getDatatableId());
+            projectFeatureTableDO.setTableConfig(
+                    projectFeatureTableDO.getTableConfig().stream().map(c ->
+                                    ProjectDatatableDO.TableColumnConfig.from(
+                                            new ProjectDatatableDO.TableColumn(c.getColName(), c.getColType(), c.getColComment()),
+                                            configs.containsKey(c.getColName()) && configs.get(c.getColName()).isAssociateKey(),
+                                            configs.containsKey(c.getColName()) && configs.get(c.getColName()).isGroupKey(),
+                                            configs.containsKey(c.getColName()) && configs.get(c.getColName()).isLabelKey(),
+                                            configs.containsKey(c.getColName()) && configs.get(c.getColName()).isProtection()
+                                    ))
+                            .collect(Collectors.toList())
+            );
+            projectFeatureTableRepository.save(projectFeatureTableDO);
+            return;
+        }
+        List<ProjectDatatableDO> datatableDOS = projectDatatableRepository.findByDatableId(request.getProjectId(), request.getDatatableId());
+        if (CollectionUtils.isEmpty(datatableDOS)) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_DATATABLE_NOT_EXISTS);
+        }
+
+        ProjectDatatableDO projectDatatableDO = datatableDOS.get(0);
         // for column that not exist in table, just ignore
         projectDatatableDO.setTableConfig(
                 projectDatatableDO.getTableConfig().stream().map(c ->

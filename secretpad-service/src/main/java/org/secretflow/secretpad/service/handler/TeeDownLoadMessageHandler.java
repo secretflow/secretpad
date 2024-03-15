@@ -292,7 +292,7 @@ public class TeeDownLoadMessageHandler extends AbstractVoteTypeHandler {
             success(voteRequestDO);
             LOGGER.info("end do tee downLoad callback,success");
         } catch (Exception e) {
-            LOGGER.info("end do tee downLoad callback,success,failed,err = {}", e);
+            LOGGER.info("end do tee downLoad callback,success,failed", e);
             voteRequestDO.setMsg(e.getMessage());
             failed(voteRequestDO);
         }

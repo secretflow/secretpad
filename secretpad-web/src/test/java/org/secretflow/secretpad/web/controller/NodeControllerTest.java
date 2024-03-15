@@ -8,7 +8,6 @@ import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.persistence.repository.*;
-import org.secretflow.secretpad.service.NodeUserService;
 import org.secretflow.secretpad.service.model.node.*;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
@@ -62,9 +61,6 @@ class NodeControllerTest extends ControllerTest {
 
     @MockBean
     private DomainServiceGrpc.DomainServiceBlockingStub domainServiceStub;
-
-    @MockBean
-    private NodeUserService nodeUserService;
 
     private List<NodeDO> buildNodeDOList() {
         List<NodeDO> nodeDOList = new ArrayList<>();

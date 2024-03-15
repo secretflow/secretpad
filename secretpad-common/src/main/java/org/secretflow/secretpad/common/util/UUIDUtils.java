@@ -28,6 +28,9 @@ import java.util.Locale;
  */
 public final class UUIDUtils {
 
+    private UUIDUtils() {
+    }
+
     /**
      * Get new uuid string
      *
@@ -41,7 +44,7 @@ public final class UUIDUtils {
     /**
      * Random target count
      *
-     * @param count
+     * @param count target count
      * @return random string
      */
     public static String random(int count) {

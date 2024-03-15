@@ -16,12 +16,13 @@
 
 package org.secretflow.secretpad.common.util;
 
-import lombok.Getter;
-import lombok.Setter;
-import lombok.ToString;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.errorcode.AuthErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
+
+import lombok.Getter;
+import lombok.Setter;
+import lombok.ToString;
 
 /**
  * @author yutu
@@ -30,7 +31,7 @@ import org.secretflow.secretpad.common.exception.SecretpadException;
 @Setter
 @Getter
 @ToString
-public final class  UserContext {
+public final class UserContext {
     private static final ThreadLocal<UserContextDTO> USER = new ThreadLocal<>();
 
     private UserContext() {

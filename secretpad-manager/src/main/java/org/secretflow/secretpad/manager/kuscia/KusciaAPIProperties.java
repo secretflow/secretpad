@@ -38,6 +38,10 @@ public class KusciaAPIProperties {
      */
     private String tokenFile;
     /**
+     * ApiLite protocol
+     */
+    private String protocol;
+    /**
      * ApiLite tls config
      */
     private TlsConfig tls = new TlsConfig();

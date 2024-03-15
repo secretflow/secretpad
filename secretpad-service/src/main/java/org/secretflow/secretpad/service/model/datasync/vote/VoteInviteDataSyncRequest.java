@@ -38,7 +38,7 @@ import java.util.List;
 @NoArgsConstructor
 @Builder
 public class VoteInviteDataSyncRequest implements ProjectNodesInfo {
-    
+
     private String voteID;
 
     private String votePartitionID;

@@ -19,21 +19,21 @@ set -e
 WITH_FRONTEND_FLAG=$1
 
 if [[ $WITH_FRONTEND_FLAG == "" ]]; then
-  WITH_FRONTEND_FLAG=false
+	WITH_FRONTEND_FLAG=false
 fi
 
 if [[ $WITH_FRONTEND_FLAG == true ]]; then
-  ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
-  FRONTEND_LATEST_TAG=$(git ls-remote --sort='version:refname' --refs --tags https://github.com/secretflow/secretpad-frontend.git | tail -n1 | sed 's/.*\///')
-  WORK_DIR="./tmp/frontend"
-  mkdir -p $WORK_DIR
-  wget -O $WORK_DIR/frontend.tar https://github.com/secretflow/secretpad-frontend/releases/download/"${FRONTEND_LATEST_TAG}"/"${FRONTEND_LATEST_TAG}".tar
-  tar -xvf $WORK_DIR/frontend.tar -C ${WORK_DIR} --strip-components=1
-  DIST_DIR="$WORK_DIR/apps/platform/dist"
-  TARGET_DIR="${ROOT}/secretpad-web/src/main/resources/static"
-  mkdir -p "${TARGET_DIR}"
-  cp -rpf $DIST_DIR/* "${TARGET_DIR}"
-  rm -rf "$WORK_DIR"
+	ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
+	FRONTEND_LATEST_TAG=$(git ls-remote --sort='version:refname' --refs --tags https://github.com/secretflow/secretpad-frontend.git | tail -n1 | sed 's/.*\///')
+	WORK_DIR="./tmp/frontend"
+	mkdir -p $WORK_DIR
+	wget -O $WORK_DIR/frontend.tar https://github.com/secretflow/secretpad-frontend/releases/download/"${FRONTEND_LATEST_TAG}"/"${FRONTEND_LATEST_TAG}".tar
+	tar -xvf $WORK_DIR/frontend.tar -C ${WORK_DIR} --strip-components=1
+	DIST_DIR="$WORK_DIR/apps/platform/dist"
+	TARGET_DIR="${ROOT}/secretpad-web/src/main/resources/static"
+	mkdir -p "${TARGET_DIR}"
+	cp -rpf $DIST_DIR/* "${TARGET_DIR}"
+	rm -rf "$WORK_DIR"
 fi
 
 mvn clean package -DskipTests

@@ -82,7 +82,7 @@ public class EdgeResourceInit implements CommandLineRunner {
 
             UserContext.remove();
         } else {
-            log.error("kuscia lie {} , not ready", ownerId);
+            log.error("kuscia lite {} , not ready", ownerId);
         }
         log.info("init edge initialize resource end");
     }

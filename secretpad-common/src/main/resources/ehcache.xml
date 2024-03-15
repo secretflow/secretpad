@@ -28,4 +28,26 @@
             <offheap unit="MB">100</offheap>
         </resources>
     </cache>
+    <cache alias="model_export_cache">
+        <key-type>java.lang.String</key-type>
+        <value-type>java.lang.String</value-type>
+        <expiry>
+            <ttl unit="minutes">300</ttl>
+        </expiry>
+        <listeners>
+            <listener>
+                <class>org.secretflow.secretpad.web.caching.ModelExportCacheEventLogger</class>
+                <event-firing-mode>ASYNCHRONOUS</event-firing-mode>
+                <event-ordering-mode>UNORDERED</event-ordering-mode>
+                <events-to-fire-on>CREATED</events-to-fire-on>
+                <events-to-fire-on>UPDATED</events-to-fire-on>
+                <events-to-fire-on>EXPIRED</events-to-fire-on>
+                <events-to-fire-on>REMOVED</events-to-fire-on>
+                <events-to-fire-on>EVICTED</events-to-fire-on>
+            </listener>
+        </listeners>
+        <resources>
+            <offheap unit="MB">100</offheap>
+        </resources>
+    </cache>
 </config>

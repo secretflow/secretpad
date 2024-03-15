@@ -28,5 +28,4 @@ public enum VoteTypeEnum {
     PROJECT_CREATE,
     PROJECT_ARCHIVE,
     PROJECT_NODE_ADD,
-    ;
 }

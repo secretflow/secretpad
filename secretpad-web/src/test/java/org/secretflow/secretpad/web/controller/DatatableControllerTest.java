@@ -20,15 +20,20 @@ import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstant
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.persistence.entity.FeatureTableDO;
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
 import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO;
+import org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO;
+import org.secretflow.secretpad.persistence.repository.FeatureTableRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectDatatableRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectFeatureTableRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectRepository;
 import org.secretflow.secretpad.service.model.datatable.DeleteDatatableRequest;
 import org.secretflow.secretpad.service.model.datatable.GetDatatableRequest;
 import org.secretflow.secretpad.service.model.datatable.ListDatatableRequest;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
+import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.common.Common;
@@ -37,10 +42,7 @@ import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 import static org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager.DATA_TYPE_TABLE;
 import static org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager.DATA_VENDOR_MANUAL;
@@ -65,6 +67,12 @@ class DatatableControllerTest extends ControllerTest {
 
     @MockBean
     private ProjectRepository projectRepository;
+
+    @MockBean
+    private FeatureTableRepository featureTableRepository;
+
+    @MockBean
+    private ProjectFeatureTableRepository projectFeatureTableRepository;
 
     @Test
     void listDatatables() throws Exception {
@@ -91,6 +99,10 @@ class DatatableControllerTest extends ControllerTest {
                             )
                             .build()))
                     .thenReturn(response);
+            FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
+            ProjectFeatureTableDO projectFeatureTableDO = FakerUtils.fake(ProjectFeatureTableDO.class);
+            Mockito.when(projectFeatureTableRepository.findByNodeIdAndFeatureTableIds(request.getNodeId(), Lists.newArrayList(featureTableDO.getUpk().getFeatureTableId()))).thenReturn(Collections.singletonList(projectFeatureTableDO));
+            Mockito.when(featureTableRepository.findByNodeId(request.getNodeId())).thenReturn(Collections.singletonList(featureTableDO));
 
             return MockMvcRequestBuilders.post(getMappingUrl(DatatableController.class, "listDatatables", ListDatatableRequest.class))
                     .content(JsonUtils.toJSONString(request));
@@ -102,6 +114,7 @@ class DatatableControllerTest extends ControllerTest {
         assertResponse(() -> {
             GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
             request.setNodeId("alice");
+            request.setType("CSV");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_GET));
 
@@ -127,14 +140,15 @@ class DatatableControllerTest extends ControllerTest {
     void deleteDatatable() throws Exception {
         assertResponseWithEmptyData(() -> {
             DeleteDatatableRequest request = FakerUtils.fake(DeleteDatatableRequest.class);
+            request.setType("CSV");
             request.setNodeId("alice");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_DELETE));
 
             Mockito.when(datatableRepository.authProjectDatatablesByDatatableIds(request.getNodeId(),
-                    Arrays.asList(request.getDatatableId()))).thenReturn(new ArrayList<>());
+                    Collections.singletonList(request.getDatatableId()))).thenReturn(new ArrayList<>());
 
-            Mockito.when(projectRepository.findAllById(Arrays.asList(PROJECT_ID))).thenReturn(buildProjectDO());
+            Mockito.when(projectRepository.findAllById(List.of(PROJECT_ID))).thenReturn(buildProjectDO());
 
             Domaindata.DeleteDomainDataResponse response = Domaindata.DeleteDomainDataResponse.newBuilder()
                     .setStatus(Common.Status.newBuilder().setCode(0).build())
@@ -154,14 +168,15 @@ class DatatableControllerTest extends ControllerTest {
     void deleteDatatableHasBeenAuthException() throws Exception {
         assertErrorCode(() -> {
             DeleteDatatableRequest request = FakerUtils.fake(DeleteDatatableRequest.class);
+            request.setType("CSV");
             request.setNodeId("alice");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_DELETE));
 
             Mockito.when(datatableRepository.authProjectDatatablesByDatatableIds(request.getNodeId(),
-                    Arrays.asList(request.getDatatableId()))).thenReturn(buildProjectDatatableDO());
+                    Collections.singletonList(request.getDatatableId()))).thenReturn(buildProjectDatatableDO());
 
-            Mockito.when(projectRepository.findAllById(Arrays.asList(PROJECT_ID))).thenReturn(buildProjectDO());
+            Mockito.when(projectRepository.findAllById(List.of(PROJECT_ID))).thenReturn(buildProjectDO());
 
             Domaindata.DeleteDomainDataResponse response = Domaindata.DeleteDomainDataResponse.newBuilder()
                     .setStatus(Common.Status.newBuilder().setCode(0).build())
@@ -182,13 +197,14 @@ class DatatableControllerTest extends ControllerTest {
         assertErrorCode(() -> {
             DeleteDatatableRequest request = FakerUtils.fake(DeleteDatatableRequest.class);
             request.setNodeId("alice");
+            request.setType("CSV");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_DELETE));
 
             Mockito.when(datatableRepository.authProjectDatatablesByDatatableIds(request.getNodeId(),
-                    Arrays.asList(request.getDatatableId()))).thenReturn(new ArrayList<>());
+                    Collections.singletonList(request.getDatatableId()))).thenReturn(new ArrayList<>());
 
-            Mockito.when(projectRepository.findAllById(Arrays.asList(PROJECT_ID))).thenReturn(buildProjectDO());
+            Mockito.when(projectRepository.findAllById(List.of(PROJECT_ID))).thenReturn(buildProjectDO());
 
             Domaindata.DeleteDomainDataResponse response = Domaindata.DeleteDomainDataResponse.newBuilder()
                     .setStatus(Common.Status.newBuilder().setCode(1).build())

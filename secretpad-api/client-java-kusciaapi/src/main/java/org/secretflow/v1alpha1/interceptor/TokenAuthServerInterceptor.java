@@ -37,14 +37,12 @@ public class TokenAuthServerInterceptor implements ServerInterceptor {
     }
 
     /**
-     * Intercept the call with incorrect auth token
+     * Interceptor method, which is used to intercept and authenticate server-side calls
      *
-     * @param call
-     * @param headers
-     * @param next
-     * @param <ReqT>
-     * @param <RespT>
-     * @return listened request and response
+     * @param call    server-side call object
+     * @param headers call header information
+     * @param next    processor
+     * @return The server calls the listener
      */
     @Override
     public <ReqT, RespT> ServerCall.Listener<ReqT> interceptCall(ServerCall<ReqT, RespT> call, Metadata headers, ServerCallHandler<ReqT, RespT> next) {

@@ -19,9 +19,11 @@ package org.secretflow.secretpad.persistence.repository;
 import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
 import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
 
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -62,4 +64,9 @@ public interface ProjectJobTaskRepository extends BaseRepository<ProjectTaskDO, 
      * @return project job task results
      */
     List<ProjectTaskDO> findByStatus(GraphNodeTaskStatus status);
+
+    @Query(nativeQuery = true, value = "delete from project_job_task")
+    @Modifying
+    @Transactional
+    void deleteAllAuthentic();
 }

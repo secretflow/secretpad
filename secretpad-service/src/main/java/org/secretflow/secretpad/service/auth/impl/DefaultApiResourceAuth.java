@@ -19,6 +19,7 @@ package org.secretflow.secretpad.service.auth.impl;
 import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.service.auth.ApiResourceAuth;
+
 import org.springframework.stereotype.Service;
 
 /**
@@ -39,7 +40,7 @@ public class DefaultApiResourceAuth implements ApiResourceAuth {
         if (UserContext.getUser().getOwnerId().equals(UserContext.getUser().getPlatformNodeId())) {
             return true;
         }
-        if (UserContext.getUser().containInterfaceResource(ApiResourceCodeConstants.ALL_INTERFACE_RESOURCE)){
+        if (UserContext.getUser().containInterfaceResource(ApiResourceCodeConstants.ALL_INTERFACE_RESOURCE)) {
             return true;
         }
         return UserContext.getUser().containInterfaceResource(resourceCode);

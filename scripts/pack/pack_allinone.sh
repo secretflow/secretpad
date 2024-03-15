@@ -19,11 +19,11 @@
 KUSCIA_IMAGE=""
 SECRETPAD_IMAGE=""
 SECRETFLOW_IMAGE=""
+SECRETFLOW_SERVING_IMAGE=""
 
 TEE_APP_IMAGE=""
 TEE_DM_IMAGE=""
 CAPSULE_MANAGER_SIM_IMAGE=""
-
 
 GREEN='\033[0;32m'
 NC='\033[0m'
@@ -37,7 +37,10 @@ echo "mkdir -p secretflow-allinone-package/images"
 mkdir -p secretflow-allinone-package/images
 
 # copy install.sh
-path="$(cd "$(dirname $0)";pwd)"
+path="$(
+	cd "$(dirname $0)"
+	pwd
+)"
 echo "cp install.sh secretflow-allinone-package/"
 cp "$path"/install.sh secretflow-allinone-package/
 # copy uninstall.sh
@@ -76,10 +79,14 @@ fi
 if [ "${CAPSULE_MANAGER_SIM_IMAGE}" == "" ]; then
 	CAPSULE_MANAGER_SIM_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/capsule-manager-sim:latest
 fi
+if [ "${SECRETFLOW_SERVING_IMAGE}" == "" ]; then
+	SECRETFLOW_SERVING_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:latest
+fi
 
 echo "kuscia image: $KUSCIA_IMAGE"
 echo "secretpad image: $SECRETPAD_IMAGE"
 echo "secretflow image: $SECRETFLOW_IMAGE"
+echo "secretflow serving image: $SECRETFLOW_SERVING_IMAGE"
 
 echo "TEE_APP_IMAGE image: $TEE_APP_IMAGE"
 echo "TEE_DM_IMAGE image: $TEE_DM_IMAGE"
@@ -95,6 +102,8 @@ log "docker pull ${SECRETPAD_IMAGE} done"
 echo "docker pull ${SECRETFLOW_IMAGE}"
 docker pull ${SECRETFLOW_IMAGE}
 log "docker pull ${SECRETFLOW_IMAGE} done"
+docker pull ${SECRETFLOW_SERVING_IMAGE}
+log "docker pull ${SECRETFLOW_SERVING_IMAGE} done"
 
 # tee
 docker pull ${TEE_APP_IMAGE}
@@ -110,12 +119,13 @@ secretpadTag=${SECRETPAD_IMAGE##*:}
 echo "secretpad tag: $secretpadTag"
 secretflowTag=${SECRETFLOW_IMAGE##*:}
 echo "secretflow tag: $secretflowTag"
+secretflowServingTag=${SECRETFLOW_SERVING_IMAGE##*:}
+echo "secretflow serving tag: $secretflowServingTag"
+
 teeAppTag=${TEE_APP_IMAGE##*:}
 echo "tee app tag: $teeAppTag"
-
 teeDmTag=${TEE_DM_IMAGE##*:}
 echo "teeDmTag: $teeDmTag"
-
 capsuleManagerSimTag=${CAPSULE_MANAGER_SIM_IMAGE##*:}
 echo "capsuleManagerSimTag: $capsuleManagerSimTag"
 
@@ -131,6 +141,9 @@ docker save -o ./secretflow-allinone-package/images/secretpad-${secretpadTag}.ta
 echo "docker save -o ./secretflow-allinone-package/images/secretflow-${secretflowTag}.tar ${SECRETFLOW_IMAGE} "
 docker save -o ./secretflow-allinone-package/images/secretflow-${secretflowTag}.tar ${SECRETFLOW_IMAGE}
 
+echo "docker save -o ./secretflow-allinone-package/images/serving-${secretflowServingTag}.tar ${SECRETFLOW_SERVING_IMAGE} "
+docker save -o ./secretflow-allinone-package/images/serving-${secretflowServingTag}.tar ${SECRETFLOW_SERVING_IMAGE}
+
 echo "docker save -o ./secretflow-allinone-package/images/teeapps-sim-${teeAppTag}.tar ${TEE_APP_IMAGE} "
 docker save -o ./secretflow-allinone-package/images/teeapps-sim-${teeAppTag}.tar ${TEE_APP_IMAGE}
 
@@ -139,7 +152,6 @@ docker save -o ./secretflow-allinone-package/images/sf-tee-dm-sim-${teeDmTag}.ta
 
 echo "docker save -o ./secretflow-allinone-package/image/capsule-manager-sim-${capsuleManagerSimTag}.tar ${CAPSULE_MANAGER_SIM_IMAGE} "
 docker save -o ./secretflow-allinone-package/images/capsule-manager-sim-${capsuleManagerSimTag}.tar ${CAPSULE_MANAGER_SIM_IMAGE}
-
 
 echo "tar --no-xattrs -zcvf secretflow-allinone-package-${VERSION_TAG}.tar.gz ./secretflow-allinone-package"
 tar --no-xattrs -zcvf secretflow-allinone-package-${VERSION_TAG}.tar.gz ./secretflow-allinone-package

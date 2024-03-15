@@ -6,3 +6,7 @@
 |___/\___|\___|_|  \___|\__| .__/ \__,_|\__,_|      Console: http://127.0.0.1:${server.http-port}/
                            | |
                            |_|
+
+secretpad  version: ${secretpad.version.secretpad-image}
+kuscia     version: ${secretpad.version.kuscia-image}
+secretflow version: ${secretpad.version.secretflow-image}

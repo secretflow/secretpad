@@ -22,8 +22,11 @@ import org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.util.CollectionUtils;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
@@ -107,6 +110,10 @@ public class DatatableVO {
      * @return datatable view object
      */
     public static DatatableVO from(DatatableDTO dto, List<AuthProjectVO> authProjects, TeeNodeDatatableManagementDO managementDO) {
+        Map<String, String> attributes = dto.getAttributes();
+        if (CollectionUtils.isEmpty(attributes)) {
+            attributes = new HashMap<>();
+        }
         return DatatableVO.builder()
                 .datatableId(dto.getDatatableId())
                 .datatableName(dto.getDatatableName())
@@ -114,7 +121,7 @@ public class DatatableVO {
                 .datasourceId(dto.getDatasourceId())
                 .relativeUri(dto.getRelativeUri())
                 .type(StringUtils.equalsIgnoreCase(dto.getType(), DATA_MESH_DATATABLE_TYPE) ? DATATABLE_TYPE : dto.getType())
-                .description(dto.getAttributes().getOrDefault("description", ""))
+                .description(attributes.getOrDefault("description", ""))
                 .schema(dto.getSchema().stream().map(TableColumnVO::from).collect(Collectors.toList()))
                 .authProjects(authProjects)
                 .pushToTeeStatus(null == managementDO ? "" : managementDO.getStatus().name())

@@ -18,3 +18,7 @@
 -- default: id is varchar(64), name is varchar(256).
 
 -- sql obligate for edge privatization， this sql will be execute by scripts/start_edge.sh
+
+--  sqlLite3 optimize
+PRAGMA synchronous = NORMAL;
+PRAGMA journal_mode = WAL;

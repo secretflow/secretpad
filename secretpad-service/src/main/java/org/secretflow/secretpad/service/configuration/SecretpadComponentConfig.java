@@ -32,7 +32,7 @@ import java.util.List;
 @ConfigurationProperties("secretpad.component")
 public class SecretpadComponentConfig {
     /**
-     * 用户列表
+     * hide components configs
      */
     private List<String> hide;
 }

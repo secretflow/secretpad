@@ -21,7 +21,7 @@ public class ErrorCodeTest {
     /**
      * ErrorCode list in overall situation
      */
-    private List<Integer> errorCodeList = new ArrayList<>();
+    private final List<Integer> errorCodeList = new ArrayList<>();
 
 
     /**

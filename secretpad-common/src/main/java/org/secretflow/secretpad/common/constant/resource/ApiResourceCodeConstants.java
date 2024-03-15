@@ -55,6 +55,8 @@ public class ApiResourceCodeConstants {
     public static final String GRAPH_UPDATE = "GRAPH_UPDATE";
     public static final String GRAPH_LIST = "GRAPH_LIST";
 
+    public static final String MODEL_EXPORT = "MODEL_EXPORT";
+
     public static final String GRAPH_NODE_UPDATE = "GRAPH_NODE_UPDATE";
     public static final String GRAPH_START = "GRAPH_START";
     public static final String GRAPH_NODE_STATUS = "GRAPH_NODE_STATUS";
@@ -101,6 +103,12 @@ public class ApiResourceCodeConstants {
 
     public static final String USER_UPDATE_PWD = "USER_UPDATE_PWD";
 
+    public static final String MODEL_PAGE = "MODEL_PAGE";
+    public static final String MODEL_GET = "MODEL_GET";
+    public static final String MODEL_DISCARD = "MODEL_DISCARD";
+    public static final String MODEL_DELETE = "MODEL_DELETE";
+    public static final String SERV_CREATE = "SERV_CREATE";
+    public static final String SERV_DELETE = "SERV_DELETE";
 }
 
 

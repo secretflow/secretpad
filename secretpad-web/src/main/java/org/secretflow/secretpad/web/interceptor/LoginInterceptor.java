@@ -30,11 +30,9 @@ import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
 import org.secretflow.secretpad.persistence.repository.UserTokensRepository;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.SysResourcesBizService;
-import org.secretflow.secretpad.web.constant.AuthConstants;
 import org.secretflow.secretpad.web.util.AuthUtils;
 
 import jakarta.annotation.Resource;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -134,7 +132,6 @@ public class LoginInterceptor implements HandlerInterceptor {
      */
     @Override
     public boolean preHandle(@NotNull HttpServletRequest request, @NotNull HttpServletResponse response, @NotNull Object handler) {
-        csrfDefense(response);
         if (!enable) {
             UserContextDTO admin = createTmpUserForPlatformType(envService.getPlatformType());
             UserContext.setBaseUser(admin);
@@ -154,17 +151,6 @@ public class LoginInterceptor implements HandlerInterceptor {
         return true;
     }
 
-    private void csrfDefense(HttpServletResponse response) {
-        String setCookie = response.getHeader("Set-Cookie");
-        if (StringUtils.isBlank(setCookie)) {
-            Cookie cookie = new Cookie(AuthConstants.CSRF_SAME_SITE, AuthConstants.CSRF_SAME_SITE_VALUE);
-            response.addCookie(cookie);
-        } else {
-            StringBuilder cookie = new StringBuilder();
-            cookie.append("; ").append(AuthConstants.CSRF_SAME_SITE).append("=").append(AuthConstants.CSRF_SAME_SITE_VALUE);
-            response.addHeader("Set-Cookie", cookie.toString());
-        }
-    }
 
     private void processByNodeRpcRequest(HttpServletRequest request) {
         String sourceNodeId = request.getHeader("kuscia-origin-source");
@@ -243,24 +229,18 @@ public class LoginInterceptor implements HandlerInterceptor {
      */
     private void refuseByOutPortInvokeInnerPort(HttpServletRequest request, HttpServletResponse response) {
         if (innerPortPathConfig.getPath().contains(request.getServletPath())) {
-            returnJson(response, "404");
+            returnJson(response);
         }
     }
 
-    private void returnJson(HttpServletResponse response, String json) {
-        PrintWriter writer = null;
+    private void returnJson(HttpServletResponse response) {
         response.setCharacterEncoding("UTF-8");
         response.setStatus(HttpServletResponse.SC_NOT_FOUND);
-        try {
-            writer = response.getWriter();
-            writer.print(json);
+        try (PrintWriter writer = response.getWriter()) {
+            writer.print("404");
             writer.flush();
         } catch (IOException e) {
             log.error("LoginInterceptor refuseByOutPortInvokeInnerPort returnJson error.", e);
-        } finally {
-            if (writer != null) {
-                writer.close();
-            }
         }
     }
 }

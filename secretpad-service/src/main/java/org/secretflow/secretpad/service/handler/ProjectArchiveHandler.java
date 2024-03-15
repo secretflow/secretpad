@@ -49,7 +49,7 @@ import java.util.stream.Collectors;
  */
 @Component
 public class ProjectArchiveHandler extends AbstractAutonomyVoteTypeHandler {
-    private final static Logger LOGGER = LoggerFactory.getLogger(ProjectArchiveHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ProjectArchiveHandler.class);
 
 
     private final ProjectNodeRepository projectNodeRepository;
