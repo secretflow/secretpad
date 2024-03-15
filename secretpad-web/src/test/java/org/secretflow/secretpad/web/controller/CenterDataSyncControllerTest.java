@@ -30,6 +30,7 @@ import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectFeatureTableRepository;
 import org.secretflow.secretpad.service.sync.edge.EdgeDataSyncServiceImpl;
 import org.secretflow.secretpad.web.SecretPadApplication;
+import org.secretflow.secretpad.web.condition.GithubCondition;
 
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Conditional;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 
@@ -54,6 +56,7 @@ import java.util.Set;
 })
 @ActiveProfiles({SystemConstants.TEST})
 @SpringBootTest(classes = SecretPadApplication.class, webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
+@Conditional(GithubCondition.class)
 public class CenterDataSyncControllerTest {
     @BeforeAll
     public static void setup() throws IOException, InterruptedException {

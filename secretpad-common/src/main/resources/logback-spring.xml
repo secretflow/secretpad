@@ -94,7 +94,6 @@
         <level value="DEBUG"/>
         <appender-ref ref="rootFile"/>
         <appender-ref ref="errorFile"/>
-        <appender-ref ref="CONSOLE"/>
     </root>
 
     <logger name="org.secretflow.secretpad.persistence.datasync" additivity="false">
@@ -108,6 +107,37 @@
     </logger>
 
     <springProfile name="dev">
+        <logger name="org.secretflow.secretpad">
+            <appender-ref ref="CONSOLE"/>
+            <level value="INFO"/>
+        </logger>
+        <logger name="org.springframework">
+            <appender-ref ref="CONSOLE"/>
+            <level value="INFO"/>
+        </logger>
+
+        <logger name="org.apache.catalina.startup.DigesterFactory">
+            <appender-ref ref="CONSOLE"/>
+            <level value="INFO"/>
+        </logger>
+
+        <logger name="org.apache.catalina.util.LifecycleBase">
+            <appender-ref ref="CONSOLE"/>
+            <level value="ERROR"/>
+        </logger>
+
+        <logger name="org.apache.coyote.http11.Http11NioProtocol">
+            <appender-ref ref="CONSOLE"/>
+            <level value="WARN"/>
+        </logger>
+
+        <logger name="org.apache.tomcat.util.net.NioSelectorPool">
+            <appender-ref ref="CONSOLE"/>
+            <level value="WARN"/>
+        </logger>
+    </springProfile>
+
+    <springProfile name="test">
         <logger name="org.secretflow.secretpad">
             <appender-ref ref="CONSOLE"/>
             <level value="INFO"/>

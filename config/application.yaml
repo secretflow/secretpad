@@ -106,6 +106,10 @@ secretpad:
   datasync:
     center: true
     p2p: false
+  version:
+    secretpad-image: ${SECRETPAD_IMAGE:0.5.0b0}
+    kuscia-image: ${KUSCIA_IMAGE:0.6.0b0}
+    secretflow-image: ${SECRETFLOW_IMAGE:1.4.0b0}
   component:
     hide:
       - secretflow/io/read_data:0.0.1
