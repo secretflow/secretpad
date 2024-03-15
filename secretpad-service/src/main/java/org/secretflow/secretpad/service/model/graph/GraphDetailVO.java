@@ -18,8 +18,10 @@ package org.secretflow.secretpad.service.model.graph;
 
 import org.secretflow.secretpad.persistence.entity.ProjectGraphDO;
 
+import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
@@ -31,6 +33,8 @@ import java.util.List;
  */
 @Data
 @Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class GraphDetailVO {
     /**
      * Project id

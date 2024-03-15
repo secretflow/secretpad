@@ -57,6 +57,7 @@ public interface EnvService {
 
     /**
      * check autonomy platform
+     *
      * @return boolean
      */
     Boolean isAutonomy();

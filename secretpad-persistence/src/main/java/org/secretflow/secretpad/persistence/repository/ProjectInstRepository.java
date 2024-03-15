@@ -29,7 +29,7 @@ import java.util.List;
  * @date 2023/5/31
  */
 @Repository
-public interface ProjectInstRepository extends BaseRepository<ProjectInstDO, ProjectInstDO.UPK>{
+public interface ProjectInstRepository extends BaseRepository<ProjectInstDO, ProjectInstDO.UPK> {
 
     List<ProjectInstDO> findByUpkProjectId(String projectId);
 }

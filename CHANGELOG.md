@@ -14,6 +14,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `Fixed` for any bug fixes.
 `Security` in case of vulnerabilities.
 
+## [v0.5.0b0] - 2024-03-15
+
+### Added
+
+- dag model export
+- Model Management (Publishing, Deactivating, Deprecating, Deleting)
+- Model HTTP(SPI) feature service management
+- secreflow model export, GLM optimization, the ability to save additional feature columns to the results of
+  the prediction operator, the binning modification function, and the PSI upgrade 0.0.2
+- kusica 0.6.0 serving
+
+### Fixed
+
+- Data synchronization optimization reduces resource consumption
+- log optimization
+- springboot3.1.5 upgrade 3.19
+
+## [v0.4.1b1] - 2024-02-02
+
+### Fixed
+
+- Fix edge node user update password url 404
+- Fix graph edge del error
+- Fix tee result download error
+
 ## [v0.4.1b0] - 2024-1-26
 
 ### Added
@@ -44,7 +69,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - In the P2P mode, the creation of platform projects requires the approval of the invitee
 - The model prediction (SecureBoost) component is optimized to support batch prediction
 
-## [0.3.0b0] - 2024-11-12
+## [0.3.0b0] - 2023-11-12
 
 ### Added
 

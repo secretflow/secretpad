@@ -35,12 +35,14 @@ public @interface DataResource {
 
     /**
      * resource type
+     *
      * @return {@link DataResourceTypeEnum}
      */
     DataResourceTypeEnum resourceType();
 
     /**
      * check field of param
+     *
      * @return field name
      */
     String field() default "";

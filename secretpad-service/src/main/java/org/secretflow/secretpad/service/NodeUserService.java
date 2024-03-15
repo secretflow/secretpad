@@ -30,18 +30,21 @@ import java.util.List;
 public interface NodeUserService {
     /**
      * create node user for center platform
+     *
      * @param request request
      */
     void create(NodeUserCreateRequest request);
 
     /**
      * reset node user password for center platform
+     *
      * @param userRequest request
      */
     void resetPassword(ResetNodeUserPwdRequest userRequest);
 
     /**
      * query node user for center platform
+     *
      * @param createAccountRequest request
      * @return users
      */

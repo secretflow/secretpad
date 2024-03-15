@@ -67,6 +67,8 @@ public enum SystemErrorCode implements ErrorCode {
     SYNC_ERROR(202011110),
     REMOTE_CALL_ERROR(2020111011),
 
+    REQUEST_FREQUENCY_ERROR(2020111012),
+
     ;
 
     private final int code;

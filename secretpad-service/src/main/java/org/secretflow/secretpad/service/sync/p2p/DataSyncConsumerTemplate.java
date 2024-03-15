@@ -19,10 +19,7 @@ package org.secretflow.secretpad.service.sync.p2p;
 import org.secretflow.secretpad.common.dto.SyncDataDTO;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.util.UserContext;
-import org.secretflow.secretpad.manager.integration.job.JobManager;
 import org.secretflow.secretpad.persistence.entity.BaseAggregationRoot;
-import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
-import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
 import org.secretflow.secretpad.service.sync.JpaSyncDataService;
 
 import jakarta.annotation.Resource;
@@ -38,8 +35,6 @@ import org.springframework.stereotype.Service;
 public class DataSyncConsumerTemplate {
     @Resource
     private JpaSyncDataService jpaSyncDataService;
-    @Resource
-    private JobManager jobManager;
 
     public SyncDataDTO consumer(String nodeId, SyncDataDTO syncDataDTO) {
         checkSourceNodeId(nodeId, syncDataDTO);
@@ -48,13 +43,6 @@ public class DataSyncConsumerTemplate {
         Object data = syncDataDTO.getData();
         if (data instanceof BaseAggregationRoot) {
             log.debug("consumer data instanceof BaseAggregationRoot");
-        }
-        if (data instanceof ProjectTaskDO) {
-            ProjectTaskDO taskDO = (ProjectTaskDO) data;
-            GraphNodeTaskStatus status = taskDO.getStatus();
-            if (status == GraphNodeTaskStatus.SUCCEED) {
-                jobManager.syncResult(taskDO);
-            }
         }
         UserContext.remove();
         return syncDataDTO;

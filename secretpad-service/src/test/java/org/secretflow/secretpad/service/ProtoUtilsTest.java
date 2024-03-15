@@ -17,23 +17,21 @@
 package org.secretflow.secretpad.service;
 
 import org.secretflow.secretpad.common.util.ProtoUtils;
-import org.secretflow.secretpad.common.util.UniqueLinkedBlockingQueue;
 
 import com.google.protobuf.Any;
+import com.google.protobuf.Descriptors;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.secretflow.spec.v1.*;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.compress.utils.IOUtils;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
+import org.secretflow.proto.kuscia.TaskConfig;
 import org.secretflow.proto.pipeline.Pipeline;
-import org.springframework.util.ResourceUtils;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
+import java.util.List;
+import java.util.Set;
+import java.util.TreeSet;
 
 /**
  * ProtoUtils test
@@ -48,7 +46,6 @@ public class ProtoUtilsTest {
         String str = "{\"attr_paths\":[\"protocol\",\"receiver\",\"precheck_input\",\"sort\",\"broadcast_result\",\"bucket_size\",\"curve_type\",\"input/receiver_input/key\",\"input/sender_input/key\"],\"attrs\":[{\"s\":\"ECDH_PSI_2PC\"},{\"s\":\"alice\"},{\"b\":true},{\"b\":true},{\"b\":true},{\"i64\":1048576},{\"s\":\"CURVE_FOURQ\"},{\"ss\":[\"id1\"]},{\"ss\":[\"id2\"]}],\"domain\":\"psi\",\"name\":\"two_party_balanced_psi\",\"version\":\"0.0.1\"}";
         Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
         JsonFormat.parser().ignoringUnknownFields().merge(str, nodeDefBuilder);
-        Pipeline.NodeDef nodeDef = nodeDefBuilder.build();
     }
 
     @Test
@@ -94,31 +91,28 @@ public class ProtoUtilsTest {
         String content = ProtoUtils.toJsonString(distData, typeRegistry);
         DistData.Builder distDataBuilder = DistData.newBuilder();
         JsonFormat.parser().ignoringUnknownFields().usingTypeRegistry(typeRegistry).merge(content, distDataBuilder);
-        System.out.println(distDataBuilder.build().getMeta());
+        log.info("distDataBuilder meta ---{}", distDataBuilder.build().getMeta());
     }
 
     @Test
-    @Disabled
-    public void showSyncFileData() throws IOException {
-        serializableRead("li-test");
-    }
-
-    public UniqueLinkedBlockingQueue serializableRead(String nodeId) throws IOException {
-        ObjectInputStream in = null;
-        UniqueLinkedBlockingQueue queue = new UniqueLinkedBlockingQueue();
-        File file = ResourceUtils.getFile("/Users/zhangwenxu/cx/" + nodeId);
-        if (!file.exists()) {
-            return null;
+    public void pbToJsonTest() throws InvalidProtocolBufferException {
+        TaskConfig.TaskInputConfig build = TaskConfig.TaskInputConfig.newBuilder()
+                .addAllSfOutputIds(List.of("1"))
+                .addAllSfInputIds(List.of())
+                .build();
+        List<Descriptors.FieldDescriptor> fields = build.getDescriptorForType().getFields();
+        Set<Descriptors.FieldDescriptor> fieldSet = new TreeSet<>();
+        for (Descriptors.FieldDescriptor field : fields) {
+            if ("sf_input_ids".equals(field.getName())) {
+                fieldSet.add(field);
+            }
         }
-        try {
-            in = new ObjectInputStream(new FileInputStream(file));
-            queue = (UniqueLinkedBlockingQueue) in.readObject();
-        } catch (Exception e) {
-            log.error("serializableRead error ", e);
-        } finally {
-            IOUtils.closeQuietly(in);
-        }
-        log.info("serializableRead ---{} {}", nodeId, queue.size());
-        return queue;
+        JsonFormat.TypeRegistry typeRegistry = JsonFormat.TypeRegistry.newBuilder().add(IndividualTable.getDescriptor()).build();
+        String json = JsonFormat.printer()
+                .usingTypeRegistry(typeRegistry)
+                .preservingProtoFieldNames()
+                .includingDefaultValueFields(fieldSet)
+                .print(build);
+        log.info("json: {}", json);
     }
 }

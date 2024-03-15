@@ -53,8 +53,7 @@ public class ClazzUtils {
         if (clazz.isInstance(bean)) {
             return bean;
         }
-        while (bean instanceof Advised) {
-            Advised advised = (Advised) bean;
+        while (bean instanceof Advised advised) {
             if (null == advised.getTargetSource() || null == advised.getTargetSource().getTarget()) {
                 return null;
             }

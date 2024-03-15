@@ -16,14 +16,10 @@
 
 package org.secretflow.secretpad.service.model.node;
 
-import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-import lombok.ToString;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.*;
 
 /**
  * Node base info view object

@@ -35,7 +35,7 @@ import org.springframework.context.annotation.Configuration;
 @OpenAPIDefinition(
         info = @Info(title = "Secretpad Restful API", version = "0.0.1-SNAPSHOT", license = @License(name = "Apache 2.0")),
         security = @SecurityRequirement(name = AuthConstants.TOKEN_NAME))
-@SecurityScheme(name = AuthConstants.TOKEN_NAME, type = SecuritySchemeType.APIKEY, in = SecuritySchemeIn.COOKIE)
+@SecurityScheme(name = AuthConstants.TOKEN_NAME, type = SecuritySchemeType.APIKEY, in = SecuritySchemeIn.HEADER)
 @Configuration
 public class SpringDocConfig {
 }

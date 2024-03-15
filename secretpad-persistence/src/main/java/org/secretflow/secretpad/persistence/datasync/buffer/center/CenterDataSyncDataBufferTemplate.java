@@ -28,7 +28,7 @@ import java.io.IOException;
  * @date 2023/12/10
  */
 public class CenterDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
-    private static UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent> QUEUE = new UniqueLinkedBlockingQueue<>();
+    private static final UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent> QUEUE = new UniqueLinkedBlockingQueue<>();
 
     /**
      * push data at end of buffer

@@ -41,7 +41,10 @@ import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * Node controller test of p2p mode

@@ -18,6 +18,7 @@
 package org.secretflow.secretpad.web.controller;
 
 import org.secretflow.secretpad.common.dto.UserContextDTO;
+import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.AccountsDO;
@@ -26,14 +27,18 @@ import org.secretflow.secretpad.persistence.repository.UserTokensRepository;
 import org.secretflow.secretpad.service.model.auth.LoginRequest;
 import org.secretflow.secretpad.service.model.auth.LogoutRequest;
 import org.secretflow.secretpad.web.constant.AuthConstants;
+import org.secretflow.secretpad.web.util.AuthUtils;
+import org.secretflow.secretpad.web.util.RequestUtils;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.RepeatedTest;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.secretflow.secretpad.common.errorcode.AuthErrorCode.USER_IS_LOCKED;
@@ -59,6 +64,10 @@ class AuthControllerTest extends ControllerTest {
 
     @Test
     void login() throws Exception {
+        HttpServletRequest currentHttpRequest = RequestUtils.getCurrentHttpRequest();
+        String currentRequestMethodURI = RequestUtils.getCurrentRequestMethodURI();
+        assert currentHttpRequest != null && currentRequestMethodURI != null;
+        Assertions.assertThrows(SecretpadException.class, () -> AuthUtils.findTokenInHeader(currentHttpRequest));
         assertResponse(() -> {
             LoginRequest loginRequest = FakerUtils.fake(LoginRequest.class);
             AccountsDO accountsDO = FakerUtils.fake(AccountsDO.class);
@@ -98,7 +107,7 @@ class AuthControllerTest extends ControllerTest {
             user.setName("alice");
             doNothing().when(userTokensRepository).deleteByNameAndToken(logoutRequest.getName(), "token");
             return MockMvcRequestBuilders.post(getMappingUrl(AuthController.class, "logout", HttpServletRequest.class))
-                    .content(JsonUtils.toString(logoutRequest)).header(AuthConstants.TOKEN_NAME, "token");
+                    .content(Objects.requireNonNull(JsonUtils.toString(logoutRequest))).header(AuthConstants.TOKEN_NAME, "token");
         });
     }
 }

@@ -29,6 +29,7 @@ import org.secretflow.secretpad.persistence.datasync.retry.DataSyncRetryTemplate
 import org.secretflow.secretpad.persistence.datasync.retry.impl.ThrowDataSyncRetry;
 import org.secretflow.secretpad.persistence.datasync.retry.impl.TryDataSyncRetry;
 import org.secretflow.secretpad.persistence.model.DataSyncConfig;
+import org.secretflow.secretpad.persistence.repository.FeatureTableRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectApprovalConfigRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
 import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
@@ -101,8 +102,8 @@ public class EdgeDataSyncConfigurable {
     }
 
     @Bean
-    public DbChangeEventListener dbChangeEventListener(ProjectNodeRepository projectNodeRepository, DataSyncDataBufferTemplate dataSyncDataBufferTemplate) {
-        return new DbChangeEventListener(projectNodeRepository, dataSyncDataBufferTemplate);
+    public DbChangeEventListener dbChangeEventListener(ProjectNodeRepository projectNodeRepository, FeatureTableRepository featureTableRepository, DataSyncDataBufferTemplate dataSyncDataBufferTemplate) {
+        return new DbChangeEventListener(projectNodeRepository, featureTableRepository, dataSyncDataBufferTemplate);
     }
 
     @Bean

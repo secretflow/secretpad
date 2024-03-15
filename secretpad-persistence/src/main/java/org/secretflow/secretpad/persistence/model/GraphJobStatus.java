@@ -55,17 +55,14 @@ public enum GraphJobStatus {
     /**
      * Convert graph job status from apiLite job status
      *
-     * @param status
+     * @param status apiLite job status
      * @return graph job status class
      */
     public static GraphJobStatus formKusciaJobStatus(String status) {
-        switch (status) {
-            case "Succeeded":
-                return SUCCEED;
-            case "Failed":
-                return FAILED;
-            default:
-                return RUNNING;
-        }
+        return switch (status) {
+            case "Succeeded" -> SUCCEED;
+            case "Failed" -> FAILED;
+            default -> RUNNING;
+        };
     }
 }

@@ -40,7 +40,7 @@ import java.util.Map;
  */
 @Slf4j
 public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplate {
-    private static Map<String, String> ownerId_cache = new HashMap<>();
+    private static final Map<String, String> ownerId_cache = new HashMap<>();
 
     @Value("${secretpad.node-id}")
     private String localNodeId;
@@ -53,44 +53,62 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
     @Override
     public boolean filter(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         ProjectNodesInfo source = event.getSource();
-        if (source instanceof ProjectDO) {
-            return filterProject(event);
-        }
-        if (source instanceof ProjectGraphDO) {
-            return filterProjectGraph(event);
-        }
-        if (source instanceof ProjectGraphNodeDO) {
-            return filterProjectGraphNode(event);
-        }
-        if (source instanceof ProjectJobDO) {
-            return filterProjectJobDO(event);
-        }
-        if (source instanceof ProjectTaskDO) {
-            return filterProjectTaskDO(event);
-        }
-        if (source instanceof ProjectDatatableDO) {
-            return filterProjectDatatableDO(event);
-        }
-        if (source instanceof VoteRequestDO) {
-            return filterVoteRequestDO(event);
-        }
-        if (source instanceof VoteInviteDO) {
-            return filterVoteInviteDO(event);
-        }
-        if (source instanceof ProjectApprovalConfigDO) {
-            return filterProjectApprovalConfigDO(event);
-        }
-        if (source instanceof ProjectNodeDO) {
-            return filterProjectNodeDO(event);
-        }
-        return false;
+        return switch (source.getClass().getSimpleName()) {
+            case "ProjectDO" -> filterProject(event);
+            case "ProjectGraphDO" -> filterProjectGraph(event);
+            case "ProjectGraphNodeDO" -> filterProjectGraphNode(event);
+            case "ProjectJobDO" -> filterProjectJobDO(event);
+            case "ProjectTaskDO" -> filterProjectTaskDO(event);
+            case "ProjectDatatableDO" -> filterProjectDatatableDO(event);
+            case "VoteRequestDO" -> filterVoteRequestDO(event);
+            case "VoteInviteDO" -> filterVoteInviteDO(event);
+            case "ProjectApprovalConfigDO" -> filterProjectApprovalConfigDO(event);
+            case "ProjectNodeDO" -> filterProjectNodeDO(event);
+            case "ProjectGraphNodeKusciaParamsDO" -> filterProjectGraphNodeKusciaParamsDO(event);
+            case "ProjectModelServingDO" -> filterProjectModelServingDO(event);
+            case "ProjectModelPackDO" -> filterProjectModelPackDO(event);
+            case "ProjectFeatureTableDO" -> filterProjectFeatureTableDO(event);
+            default -> false;
+        };
     }
+
 
     private boolean filterProjectNodeDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         ProjectNodeDO source = (ProjectNodeDO) event.getSource();
         String projectId = source.getProjectId();
         String ownerId = ownerId_cache.get(projectId);
         if (!StringUtils.equals(localNodeId, ownerId)) {
+            log.debug("local node not initiator,stop sync");
+            return true;
+        }
+        return false;
+    }
+
+    private boolean filterProjectModelPackDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
+        ProjectModelPackDO source = (ProjectModelPackDO) event.getSource();
+        String initiator = source.getInitiator();
+        if (!StringUtils.equals(localNodeId, initiator)) {
+            log.debug("local node not initiator,stop sync");
+            return true;
+        }
+        return false;
+    }
+
+
+    private boolean filterProjectFeatureTableDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
+        ProjectFeatureTableDO source = (ProjectFeatureTableDO) event.getSource();
+        String initiator = source.getUpk().getNodeId();
+        if (!StringUtils.equals(localNodeId, initiator)) {
+            log.debug("local node not initiator,stop sync");
+            return true;
+        }
+        return false;
+    }
+
+    private boolean filterProjectModelServingDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
+        ProjectModelServingDO source = (ProjectModelServingDO) event.getSource();
+        String initiator = source.getInitiator();
+        if (!StringUtils.equals(localNodeId, initiator)) {
             log.debug("local node not initiator,stop sync");
             return true;
         }
@@ -109,6 +127,7 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
         p2pPaddingNodeServiceImpl.paddingNodes(event);
         log.debug("-------after paddingNodes data:{} action:{} projectId: {} nodeIds: {}", event.getDType(), event.getAction(), event.getProjectId(), event.getNodeIds());
         if (PlatformTypeEnum.valueOf(platformType).equals(PlatformTypeEnum.AUTONOMY) && !filter(event)) {
+            log.debug("start to push");
             dataSyncDataBufferTemplate.push(event);
         }
     }
@@ -118,6 +137,11 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
         String ownerId = source.getOwnerId();
         ownerId_cache.put(source.getProjectId(), ownerId);
         return !StringUtils.equals(ownerId, localNodeId);
+    }
+
+    private boolean filterProjectGraphNodeKusciaParamsDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
+        ProjectGraphNodeKusciaParamsDO source = (ProjectGraphNodeKusciaParamsDO) event.getSource();
+        return !StringUtils.equals(localNodeId, ownerId_cache.get(source.getUpk().getProjectId() + "_" + source.getUpk().getGraphId()));
     }
 
     private boolean filterProjectGraph(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
@@ -135,7 +159,7 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
     private boolean filterProjectJobDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         ProjectJobDO source = (ProjectJobDO) event.getSource();
         String ownerId = ownerId_cache.get(source.getUpk().getProjectId() + "_" + source.getGraphId());
-        return !StringUtils.equals(localNodeId, ownerId);
+        return !StringUtils.equals(localNodeId, ownerId) && StringUtils.equalsIgnoreCase(DbChangeAction.UPDATE.getVal(), event.getDType());
     }
 
     private boolean filterProjectDatatableDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
@@ -147,7 +171,7 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
     private boolean filterProjectTaskDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         ProjectTaskDO source = (ProjectTaskDO) event.getSource();
         String ownerId = ownerId_cache.get(source.getUpk().getProjectId() + "_" + source.getGraphNode().getUpk().getGraphId());
-        return !StringUtils.equals(localNodeId, ownerId);
+        return !StringUtils.equals(localNodeId, ownerId) && StringUtils.equalsIgnoreCase(DbChangeAction.UPDATE.getVal(), event.getDType());
     }
 
     private boolean filterVoteRequestDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {

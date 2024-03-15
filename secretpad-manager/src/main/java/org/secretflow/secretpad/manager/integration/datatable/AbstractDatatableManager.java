@@ -60,9 +60,10 @@ public abstract class AbstractDatatableManager {
      * @param pageNumber
      * @param statusFilter
      * @param datatableNameFilter
+     * @param types
      * @return DatatableListDTO
      */
-    public abstract DatatableListDTO findByNodeId(String nodeId, Integer pageSize, Integer pageNumber, String statusFilter, String datatableNameFilter);
+    public abstract DatatableListDTO findByNodeId(String nodeId, Integer pageSize, Integer pageNumber, String statusFilter, String datatableNameFilter, List<String> types);
 
     /**
      * Find DatatableDTO list by nodeId and vendor

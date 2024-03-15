@@ -33,17 +33,19 @@ public interface SysResourcesBizService {
 
     /**
      * query by username
+     *
      * @param userType userType
-     * @param userId userId or userNodeId or nodeId
+     * @param userId   userId or userNodeId or nodeId
      * @return List of {@link SysResourceDO}
      */
     List<SysResourceDO> queryResourceByUsername(PermissionUserTypeEnum userType, String userId);
 
     /**
      * query resource code by username
-     * @param userType user type
+     *
+     * @param userType     user type
      * @param resourceType resource type
-     * @param userId user id
+     * @param userId       user id
      * @return resource code
      */
     Set<String> queryResourceCodeByUsername(PermissionUserTypeEnum userType, ResourceTypeEnum resourceType, String userId);

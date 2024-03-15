@@ -61,6 +61,7 @@ logging:
 
 kusciaapi:
   address: root-kuscia-master:8083
+  protocol: ${KUSCIA_PROTOCOL:mtls} # notls tls mtls
   tls:
     cert-file: config/certs/client.crt
     key-file: config/certs/client.pem
@@ -110,6 +111,9 @@ secretpad:
       - secretflow/io/read_data:0.0.1
       - secretflow/io/write_data:0.0.1
       - secretflow/io/identity:0.0.1
+      - secretflow/model/model_export:0.0.1
+      - secretflow/ml.train/slnn_train:0.0.1
+      - secretflow/ml.predict/slnn_predict:0.0.1
 
 sfclusterDesc:
   deviceConfig:
@@ -128,24 +132,23 @@ management:
         include: health,info,readiness
     enabled-by-default: false
 
-data:
-  sync:
-    - org.secretflow.secretpad.persistence.entity.ProjectDO
-    - org.secretflow.secretpad.persistence.entity.ProjectNodeDO
-    - org.secretflow.secretpad.persistence.entity.NodeDO
-    - org.secretflow.secretpad.persistence.entity.NodeRouteDO
-    - org.secretflow.secretpad.persistence.entity.ProjectJobDO
-    - org.secretflow.secretpad.persistence.entity.ProjectTaskDO
-    - org.secretflow.secretpad.persistence.entity.ProjectDatatableDO
-    - org.secretflow.secretpad.persistence.entity.VoteRequestDO
-    - org.secretflow.secretpad.persistence.entity.VoteInviteDO
-    - org.secretflow.secretpad.persistence.entity.TeeDownLoadAuditConfigDO
-    - org.secretflow.secretpad.persistence.entity.NodeRouteApprovalConfigDO
-    - org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO
-
 inner-port:
   path:
     - /api/v1alpha1/vote_sync/create
     - /api/v1alpha1/user/node/resetPassword
     - /sync
     - /api/v1alpha1/data/sync
+# ip block config (None of them are allowed in the configured IP list)
+ip:
+  block:
+    enable: true
+    list:
+      - 0.0.0.0/32
+      - 127.0.0.1/8
+      - 10.0.0.0/8
+      - 11.0.0.0/8
+      - 30.0.0.0/8
+      - 100.64.0.0/10
+      - 172.16.0.0/12
+      - 192.168.0.0/16
+      - 33.0.0.0/8

@@ -25,7 +25,10 @@ import org.apache.commons.codec.binary.Base64;
  * @author cml
  * @date 2023/11/17
  */
-public class Base64Utils {
+public final class Base64Utils {
+
+    private Base64Utils() {
+    }
 
     public static byte[] decode(String base64) {
         byte[] bytes = base64.getBytes();

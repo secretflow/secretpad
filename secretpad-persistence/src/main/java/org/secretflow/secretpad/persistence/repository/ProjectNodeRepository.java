@@ -23,6 +23,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -91,4 +92,9 @@ public interface ProjectNodeRepository extends BaseRepository<ProjectNodeDO, Pro
     @Modifying
     @Query(value = "update ProjectNodeDO pn set pn.isDeleted = true where pn.upk.projectId=:projectId")
     void deleteByProjectId(@Param("projectId") String projectId);
+
+    @Query(nativeQuery = true, value = "delete from project_node")
+    @Modifying
+    @Transactional
+    void deleteAllAuthentic();
 }

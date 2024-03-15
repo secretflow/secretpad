@@ -1,0 +1,37 @@
+// Copyright 2023 Ant Group Co., Ltd.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//   http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+//
+
+syntax = "proto3";
+
+package secretflow.serving;
+
+import "secretflow_serving/config/server_config.proto";
+import "secretflow_serving/config/cluster_config.proto";
+import "secretflow_serving/config/model_config.proto";
+import "secretflow_serving/config/feature_config.proto";
+
+// Related config of serving
+message ServingConfig {
+  // Unique id of the serving service
+  string id = 1;
+
+  ServerConfig server_conf = 2;
+
+  ModelConfig model_conf = 3;
+
+  ClusterConfig cluster_conf = 4;
+
+  FeatureSourceConfig feature_source_conf = 5;
+}

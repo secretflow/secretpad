@@ -94,7 +94,7 @@ public class DomainServiceTests {
         tlsConfig.setKeyFile("classpath:certs/client.pem");
         tlsConfig.setCaFile("classpath:certs/ca.crt");
 
-        KusciaAPIChannelFactory channelFactory = new KusciaAPIChannelFactory(address, tokenFile, tlsConfig);
+        KusciaAPIChannelFactory channelFactory = new KusciaAPIChannelFactory(address, tokenFile, tlsConfig, "tls");
         domainServiceStub = DomainServiceGrpc.newBlockingStub(channelFactory.newClientChannel());
     }
 

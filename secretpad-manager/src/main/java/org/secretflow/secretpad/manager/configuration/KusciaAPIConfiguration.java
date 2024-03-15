@@ -42,7 +42,7 @@ public class KusciaAPIConfiguration {
      */
     @Bean
     KusciaAPIChannelFactory apiLiteChannelFactory(KusciaAPIProperties properties) {
-        return new KusciaAPIChannelFactory(properties.getAddress(), properties.getTokenFile(), properties.getTls());
+        return new KusciaAPIChannelFactory(properties.getAddress(), properties.getTokenFile(), properties.getTls(), properties.getProtocol());
     }
 
     /**
@@ -108,4 +108,16 @@ public class KusciaAPIConfiguration {
                 .withMaxOutboundMessageSize(Integer.MAX_VALUE);
     }
 
+    /**
+     * Create a new KusciaDeployment service blocking stub via apiLite channel factory
+     *
+     * @param channelFactory channelFactory
+     * @return a new KusciaDeployment service blocking stub
+     */
+    @Bean
+    public ServingServiceGrpc.ServingServiceBlockingStub servingServiceBlockingStub(KusciaAPIChannelFactory channelFactory) {
+        return ServingServiceGrpc.newBlockingStub(channelFactory.newClientChannel())
+                .withMaxInboundMessageSize(Integer.MAX_VALUE)
+                .withMaxOutboundMessageSize(Integer.MAX_VALUE);
+    }
 }

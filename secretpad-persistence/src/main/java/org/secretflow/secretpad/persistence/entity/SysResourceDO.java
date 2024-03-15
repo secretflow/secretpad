@@ -16,12 +16,13 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
+import org.secretflow.secretpad.common.enums.ResourceTypeEnum;
+
 import jakarta.persistence.*;
 import lombok.*;
 import org.checkerframework.common.aliasing.qual.Unique;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
-import org.secretflow.secretpad.common.enums.ResourceTypeEnum;
 
 /**
  * @author beiwei
@@ -36,7 +37,7 @@ import org.secretflow.secretpad.common.enums.ResourceTypeEnum;
 @Table(name = "sys_resource")
 @SQLDelete(sql = "update sys_resource set is_deleted = 1 where id = ?")
 @Where(clause = "is_deleted = 0")
-public class SysResourceDO extends BaseAggregationRoot<SysResourceDO>{
+public class SysResourceDO extends BaseAggregationRoot<SysResourceDO> {
     // empty @Id for ignore jpa error.
     @Id
     /**

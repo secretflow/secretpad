@@ -37,7 +37,7 @@ public class IndexController {
      * @return the string
      */
     @ApiResource(code = ApiResourceCodeConstants.INDEX)
-    @RequestMapping(value = {"/", "/dag/**", "/home/**", "/node/**", "/guide/**", "/record/**", "/login/**", "/logout/**", "/my-node/**", "/message/**", "/edge/**", "/edge"}, method = RequestMethod.GET)
+    @RequestMapping(value = {"/", "/dag/**", "/home/**", "/node/**", "/guide/**", "/record/**", "/login/**", "/logout/**", "/my-node/**", "/message/**", "/edge/**", "/edge", "/model-submission/**"}, method = RequestMethod.GET)
     public String index() {
         return "index";
     }

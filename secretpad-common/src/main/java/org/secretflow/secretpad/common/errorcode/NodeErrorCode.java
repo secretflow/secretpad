@@ -58,8 +58,7 @@ public enum NodeErrorCode implements ErrorCode {
     /**
      * Domain cert error
      */
-    NODE_CERT_CONFIG_ERROR(202011409)
-    ;
+    NODE_CERT_CONFIG_ERROR(202011409);
 
     private final int code;
 

@@ -76,12 +76,17 @@ public class SseSession {
         SseEmitter sseEmitter = sessionMap.get(sessionKey);
         if (ObjectUtils.isNotEmpty(sseEmitter)) {
             log.info("*** get data sync , sse send to {} , data is  {} ", sessionKey, content);
-            sseEmitter.send(build);
+            try {
+                sseEmitter.send(build);
+            } catch (Exception e) {
+                sseEmitter.completeWithError(e);
+                log.warn("sse send data error {}", sessionKey, e);
+            }
         }
     }
 
     public static void ping(String sessionKey) throws IOException {
-        SseEmitter.SseEventBuilder build = SseEmitter.event().id(SSE_PING_MSG).data("");
+        SseEmitter.SseEventBuilder build = SseEmitter.event().id(SSE_PING_MSG).comment(SSE_PING_MSG).data(SSE_PING_MSG);
         SseEmitter sseEmitter = sessionMap.get(sessionKey);
         if (ObjectUtils.isNotEmpty(sseEmitter)) {
             sseEmitter.send(build);
@@ -93,6 +98,8 @@ public class SseSession {
             try {
                 send(k, content);
             } catch (IOException e) {
+                SseEmitter sseEmitter = sessionMap.get(k);
+                sseEmitter.completeWithError(e);
                 log.error("sse send data error {}", k, e);
             }
         });

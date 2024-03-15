@@ -38,7 +38,7 @@ import org.hibernate.annotations.Where;
 @Table(name = "sys_role")
 @SQLDelete(sql = "update sys_role set is_deleted = 1 where id = ?")
 @Where(clause = "is_deleted = 0")
-public class SysRoleDO extends BaseAggregationRoot<SysRoleDO>{
+public class SysRoleDO extends BaseAggregationRoot<SysRoleDO> {
     @Id
     /**
      * Node id

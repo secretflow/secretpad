@@ -75,7 +75,7 @@ public class ControllerTest {
     public static final String PROJECT_ID = "projectagdasvacaghyhbvscvyjnba";
 
     @Autowired
-    private MockMvc mockMvc;
+    protected MockMvc mockMvc;
 
     public static MockedStatic<DbSyncUtil> pushToCenterUtilMockedStatic;
 
@@ -91,7 +91,9 @@ public class ControllerTest {
     @BeforeEach
     public void initSession() {
         UserContext.setBaseUser(UserContextDTO.builder().ownerId("alice")
+                .name("alice")
                 .platformType(PlatformTypeEnum.CENTER)
+                .platformNodeId("alice")
                 .ownerType(UserOwnerTypeEnum.CENTER)
                 .projectIds(Set.of(PROJECT_ID)).build());
         pushToCenterUtilMockedStatic = Mockito.mockStatic(DbSyncUtil.class);
@@ -213,8 +215,7 @@ public class ControllerTest {
         Assert.isTrue(StringUtils.isNotBlank(url), "controller method url not found");
 
         for (Annotation classAnnotation : clazz.getDeclaredAnnotations()) {
-            if (classAnnotation instanceof RequestMapping) {
-                RequestMapping annotation = (RequestMapping) classAnnotation;
+            if (classAnnotation instanceof RequestMapping annotation) {
                 String classUrlMapping = annotation.value()[0];
                 url = classUrlMapping.concat(url);
             }

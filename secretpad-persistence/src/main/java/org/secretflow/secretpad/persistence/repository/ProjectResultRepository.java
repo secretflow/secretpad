@@ -116,4 +116,14 @@ public interface ProjectResultRepository extends BaseRepository<ProjectResultDO,
             "where pr.upk.nodeId=:nodeId")
     Long countByNodeId(@Param("nodeId") String nodeId);
 
+    /**
+     * Query project result results by projectId and refId
+     *
+     * @param projectId target projectId
+     * @param refId     target refId
+     * @return project result results
+     */
+    @Query("from ProjectResultDO d where d.upk.projectId=:projectId and d.upk.refId=:refId")
+    List<ProjectResultDO> findByProjectIdAndRefId(@Param("projectId") String projectId, @Param("refId") String refId);
+
 }

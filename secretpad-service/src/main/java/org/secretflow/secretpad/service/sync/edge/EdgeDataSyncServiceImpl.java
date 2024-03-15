@@ -22,26 +22,30 @@ import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.persistence.model.DataSyncConfig;
 import org.secretflow.secretpad.service.sync.JpaSyncDataService;
 
+import com.fasterxml.jackson.databind.JavaType;
 import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.HttpUrl;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.internal.sse.RealEventSource;
-import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
+import org.springframework.web.reactive.function.client.WebClient;
+import reactor.core.publisher.Flux;
+import reactor.util.retry.Retry;
 
 import javax.annotation.PreDestroy;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static org.secretflow.secretpad.service.sync.center.SseSession.SSE_PING_MSG;
 
 /**
  * @author yutu
@@ -49,7 +53,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 @Slf4j
 @Service
-@Profile(value = {SystemConstants.EDGE})
+@Profile(value = {SystemConstants.EDGE, SystemConstants.TEST})
 @RequiredArgsConstructor
 @Configuration
 @Data
@@ -59,12 +63,9 @@ public class EdgeDataSyncServiceImpl implements EdgeDataSyncService {
     private String kusciaLiteGateway;
     @Value("${secretpad.center-platform-service}")
     private String routeHeader;
-    private final EdgeEventSourceListener edgeEventSourceListener;
 
     private final JpaSyncDataService jpaSyncDataService;
     private final DataSyncConfig dataSyncConfig;
-    private RealEventSource realEventSource;
-    private OkHttpClient client;
 
     public static AtomicInteger sseSate = new AtomicInteger(-1);
     private final static String HTTP_PREFIX = "http://";
@@ -73,11 +74,6 @@ public class EdgeDataSyncServiceImpl implements EdgeDataSyncService {
     @Override
     public void start() {
         List<SyncDataDTO> params = log();
-        client = new OkHttpClient.Builder()
-                .connectTimeout(60L, TimeUnit.SECONDS)
-                .readTimeout(0L, TimeUnit.DAYS)
-                .writeTimeout(0L, TimeUnit.DAYS)
-                .build();
         if (!kusciaLiteGateway.startsWith(HTTP_PREFIX)) {
             kusciaLiteGateway = HTTP_PREFIX + kusciaLiteGateway;
         }
@@ -85,23 +81,51 @@ public class EdgeDataSyncServiceImpl implements EdgeDataSyncService {
         String s = JsonUtils.toJSONString(params);
         urlBuilder.addQueryParameter("p", s);
         String url = urlBuilder.build().toString();
-        Request request = new Request.Builder()
-                .url(url)
-                .header("host", routeHeader)
-                .build();
-        realEventSource = new RealEventSource(request, edgeEventSourceListener);
-        realEventSource.connect(client);
+        useWebClientSse(url);
         EdgeDataSyncServiceImpl.sseSate.set(1);
+    }
+
+    private void useWebClientSse(String url) {
+        WebClient webClient = WebClient.create(url);
+        Flux<ServerSentEvent<String>> eventStream = webClient.get()
+                .header("host", routeHeader)
+                .retrieve()
+                .bodyToFlux(new ParameterizedTypeReference<ServerSentEvent<String>>() {
+                })
+                .retryWhen(Retry.fixedDelay(3, Duration.ofSeconds(2)));
+        eventStream.subscribe(
+                event -> {
+                    log.info("id :{} ,data: {}", event.id(), event.data());
+                    String id = event.id();
+                    String data = event.data();
+                    if (!SSE_PING_MSG.equals(id)) {
+                        log.info("sync data DO - {}  Data - {}", id, data);
+                        try {
+                            Class<?> cls = Class.forName(id);
+                            JavaType javaType = JsonUtils.makeJavaType(SyncDataDTO.class, cls);
+                            @SuppressWarnings(value = {"rawtypes"})
+                            SyncDataDTO o = JsonUtils.toJavaObject(data, javaType);
+                            jpaSyncDataService.syncData(o);
+                        } catch (Exception e) {
+                            log.error("sse onEvent sync error {} ", id, e);
+                        }
+                    }
+                },
+                error -> {
+                    log.error("Error receiving SSE: {}", error.getMessage(), error.getCause());
+                    EdgeDataSyncServiceImpl.sseSate.set(-1);
+                },
+                () -> {
+                    log.info("Completed!!!");
+                    EdgeDataSyncServiceImpl.sseSate.set(-1);
+                }
+        );
     }
 
     @PreDestroy
     @Override
     public void close() {
-        if (ObjectUtils.isNotEmpty(realEventSource)) {
-            log.info("sse close...");
-            realEventSource.cancel();
-            client.dispatcher().executorService().shutdown();
-        }
+        EdgeDataSyncServiceImpl.sseSate.set(-1);
     }
 
     @SuppressWarnings(value = {"rawtypes"})

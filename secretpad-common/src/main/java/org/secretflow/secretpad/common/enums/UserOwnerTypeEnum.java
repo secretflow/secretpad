@@ -39,8 +39,7 @@ public enum UserOwnerTypeEnum {
     /**
      * P2p
      */
-    P2P
-    ;
+    P2P;
 
     public PermissionUserTypeEnum toPermissionUserType() {
         if (EDGE.equals(this)) {

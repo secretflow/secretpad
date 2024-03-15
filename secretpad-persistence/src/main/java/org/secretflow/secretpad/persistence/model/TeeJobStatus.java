@@ -50,17 +50,14 @@ public enum TeeJobStatus {
     /**
      * Convert tee job status from apiLite job status
      *
-     * @param status
+     * @param status apiLite job status
      * @return tee job status class
      */
     public static TeeJobStatus formKusciaJobStatus(String status) {
-        switch (status) {
-            case "Succeeded":
-                return SUCCESS;
-            case "Failed":
-                return FAILED;
-            default:
-                return RUNNING;
-        }
+        return switch (status) {
+            case "Succeeded" -> SUCCESS;
+            case "Failed" -> FAILED;
+            default -> RUNNING;
+        };
     }
 }

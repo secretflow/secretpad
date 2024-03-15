@@ -24,7 +24,9 @@ import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
 
+import java.io.Serial;
 import java.io.Serializable;
+import java.util.Objects;
 
 /**
  * Project model data object
@@ -55,8 +57,9 @@ public class ProjectModelDO extends BaseAggregationRoot {
     @Setter
     @AllArgsConstructor
     @NoArgsConstructor
-    @EqualsAndHashCode
     public static class UPK implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 6840537796122754350L;
         /**
          * Project id
          */
@@ -67,5 +70,18 @@ public class ProjectModelDO extends BaseAggregationRoot {
          */
         @Column(name = "model_id", nullable = false, length = 64)
         private String modelId;
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            UPK upk = (UPK) o;
+            return Objects.equals(projectId, upk.projectId) && Objects.equals(modelId, upk.modelId);
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(projectId, modelId);
+        }
     }
 }

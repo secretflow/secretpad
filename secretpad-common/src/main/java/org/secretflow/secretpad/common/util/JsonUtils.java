@@ -132,7 +132,7 @@ public class JsonUtils {
         try {
             return OM.writeValueAsString(value);
         } catch (JsonProcessingException e) {
-            LOGGER.error("object to json failed, error is {}", e);
+            LOGGER.error("object to json failed", e);
             throw new RuntimeException(e);
         }
     }
@@ -316,7 +316,7 @@ public class JsonUtils {
         try {
             return OM.readValue(content, clazz);
         } catch (JsonProcessingException e) {
-            LOGGER.error("json to object failed, json is {}, error is {}", content, e);
+            LOGGER.error("json to object failed, json is {}", content, e);
             throw new RuntimeException(e);
         }
     }

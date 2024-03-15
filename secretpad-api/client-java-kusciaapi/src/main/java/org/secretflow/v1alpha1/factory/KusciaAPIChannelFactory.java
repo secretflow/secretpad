@@ -36,6 +36,8 @@ import java.io.IOException;
 import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 
+import static org.secretflow.secretpad.common.constant.KusciaConstants.KUSCIA_PROTOCOL_NOTLS;
+
 /**
  * ApiLite channel factory
  *
@@ -43,6 +45,8 @@ import java.security.cert.X509Certificate;
  * @date 2023/5/8
  */
 public class KusciaAPIChannelFactory {
+
+    private final String protocol;
     /**
      * ApiLite address
      */
@@ -57,10 +61,11 @@ public class KusciaAPIChannelFactory {
     private final TlsConfig tlsConfig;
     private final static int MAX_INBOUND_MESSAGE_SIZE = 256 * 1024 * 1024;
 
-    public KusciaAPIChannelFactory(String address, String tokenFile, TlsConfig tlsConfig) {
+    public KusciaAPIChannelFactory(String address, String tokenFile, TlsConfig tlsConfig, String protocol) {
         this.address = address;
         this.tokenFile = tokenFile;
         this.tlsConfig = tlsConfig;
+        this.protocol = protocol;
     }
 
     /**
@@ -81,21 +86,27 @@ public class KusciaAPIChannelFactory {
                     .keyManager(certFile, keyFile)
                     .trustManager(clientTrustedCaCerts)
                     .build();
-
             String token = FileUtils.readFile2String(tokenFile);
 
             Metadata metadata = new Metadata();
             Metadata.Key<String> key = Metadata.Key.of(KusciaAPIConstants.TOKEN_HEADER, Metadata.ASCII_STRING_MARSHALLER);
             metadata.put(key, token);
             ClientInterceptor tokenInterceptor = MetadataUtils.newAttachHeadersInterceptor(metadata);
-
-            // new client channel
-            return NettyChannelBuilder.forTarget(address)
-                    .intercept(tokenInterceptor)
-                    .negotiationType(NegotiationType.TLS)
-                    .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
-                    .sslContext(sslContext)
-                    .build();
+            switch (protocol) {
+                case KUSCIA_PROTOCOL_NOTLS -> {
+                    return NettyChannelBuilder.forTarget(address)
+                            .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
+                            .build();
+                }
+                default -> {
+                    return NettyChannelBuilder.forTarget(address)
+                            .intercept(tokenInterceptor)
+                            .negotiationType(NegotiationType.TLS)
+                            .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
+                            .sslContext(sslContext)
+                            .build();
+                }
+            }
         } catch (CertificateException | IOException e) {
             throw new RuntimeException(e);
         }

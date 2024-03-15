@@ -66,19 +66,15 @@ public enum GraphNodeTaskStatus {
     /**
      * Convert graph node task status from apiLite task status
      *
-     * @param status
+     * @param status apiLite task status
      * @return graph node task status class
      */
     public static GraphNodeTaskStatus formKusciaTaskStatus(String status) {
-        switch (status) {
-            case "Succeeded":
-                return SUCCEED;
-            case "Failed":
-                return FAILED;
-            case "Running":
-                return RUNNING;
-            default:
-                return INITIALIZED;
-        }
+        return switch (status) {
+            case "Succeeded" -> SUCCEED;
+            case "Failed" -> FAILED;
+            case "Running" -> RUNNING;
+            default -> INITIALIZED;
+        };
     }
 }

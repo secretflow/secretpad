@@ -35,4 +35,7 @@ public interface ProjectGraphNodeRepository extends BaseRepository<ProjectGraphN
     @Query(value = "select id,project_id,graph_id,graph_node_id,code_name,label,x,y,inputs,outputs,node_def,is_deleted,gmt_create,gmt_modified" +
             " from project_graph_node where project_id = ?1 and graph_id=?2", nativeQuery = true)
     List<ProjectGraphNodeDO> findByProjectIdAndGraphId(String projectId, String graphId);
+
+    @Query("from ProjectGraphNodeDO pgn where pgn.upk.projectId = :#{#projectId} and pgn.upk.graphId = :#{#graphId} and pgn.codeName = 'read_data/datatable'")
+    List<ProjectGraphNodeDO> findReadTableByProjectIdAndGraphId(String projectId, String graphId);
 }

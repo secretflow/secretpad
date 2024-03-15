@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service;
 
+import org.secretflow.secretpad.persistence.entity.ProjectDO;
 import org.secretflow.secretpad.service.model.graph.GraphNodeTaskLogsVO;
 import org.secretflow.secretpad.service.model.project.*;
 
@@ -185,4 +186,8 @@ public interface ProjectService {
      * @param request
      */
     void updateProjectTableConfig(AddProjectDatatableRequest request);
+
+    ProjectDO openProject(String projectId);
+
+    boolean checkNodeArchive(String projectId);
 }

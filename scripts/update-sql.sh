@@ -24,3 +24,18 @@ SCHEMA_PATH="$SECRETPAD_ROOT/config/schema/init.sql"
 rm -rf "$DB_PATH"
 
 sqlite3 "$DB_PATH" ".read $SCHEMA_PATH"
+
+case $SPRING_PROFILES_ACTIVE in
+edge)
+	SCHEMA_EDGE_PATH_V1="${SECRETPAD_ROOT}/config/schema/edge/v1.sql"
+	sqlite3 "$DB_PATH" ".read $SCHEMA_EDGE_PATH_V1"
+	;;
+p2p)
+	SCHEMA_P2P_PATH_V1="${SECRETPAD_ROOT}/config/schema/p2p/v1.sql"
+	sqlite3 "$DB_PATH" ".read $SCHEMA_P2P_PATH_V1"
+	;;
+*)
+	SCHEMA_PATH_V1="${SECRETPAD_ROOT}/config/schema/center/v1.sql"
+	sqlite3 "$DB_PATH" ".read $SCHEMA_PATH_V1"
+	;;
+esac

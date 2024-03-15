@@ -18,6 +18,7 @@ package org.secretflow.secretpad.common.enums;
 
 /**
  * Data Resource Type Enum
+ *
  * @author beiwei
  * @date 2023/9/11
  */

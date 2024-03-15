@@ -33,6 +33,7 @@ import org.springframework.context.annotation.DependsOn;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ObjectUtils;
 
+import java.io.Serial;
 import java.io.Serializable;
 import java.util.List;
 
@@ -54,6 +55,7 @@ public class EntityChangeListener {
     public void postUpdate(BaseAggregationRoot o) {
         loadAbstractDataSyncProducerTemplate();
         if (!DataSyncConsumerContext.sync()) {
+            log.debug("************************ EntityChangeListener postUpdate {}", o.getClass().getName());
             dataSyncProducerTemplate.push(DbChangeEvent.of(DbChangeAction.UPDATE, o));
         }
     }
@@ -62,6 +64,7 @@ public class EntityChangeListener {
     public void postRemove(BaseAggregationRoot o) {
         loadAbstractDataSyncProducerTemplate();
         if (!DataSyncConsumerContext.sync()) {
+            log.debug("************************ EntityChangeListener postRemove {}", o.getClass().getName());
             dataSyncProducerTemplate.push(DbChangeEvent.of(DbChangeAction.REMOVE, o));
         }
     }
@@ -70,6 +73,7 @@ public class EntityChangeListener {
     public void postCreate(BaseAggregationRoot o) {
         loadAbstractDataSyncProducerTemplate();
         if (!DataSyncConsumerContext.sync()) {
+            log.debug("************************ EntityChangeListener postCreate {}", o.getClass().getName());
             dataSyncProducerTemplate.push(DbChangeEvent.of(DbChangeAction.CREATE, o));
         }
     }
@@ -89,6 +93,8 @@ public class EntityChangeListener {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class DbChangeEvent<T extends ProjectNodesInfo> implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 8759123498754L;
         /**
          * dist node
          */
@@ -117,6 +123,9 @@ public class EntityChangeListener {
         }
 
         public static <T extends ProjectNodesInfo> DbChangeEvent<T> of(DbChangeAction action, T source) {
+            if (ObjectUtils.isEmpty(source)) {
+                throw new IllegalArgumentException("source can't be empty!");
+            }
             DbChangeEvent<T> event = new DbChangeEvent<>(source);
             event.action = action.getVal();
             event.dType = source.getClass().getTypeName();

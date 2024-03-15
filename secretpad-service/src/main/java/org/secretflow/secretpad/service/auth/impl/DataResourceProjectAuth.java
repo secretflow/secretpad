@@ -15,13 +15,17 @@
  */
 package org.secretflow.secretpad.service.auth.impl;
 
+import org.secretflow.secretpad.common.enums.ProjectStatusEnum;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.persistence.entity.ProjectDO;
 import org.secretflow.secretpad.service.ProjectService;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
  * project resource auth check
+ *
  * @author yeuxie
  * @date 2023-10-20
  */
@@ -32,6 +36,13 @@ public class DataResourceProjectAuth {
     private ProjectService projectService;
 
     public boolean check(String resourceId) {
-        return projectService.checkNodeInProject(resourceId, UserContext.getUser().getOwnerId());
+        boolean exist = projectService.checkNodeInProject(resourceId, UserContext.getUser().getOwnerId());
+        if (!exist) {
+            ProjectDO project = projectService.openProject(resourceId);
+            if (ProjectStatusEnum.ARCHIVED.getCode().equals(project.getStatus())) {
+                return projectService.checkNodeArchive(resourceId);
+            }
+        }
+        return exist;
     }
 }

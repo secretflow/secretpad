@@ -50,13 +50,13 @@ import java.util.stream.Collectors;
  */
 public abstract class AbstractAutonomyVoteTypeHandler extends AbstractVoteTypeHandler {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(AbstractAutonomyVoteTypeHandler.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(AbstractAutonomyVoteTypeHandler.class);
     protected final ProjectApprovalConfigRepository projectApprovalConfigRepository;
 
 
     protected final NodeManager nodeManager;
 
-    public AbstractAutonomyVoteTypeHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, EnvService envService, ProjectRepository projectRepository, ProjectApprovalConfigRepository projectApprovalConfigRepository, NodeManager nodeManager, CertificateService certificateService) {
+    protected AbstractAutonomyVoteTypeHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, EnvService envService, ProjectRepository projectRepository, ProjectApprovalConfigRepository projectApprovalConfigRepository, NodeManager nodeManager, CertificateService certificateService) {
         super(voteInviteRepository, voteRequestRepository, nodeRepository, envService, certificateService, projectRepository);
         this.projectApprovalConfigRepository = projectApprovalConfigRepository;
         this.nodeManager = nodeManager;
@@ -65,7 +65,7 @@ public abstract class AbstractAutonomyVoteTypeHandler extends AbstractVoteTypeHa
     @Override
     public MessageDetailVO getVoteMessageDetail(Boolean isInitiator, String nodeID, String voteID) {
         Optional<VoteRequestDO> voteRequestDOOptional = voteRequestRepository.findById(voteID);
-        if (!voteRequestDOOptional.isPresent()) {
+        if (voteRequestDOOptional.isEmpty()) {
             throw SecretpadException.of(VoteErrorCode.VOTE_NOT_EXISTS);
         }
         VoteRequestDO voteRequestDO = voteRequestDOOptional.get();
@@ -79,13 +79,13 @@ public abstract class AbstractAutonomyVoteTypeHandler extends AbstractVoteTypeHa
             throw SecretpadException.of(VoteErrorCode.VOTE_CHECK_FAILED);
         }
         Optional<ProjectApprovalConfigDO> projectApprovalConfigDOOptional = projectApprovalConfigRepository.findById(voteID);
-        if (!projectApprovalConfigDOOptional.isPresent()) {
+        if (projectApprovalConfigDOOptional.isEmpty()) {
             throw SecretpadException.of(VoteErrorCode.VOTE_NOT_EXISTS);
         }
         ProjectApprovalConfigDO projectApprovalConfigDO = projectApprovalConfigDOOptional.get();
         String projectId = projectApprovalConfigDO.getProjectId();
         Optional<ProjectDO> projectDOOptional = projectRepository.findById(projectId);
-        if (!projectDOOptional.isPresent()) {
+        if (projectDOOptional.isEmpty()) {
             throw SecretpadException.of(ProjectErrorCode.PROJECT_NOT_EXISTS);
         }
         ProjectDO projectDO = projectDOOptional.get();
@@ -124,7 +124,7 @@ public abstract class AbstractAutonomyVoteTypeHandler extends AbstractVoteTypeHa
     @Override
     public AbstractVoteTypeMessage getMessageListNecessaryInfo(String voteID) {
         Optional<ProjectApprovalConfigDO> projectApprovalConfigDOOptional = projectApprovalConfigRepository.findById(voteID);
-        if (!projectApprovalConfigDOOptional.isPresent()) {
+        if (projectApprovalConfigDOOptional.isEmpty()) {
             throw SecretpadException.of(VoteErrorCode.PROJECT_VOTE_NOT_EXISTS);
         }
         ProjectApprovalConfigDO projectApprovalConfigDO = projectApprovalConfigDOOptional.get();
@@ -143,8 +143,8 @@ public abstract class AbstractAutonomyVoteTypeHandler extends AbstractVoteTypeHa
         VoteRequestDO voteRequestDO = voteRequestDOOptional.get();
         Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = voteRequestDO.getPartyVoteInfos();
         List<PartyVoteStatus> partyVoteStatusList = new ArrayList<>();
-        List<NodeDO> nodeDOS = nodeRepository.findByNodeIdIn(partyVoteInfos.stream().map(e -> e.getNodeId()).collect(Collectors.toList()));
-        Map<String, String> nodeMap = nodeDOS.stream().collect(Collectors.toMap(e -> e.getNodeId(), e -> e.getName()));
+        List<NodeDO> nodeDOS = nodeRepository.findByNodeIdIn(partyVoteInfos.stream().map(VoteRequestDO.PartyVoteInfo::getNodeId).collect(Collectors.toList()));
+        Map<String, String> nodeMap = nodeDOS.stream().collect(Collectors.toMap(NodeDO::getNodeId, NodeDO::getName));
 
         for (VoteRequestDO.PartyVoteInfo partyVoteInfo : partyVoteInfos) {
             PartyVoteStatus partyVoteStatus = PartyVoteStatus.builder()
@@ -168,12 +168,10 @@ public abstract class AbstractAutonomyVoteTypeHandler extends AbstractVoteTypeHa
     @Override
     protected String getInviteDesc(String nodeID, AbstractVoteConfig voteConfig) {
         String projectId = "";
-        if (voteConfig instanceof ProjectCreateApprovalConfig) {
-            ProjectCreateApprovalConfig projectCreateApprovalConfig = (ProjectCreateApprovalConfig) voteConfig;
+        if (voteConfig instanceof ProjectCreateApprovalConfig projectCreateApprovalConfig) {
             projectId = projectCreateApprovalConfig.getProjectId();
         }
-        if (voteConfig instanceof ProjectArchiveConfig) {
-            ProjectArchiveConfig projectArchiveConfig = (ProjectArchiveConfig) voteConfig;
+        if (voteConfig instanceof ProjectArchiveConfig projectArchiveConfig) {
             projectId = projectArchiveConfig.getProjectId();
 
         }

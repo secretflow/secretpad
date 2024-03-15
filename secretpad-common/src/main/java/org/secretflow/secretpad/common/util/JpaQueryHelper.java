@@ -62,7 +62,7 @@ public class JpaQueryHelper {
                         String[] blurrys = blurry.split(",");
                         List<Predicate> orPredicate = new ArrayList<>();
                         for (String s : blurrys) {
-                            orPredicate.add(cb.like(root.get(s).as(String.class), "%" + val.toString() + "%"));
+                            orPredicate.add(cb.like(root.get(s).as(String.class), "%" + val + "%"));
                         }
                         Predicate[] p = new Predicate[orPredicate.size()];
                         list.add(cb.or(orPredicate.toArray(p)));

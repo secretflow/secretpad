@@ -178,9 +178,9 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
         DomainRoute.EndpointPort.Builder builder = DomainRoute.EndpointPort.newBuilder();
         // p2p mode must be https
         if (getPlatformType().equals(PlatformTypeEnum.AUTONOMY)) {
-            builder.setPort(port).setName("https").setProtocol("HTTPS").setIsTLS(true).build();
+            builder.setPort(port).setName("https").setProtocol("HTTPS").build();
         } else {
-            builder.setPort(port).setName("http").setProtocol("HTTP").setIsTLS(true).build();
+            builder.setPort(port).setName("http").setProtocol("HTTP").build();
         }
         // isTLS: true name: http port: 1080 protocol: HTTP
         DomainRoute.EndpointPort endpointPort = builder.build();

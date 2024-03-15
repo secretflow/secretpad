@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.manager.integration.datatable;
 
+import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
@@ -23,20 +24,24 @@ import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.model.DatatableListDTO;
+import org.secretflow.secretpad.persistence.entity.FeatureTableDO;
+import org.secretflow.secretpad.persistence.repository.FeatureTableRepository;
 
+import org.apache.commons.lang3.StringUtils;
 import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Nullable;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 import static org.secretflow.secretpad.manager.integration.model.Constants.STATUS_AVAILABLE;
 import static org.secretflow.secretpad.manager.integration.model.Constants.STATUS_UNAVAILABLE;
 
@@ -58,7 +63,10 @@ public class DatatableManager extends AbstractDatatableManager {
      */
     private final DomainDataServiceGrpc.DomainDataServiceBlockingStub dataStub;
 
-    public DatatableManager(DomainDataServiceGrpc.DomainDataServiceBlockingStub dataStub) {
+    private final FeatureTableRepository featureTableRepository;
+
+    public DatatableManager(DomainDataServiceGrpc.DomainDataServiceBlockingStub dataStub, FeatureTableRepository featureTableRepository) {
+        this.featureTableRepository = featureTableRepository;
         this.dataStub = dataStub;
     }
 
@@ -128,15 +136,22 @@ public class DatatableManager extends AbstractDatatableManager {
             Integer pageSize,
             Integer pageNumber,
             String statusFilter,
-            String datatableNameFilter
-    ) {
+            String datatableNameFilter,
+            List<String> types) {
         LOGGER.info("Find datatable with kuscia api with node id = {}, filter by usermanul vendor.", nodeId);
         List<DatatableDTO> datatableDTOList = findByNodeId(nodeId, DATA_VENDOR_MANUAL);
+        //feature table
+        List<DatatableDTO> featureTableDTOList = findHttpFeatureTableByNodeId(nodeId);
+        if (!CollectionUtils.isEmpty(featureTableDTOList)) {
+            datatableDTOList.addAll(featureTableDTOList);
+        }
         LOGGER.info("The datatable list len = {}, now filter by status = {}", datatableDTOList.size(), statusFilter);
         datatableDTOList = filterByStatus(datatableDTOList, statusFilter);
         LOGGER.info("After filter by status the datatable list len = {}, now filter by datatable name = {}", datatableDTOList.size(), datatableNameFilter);
         datatableDTOList = filterByDatatableName(datatableDTOList, datatableNameFilter);
         LOGGER.info("After filter by name, the datatable list len = {}, now paging.", datatableDTOList.size());
+        datatableDTOList = filterByTableTypes(datatableDTOList, types);
+        LOGGER.info("After filter by types, the datatable list len = {}, now paging.", datatableDTOList.size());
         int startIndex = pageSize * (pageNumber - 1);
         if (startIndex > datatableDTOList.size()) {
             LOGGER.error("When find by node id, the page start index {} > datatableDtolist len {}", startIndex, datatableDTOList.size());
@@ -148,6 +163,29 @@ public class DatatableManager extends AbstractDatatableManager {
                 .datatableDTOList(datatableDTOList.subList(startIndex, endIndex))
                 .totalDatatableNums(datatableDTOList.size())
                 .build();
+    }
+
+    private List<DatatableDTO> findHttpFeatureTableByNodeId(String nodeId) {
+        List<DatatableDTO> featureList = new ArrayList<>();
+        List<FeatureTableDO> featureTableDOList = featureTableRepository.findByNodeId(nodeId);
+        if (!CollectionUtils.isEmpty(featureTableDOList)) {
+            for (FeatureTableDO featureTableDO : featureTableDOList) {
+                DatatableDTO datatableDTO = DatatableDTO.builder()
+                        .datatableId(featureTableDO.getUpk().getFeatureTableId())
+                        .datasourceId("http-data-source")
+                        .datatableName(featureTableDO.getFeatureTableName())
+                        .nodeId(nodeId)
+                        .type(DataSourceTypeEnum.HTTP.name())
+                        .relativeUri(featureTableDO.getUrl())
+                        .status(featureTableDO.getStatus())
+                        .schema(featureTableDO.getColumns().stream().map(it ->
+                                        new DatatableDTO.TableColumnDTO(it.getColName(), it.getColType(), it.getColComment()))
+                                .collect(Collectors.toList()))
+                        .build();
+                featureList.add(datatableDTO);
+            }
+        }
+        return featureList;
     }
 
     @Override
@@ -185,8 +223,8 @@ public class DatatableManager extends AbstractDatatableManager {
     /**
      * Filter datatableDTO list by status
      *
-     * @param datatableDTOList
-     * @param statusFilter
+     * @param datatableDTOList datatableDTO list
+     * @param statusFilter     status filter
      * @return DatatableDTO list
      */
     private List<DatatableDTO> filterByStatus(List<DatatableDTO> datatableDTOList, String statusFilter) {
@@ -201,8 +239,8 @@ public class DatatableManager extends AbstractDatatableManager {
     /**
      * Filter datatableDTO list by datatable name
      *
-     * @param datatableDTOList
-     * @param datatableNameFilter
+     * @param datatableDTOList    datatableDTO list
+     * @param datatableNameFilter datatable name filter
      * @return DatatableDTO list
      */
     private List<DatatableDTO> filterByDatatableName(List<DatatableDTO> datatableDTOList, String datatableNameFilter) {
@@ -214,5 +252,14 @@ public class DatatableManager extends AbstractDatatableManager {
         ).collect(Collectors.toList());
     }
 
+
+    private List<DatatableDTO> filterByTableTypes(List<DatatableDTO> datatableDTOList, List<String> types) {
+        if (CollectionUtils.isEmpty(types)) {
+            return datatableDTOList;
+        }
+        return datatableDTOList.stream().filter(
+                it -> types.stream().map(e -> StringUtils.equals(e, DataSourceTypeEnum.CSV.name()) ? "table" : e).toList().contains(it.getType())
+        ).collect(Collectors.toList());
+    }
 }
 

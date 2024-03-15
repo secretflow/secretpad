@@ -30,7 +30,7 @@ import org.springframework.stereotype.Service;
  * @author wb-698356
  * @date 2023/12/14
  */
-@Profile(value = {SystemConstants.P2P})
+@Profile(value = {SystemConstants.P2P, SystemConstants.DEV})
 @RequiredArgsConstructor
 @Slf4j
 @Service
@@ -40,10 +40,11 @@ public class P2pDataInit implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        log.info("P2pDataInit start");
         try {
             nodeService.initialNode();
         } catch (Exception e) {
-            log.error("initialize node failed, error = {}", e);
+            log.error("initialize node failed", e);
         }
     }
 }

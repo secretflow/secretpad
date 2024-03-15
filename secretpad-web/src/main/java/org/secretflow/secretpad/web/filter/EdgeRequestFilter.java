@@ -91,6 +91,7 @@ public class EdgeRequestFilter implements Filter, Ordered {
      * one hour
      */
     private static final long EXPIRE = 60 * 60 * 24;
+
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
         HttpServletRequest req = (HttpServletRequest) request;
@@ -190,6 +191,7 @@ public class EdgeRequestFilter implements Filter, Ordered {
             throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "The login session is null, please login again.");
         }
     }
+
     public String convertObjectToJson(Object object) throws JsonProcessingException {
         if (object == null) {
             return null;

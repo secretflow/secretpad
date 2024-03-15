@@ -34,7 +34,7 @@ import java.util.concurrent.CopyOnWriteArraySet;
 @Component
 @RequiredArgsConstructor
 public class RouteDetection {
-    private static Set<String> AvailableNode = new CopyOnWriteArraySet<>();
+    private static final Set<String> AvailableNode = new CopyOnWriteArraySet<>();
     private final ApplicationEventPublisher applicationEventPublisher;
 
     public void addAvailableNode(String node) {

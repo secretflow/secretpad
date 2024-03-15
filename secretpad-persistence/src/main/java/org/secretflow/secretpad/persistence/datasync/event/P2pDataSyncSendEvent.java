@@ -22,6 +22,8 @@ import lombok.ToString;
 import org.springframework.context.ApplicationEvent;
 
 /**
+ * P2pDataSyncSendEvent
+ *
  * @author yutu
  * @date 2023/12/20
  */

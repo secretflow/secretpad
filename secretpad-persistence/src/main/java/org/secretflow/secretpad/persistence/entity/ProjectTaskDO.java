@@ -107,6 +107,7 @@ public class ProjectTaskDO extends BaseAggregationRoot {
     @Setter
     @AllArgsConstructor
     @NoArgsConstructor
+    @Builder
     public static class UPK implements Serializable {
         @Serial
         private static final long serialVersionUID = 291568296509217011L;

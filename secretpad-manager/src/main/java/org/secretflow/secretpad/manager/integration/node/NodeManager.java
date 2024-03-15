@@ -187,7 +187,7 @@ public class NodeManager extends AbstractNodeManager {
         try {
             nodeRepository.save(nodeDO);
         } catch (Exception e) {
-            throw SecretpadException.of(NodeErrorCode.NODE_CREATE_ERROR,e, nodeId + " node create fail in db :" + e.getMessage());
+            throw SecretpadException.of(NodeErrorCode.NODE_CREATE_ERROR, e, nodeId + " node create fail in db :" + e.getMessage());
         }
 
         SysUserPermissionRelDO sysUserPermission = new SysUserPermissionRelDO();
@@ -209,7 +209,7 @@ public class NodeManager extends AbstractNodeManager {
         try {
             kusciaDomainRpc.createDomain(request);
         } catch (Exception e) {
-            throw SecretpadException.of(NodeErrorCode.NODE_CREATE_ERROR,e, nodeId + " node create fail in kuscia :" + domain.getStatus().getMessage());
+            throw SecretpadException.of(NodeErrorCode.NODE_CREATE_ERROR, e, nodeId + " node create fail in kuscia :" + domain.getStatus().getMessage());
         }
         return nodeId;
     }

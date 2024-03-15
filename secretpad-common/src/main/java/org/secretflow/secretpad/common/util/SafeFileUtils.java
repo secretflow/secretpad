@@ -45,7 +45,7 @@ public class SafeFileUtils {
             return checkPathInWhitelist(file, whitelistPath);
         } catch (Exception e) {
             LOGGER.error("FilepathTraversalChecker checkPathTraversal CatchException, " +
-                    "filePath = {} Check path traversal catch exception, not deny! error is {}", filePath, e);
+                    "filePath = {} Check path traversal catch exception, not deny! ", filePath, e);
             return true;
         }
     }
@@ -65,7 +65,7 @@ public class SafeFileUtils {
                 return false;
             }
             String canonicalPath = file.getCanonicalPath();
-            if ("".equals(canonicalPath)) {
+            if (canonicalPath.isEmpty()) {
                 LOGGER.error("Target canonical file path is null, need to be deny!");
                 return false;
             }
@@ -81,7 +81,7 @@ public class SafeFileUtils {
             LOGGER.error("Target canonical file path not in white list, need to deny!");
             return false;
         } catch (Exception e) {
-            LOGGER.error("Check path traversal catch exception, not deny! error is {}", e);
+            LOGGER.error("Check path traversal catch exception, not deny!", e);
             return true;
         }
     }

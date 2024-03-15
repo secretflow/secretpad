@@ -25,7 +25,6 @@ import org.secretflow.secretpad.persistence.entity.VoteInviteDO;
 import org.secretflow.secretpad.persistence.entity.VoteRequestDO;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.CertificateService;
-import org.secretflow.secretpad.service.DispatchService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.MessageService;
 import org.secretflow.secretpad.service.enums.VoteStatusEnum;
@@ -40,13 +39,13 @@ import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
 import org.secretflow.secretpad.service.model.message.*;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
 
-import jakarta.transaction.Transactional;
 import org.apache.commons.lang3.StringUtils;
 import org.secretflow.v1alpha1.kusciaapi.Certificate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -82,10 +81,8 @@ public class MessageServiceImpl implements MessageService {
 
     private final CertificateService certificateService;
 
-    private final DispatchService dispatchService;
 
-
-    public MessageServiceImpl(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, Map<VoteTypeEnum, VoteTypeHandler> voteTypeHandlerMap, VoteRequestCustomRepository voteRequestCustomRepository, VoteInviteCustomRepository voteInviteCustomRepository, EnvService envService, CertificateService certificateService, DispatchService dispatchService) {
+    public MessageServiceImpl(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, Map<VoteTypeEnum, VoteTypeHandler> voteTypeHandlerMap, VoteRequestCustomRepository voteRequestCustomRepository, VoteInviteCustomRepository voteInviteCustomRepository, EnvService envService, CertificateService certificateService) {
         this.voteInviteRepository = voteInviteRepository;
         this.voteRequestRepository = voteRequestRepository;
         this.nodeRepository = nodeRepository;
@@ -94,10 +91,9 @@ public class MessageServiceImpl implements MessageService {
         this.voteInviteCustomRepository = voteInviteCustomRepository;
         this.envService = envService;
         this.certificateService = certificateService;
-        this.dispatchService = dispatchService;
     }
 
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     @Override
     public void reply(String action, String reason, String voteParticipantID, String voteID) {
         identityVerification(voteParticipantID);
@@ -190,7 +186,7 @@ public class MessageServiceImpl implements MessageService {
     }
 
     @Override
-    @Transactional
+    @Transactional(rollbackFor = Exception.class)
     public MessageListVO list(Boolean isInitiator, String nodeID, String type, String keyWord, Boolean isProcessed, Pageable page) {
         identityVerification(nodeID);
         if (!isInitiator) {

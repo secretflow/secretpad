@@ -1,0 +1,66 @@
+apiVersion: kuscia.secretflow/v1alpha1
+kind: AppImage
+metadata:
+  name: sf-serving-image
+spec:
+  configTemplates:
+    serving-config.conf: |
+      {
+        "serving_id": "{{.SERVING_ID}}",
+        "input_config": "{{.INPUT_CONFIG}}",
+        "cluster_def": "{{.CLUSTER_DEFINE}}",
+        "allocated_ports": "{{.ALLOCATED_PORTS}}",
+        "oss_meta": "{{.MODEL_OSS_META}}"
+      }
+  deployTemplates:
+    - name: secretflow
+      replicas: 1
+      spec:
+        containers:
+          - command:
+              - sh
+              - -c
+              - ./secretflow_serving --flagfile=conf/gflags.conf --config_mode=kuscia --serving_config_file=/etc/kuscia/serving-config.conf
+            configVolumeMounts:
+              - mountPath: /etc/kuscia/serving-config.conf
+                subPath: serving-config.conf
+            name: secretflow
+            ports:
+              - name: service
+                port: 53508
+                protocol: HTTP
+                scope: Domain
+              - name: communication
+                port: 53509
+                protocol: HTTP
+                scope: Cluster
+              - name: internal
+                port: 53510
+                protocol: HTTP
+                scope: Domain
+              - name: brpc-builtin
+                port: 53511
+                protocol: HTTP
+                scope: Domain
+            readinessProbe:
+              httpGet:
+                path: /health
+                port: 53511
+            livenessProbe:
+              httpGet:
+                path: /health
+                port: 53511
+            startupProbe:
+              failureThreshold: 30
+              httpGet:
+                path: /health
+                port: 53511
+              periodSeconds: 10
+              successThreshold: 1
+              timeoutSeconds: 1
+            workingDir: /root/sf_serving
+  image:
+    id: 91d26a38f00e
+    name: {{.SECRETFLOW_SERVING_IMAGE_NAME}}
+    sign: abc13mnjh1olkkp1
+    tag: {{.SECRETFLOW_SERVING_IMAGE_TAG}}

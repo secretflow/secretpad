@@ -16,11 +16,12 @@
 
 package org.secretflow.secretpad.service.model.auth;
 
+import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
+import org.secretflow.secretpad.persistence.entity.AccountsDO;
+
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
-import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
-import org.secretflow.secretpad.persistence.entity.AccountsDO;
 
 /**
  * @author beiwei

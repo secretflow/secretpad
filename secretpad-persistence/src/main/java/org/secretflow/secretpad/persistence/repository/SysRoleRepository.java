@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.SysRoleDO;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**

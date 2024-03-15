@@ -23,10 +23,11 @@ package org.secretflow.secretpad.common.util;
  * @date 2023/06/27
  */
 public class TypeConvertUtils {
+
     /**
      * Convert long to bytes
      *
-     * @param v
+     * @param v value
      * @return bytes
      */
     public static byte[] long2Bytes(long v) {

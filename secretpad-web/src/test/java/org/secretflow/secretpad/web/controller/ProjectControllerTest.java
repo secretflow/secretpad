@@ -16,54 +16,20 @@
 
 package org.secretflow.secretpad.web.controller;
 
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
-import org.secretflow.proto.pipeline.Pipeline;
-
 import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
-import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
-import org.secretflow.secretpad.common.errorcode.InstErrorCode;
-import org.secretflow.secretpad.common.errorcode.JobErrorCode;
-import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
-import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
+import org.secretflow.secretpad.common.errorcode.*;
 import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
-import org.secretflow.secretpad.persistence.entity.InstDO;
-import org.secretflow.secretpad.persistence.entity.NodeDO;
-import org.secretflow.secretpad.persistence.entity.ProjectDO;
-import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO;
-import org.secretflow.secretpad.persistence.entity.ProjectGraphNodeDO;
-import org.secretflow.secretpad.persistence.entity.ProjectJobDO;
-import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
-import org.secretflow.secretpad.persistence.entity.ProjectResultDO;
-import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
+import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.ResultKind;
-import org.secretflow.secretpad.persistence.repository.InstRepository;
-import org.secretflow.secretpad.persistence.repository.NodeRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectDatatableRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectGraphRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectJobRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectResultRepository;
-import org.secretflow.secretpad.service.model.project.AddInstToProjectRequest;
-import org.secretflow.secretpad.service.model.project.AddNodeToProjectRequest;
-import org.secretflow.secretpad.service.model.project.AddProjectDatatableRequest;
-import org.secretflow.secretpad.service.model.project.CreateProjectRequest;
-import org.secretflow.secretpad.service.model.project.DeleteProjectDatatableRequest;
-import org.secretflow.secretpad.service.model.project.GetProjectDatatableRequest;
-import org.secretflow.secretpad.service.model.project.GetProjectJobRequest;
-import org.secretflow.secretpad.service.model.project.GetProjectJobTaskLogRequest;
-import org.secretflow.secretpad.service.model.project.GetProjectJobTaskOutputRequest;
-import org.secretflow.secretpad.service.model.project.GetProjectRequest;
-import org.secretflow.secretpad.service.model.project.ListProjectJobRequest;
-import org.secretflow.secretpad.service.model.project.StopProjectJobTaskRequest;
-import org.secretflow.secretpad.service.model.project.TableColumnConfigParam;
-import org.secretflow.secretpad.service.model.project.UpdateProjectRequest;
+import org.secretflow.secretpad.persistence.repository.*;
+import org.secretflow.secretpad.service.model.project.*;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
+import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
+import org.secretflow.proto.pipeline.Pipeline;
 import org.secretflow.v1alpha1.common.Common;
 import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
@@ -482,6 +448,7 @@ class ProjectControllerTest extends ControllerTest {
     void addProjectDatatable() throws Exception {
         assertResponseWithEmptyData(() -> {
             AddProjectDatatableRequest request = FakerUtils.fake(AddProjectDatatableRequest.class);
+            request.setType("CSV");
             List<TableColumnConfigParam> configs = new ArrayList<>(1);
             TableColumnConfigParam tableColumnConfigParam = new TableColumnConfigParam();
             tableColumnConfigParam.setColName("id1");
@@ -508,6 +475,7 @@ class ProjectControllerTest extends ControllerTest {
         assertErrorCode(() -> {
             AddProjectDatatableRequest request = FakerUtils.fake(AddProjectDatatableRequest.class);
             request.setProjectId(PROJECT_ID);
+            request.setType("CSV");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_ADD_TABLE));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
@@ -520,6 +488,7 @@ class ProjectControllerTest extends ControllerTest {
     void addProjectDatatableByQueryDatatableFailedException() throws Exception {
         assertErrorCode(() -> {
             AddProjectDatatableRequest request = FakerUtils.fake(AddProjectDatatableRequest.class);
+            request.setType("CSV");
             request.setProjectId(PROJECT_ID);
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_ADD_TABLE));
@@ -538,6 +507,7 @@ class ProjectControllerTest extends ControllerTest {
         assertResponseWithEmptyData(() -> {
             DeleteProjectDatatableRequest request = FakerUtils.fake(DeleteProjectDatatableRequest.class);
             request.setProjectId(PROJECT_ID);
+            request.setType("CSV");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_DELETE));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
@@ -553,6 +523,7 @@ class ProjectControllerTest extends ControllerTest {
         assertErrorCode(() -> {
             DeleteProjectDatatableRequest request = FakerUtils.fake(DeleteProjectDatatableRequest.class);
             request.setProjectId(PROJECT_ID);
+            request.setType("CSV");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_DELETE));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
@@ -566,6 +537,7 @@ class ProjectControllerTest extends ControllerTest {
         assertResponse(() -> {
             GetProjectDatatableRequest request = FakerUtils.fake(GetProjectDatatableRequest.class);
             request.setProjectId(PROJECT_ID);
+            request.setType("CSV");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_GET));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
@@ -584,6 +556,7 @@ class ProjectControllerTest extends ControllerTest {
         assertErrorCode(() -> {
             GetProjectDatatableRequest request = FakerUtils.fake(GetProjectDatatableRequest.class);
             request.setProjectId(PROJECT_ID);
+            request.setType("CSV");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_GET));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
@@ -597,6 +570,7 @@ class ProjectControllerTest extends ControllerTest {
         assertErrorCode(() -> {
             GetProjectDatatableRequest request = FakerUtils.fake(GetProjectDatatableRequest.class);
             request.setProjectId(PROJECT_ID);
+            request.setType("CSV");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_GET));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
@@ -612,6 +586,7 @@ class ProjectControllerTest extends ControllerTest {
         assertErrorCode(() -> {
             GetProjectDatatableRequest request = FakerUtils.fake(GetProjectDatatableRequest.class);
             request.setProjectId(PROJECT_ID);
+            request.setType("CSV");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_GET));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
@@ -643,8 +618,6 @@ class ProjectControllerTest extends ControllerTest {
         });
     }
 
-    @Test
-    @Disabled
     void getJob() throws Exception {
         assertResponse(() -> {
             GetProjectJobRequest request = FakerUtils.fake(GetProjectJobRequest.class);

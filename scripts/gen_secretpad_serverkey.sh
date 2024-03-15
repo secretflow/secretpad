@@ -20,13 +20,12 @@ Password=$1
 OutPath=$2
 usage="$(basename "$0") password"
 
-
 if [[ ${Password} == "" ]]; then
-  echo "missing argument: $usage"
-  exit 1
+	echo "missing argument: $usage"
+	exit 1
 fi
 # generate jks
 set +e
 keytool -genkey -keystore ${OutPath}/server.jks -keyalg RSA -keysize 2048 -validity 3650 \
-  -keypass ${Password} -storepass ${Password} -dname "OU=SF, O=ANT, L=Shanghai, ST=Shanghai, C=CN, CN=${SecretPadAddress}" -alias secretpad-server
+	-keypass ${Password} -storepass ${Password} -dname "OU=SF, O=ANT, L=Shanghai, ST=Shanghai, C=CN, CN=${SecretPadAddress}" -alias secretpad-server
 set -e

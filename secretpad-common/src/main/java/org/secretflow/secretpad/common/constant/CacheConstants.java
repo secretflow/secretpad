@@ -24,4 +24,6 @@ package org.secretflow.secretpad.common.constant;
  */
 public class CacheConstants {
     public static final String USER_LOCK_CACHE = "user_lock";
+
+    public static final String MODEL_EXPORT_CACHE = "model_export_cache";
 }
