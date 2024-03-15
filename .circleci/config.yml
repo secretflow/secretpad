@@ -61,7 +61,6 @@ jobs:
             docker push secretflow/secretpad:latest
 
 workflows:
-  version: 2
   build-deploy:
     jobs:
       - build-and-push:
