@@ -48,7 +48,6 @@ jobs:
             docker login -u ${DOCKER_DEPLOY_USERNAME} -p ${DOCKER_DEPLOY_TOKEN}
             # login secretpad aliyun registry
             docker login -u ${ALIYUN_DOCKER_USERNAME} -p ${ALIYUN_DOCKER_PASSWORD}  secretflow-registry.cn-hangzhou.cr.aliyuncs.com
-            echo "$DOCKERHUB_PASSWORD" | docker login -u "$DOCKERHUB_USERNAME" --password-stdin
             CIRCLETAG=$(echo ${CIRCLE_TAG} | sed 's/v//')
 
             docker tag $(docker images --format "{{.Repository}}:{{.Tag}}" | sed -n '1p') secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:latest
