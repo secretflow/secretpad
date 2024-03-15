@@ -32,8 +32,7 @@ public class GithubCondition implements Condition {
     @Override
     public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
         String githubActions = System.getenv("GITHUB_ACTIONS");
-        log.info("——————————————————————————————————————————————————————————————————————GITHUB_ACTIONS : {}", githubActions);
-        return "true".equals(githubActions);
+        return !"true".equals(githubActions);
     }
 
 }
