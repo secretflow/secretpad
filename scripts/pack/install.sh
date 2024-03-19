@@ -141,10 +141,6 @@ function init_images_from_files() {
 				SECRETPAD_IMAGE=$someimage
 			elif [[ $someimage == *secretflow-lite* ]]; then
 				SECRETFLOW_IMAGE=$someimage
-			elif [[ $someimage == *sf-dev-anolis8* ]]; then
-				SECRETFLOW_IMAGE=$someimage
-			elif [[ $someimage == *secretflow-* ]]; then
-				SECRETFLOW_IMAGE=$someimage
 			elif [[ $someimage == *sf-tee-dm-sim* ]]; then
 				TEE_DM_IMAGE=$someimage
 			elif [[ $someimage == *capsule-manager-sim* ]]; then
@@ -210,63 +206,52 @@ function start_p2p_secretpad() {
 	echo "bash $(pwd)/start_p2p.sh ${edge_opt}"
 	bash $(pwd)/start_p2p.sh ${edge_opt}
 }
+
+function check_sf_image() {
+  local domain_id=$1
+  local domain_ctr=$2
+  local sf_image=$3
+
+  if docker exec -it $domain_ctr crictl inspecti $sf_image >/dev/null 2>&1; then
+    echo "Image '${sf_image}' already exists in domain '${domain_id}'"
+    return
+  fi
+
+  local has_sf_image=false
+  if docker image inspect ${sf_image} >/dev/null 2>&1; then
+    has_sf_image=true
+  fi
+
+  if [ "$has_sf_image" == true ]; then
+    echo "Found the  image '${sf_image}' on host"
+  else
+    echo "Not found the  image '${sf_image}' on host"
+    echo "Start pulling image '${sf_image}' ..."
+    docker pull ${sf_image}
+  fi
+
+  echo "Start importing image '${sf_image}' Please be patient..."
+  local image_id
+  image_id=$(docker images --filter="reference=${sf_image}" --format "{{.ID}}")
+  echo "'${sf_image}' image_id $image_id"
+  local image_tar
+  image_tar=/tmp/$(echo ${sf_image} | sed 's/\//_/g').${image_id}.tar
+  if [ ! -e $image_tar ]; then
+    echo "docker save '${sf_image}' $image_tar"
+    docker save $sf_image -o $image_tar
+  fi
+  local CTR_ROOT=/home/kuscia
+  docker exec -it $domain_ctr ctr -a=${CTR_ROOT}/containerd/run/containerd.sock -n=k8s.io images import $image_tar
+  echo "Successfully imported image '${sf_image}' to container '${domain_ctr}' ..."
+}
+
 function loadTeeDmImage2Container() {
-	local image_tar
-	for file in images/*; do
-		if [ -f "$file" ]; then
-			someimage=$(basename "$file")
-			echo "echo ${someimage}"
-			if [[ $someimage == *sf-tee-dm-sim* ]]; then
-				tee_dm_image_tar=$someimage
-				cp images/$tee_dm_image_tar /tmp/$tee_dm_image_tar
-				image_tar=/tmp/$tee_dm_image_tar
-			fi
-		fi
-	done
-	echo "Start importing image '${TEE_DM_IMAGE}' Please be patient..."
-	if [ -n "$image_tar" ]; then
-		echo "load by local image"
-	else
-		docker pull ${TEE_DM_IMAGE}
-		local image_id
-		image_id=$(docker images --filter="reference=${TEE_DM_IMAGE}" --format "{{.ID}}")
-		image_tar=/tmp/$(echo ${TEE_DM_IMAGE} | sed 's/\//_/g').${image_id}.tar
-	fi
-	if [ ! -e $image_tar ]; then
-		docker save $TEE_DM_IMAGE -o $image_tar
-	fi
-	local container_id=$1
-	local CTR_ROOT=/home/kuscia
-	docker exec -it $container_id ctr -a=${CTR_ROOT}/containerd/run/containerd.sock -n=k8s.io images import $image_tar
+  local ctr=$1
+  check_sf_image $ctr ${ctr} ${TEE_DM_IMAGE}
 }
 function loadSfServingImage2Container() {
-	local image_tar
-	for file in images/*; do
-		if [ -f "$file" ]; then
-			someimage=$(basename "$file")
-			echo "echo ${someimage}"
-			if [[ $someimage == *serving-anolis8* ]]; then
-				serving_image_tar=$someimage
-				cp images/$serving_image_tar /tmp/$serving_image_tar
-				image_tar=/tmp/$serving_image_tar
-			fi
-		fi
-	done
-	echo "Start importing image '${SECRETFLOW_SERVING_IMAGE}' Please be patient..."
-	if [ -n "$image_tar" ]; then
-		echo "load by local image"
-	else
-		docker pull ${SECRETFLOW_SERVING_IMAGE}
-		local image_id
-		image_id=$(docker images --filter="reference=${SECRETFLOW_SERVING_IMAGE}" --format "{{.ID}}")
-		image_tar=/tmp/$(echo ${SECRETFLOW_SERVING_IMAGE} | sed 's/\//_/g').${image_id}.tar
-	fi
-	if [ ! -e $image_tar ]; then
-		docker save $SECRETFLOW_SERVING_IMAGE -o $image_tar
-	fi
-	local container_id=$1
-	local CTR_ROOT=/home/kuscia
-	docker exec -it $container_id ctr -a=${CTR_ROOT}/containerd/run/containerd.sock -n=k8s.io images import $image_tar
+  local ctr=$1
+	check_sf_image $ctr ${ctr} ${SECRETFLOW_SERVING_IMAGE}
 }
 function start_lite() {
 	# deploy lite

@@ -102,7 +102,7 @@ log "docker pull ${SECRETPAD_IMAGE} done"
 echo "docker pull ${SECRETFLOW_IMAGE}"
 docker pull ${SECRETFLOW_IMAGE}
 log "docker pull ${SECRETFLOW_IMAGE} done"
-docker pull ${SECRETFLOW_SERVING_IMAGE}
+docker pull --platform=linux/amd64 ${SECRETFLOW_SERVING_IMAGE}
 log "docker pull ${SECRETFLOW_SERVING_IMAGE} done"
 
 # tee
