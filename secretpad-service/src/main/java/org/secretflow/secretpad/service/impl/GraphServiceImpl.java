@@ -608,6 +608,9 @@ public class GraphServiceImpl implements GraphService {
             for (String graphNodeId : graphNodeIds) {
                 GraphNodeStatusVO nodeStatusVO = new GraphNodeStatusVO();
                 nodeStatusVO.setGraphNodeId(graphNodeId);
+                // task is top 1 ,but this time graphNode may be changed
+                // the task work time must be >  graphNode update_time
+                // graphNode update_time may x.y ,ignore x,y change update_time
                 Optional<ProjectTaskDO> taskDOOptional = taskRepository.findLatestTasks(projectId, graphNodeId);
                 GraphNodeTaskStatus status = GraphNodeTaskStatus.STAGING;
                 if (taskDOOptional.isPresent()) {
