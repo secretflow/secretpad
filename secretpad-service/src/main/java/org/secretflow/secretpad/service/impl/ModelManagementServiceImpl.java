@@ -184,7 +184,37 @@ public class ModelManagementServiceImpl implements ModelManagementService {
         } catch (Exception e) {
             log.error("JsonUtils.toJavaObject({}, GraphDetailVO.class) error", graphDetail, e);
         }
-        return ModelPackInfoVO.builder().modelGraphDetail(modelList).graphDetailVO(graphDetailVO).build();
+        String sampleTables = projectModelPackDO.getSampleTables();
+        Map<String, String> partyTableMap = JsonUtils.toJavaMap(sampleTables, String.class);
+        List<NodeDO> nodeDOList = nodeRepository.findByNodeIdIn(partyTableMap.keySet());
+        Map<String, String> nodeMap = nodeDOList.stream().collect(Collectors.toMap(NodeDO::getNodeId, NodeDO::getName));
+        List<ServingDetailVO.ServingDetail> servingDetails = new ArrayList<>();
+        String servingId = projectModelPackDO.getServingId();
+        if (StringUtils.isBlank(servingId)) {
+            partyTableMap.forEach((k, v) -> {
+                ServingDetailVO.ServingDetail servingDetail = ServingDetailVO.ServingDetail.builder()
+                        .nodeId(k)
+                        .nodeName(nodeMap.get(k))
+                        .sourcePath(null)
+                        .build();
+                servingDetails.add(servingDetail);
+            });
+        } else {
+            Optional<ProjectModelServingDO> projectModelServingDOOptional = projectModelServiceRepository.findById(servingId);
+            ProjectModelServingDO projectModelServingDO = projectModelServingDOOptional.get();
+            String servingInputConfig = projectModelServingDO.getServingInputConfig();
+            ServingConfig.KusciaServingConfig kusciaServingConfig = (ServingConfig.KusciaServingConfig) ProtoUtils.fromJsonString(servingInputConfig, ServingConfig.KusciaServingConfig.newBuilder());
+            Map<String, ServingConfig.KusciaServingConfig.PartyConfig> servingPartyConfigs = kusciaServingConfig.getPartyConfigsMap();
+            for (Map.Entry<String, ServingConfig.KusciaServingConfig.PartyConfig> partyConfigEntry : servingPartyConfigs.entrySet()) {
+                ServingDetailVO.ServingDetail servingDetail = ServingDetailVO.ServingDetail.builder()
+                        .nodeId(partyConfigEntry.getKey())
+                        .nodeName(nodeMap.get(partyConfigEntry.getKey()))
+                        .sourcePath(partyConfigEntry.getValue().getModelConfig().getSourcePath())
+                        .build();
+                servingDetails.add(servingDetail);
+            }
+        }
+        return ModelPackInfoVO.builder().modelGraphDetail(modelList).graphDetailVO(graphDetailVO).modelStats(ModelStatsEnum.parse(projectModelPackDO.getModelStats())).servingDetails(servingDetails).build();
     }
 
     private List<String> filterOwnSchema(List<String> columns, List<Common.DataColumn> columnsList) {
@@ -352,7 +382,7 @@ public class ModelManagementServiceImpl implements ModelManagementService {
             servingDetail.setFeatureHttp(httpOpts.getEndpoint());
             servingDetails.add(servingDetail);
         }
-        return ServingDetailVO.builder().servingDetails(servingDetails).modelId(modelId).build();
+        return ServingDetailVO.builder().servingDetails(servingDetails).modelId(modelId).servingId(servingId).build();
     }
 
     @Override
@@ -408,52 +438,50 @@ public class ModelManagementServiceImpl implements ModelManagementService {
         String servingId = projectModelPackDO.getServingId();
         Integer stats = projectModelPackDO.getModelStats();
         String modelStats = ModelStatsEnum.parse(stats);
-        if (StringUtils.isNotBlank(servingId)) {
-            if (ModelStatsEnum.PUBLISHING.name().equals(ModelStatsEnum.parse(stats))) {
-                Serving.QueryServingResponse queryServingResponse = null;
-                try {
-                    queryServingResponse = kusciaServingRpc.queryServing(Serving.QueryServingRequest.newBuilder().setServingId(servingId).build());
-                } catch (Exception e) {
-                    log.error("queryServing error!", e);
-                }
-                if (ObjectUtils.isNotEmpty(queryServingResponse)) {
-                    Serving.ServingStatusDetail status = queryServingResponse.getData().getStatus();
-                    String state = status.getState();
-                    Optional<ProjectModelServingDO> projectModelServingDOOptional = projectModelServiceRepository.findById(servingId);
-                    ProjectModelServingDO projectModelServingDO = projectModelServingDOOptional.get();
-                    if ("Available".equals(state)) {
-                        modelStats = ModelStatsEnum.PUBLISHED.name();
-                        stats = ModelStatsEnum.PUBLISHED.getCode();
-                        List<Serving.PartyServingStatus> partyStatusesList = queryServingResponse.getData().getStatus().getPartyStatusesList();
-                        List<ProjectModelServingDO.PartyEndpoints> partyEndpointsList = partyStatusesList.stream().filter(c -> {
-                            if (envService.isAutonomy()) {
-                                return StringUtils.equals(projectModelServingDO.getInitiator(), c.getDomainId());
-                            }
-                            return true;
-                        }).map(e -> {
-                            String domainId = e.getDomainId();
-                            String endpoint = e.getEndpointsList().stream().filter(f -> StringUtils.equals(f.getPortName(), "service")).findFirst().get().getEndpoint();
-                            ProjectModelServingDO.PartyEndpoints partyEndpoints = new ProjectModelServingDO.PartyEndpoints();
-                            partyEndpoints.setEndpoints(endpoint);
-                            partyEndpoints.setNodeId(domainId);
-                            return partyEndpoints;
-
-                        }).collect(Collectors.toList());
-                        if (projectModelServingDOOptional.isPresent()) {
-                            projectModelServingDO.setPartyEndpoints(partyEndpointsList);
-                            projectModelServiceRepository.save(projectModelServingDO);
-                            projectModelServingDO.setServingStats("success");
-                            log.info("save endpoints success!");
+        if (StringUtils.isNotBlank(servingId) && ModelStatsEnum.PUBLISHING.name().equals(modelStats)) {
+            Serving.QueryServingResponse queryServingResponse = null;
+            try {
+                queryServingResponse = kusciaServingRpc.queryServing(Serving.QueryServingRequest.newBuilder().setServingId(servingId).build());
+            } catch (Exception e) {
+                log.error("queryServing error!", e);
+            }
+            if (ObjectUtils.isNotEmpty(queryServingResponse)) {
+                Serving.ServingStatusDetail status = queryServingResponse.getData().getStatus();
+                String state = status.getState();
+                Optional<ProjectModelServingDO> projectModelServingDOOptional = projectModelServiceRepository.findById(servingId);
+                ProjectModelServingDO projectModelServingDO = projectModelServingDOOptional.get();
+                if ("Available".equals(state)) {
+                    modelStats = ModelStatsEnum.PUBLISHED.name();
+                    stats = ModelStatsEnum.PUBLISHED.getCode();
+                    List<Serving.PartyServingStatus> partyStatusesList = queryServingResponse.getData().getStatus().getPartyStatusesList();
+                    List<ProjectModelServingDO.PartyEndpoints> partyEndpointsList = partyStatusesList.stream().filter(c -> {
+                        if (envService.isAutonomy()) {
+                            return StringUtils.equals(projectModelServingDO.getInitiator(), c.getDomainId());
                         }
-                    } else if ("Failed".equals(state)) {
-                        modelStats = ModelStatsEnum.PUBLISH_FAIL.name();
-                        stats = ModelStatsEnum.PUBLISH_FAIL.getCode();
-                        projectModelServingDO.setServingStats("failed");
+                        return true;
+                    }).map(e -> {
+                        String domainId = e.getDomainId();
+                        String endpoint = e.getEndpointsList().stream().filter(f -> StringUtils.equals(f.getPortName(), "service")).findFirst().get().getEndpoint();
+                        ProjectModelServingDO.PartyEndpoints partyEndpoints = new ProjectModelServingDO.PartyEndpoints();
+                        partyEndpoints.setEndpoints(endpoint);
+                        partyEndpoints.setNodeId(domainId);
+                        return partyEndpoints;
+
+                    }).collect(Collectors.toList());
+                    if (projectModelServingDOOptional.isPresent()) {
+                        projectModelServingDO.setPartyEndpoints(partyEndpointsList);
+                        projectModelServiceRepository.save(projectModelServingDO);
+                        projectModelServingDO.setServingStats("success");
+                        log.info("save endpoints success!");
                     }
-                    projectModelPackDO.setModelStats(stats);
-                    projectModelPackRepository.save(projectModelPackDO);
-                    log.info("project model serving stats changed to {}", modelStats);
+                } else if ("Failed".equals(state)) {
+                    modelStats = ModelStatsEnum.PUBLISH_FAIL.name();
+                    stats = ModelStatsEnum.PUBLISH_FAIL.getCode();
+                    projectModelServingDO.setServingStats("failed");
                 }
+                projectModelPackDO.setModelStats(stats);
+                projectModelPackRepository.save(projectModelPackDO);
+                log.info("project model serving stats changed to {}", modelStats);
             }
         }
         return ModelPackVO.builder()

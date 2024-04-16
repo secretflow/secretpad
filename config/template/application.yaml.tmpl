@@ -13,7 +13,12 @@ server:
     key-alias: secretpad-server
     key-password: {{.PASSWORD}}
     key-store-type: JKS
-
+  compression:
+    enabled: true
+    mime-types:
+      - application/javascript
+      - text/css
+    min-response-size: 1024
 spring:
   task:
     scheduling:
@@ -66,7 +71,7 @@ logging:
 
 kusciaapi:
   address: {{.KUSCIA_API_ADDRESS}}:8083
-  protocol: ${KUSCIA_PROTOCOL:mtls} # notls tls mtls
+  protocol: ${KUSCIA_PROTOCOL:tls} # notls tls mtls
   tls:
     cert-file: config/certs/client.crt
     key-file: config/certs/client.pem

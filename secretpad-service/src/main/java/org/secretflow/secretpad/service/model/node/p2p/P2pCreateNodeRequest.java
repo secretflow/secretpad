@@ -73,6 +73,7 @@ public class P2pCreateNodeRequest {
      * net address of platform nodeId
      */
     @Schema(description = "srcNetAddress")
+    @Pattern(regexp = Constants.IP_PREFIX_REG, message = "address needs to start with http or https")
     private String srcNetAddress;
 
     /**
@@ -80,6 +81,7 @@ public class P2pCreateNodeRequest {
      */
     @NotBlank
     @Schema(description = "dstNetAddress")
+    @Pattern(regexp = Constants.IP_PREFIX_REG, message = "address needs to start with http or https")
     @Pattern(regexp = Constants.IP_PORT_PATTERN, message = "address not support rule")
     private String dstNetAddress;
 }

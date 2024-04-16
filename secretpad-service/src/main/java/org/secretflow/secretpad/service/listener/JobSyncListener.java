@@ -16,11 +16,12 @@
 
 package org.secretflow.secretpad.service.listener;
 
-import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
-import org.secretflow.secretpad.common.exception.SecretpadException;
-import org.secretflow.secretpad.manager.integration.job.JobManager;
+import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 
+import lombok.extern.slf4j.Slf4j;
+import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
@@ -32,11 +33,13 @@ import org.springframework.stereotype.Component;
  * @author yansi
  * @date 2023/6/12
  */
+@Slf4j
 @Component
 @ConditionalOnProperty(name = "job.sync.enabled", havingValue = "true", matchIfMissing = true)
 public class JobSyncListener implements ApplicationListener<ApplicationReadyEvent> {
     @Autowired
-    private JobManager jobManager;
+    @Qualifier("jobManager")
+    private AbstractJobManager jobManager;
 
     /**
      * Start to synchronize the job in ApiLite to secretPad
@@ -44,15 +47,8 @@ public class JobSyncListener implements ApplicationListener<ApplicationReadyEven
      * @param event application ready event
      */
     @Override
-    public void onApplicationEvent(ApplicationReadyEvent event) {
-        // todo: use backoff
-        try {
-            while (true) {
-                jobManager.startSync();
-                Thread.sleep(3000);
-            }
-        } catch (InterruptedException e) {
-            throw SecretpadException.of(SystemErrorCode.UNKNOWN_ERROR, e);
-        }
+    public void onApplicationEvent(@NotNull ApplicationReadyEvent event) {
+        jobManager.startSync();
+        log.info("jobManager startSync....");
     }
 }

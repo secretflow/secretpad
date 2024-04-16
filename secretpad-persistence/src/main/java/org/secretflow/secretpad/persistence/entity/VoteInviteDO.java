@@ -82,7 +82,7 @@ public class VoteInviteDO extends BaseAggregationRoot<VoteInviteDO> {
     /**
      * vote desc
      */
-    @Column(name = "desc", nullable = false, length = 64)
+    @Column(name = "description", nullable = false, length = 64)
     private String desc;
 
 

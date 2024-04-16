@@ -82,6 +82,9 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
     @Column(name = "owner_id", nullable = false, length = 64)
     private String ownerId;
 
+    @Column(name = "node_max_index", nullable = false)
+    private Integer nodeMaxIndex;
+
     public void setNodes(List<ProjectGraphNodeDO> nodes) {
         if (this.nodes == null) {
             this.nodes = new ArrayList<>();

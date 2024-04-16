@@ -36,6 +36,8 @@ public class ServingDetailVO {
 
     private List<ServingDetail> servingDetails;
 
+    private String servingId;
+
     @Setter
     @Getter
     @Builder

@@ -72,6 +72,10 @@
             <artifactId>ehcache</artifactId>
             <classifier>jakarta</classifier>
         </dependency>
+        <dependency>
+            <groupId>mysql</groupId>
+            <artifactId>mysql-connector-java</artifactId>
+        </dependency>
     </dependencies>
     <build>
         <plugins>

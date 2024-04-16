@@ -94,6 +94,8 @@ public class DbChangeEventListener {
                                     .data(event.getSource()).build());
                         } catch (IOException e) {
                             log.error("data sync error ", e);
+                            // if push failed, retry
+                            dataSyncDataBufferTemplate.push(event);
                         }
                     }
                 });

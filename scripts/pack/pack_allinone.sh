@@ -15,15 +15,13 @@
 # limitations under the License.
 #
 
-# load images
-KUSCIA_IMAGE=""
-SECRETPAD_IMAGE=""
-SECRETFLOW_IMAGE=""
-SECRETFLOW_SERVING_IMAGE=""
-
-TEE_APP_IMAGE=""
-TEE_DM_IMAGE=""
-CAPSULE_MANAGER_SIM_IMAGE=""
+KUSCIA_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.7.0b0"
+SECRETPAD_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.6.0b0"
+SECRETFLOW_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.5.0b0"
+SECRETFLOW_SERVING_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.2.1b0"
+TEE_APP_IMAGE="secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"
+TEE_DM_IMAGE="secretflow/sf-tee-dm-sim:0.1.0b0"
+CAPSULE_MANAGER_SIM_IMAGE="secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"
 
 GREEN='\033[0;32m'
 NC='\033[0m'
@@ -38,19 +36,14 @@ mkdir -p secretflow-allinone-package/images
 
 # copy install.sh
 path="$(
-	cd "$(dirname $0)"
+	cd "$(dirname "$0")"
 	pwd
 )"
 echo "cp install.sh secretflow-allinone-package/"
-cp "$path"/install.sh secretflow-allinone-package/
+cp "$path"/../install.sh secretflow-allinone-package/
 # copy uninstall.sh
 echo "cp uninstall.sh secretflow-allinone-package/"
-cp "$path"/uninstall.sh secretflow-allinone-package/
-# copy tee init
-echo "cp tee/init_tee.sh secretflow-allinone-package/tee/"
-cp "$path"/tee/init_tee.sh secretflow-allinone-package/
-cp "$path"/tee/tee-capsule-manager.yaml secretflow-allinone-package/
-cp "$path"/tee/tee-image.yaml secretflow-allinone-package/
+cp "$path"/../uninstall.sh secretflow-allinone-package/
 
 # remove temp data
 echo "rm -rf secretflow-allinone-package/images/*"
@@ -93,25 +86,34 @@ echo "TEE_DM_IMAGE image: $TEE_DM_IMAGE"
 echo "CAPSULE_MANAGER_SIM_IMAGE image: $CAPSULE_MANAGER_SIM_IMAGE"
 
 set -e
-echo "docker pull ${KUSCIA_IMAGE}"
-docker pull ${KUSCIA_IMAGE}
-log "docker pull ${KUSCIA_IMAGE} done"
-echo "docker pull ${SECRETPAD_IMAGE}"
-docker pull ${SECRETPAD_IMAGE}
-log "docker pull ${SECRETPAD_IMAGE} done"
-echo "docker pull ${SECRETFLOW_IMAGE}"
-docker pull ${SECRETFLOW_IMAGE}
-log "docker pull ${SECRETFLOW_IMAGE} done"
+echo "docker pull --platform=linux/amd64 ${KUSCIA_IMAGE}"
+docker pull --platform=linux/amd64 ${KUSCIA_IMAGE}
+log "docker pull --platform=linux/amd64 ${KUSCIA_IMAGE} done"
+
+echo "docker pull --platform=linux/amd64 ${SECRETPAD_IMAGE}"
+docker pull --platform=linux/amd64 ${SECRETPAD_IMAGE}
+log "docker pull --platform=linux/amd64 ${SECRETPAD_IMAGE} done"
+
+echo "docker pull --platform=linux/amd64 ${SECRETFLOW_IMAGE}"
+docker pull --platform=linux/amd64 ${SECRETFLOW_IMAGE}
+log "docker pull --platform=linux/amd64 ${SECRETFLOW_IMAGE} done"
+
+echo "docker pull --platform=linux/amd64 ${SECRETFLOW_SERVING_IMAGE}"
 docker pull --platform=linux/amd64 ${SECRETFLOW_SERVING_IMAGE}
-log "docker pull ${SECRETFLOW_SERVING_IMAGE} done"
+log "docker pull --platform=linux/amd64 ${SECRETFLOW_SERVING_IMAGE} done"
 
 # tee
-docker pull ${TEE_APP_IMAGE}
-log "docker pull ${TEE_APP_IMAGE} done"
-docker pull ${TEE_DM_IMAGE}
-log "docker pull ${TEE_DM_IMAGE} done"
-docker pull ${CAPSULE_MANAGER_SIM_IMAGE}
-log "docker pull ${CAPSULE_MANAGER_SIM_IMAGE} done"
+echo "docker pull --platform=linux/amd64 ${TEE_APP_IMAGE}"
+docker pull --platform=linux/amd64 ${TEE_APP_IMAGE}
+log "docker pull --platform=linux/amd64 ${TEE_APP_IMAGE} done"
+
+echo "docker pull --platform=linux/amd64 ${TEE_DM_IMAGE}"
+docker pull --platform=linux/amd64 ${TEE_DM_IMAGE}
+log "docker pull --platform=linux/amd64 ${TEE_DM_IMAGE} done"
+
+echo "docker pull --platform=linux/amd64 ${CAPSULE_MANAGER_SIM_IMAGE}"
+docker pull --platform=linux/amd64 ${CAPSULE_MANAGER_SIM_IMAGE}
+log "docker pull --platform=linux/amd64 ${CAPSULE_MANAGER_SIM_IMAGE} done"
 
 kusciaTag=${KUSCIA_IMAGE##*:}
 echo "kuscia tag: $kusciaTag"

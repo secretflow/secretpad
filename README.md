@@ -17,6 +17,17 @@ SecretPad:
 * You can use the ability of data preprocessing, analysis and modeling to meet diverse business scenarios
 * You can use the ability of model training and model prediction.
 
+## Secretpad-frontend
+
+* [secretpad-frontend](https://github.com/secretflow/secretpad-frontend)
+  is a frontend project of SecretPad, and you can use ```make build``` to deploy frontend code in a SecretPad project
+
+```text
+secretpad
+├──secretpad-web
+│  ├─src/main/resource
+```
+
 ## NetworkMode
 
 Two networking modes are supported: master networking mode and p2p networking mode.
@@ -68,15 +79,15 @@ sh install.sh master
 
 ```sh
 # deploy lite node there must be a master node
-sh install.sh lite -n domainId -t token -p 30002 -m master endpoint -s 8089 -k 40812 -g 40813
+sh install.sh lite -n domainId -t token -p 30002 -m master endpoint -s 8089 -k 40812 -g 40813 -q 23801
 ```
 
 ```sh
 # deploy autonomy node
-sh install.sh p2p -n domainId  -s 8099 -g 8092 -k 8091 -p 8090
+sh install.sh p2p -n domainId  -s 8099 -g 8092 -k 8091 -p 8090 -q 33801
 ```
 
-For more details, see [Development](./docs/development/build_secretpad_cn.md)
+For more details, see [Development](./docs/deployment_experience/v0.6.0b0/deploy_secretpad.md)
 
 ## Versions
 
@@ -91,14 +102,19 @@ For more details, see [Development](./docs/development/build_secretpad_cn.md)
 
 | secretpad Version | Kuscia Version | secretflow Version | trustedflow Version | serving Version |
 |-------------------|----------------|--------------------|---------------------|-----------------|
+| 0.6.0b0           | 0.7.0b0        | 1.5.0b0            | 0.1.1b0             | 0.2.1b0         |
 | 0.5.0b0           | 0.6.0b0        | 1.4.0b0            | 0.1.1b0             | 0.2.0b0         |
 | 0.4.1b0           | 0.5.0b0        | 1.4.0.dev24011601  | 0.1.1b0             |                 |
 | 0.3.0b0           | 0.4.0b0        | 1.3.0.dev20231109  | 0.1.1b0             |                 |
 
 ## Development
 
-If you want to develop your own application based on SecretPad, or use IDEA to develop and debug locally, we will
-provide it in the future
+Kuscia notls mode can realize remote access to the Kuscia GRPC service, but due to file service limitations, it will
+be unavailable in file upload and download, and other file data sources will be provided soon to achieve true extension
+deployment
+
+- [IDEA develop locally](./docs/development/ru_in_idea_cn.md)
+- [Use mysql as the running database](./docs/development/SUPPORT_MYSQL.md)
 
 ## Contact
 

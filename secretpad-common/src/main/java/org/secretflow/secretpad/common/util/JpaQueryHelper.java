@@ -32,7 +32,7 @@ import java.util.*;
  */
 @Slf4j
 @SuppressWarnings("unchecked")
-public class JpaQueryHelper {
+public final class JpaQueryHelper {
 
     public static <R, Q> Predicate getPredicate(Root<R> root, Q query, CriteriaBuilder cb) {
         List<Predicate> list = new ArrayList<>();

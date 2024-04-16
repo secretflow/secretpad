@@ -138,7 +138,7 @@ public class JpaSyncDataService {
     }
 
     @SuppressWarnings(value = {"rawtypes"})
-    public void syncData(SyncDataDTO dto) {
+    public synchronized void syncData(SyncDataDTO dto) {
         if (ignore(dto)) {
             log.info(" ****** sync ignore dto {}", dto);
             return;
@@ -156,7 +156,7 @@ public class JpaSyncDataService {
     }
 
     @SuppressWarnings(value = {"rawtypes"})
-    public void syncDataP2p(SyncDataDTO dto) {
+    public synchronized void syncDataP2p(SyncDataDTO dto) {
         UserContext.setBaseUser(UserContextDTO.builder().name("admin").build());
         String action = dto.getAction();
         Object data = dto.getData();
@@ -164,6 +164,15 @@ public class JpaSyncDataService {
         // todo check last update version
         if (!(data instanceof VoteRequestDO || data instanceof VoteInviteDO || data instanceof ProjectApprovalConfigDO)) {
             DataSyncConsumerContext.setConsumerSync();
+        }
+        if (data instanceof ProjectJobDO projectJobDO) {
+            Optional<ProjectJobDO> byJobId = projectJobRepository.findByJobId(projectJobDO.getUpk().getJobId());
+            if (byJobId.isPresent()) {
+                if (byJobId.get().isFinished()) {
+                    log.info("ignore sync by local job is finished {}", byJobId.get().getUpk().getJobId());
+                    return;
+                }
+            }
         }
         switch (action) {
             case "create", "update" -> baseRepository.save(data);

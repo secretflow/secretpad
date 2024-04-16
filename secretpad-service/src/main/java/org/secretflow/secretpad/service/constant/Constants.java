@@ -30,4 +30,6 @@ public class Constants {
     public static final String TEE_PROJECT_MODE = "tee";
 
     public static final String HTTP_PREFIX_REG = "^http://.*";
+
+    public static final String IP_PREFIX_REG = "^(http|https)://.*";
 }

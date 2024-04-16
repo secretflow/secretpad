@@ -84,6 +84,8 @@ public class NodeManager extends AbstractNodeManager {
 
     @Value("${secretpad.master-node-id:master}")
     private String masterNodeId;
+    @Value("${kusciaapi.protocol:tls}")
+    private String protocol;
 
     private void check(String nodeId) {
         List<NodeDO> byType = nodeRepository.findByType(DomainConstants.DomainTypeEnum.embedded.name());
@@ -394,6 +396,7 @@ public class NodeManager extends AbstractNodeManager {
 
     private NodeDTO fillByGrpcDomainQuery(NodeDO nodeDO) {
         NodeDTO nodeDTO = NodeDTO.fromDo(nodeDO);
+        nodeDTO.setProtocol(protocol);
         DomainOuterClass.QueryDomainRequest queryDomainRequest =
                 DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(nodeDO.getNodeId()).build();
         DomainOuterClass.QueryDomainResponse response = kusciaDomainRpc.queryDomainNoCheck(queryDomainRequest);
@@ -532,6 +535,9 @@ public class NodeManager extends AbstractNodeManager {
 
     @Override
     public void initialNode(String nodeId) {
+        if (nodeRepository.existsById(nodeId)) {
+            nodeRepository.deleteAuthentic(nodeId);
+        }
         NodeDO nodeBuild = NodeDO.builder().nodeId(nodeId)
                 .description(nodeId).type(DomainConstants.DomainTypeEnum.normal.name())
                 .mode(1).name(nodeId).netAddress("127.0.0.1:28080").controlNodeId(nodeId)

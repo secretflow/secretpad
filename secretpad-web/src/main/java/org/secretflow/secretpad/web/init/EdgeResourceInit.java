@@ -19,6 +19,7 @@ package org.secretflow.secretpad.web.init;
 import org.secretflow.secretpad.common.constant.DomainConstants;
 import org.secretflow.secretpad.common.constant.SystemConstants;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainRpc;
 import org.secretflow.secretpad.persistence.entity.AccountsDO;
@@ -30,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
@@ -51,9 +53,14 @@ public class EdgeResourceInit implements CommandLineRunner {
     private final KusciaDomainRpc kusciaDomainRpc;
 
     private final UserAccountsRepository userAccountsRepository;
+    @Value("${secretpad.platform-type}")
+    private String platformType;
 
     @Override
     public void run(String... args) throws Exception {
+        if (!PlatformTypeEnum.EDGE.name().equals(platformType)) {
+            return;
+        }
         log.info("init edge initialize resource start");
         List<AccountsDO> all = userAccountsRepository.findAll();
         AccountsDO accountsDO = all.get(0);

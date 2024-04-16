@@ -16,7 +16,10 @@
 
 package org.secretflow.secretpad.service.model.approval;
 
+import org.secretflow.secretpad.service.constant.Constants;
+
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -37,8 +40,10 @@ public class NodeRouteVoteConfig extends AbstractVoteConfig {
     private String desNodeId;
 
     @NotBlank
+    @Pattern(regexp = Constants.IP_PREFIX_REG, message = "address needs to start with http or https")
     private String srcNodeAddr;
 
     @NotBlank
+    @Pattern(regexp = Constants.IP_PREFIX_REG, message = "address needs to start with http or https")
     private String desNodeAddr;
 }

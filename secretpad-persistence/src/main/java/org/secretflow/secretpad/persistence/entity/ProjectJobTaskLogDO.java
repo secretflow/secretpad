@@ -88,6 +88,16 @@ public class ProjectJobTaskLogDO implements Serializable {
     }
 
     /**
+     *  read_data/datatable log
+     * @param content dateTime
+     * @return log string
+     */
+    public static String makeLog(LocalDateTime dateTime, String content){
+        return String.format("%s %s %s", DateTimes.localDateTimeString(dateTime), "INFO", content);
+    }
+
+    /**
+
      * Build project job task log when task starts
      *
      * @param task

@@ -13,7 +13,12 @@ server:
     key-alias: secretpad-server
     key-password: secretpad
     key-store-type: JKS
-
+  compression:
+    enabled: true
+    mime-types:
+      - application/javascript
+      - text/css
+    min-response-size: 1024
 spring:
   task:
     scheduling:
@@ -28,13 +33,36 @@ spring:
       hibernate:
         format_sql: false
   datasource:
-    hibernate.dialect: org.hibernate.dialect.SQLiteDialect
     driver-class-name: org.sqlite.JDBC
     url: jdbc:sqlite:./db/secretpad.sqlite
     hikari:
       idle-timeout: 60000
       maximum-pool-size: 1
       connection-timeout: 5000
+
+  #datasource used for mysql
+  #spring:
+  #  task:
+  #    scheduling:
+  #      pool:
+  #        size: 10
+  #  application:
+  #    name: secretpad
+  #  jpa:
+  #    database-platform: org.hibernate.dialect.MySQLDialect
+  #    show-sql: false
+  #    properties:
+  #      hibernate:
+  #        format_sql: false
+  #  datasource:
+  #    driver-class-name: com.mysql.cj.jdbc.Driver
+  #    url: your mysql url
+  #    username:
+  #    password:
+  #    hikari:
+  #      idle-timeout: 60000
+  #      maximum-pool-size: 10
+  #      connection-timeout: 5000
   jackson:
     deserialization:
       fail-on-missing-external-type-id-property: false
@@ -51,6 +79,12 @@ spring:
 springdoc:
   api-docs:
     enabled: false
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,readiness,prometheus
+    enabled-by-default: false
 
 logging:
   level:
@@ -61,7 +95,7 @@ logging:
 
 kusciaapi:
   address: root-kuscia-master:8083
-  protocol: ${KUSCIA_PROTOCOL:mtls} # notls tls mtls
+  protocol: ${KUSCIA_PROTOCOL:tls} # notls tls mtls
   tls:
     cert-file: config/certs/client.crt
     key-file: config/certs/client.pem
@@ -69,7 +103,7 @@ kusciaapi:
   token-file: config/certs/token
 
 kusciaapi-lite-alice:
-  address: root-kuscia-lite-alice:8061
+  address: root-kuscia-lite-alice:8083
   tls:
     cert-file: config/certs/alice/client.crt
     key-file: config/certs/alice/client.pem
@@ -77,7 +111,7 @@ kusciaapi-lite-alice:
   token-file: config/certs/alice/token
 
 kusciaapi-lite-bob:
-  address: root-kuscia-lite-bob:8061
+  address: root-kuscia-lite-bob:8083
   tls:
     cert-file: config/certs/bob/client.crt
     key-file: config/certs/bob/client.pem
@@ -88,6 +122,8 @@ job:
   max-parallelism: 1
 
 secretpad:
+  logs:
+    path: ${SECRETPAD_LOG_PATH:/app/log}
   deploy-mode: ${DEPLOY_MODE:ALL-IN-ONE} # MPC TEE ALL-IN-ONE
   platform-type: CENTER
   node-id: kuscia-system
@@ -127,14 +163,27 @@ sfclusterDesc:
     crossSiloCommBackend: "brpc_link"
 
 tee:
-  capsule-manager: capsule-manager.#.svc # tee capsule-manager service
+  capsule-manager: capsule-manager.#.svc
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,info,readiness
-    enabled-by-default: false
+data:
+  sync:
+    - org.secretflow.secretpad.persistence.entity.ProjectDO
+    - org.secretflow.secretpad.persistence.entity.ProjectNodeDO
+    - org.secretflow.secretpad.persistence.entity.NodeDO
+    - org.secretflow.secretpad.persistence.entity.NodeRouteDO
+    - org.secretflow.secretpad.persistence.entity.ProjectJobDO
+    - org.secretflow.secretpad.persistence.entity.ProjectTaskDO
+    - org.secretflow.secretpad.persistence.entity.ProjectDatatableDO
+    - org.secretflow.secretpad.persistence.entity.VoteRequestDO
+    - org.secretflow.secretpad.persistence.entity.VoteInviteDO
+    - org.secretflow.secretpad.persistence.entity.TeeDownLoadAuditConfigDO
+    - org.secretflow.secretpad.persistence.entity.NodeRouteApprovalConfigDO
+    - org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO
+    - org.secretflow.secretpad.persistence.entity.ProjectModelServingDO
+    - org.secretflow.secretpad.persistence.entity.ProjectGraphNodeKusciaParamsDO
+    - org.secretflow.secretpad.persistence.entity.ProjectModelPackDO
+    - org.secretflow.secretpad.persistence.entity.FeatureTableDO
+    - org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO
 
 inner-port:
   path:

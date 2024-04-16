@@ -38,8 +38,10 @@ touch "${SECRETPAD_SUREFIRE_REPORT_XML}"
 echo '<?xml version="1.0" encoding="UTF-8"?><testsuites>' >"${SECRETPAD_SUREFIRE_REPORT_XML}"
 
 for file in "$SECRETPAD_SUREFIRE_REPORT"/*; do
-	if test -f $file; then
-		echo $(tail -n +2 $file) >>"${SECRETPAD_SUREFIRE_REPORT_XML}"
+	if test -f "$file"; then
+		# shellcheck disable=SC2046
+		# shellcheck disable=SC2005
+		echo $(tail -n +2 "$file") >>"${SECRETPAD_SUREFIRE_REPORT_XML}"
 	fi
 done
 echo '</testsuites>' >>"${SECRETPAD_SUREFIRE_REPORT_XML}"

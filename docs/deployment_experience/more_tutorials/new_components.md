@@ -98,20 +98,27 @@ bob：
 ![Structure](../../imgs/structure.png)
 
 1.Kuscia
-Adapter：将kuscia的数据结构转化为SecretFlow组件数据结构。代码位于：https://github.com/secretflow/secretflow/blob/main/secretflow/kuscia/entry.py。你不需要修改这里。
+Adapter：将kuscia的数据结构转化为SecretFlow组件数据结构。代码位于：https://github.com/secretflow/secretflow/blob/main/secretflow/kuscia/entry.py。
+你不需要修改这里。
 
 2.SecretFlow Comp
-Entry：读取SecretFlow组件数据结构，调用对应的组件。代码位于：https://github.com/secretflow/secretflow/blob/main/secretflow/component/entry.py。你需要在这里声明组件。
+Entry：读取SecretFlow组件数据结构，调用对应的组件。代码位于：https://github.com/secretflow/secretflow/blob/main/secretflow/component/entry.py。
+你需要在这里声明组件。
 
 3.SecretFlow
-Comps：所有隐语组件。代码位于：https://github.com/secretflow/secretflow/tree/main/secretflow/component。你需要在这个文件夹下创建你的新组件。
+Comps：所有隐语组件。代码位于：https://github.com/secretflow/secretflow/tree/main/secretflow/component。 你需要在这个文件夹下创建你的新组件。
 
-4.SecretFlow Libraries：隐语API。你可以利用所有隐语现有的各类算法来构造组件。你可以在这个链接了解隐语的第一方库。你可能需要调整这部分代码。
+4.SecretFlow
+Libraries：隐语API。你可以利用所有隐语现有的各类算法来构造组件。你可以在这个[链接](https://www.secretflow.org.cn/zh-CN/docs/secretflow/v1.4.0b0/user_guide)
+了解隐语的第一方库。你可能需要调整这部分代码。
 
 5.SecretFlow Devices:
-隐语设备，隐语将本地明文计算抽象为PYU运算，密态计算抽象为密态设备的运算：SPU（MPC，多方安全计算），HEU（HE，同态加密），TEEU（TEE，可信执行环境），如果你不了解，请阅读这个文档。你一般不需要修改这部分代码。
+隐语设备，隐语将本地明文计算抽象为PYU运算，密态计算抽象为密态设备的运算：SPU（MPC，多方安全计算），HEU（HE，同态加密），TEEU（TEE，可信执行环境），如果你不了解，请阅读这个[文档](https://www.secretflow.org.cn/zh-CN/docs/secretflow/v1.4.0b0/developer/design/architecture)
+。你一般不需要修改这部分代码。
 
-6.Ray/RayFed。Ray是隐语的底座，负责在一个kuscia拉起的隐语节点中调度资源，每一个计算参与方都是一个Ray集群。RayFed负责Ray集群之间的通信和协调。
+6.Ray/RayFed。[Ray](https://www.ray.io)
+是隐语的底座，负责在一个kuscia拉起的隐语节点中调度资源，每一个计算参与方都是一个Ray集群。[RayFed](https://rayfed.readthedocs.io/en/latest)
+负责Ray集群之间的通信和协调。
 
 ## 开发环境
 
@@ -125,27 +132,28 @@ Comps：所有隐语组件。代码位于：https://github.com/secretflow/secret
 - bazel==5.4.1
 - golang
 
-你可以参考release-ci.DockerFile来配置你的环境。
+你可以参考[release-ci.DockerFile](https://github.com/secretflow/devtools/blob/main/dockerfiles/release-ci.DockerFile)
+来配置你的环境。
 
 2.当你配置好环境之后，请拉取代码
 
 ```shell
-git clone https://github.com/secretflow/secretflow.git
-cd secretflow
+$ git clone https://github.com/secretflow/secretflow.git
+$ cd secretflow
 ```
 
 3.尝试编译并安装隐语
 
 ```shell
-python setup.py bdist_wheel
+$ python setup.py bdist_wheel
 
-pip install dist/*.whl
+$ pip install dist/*.whl
 ```
 
 4.如果安装成功的话，你可以检查一下secretflow的版本（版本不需要和这里一致，只需要确保正确安装即可）
 
 ```shell
-secretflow -v
+$ secretflow -v
 WARNING:root:Since the GPL-licensed package `unidecode` is not installed, using Python's `unicodedata` package which yields worse results.
 SecretFlow version 1.1.0.dev20230817.
 (sf)
@@ -154,7 +162,7 @@ SecretFlow version 1.1.0.dev20230817.
 5.在开始之前，先将secretflow移除
 
 ```shell
-pip uninstall secretflow
+$ pip uninstall secretflow
 ```
 
 ## 创建组件
@@ -164,9 +172,9 @@ pip uninstall secretflow
 在 <font color=#E83E8C> secretflow/component/ </font> 文件夹下新建文件 <font color=#E83E8C> compare.py </font>
 
 ```shell
-cd secretflow/component/
+$ cd secretflow/component/
 
-touch compare.py
+$ touch compare.py
 ```
 
 ### 声明组件
@@ -278,8 +286,8 @@ input_table </font>
 - name：IO柱的名称。
 - desc：描述。
 - types：类型，包括：
-- INDIVIDUAL_TABLE：单方表。
-- VERTICAL_TABLE：垂直切分表，联合表。
+    - INDIVIDUAL_TABLE：单方表。
+    - VERTICAL_TABLE：垂直切分表，联合表。
 
 可以看到nput参数还包含col_params，它是一个TableColParam 列表。每一个TableColParam表示用户需要在表中选择一些cols：
 
@@ -484,7 +492,7 @@ ioN) </font> :
 
 ## 注册组件
 
-在https://github.com/secretflow/secretflow/blob/main/secretflow/component/entry.py
+在[https://github.com/secretflow/secretflow/blob/main/secretflow/component/entry.py](https://github.com/secretflow/secretflow/blob/main/secretflow/component/entry.py)
 **ALL_COMPONENTS** 注册组件(加入你的新组件)
 
 ```shell
@@ -536,7 +544,7 @@ INFO:root:2. Update translation.
 此时，你可以检查组件列表是否正确更新：
 
 ```shell
-git diff comp_list.json
+$ git diff comp_list.json
 ```
 
 ![Check_Update](../../imgs/check_update.png)
@@ -544,7 +552,7 @@ git diff comp_list.json
 然后你需要检查一下翻译：
 
 ```shell
-git diff translation.json
+$ git diff translation.json
 ```
 
 ![Check_Translation](../../imgs/check_translation.png)
@@ -554,10 +562,10 @@ git diff translation.json
 ## 打包镜像
 
 ```shell
-cd dev/
+$ cd dev/
 
 # test_compare是image name
-sh build.sh -v test_compare
+$ sh build.sh -v test_compare
 ```
 
 成功之后你可以用docker inspect来检查镜像。
@@ -694,6 +702,3 @@ ss_compare组件配置：
 如果你对教程存在疑问，你可以直接留言或者在[GitHub Issues](https://github.com/secretflow/secretflow/issues)中发起issue。
 
 如果你想要了解更多隐语组件的信息，请阅读[这些文档](https://www.secretflow.org.cn/docs/secretflow/latest/zh-Hans/component)。
-
-*最后更新时间：2023/8/25 20:24:51*
-

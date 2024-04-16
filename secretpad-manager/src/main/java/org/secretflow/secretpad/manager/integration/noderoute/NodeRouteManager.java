@@ -38,8 +38,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.net.URL;
 import java.util.List;
 import java.util.Optional;
+
+import static org.secretflow.secretpad.manager.integration.model.Constants.PROTOCOL_HTTPS;
 
 /**
  * @author yutu
@@ -171,20 +174,26 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
     }
 
     private DomainRoute.RouteEndpoint buildRouteEndpoint(NodeDO dstNode) {
-        String netAddress = dstNode.getNetAddress();
-        String[] split = netAddress.split(":");
-        String host = split[0];
-        int port = Integer.parseInt(split[1]);
+        URL url = extractProtocolHostIP(dstNode.getNetAddress());
+        String host = url.getHost();
+        int port = url.getPort();
         DomainRoute.EndpointPort.Builder builder = DomainRoute.EndpointPort.newBuilder();
-        // p2p mode must be https
-        if (getPlatformType().equals(PlatformTypeEnum.AUTONOMY)) {
-            builder.setPort(port).setName("https").setProtocol("HTTPS").build();
+        if (PROTOCOL_HTTPS.equals(url.getProtocol())) {
+            builder.setPort(port).setName("https").setProtocol("HTTPS").setIsTLS(true).build();
         } else {
-            builder.setPort(port).setName("http").setProtocol("HTTP").build();
+            builder.setPort(port).setName("http").setProtocol("HTTP").setIsTLS(false).build();
         }
-        // isTLS: true name: http port: 1080 protocol: HTTP
         DomainRoute.EndpointPort endpointPort = builder.build();
         return DomainRoute.RouteEndpoint.newBuilder().setHost(host).addPorts(endpointPort).build();
+    }
+
+    private URL extractProtocolHostIP(String urlString) {
+        try {
+            return new URL(urlString);
+        } catch (Exception e) {
+            log.error("extractProtocolHostIP", e);
+            throw SecretpadException.of(NodeRouteErrorCode.NODE_ROUTE_CREATE_ERROR, e, "address format error");
+        }
     }
 
     private DomainRoute.QueryDomainRouteResponse queryDomainRouter(String srcNodeId, String dstNodeId) {

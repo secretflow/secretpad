@@ -167,18 +167,18 @@ class NodeRouteControllerTest extends ControllerTest {
     private UpdateNodeRouterRequest buildUpdateNodeRouterRequest() {
         return UpdateNodeRouterRequest.builder()
                 .routerId("1")
-                .srcNetAddress("127.0.0.1:8080")
+                .srcNetAddress("http://127.0.0.1:8080")
                 .dstNetAddress("http://127.0.0.1:8080")
                 .build();
     }
 
     private NodeDO buildNodeDO() {
-        return NodeDO.builder().nodeId("alice").netAddress("127.0.0.1:8080").build();
+        return NodeDO.builder().nodeId("alice").netAddress("http://127.0.0.1:8080").build();
     }
 
     private Optional<NodeRouteDO> buildNodeRouteDO() {
-        return Optional.ofNullable(NodeRouteDO.builder().srcNodeId("alice").dstNodeId("bob").srcNetAddress("127.0.0.1:8080")
-                .dstNetAddress("127.0.0.1:8080").routeId("1").build());
+        return Optional.ofNullable(NodeRouteDO.builder().srcNodeId("alice").dstNodeId("bob").srcNetAddress("http://127.0.0.1:8080")
+                .dstNetAddress("http://127.0.0.1:8080").routeId("1").build());
     }
 
     private DomainRoute.CreateDomainRouteResponse buildCreateDomainRouteResponse(int code) {

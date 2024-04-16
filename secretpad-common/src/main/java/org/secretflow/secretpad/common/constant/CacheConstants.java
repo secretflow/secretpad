@@ -26,4 +26,6 @@ public class CacheConstants {
     public static final String USER_LOCK_CACHE = "user_lock";
 
     public static final String MODEL_EXPORT_CACHE = "model_export_cache";
+
+    public static final String PROJECT_VOTE_PARTIES_CACHE = "project_vote_parties_cache";
 }

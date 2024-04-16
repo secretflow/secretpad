@@ -34,6 +34,8 @@ import java.io.Serial;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -87,7 +89,7 @@ public class ProjectJob implements Serializable {
      * @param parties       parties
      * @return a new project job
      */
-    public static ProjectJob genProjectJob(ProjectGraphDO graphDO, List<ProjectGraphNodeDO> selectedNodes, List<String> parties) {
+    public static ProjectJob genProjectJob(ProjectGraphDO graphDO, List<ProjectGraphNodeDO> selectedNodes, Map<String, Set<String>> parties) {
         String jobId = UUIDUtils.random(4);
         ProjectJobBuilder jobBuilder = ProjectJob.builder()
                 .projectId(graphDO.getUpk().getProjectId())
@@ -103,7 +105,7 @@ public class ProjectJob implements Serializable {
                 String graphNodeId = graphNodeDO.getUpk().getGraphNodeId();
                 JobTask task = JobTask.builder()
                         .taskId(JobUtils.genTaskId(jobId, graphNodeId))
-                        .parties(parties)
+                        .parties(new ArrayList<>(parties.get(graphNodeId)))
                         .node(GraphNodeInfo.fromDO(graphNodeDO))
                         .build();
                 tasks.add(task);

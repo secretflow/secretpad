@@ -32,5 +32,8 @@ public class Constants {
 
     public static final String PUSH_TO_TEE_JOB_ID = "pushToTeeJobId";
     public static final String AUTH_TO_TEE_PROJECT_JOB_ID = "authToTeeProjectJobId";
+    public static final String PROTOCOL_HTTPS = "https";
+    public static final String KUSCIA_PROTOCOL = "notls";
+    public static final String HTTP_PREFIX = "http";
 
 }

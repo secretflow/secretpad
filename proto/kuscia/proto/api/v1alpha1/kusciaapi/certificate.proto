@@ -18,7 +18,7 @@ package kuscia.proto.api.v1alpha1.kusciaapi;
 
 import "kuscia/proto/api/v1alpha1/common.proto";
 
-option go_package = "github.com/secretflow/kuscia/proto/api/v1alpha1/confmanager";
+option go_package = "github.com/secretflow/kuscia/proto/api/v1alpha1/kusciaapi";
 option java_package = "org.secretflow.v1alpha1.kusciaapi";
 
 service CertificateService {

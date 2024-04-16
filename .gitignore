@@ -51,3 +51,4 @@ docs/_build
 .java-version
 /test/TEST-secretpad.xml
 /.jpb/
+/secretpad-common/src/test/resources/config/

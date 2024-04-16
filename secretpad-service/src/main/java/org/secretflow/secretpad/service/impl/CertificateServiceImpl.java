@@ -20,6 +20,7 @@ import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.KusciaGrpcErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.manager.kuscia.EmbeddedNodeConfigProperties;
+import org.secretflow.secretpad.manager.kuscia.KusciaAPIProperties;
 import org.secretflow.secretpad.manager.kuscia.grpc.KusciaCertificateRpc;
 import org.secretflow.secretpad.service.CertificateService;
 import org.secretflow.secretpad.service.EnvService;
@@ -55,6 +56,9 @@ public class CertificateServiceImpl implements CertificateService, InitializingB
 
     @Resource
     private KusciaCertificateRpc kusciaCertificateRpc;
+    @Resource
+    private KusciaAPIProperties kusciaAPIProperties;
+
 
     @Override
     public Certificate.GenerateKeyCertsResponse generateCertByNodeID(String nodeID) {
@@ -78,7 +82,7 @@ public class CertificateServiceImpl implements CertificateService, InitializingB
             tlsAliceConfig.setCaFile(embeddedNodeConfigProperties.getAliceCaFile());
             tlsAliceConfig.setCertFile(embeddedNodeConfigProperties.getAliceCertFile());
             tlsAliceConfig.setKeyFile(embeddedNodeConfigProperties.getAliceKeyFile());
-            EmbeddedNodeKusciaApiChannelFactory aliceKusciaApiChannelFactory = new EmbeddedNodeKusciaApiChannelFactory(embeddedNodeConfigProperties.getAliceAddress(), embeddedNodeConfigProperties.getAliceTokenFile(), tlsAliceConfig);
+            EmbeddedNodeKusciaApiChannelFactory aliceKusciaApiChannelFactory = new EmbeddedNodeKusciaApiChannelFactory(embeddedNodeConfigProperties.getAliceAddress(), embeddedNodeConfigProperties.getAliceTokenFile(), tlsAliceConfig, kusciaAPIProperties.getProtocol());
 
             CertificateServiceGrpc.CertificateServiceBlockingStub aliceCertificateServiceBlockingStub = CertificateServiceGrpc.newBlockingStub(aliceKusciaApiChannelFactory.newClientChannel())
                     .withMaxInboundMessageSize(Integer.MAX_VALUE)
@@ -88,7 +92,7 @@ public class CertificateServiceImpl implements CertificateService, InitializingB
             tlsBobConfig.setCaFile(embeddedNodeConfigProperties.getBobCaFile());
             tlsBobConfig.setCertFile(embeddedNodeConfigProperties.getBobCertFile());
             tlsBobConfig.setKeyFile(embeddedNodeConfigProperties.getBobKeyFile());
-            EmbeddedNodeKusciaApiChannelFactory bobKusciaApiChannelFactory = new EmbeddedNodeKusciaApiChannelFactory(embeddedNodeConfigProperties.getBobAddress(), embeddedNodeConfigProperties.getBobTokenFile(), tlsBobConfig);
+            EmbeddedNodeKusciaApiChannelFactory bobKusciaApiChannelFactory = new EmbeddedNodeKusciaApiChannelFactory(embeddedNodeConfigProperties.getBobAddress(), embeddedNodeConfigProperties.getBobTokenFile(), tlsBobConfig, kusciaAPIProperties.getProtocol());
 
             CertificateServiceGrpc.CertificateServiceBlockingStub bobCertificateServiceBlockingStub = CertificateServiceGrpc.newBlockingStub(bobKusciaApiChannelFactory.newClientChannel())
                     .withMaxInboundMessageSize(Integer.MAX_VALUE)
