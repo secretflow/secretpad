@@ -86,19 +86,20 @@ public class KusciaAPIChannelFactory {
                     .keyManager(certFile, keyFile)
                     .trustManager(clientTrustedCaCerts)
                     .build();
-            String token = FileUtils.readFile2String(tokenFile);
 
-            Metadata metadata = new Metadata();
-            Metadata.Key<String> key = Metadata.Key.of(KusciaAPIConstants.TOKEN_HEADER, Metadata.ASCII_STRING_MARSHALLER);
-            metadata.put(key, token);
-            ClientInterceptor tokenInterceptor = MetadataUtils.newAttachHeadersInterceptor(metadata);
             switch (protocol) {
                 case KUSCIA_PROTOCOL_NOTLS -> {
                     return NettyChannelBuilder.forTarget(address)
                             .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
+                            .negotiationType(NegotiationType.PLAINTEXT)
                             .build();
                 }
                 default -> {
+                    String token = FileUtils.readFile2String(tokenFile);
+                    Metadata metadata = new Metadata();
+                    Metadata.Key<String> key = Metadata.Key.of(KusciaAPIConstants.TOKEN_HEADER, Metadata.ASCII_STRING_MARSHALLER);
+                    metadata.put(key, token);
+                    ClientInterceptor tokenInterceptor = MetadataUtils.newAttachHeadersInterceptor(metadata);
                     return NettyChannelBuilder.forTarget(address)
                             .intercept(tokenInterceptor)
                             .negotiationType(NegotiationType.TLS)

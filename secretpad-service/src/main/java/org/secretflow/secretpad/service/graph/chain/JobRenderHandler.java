@@ -96,7 +96,7 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
         String projectId = job.getProjectId();
         GraphBuilder graphBuilder = new GraphBuilder(job.getFullNodes());
         List<ProjectJob.JobTask> jobTasks = job.getTasks();
-        List<String> selectedNodes = jobTasks.stream().map(task -> task.getNode().getGraphNodeId()).collect(Collectors.toList());
+        List<String> selectedNodes = jobTasks.stream().map(task -> task.getNode().getGraphNodeId()).toList();
         for (ProjectJob.JobTask task : jobTasks) {
             GraphNodeInfo graphNodeInfo = task.getNode();
             List<String> newInputs = new ArrayList<>();

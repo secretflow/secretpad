@@ -37,6 +37,7 @@ import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -65,8 +66,8 @@ public class P2pDataSyncConfigurable {
     private String retry;
 
     @Bean
-    public PaddingNodeService p2pPaddingNodeServiceImpl(ProjectNodeRepository projectNodeRepository, ProjectApprovalConfigRepository projectApprovalConfigRepository, VoteRequestRepository voteRequestRepository) {
-        return new P2pPaddingNodeServiceImpl(projectNodeRepository, projectApprovalConfigRepository, voteRequestRepository);
+    public PaddingNodeService p2pPaddingNodeServiceImpl(ProjectNodeRepository projectNodeRepository, ProjectApprovalConfigRepository projectApprovalConfigRepository, VoteRequestRepository voteRequestRepository, CacheManager cacheManager) {
+        return new P2pPaddingNodeServiceImpl(projectNodeRepository, projectApprovalConfigRepository, voteRequestRepository, cacheManager);
     }
 
     @Bean

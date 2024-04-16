@@ -33,10 +33,10 @@ message SystemInfo {
 }
 
 // A StorageConfig specifies the root for all data for one party.
-// - At this moment, only local_fs is supported
-// - We would support OSS, databases in future.
+// - At this moment, only local_fs / S3 compatible object storage is supported
+// - We would support databases like mysql etc. in future.
 message StorageConfig {
-  // Supported: local_fs.
+  // enum[local_fs, s3]
   string type = 1;
 
   // For local_fs.
@@ -44,8 +44,28 @@ message StorageConfig {
     // Working directory.
     string wd = 1;
   }
+
+  // For S3 compatible object storage
+  message S3Config {
+    // endpoint https://play.min.io or http://127.0.0.1:9000 with scheme
+    string endpoint = 1;
+    // the bucket name of the oss datasource
+    string bucket = 2;
+    // the prefix of the oss datasource. e.g.  data/traindata/
+    string prefix = 3;
+    // access key
+    string access_key_id = 4;
+    // access secret
+    string access_key_secret = 5;
+    // virtual_host is the same as AliyunOSS/AWS S3's virtualhost , default true
+    bool virtual_host = 6;
+    // optional enum[s3v2,s3v4]
+    string version = 7;
+  }
   // local_fs config.
   LocalFSConfig local_fs = 2;
+  // s3 config
+  S3Config s3 = 3;
 }
 
 // A public record for a general distributed data.

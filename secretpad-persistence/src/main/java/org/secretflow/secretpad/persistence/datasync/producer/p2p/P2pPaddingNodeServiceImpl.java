@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.persistence.datasync.producer.p2p;
 
+import org.secretflow.secretpad.common.constant.CacheConstants;
 import org.secretflow.secretpad.persistence.datasync.listener.EntityChangeListener;
 import org.secretflow.secretpad.persistence.datasync.producer.PaddingNodeService;
 import org.secretflow.secretpad.persistence.entity.*;
@@ -26,13 +27,12 @@ import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -48,6 +48,8 @@ public class P2pPaddingNodeServiceImpl implements PaddingNodeService {
     private final ProjectApprovalConfigRepository projectApprovalConfigRepository;
 
     private final VoteRequestRepository voteRequestRepository;
+
+    private final CacheManager cacheManager;
 
     @Override
     public void paddingNodes(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
@@ -66,6 +68,15 @@ public class P2pPaddingNodeServiceImpl implements PaddingNodeService {
             Optional<ProjectApprovalConfigDO> projectApprovalConfigDOOptional = projectApprovalConfigRepository.findByProjectIdAndType(projectId, "PROJECT_CREATE");
             if (projectApprovalConfigDOOptional.isPresent()) {
                 nodeIds.addAll(projectApprovalConfigDOOptional.get().getNodeIds());
+            } else {
+                Cache cache = Objects.requireNonNull(cacheManager.getCache(CacheConstants.PROJECT_VOTE_PARTIES_CACHE));
+                if (Objects.nonNull(cache.get(projectId))) {
+                    ArrayList<String> parties = (ArrayList) cache.get(projectId).get();
+                    if (!CollectionUtils.isEmpty(parties)) {
+                        log.info("cache hit,projectId ={}, parties ={}", projectId, parties);
+                        nodeIds.addAll(parties);
+                    }
+                }
             }
         }
         List<String> collect = nodeIds.stream().distinct().collect(Collectors.toList());

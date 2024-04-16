@@ -1,45 +1,30 @@
 spring:
   jpa:
-    database-platform: org.hibernate.community.dialect.SQLiteDialect
-    show-sql: true
+    show-sql: false
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false
+  datasource:
+    url: jdbc:sqlite:./db/secretpad.sqlite
+
 springdoc:
   api-docs:
     enabled: true
 
+secretpad:
+  platform-type: CENTER    # CENTER  EDGE  AUTONOMY
+  deploy-mode: ${DEPLOY_MODE:MPC} # MPC TEE ALL-IN-ONE
+  node-id: ${NODE_ID:kuscia-system} # install.sh -n
+  gateway: ${KUSCIA_GW_ADDRESS:127.0.0.1:18301} # install.sh -q envoy port (used in autonomy or master or edge mode)
+  logs:
+    path: ../log
+
 kusciaapi:
-  address: 127.0.0.1:18083
-  tls:
-    cert-file: config/certs/client.crt
-    key-file: config/certs/client.pem
-    ca-file: config/certs/ca.crt
-  token-file: config/certs/token
+  protocol: ${KUSCIA_PROTOCOL:notls} # notls tls mtls  install.sh -P
+  address: 127.0.0.1:18083 # install.sh -g kuscia-api-grpc (kuscia-master) (used in autonomy or master or edge mode)
 
 kusciaapi-lite-alice:
-  address: 127.0.0.1:8061
-  tls:
-    cert-file: config/certs/alice/ca.crt
-    key-file: config/certs/alice/client.pem
-    ca-file: config/certs/alice/client.crt
-  token-file: config/certs/alice/token
+  address: 127.0.0.1:28083 # install.sh -g kuscia-api-grpc (kuscia-lite-alice) (Only used in master mode default node alice)
 
 kusciaapi-lite-bob:
-  address: 127.0.0.1:8061
-  tls:
-    cert-file: config/certs/bob/ca.crt
-    key-file: config/certs/bob/client.pem
-    ca-file: config/certs/bob/client.crt
-  token-file: config/certs/bob/token
-
-secretpad:
-  center-platform-service: secretpad.master.svc
-  gateway: ${KUSCIA_GW_ADDRESS:127.0.0.1:8080}
-  auth:
-    enabled: false
-  data:
-    dir-path: ../tmp/data/
-  datasync:
-    center: false
-    p2p: true
+  address: 127.0.0.1:38083 # install.sh -g kuscia-api-grpc (kuscia-lite-bob) (Only used in master mode default node bob)

@@ -69,8 +69,8 @@ function gen_secretpad_serverkey() {
 	fi
 	# generate jks
 	set +e
-	keytool -genkey -keystore ${OutPath}/server.jks -keyalg RSA -keysize 2048 -validity 3650 \
-		-keypass ${Password} -storepass ${Password} -dname "OU=SF, O=ANT, L=Shanghai, ST=Shanghai, C=CN, CN=${SecretPadAddress}" -alias secretpad-server
+	keytool -genkey -keystore "${OutPath}"/server.jks -keyalg RSA -keysize 2048 -validity 3650 \
+		-keypass "${Password}" -storepass "${Password}" -dname "OU=SF, O=ANT, L=Shanghai, ST=Shanghai, C=CN, CN=${SecretPadAddress}" -alias secretpad-server
 	set -e
 }
 
@@ -79,7 +79,7 @@ init_kusciaapi_certs "$SECRETPAD_ROOT/config/certs"
 init_kusciaapi_certs "$SECRETPAD_ROOT/config/certs/alice"
 init_kusciaapi_certs "$SECRETPAD_ROOT/config/certs/bob"
 echo "generate kusciaapi certs successfully"
-gen_secretpad_serverkey secretpad ${SECRETPAD_ROOT}/config
+gen_secretpad_serverkey secretpad "${SECRETPAD_ROOT}"/config
 
 echo "start to init sqlite"
 mkdir -p "${SECRETPAD_ROOT}/db"

@@ -235,15 +235,16 @@ create unique index `upk_project_job_task_id` on project_job_task (`project_id`,
 
 create table if not exists `project_graph`
 (
-    id           integer primary key autoincrement,
-    project_id   varchar(64)                          not null,
-    graph_id     varchar(64)                          not null,
-    name         varchar(128),
-    edges        text,
-    owner_id     varchar(64)                          not null default '',
-    is_deleted   tinyint(1) default '0'               not null, -- delete flag
-    gmt_create   datetime   default CURRENT_TIMESTAMP not null, -- create time
-    gmt_modified datetime   default CURRENT_TIMESTAMP not null  -- modified time
+    id             integer primary key autoincrement,
+    project_id     varchar(64)                          not null,
+    graph_id       varchar(64)                          not null,
+    name           varchar(128),
+    edges          text,
+    owner_id       varchar(64)                          not null default '',
+    node_max_index integer                              not null,
+    is_deleted     tinyint(1) default '0'               not null, -- delete flag
+    gmt_create     datetime   default CURRENT_TIMESTAMP not null, -- create time
+    gmt_modified   datetime   default CURRENT_TIMESTAMP not null  -- modified time
 );
 create unique index `upk_project_graph` on project_graph (`project_id`, `graph_id`);
 
@@ -403,7 +404,7 @@ create table if not exists `vote_request`
     execute_status     varchar(16) default 'COMMITTED'       not null, -- executors call back status
     msg                text        default null,-- error msg
     party_vote_info    text        default null,
-    desc               varchar(64)                           not null, --vote desc
+    description        varchar(64)                           not null, --vote desc
     is_deleted         tinyint(1)  default '0'               not null,
     gmt_create         datetime    default CURRENT_TIMESTAMP not null,
     gmt_modified       datetime    default CURRENT_TIMESTAMP not null
@@ -469,7 +470,7 @@ create table if not exists `vote_invite`
     vote_msg            text        default null,                       -- vote msg
     action              varchar(16) default 'REVIEWING',                --vote action
     reason              varchar(64) default null,                       --reject reason
-    desc                varchar(64)                           not null, -- vote desc
+    description         varchar(64)                           not null, -- vote desc
     is_deleted          tinyint(1)  default '0'               not null, -- delete flag
     gmt_create          datetime    default CURRENT_TIMESTAMP not null, -- create time
     gmt_modified        datetime    default CURRENT_TIMESTAMP not null  -- modified time
@@ -521,7 +522,7 @@ create table if not exists `feature_table`
     feature_table_name varchar(32)                           not null,                -- feature table name
     node_id            varchar(64)                           not null,                -- node_id
     type               varchar(8)                            not null default 'HTTP', -- feature datasource type
-    desc               varchar(64) default null,                                      -- feature table desc
+    description        varchar(64) default null,                                      -- feature table desc
     url                varchar(64)                           not null,                -- feature table service addr
     columns            text                                  not null,                -- feature table columns
     status             varchar(16)                           not null,                -- Available,Unavailable

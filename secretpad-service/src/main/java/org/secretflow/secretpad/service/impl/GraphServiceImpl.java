@@ -28,6 +28,7 @@ import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
 import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
 import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.GraphEdgeDO;
 import org.secretflow.secretpad.persistence.model.GraphJobStatus;
 import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
 import org.secretflow.secretpad.persistence.model.ResultKind;
@@ -42,6 +43,7 @@ import org.secretflow.secretpad.service.graph.JobChain;
 import org.secretflow.secretpad.service.model.graph.*;
 import org.secretflow.secretpad.service.model.project.GetProjectJobTaskOutputRequest;
 import org.secretflow.secretpad.service.model.project.StopProjectJobTaskRequest;
+import org.secretflow.secretpad.service.util.GraphUtils;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.base.Strings;
@@ -62,8 +64,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.secretflow.secretpad.service.constant.ComponentConstants.READ_DATA_DATATABLE;
 import static org.secretflow.secretpad.service.constant.Constants.TEE_PROJECT_MODE;
 import static org.secretflow.secretpad.service.util.JobUtils.genTaskOutputId;
 
@@ -140,6 +144,8 @@ public class GraphServiceImpl implements GraphService {
     @Value("${secretpad.node-id}")
     private String localNodeId;
 
+    private static final Integer DEFAULT_INITIAL_INDEX = 32;
+
     @Override
     public Map<String, CompListVO> listComponents() {
         return componentService.listComponents();
@@ -176,6 +182,7 @@ public class GraphServiceImpl implements GraphService {
         if (!CollectionUtils.isEmpty(edges)) {
             graphDO.setEdges(edges.stream().map(edge -> GraphEdge.toDO(edge)).collect(Collectors.toList()));
         }
+        graphDO.setNodeMaxIndex(DEFAULT_INITIAL_INDEX);
         graphRepository.save(graphDO);
         return CreateGraphVO.builder().graphId(graphId).build();
     }
@@ -261,6 +268,24 @@ public class GraphServiceImpl implements GraphService {
     public GraphNodeOutputVO getGraphNodeTaskOutputVO(GetProjectJobTaskOutputRequest request) {
         ProjectTaskDO jobTask = openProjectJobTask(request.getJobId(), request.getTaskId());
         return getGraphNodeTaskOutputVO(jobTask, request.getOutputId());
+    }
+
+    @Override
+    public GraphNodeMaxIndexRefreshVO refreshNodeMaxIndex(GraphNodeMaxIndexRefreshRequest request) {
+        Optional<ProjectGraphDO> projectGraphDOOptional = graphRepository.findById(new ProjectGraphDO.UPK(request.getProjectId(), request.getGraphId()));
+        if (projectGraphDOOptional.isEmpty()) {
+            throw SecretpadException.of(GraphErrorCode.GRAPH_NOT_EXISTS);
+        }
+        ProjectGraphDO projectGraphDO = projectGraphDOOptional.get();
+        Integer index = projectGraphDO.getNodeMaxIndex();
+        if (Objects.nonNull(request.getCurrentIndex()) && request.getCurrentIndex() > index) {
+            projectGraphDO.setNodeMaxIndex(request.getCurrentIndex() + 1);
+            index = request.getCurrentIndex();
+        } else {
+            projectGraphDO.setNodeMaxIndex(index + 1);
+        }
+        graphRepository.save(projectGraphDO);
+        return GraphNodeMaxIndexRefreshVO.builder().maxIndex(index).build();
     }
 
     /**
@@ -550,28 +575,21 @@ public class GraphServiceImpl implements GraphService {
         if (projectOpt.isEmpty()) {
             throw SecretpadException.of(ProjectErrorCode.PROJECT_NOT_EXISTS);
         }
-        Set<String> parties = new HashSet<>();
         List<GraphContext.GraphParty> partyList = new ArrayList<>();
-        for (ProjectGraphNodeDO nodeDO : nodeDOList) {
-            GraphNodeInfo graphNodeInfo = GraphNodeInfo.fromDO(nodeDO);
-            if (componentService.isSecretpadComponent(graphNodeInfo)) {
-                String datatableId = ComponentTools.getDataTableId(graphNodeInfo);
-                if (StringUtils.isNotBlank(datatableId)) {
-                    List<ProjectDatatableDO> datatableDOS = datatableRepository.findByDatableId(request.getProjectId(), datatableId);
-                    if (!CollectionUtils.isEmpty(datatableDOS)) {
-                        parties.addAll(datatableDOS.stream().map(datatableDO -> datatableDO.getUpk().getNodeId()).collect(Collectors.toList()));
-                        partyList.add(GraphContext.GraphParty.builder().datatableId(datatableId).node(datatableDOS.get(0).getUpk().getNodeId()).build());
-                    }
-                }
-            }
-        }
+        Map<String, Set<String>> topNodes = findTopNodes(graphDO.getEdges(), selectedNodes);
+        Map<String, Set<String>> parties = findParties(graphDO.getNodes(), topNodes, request.getProjectId(), partyList);
         GraphContext.set(projectOpt.get(), GraphContext.GraphParties.builder().parties(partyList).build());
         if (GraphContext.isTee()) {
-            parties = new HashSet<>();
-            parties.add(GraphContext.getTeeNodeId());
+            parties = new HashMap<>();
+            String teeNodeId = GraphContext.getTeeNodeId();
+            Set<String> partyNodes = new HashSet<>();
+            partyNodes.add(teeNodeId);
+            for (Map.Entry<String, Set<String>> entry : topNodes.entrySet()) {
+                parties.put(entry.getKey(), partyNodes);
+            }
         }
-        verifyNodeAndRouteHealthy(parties);
-        ProjectJob projectJob = ProjectJob.genProjectJob(graphDO, selectedNodes, parties.stream().collect(Collectors.toList()));
+        verifyNodeAndRouteHealthy(parties.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
+        ProjectJob projectJob = ProjectJob.genProjectJob(graphDO, selectedNodes, parties);
         jobChain.proceed(projectJob);
         GraphContext.remove();
         return new StartGraphVO(projectJob.getJobId());
@@ -608,9 +626,6 @@ public class GraphServiceImpl implements GraphService {
             for (String graphNodeId : graphNodeIds) {
                 GraphNodeStatusVO nodeStatusVO = new GraphNodeStatusVO();
                 nodeStatusVO.setGraphNodeId(graphNodeId);
-                // task is top 1 ,but this time graphNode may be changed
-                // the task work time must be >  graphNode update_time
-                // graphNode update_time may x.y ,ignore x,y change update_time
                 Optional<ProjectTaskDO> taskDOOptional = taskRepository.findLatestTasks(projectId, graphNodeId);
                 GraphNodeTaskStatus status = GraphNodeTaskStatus.STAGING;
                 if (taskDOOptional.isPresent()) {
@@ -652,6 +667,14 @@ public class GraphServiceImpl implements GraphService {
         GraphNodeTaskLogsVO graphNodeTaskLogsVO = new GraphNodeTaskLogsVO(task.getStatus(),
                 jobTaskLogRepository.findAllByJobTaskId(task.getUpk().getJobId(), task.getUpk().getTaskId())
                         .stream().map(ProjectJobTaskLogDO::getLog).distinct().collect(Collectors.toList()));
+        if (graphNodeTaskLogsVO.getLogs().isEmpty() && READ_DATA_DATATABLE.equals(task.getGraphNode().getCodeName())) {
+            String jobId = task.getUpk().getJobId();
+            String taskId = task.getUpk().getTaskId();
+            graphNodeTaskLogsVO.setLogs(Arrays.asList(
+                    ProjectJobTaskLogDO.makeLog(task.getGmtCreate(), String.format("the jobId=%s, taskId=%s start ...", jobId, taskId)),
+                    ProjectJobTaskLogDO.makeLog(task.getGmtCreate(), String.format("the jobId=%s, taskId=%s succeed", jobId, taskId))
+            ));
+        }
         String logPrefix = String.format("INFO the jobId=%s, taskId=%s-%s", task.getUpk().getJobId(), task.getUpk().getJobId(), request.getGraphNodeId());
         log.info("log de duplication matching， {}", logPrefix);
         distinctSpecifyLogs(graphNodeTaskLogsVO, logPrefix + " start");
@@ -740,4 +763,39 @@ public class GraphServiceImpl implements GraphService {
         }
         graphNodeTaskLogsVO.setLogs(uniqueList);
     }
+
+    private Map<String, Set<String>> findTopNodes(List<GraphEdgeDO> edges, List<ProjectGraphNodeDO> selectedNodes) {
+        Map<String, Set<String>> tops = new HashMap<>();
+        selectedNodes.forEach(node -> {
+            Set<String> topNodes = GraphUtils.findTopNodes(edges, node.getUpk().getGraphNodeId());
+            tops.put(node.getUpk().getGraphNodeId(), topNodes);
+        });
+        return tops;
+    }
+
+    private Map<String, Set<String>> findParties(List<ProjectGraphNodeDO> nodes, Map<String, Set<String>> tops, String projectId, List<GraphContext.GraphParty> partyList) {
+        Map<String, Set<String>> result = new HashMap<>();
+        Map<String, ProjectGraphNodeDO> nodeDOMap = nodes.stream().collect(Collectors.toMap(e -> (e.getUpk()).getGraphNodeId(), Function.identity()));
+        tops.entrySet().forEach(entry -> {
+                    Set<String> parties = new HashSet<>();
+                    entry.getValue().forEach(e -> {
+                        ProjectGraphNodeDO projectGraphNodeDO = nodeDOMap.get(e);
+                        GraphNodeInfo graphNodeInfo = GraphNodeInfo.fromDO(projectGraphNodeDO);
+                        String datatableId = ComponentTools.getDataTableId(graphNodeInfo);
+                        if (StringUtils.isNotBlank(datatableId)) {
+                            List<ProjectDatatableDO> datatableDOS = datatableRepository.findByDatableId(projectId, datatableId);
+                            if (!CollectionUtils.isEmpty(datatableDOS)) {
+                                parties.addAll(datatableDOS.stream().map(datatableDO -> datatableDO.getUpk().getNodeId()).collect(Collectors.toList()));
+                                partyList.add(GraphContext.GraphParty.builder().datatableId(datatableId).node(datatableDOS.get(0).getUpk().getNodeId()).build());
+                            }
+                        }
+
+                    });
+                    result.put(entry.getKey(), parties);
+                }
+
+        );
+        return result;
+    }
+
 }

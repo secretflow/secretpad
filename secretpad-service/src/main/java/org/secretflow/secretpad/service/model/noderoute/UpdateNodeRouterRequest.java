@@ -44,6 +44,7 @@ public class UpdateNodeRouterRequest {
      * srcNetAddress
      */
     @Schema(description = "srcNetAddress")
+    @Pattern(regexp = Constants.IP_PREFIX_REG, message = "needs to start with http or https")
     @Pattern(regexp = Constants.IP_PORT_PATTERN, message = "address not support rule")
     private String srcNetAddress;
 
@@ -51,6 +52,7 @@ public class UpdateNodeRouterRequest {
      * dstNetAddress
      */
     @Schema(description = "dstNetAddress")
+    @Pattern(regexp = Constants.IP_PREFIX_REG, message = "needs to start with http or https")
     @Pattern(regexp = Constants.IP_PORT_PATTERN, message = "address not support rule")
     private String dstNetAddress;
 }

@@ -1,4 +1,4 @@
-部署体验
+SecretPad
 =====
 
 
@@ -6,11 +6,9 @@
     :maxdepth: 2
 
     deployment_package
-    platform_installation_guidelines
-    node_installation_guidelines
-    pipeline_template
-    pipeline_custom
-    menu_description
+    ./p2p_deploy/index
+    ./center_deploy/index
+    components_instruction
     ./more_tutorials/index
     definition.md
     ./version_update/index

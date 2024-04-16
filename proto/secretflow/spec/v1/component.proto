@@ -23,21 +23,21 @@ option java_multiple_files = true;
 
 // The value of an attribute
 message Attribute {
-  float f = 1;  // FLOAT
+  float f = 1; // FLOAT
 
   // INT
   // NOTE(junfeng): "is" is preserved by Python. Replaced with "i64".
   int64 i64 = 2;
 
-  string s = 3;  // STRING
-  bool b = 4;    // BOOL
+  string s = 3; // STRING
+  bool b = 4;   // BOOL
 
   // lists
 
-  repeated float fs = 5;    // FLOATS
-  repeated int64 i64s = 6;  // INTS
-  repeated string ss = 7;   // STRINGS
-  repeated bool bs = 8;     // BOOLS
+  repeated float fs = 5;   // FLOATS
+  repeated int64 i64s = 6; // INTS
+  repeated string ss = 7;  // STRINGS
+  repeated bool bs = 8;    // BOOLS
 
   // Indicates the value is missing explicitly.
   bool is_na = 9;
@@ -204,26 +204,28 @@ message CompListDef {
 
 // Supported attribute types.
 enum AttrType {
+  // NOTE: ATTR_TYPE_UNSPECIFIED could be used as a child of a union struct
+  // with no further attribute(s).
   ATTR_TYPE_UNSPECIFIED = 0;
 
   // Scalar types
 
-  AT_FLOAT = 1;   // FLOAT
-  AT_INT = 2;     // INT
-  AT_STRING = 3;  // STRING
-  AT_BOOL = 4;    // BOOL
+  AT_FLOAT = 1;  // FLOAT
+  AT_INT = 2;    // INT
+  AT_STRING = 3; // STRING
+  AT_BOOL = 4;   // BOOL
 
   // List types
 
-  AT_FLOATS = 5;   // FLOATS
-  AT_INTS = 6;     // INTS
-  AT_STRINGS = 7;  // STRINGS
-  AT_BOOLS = 8;    // BOOLS
+  AT_FLOATS = 5;  // FLOATS
+  AT_INTS = 6;    // INTS
+  AT_STRINGS = 7; // STRINGS
+  AT_BOOLS = 8;   // BOOLS
 
   // Special types.
 
   AT_STRUCT_GROUP = 9;
   AT_UNION_GROUP = 10;
-  AT_SF_TABLE_COL = 11;
-  AT_CUSTOM_PROTOBUF = 12;
+  AT_CUSTOM_PROTOBUF = 11;
+  AT_PARTY = 12; // A specialized AT_STRINGS.
 }

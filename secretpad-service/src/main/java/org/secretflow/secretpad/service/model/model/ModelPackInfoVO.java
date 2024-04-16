@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.service.model.model;
 
 import org.secretflow.secretpad.service.model.graph.GraphDetailVO;
+import org.secretflow.secretpad.service.model.serving.ServingDetailVO;
 
 import lombok.Builder;
 import lombok.Getter;
@@ -34,4 +35,6 @@ import java.util.List;
 public class ModelPackInfoVO {
     private GraphDetailVO graphDetailVO;
     private List<String> modelGraphDetail;
+    private String modelStats;
+    private List<ServingDetailVO.ServingDetail> servingDetails;
 }

@@ -25,6 +25,7 @@ import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
+import org.secretflow.secretpad.manager.integration.job.event.JobSyncErrorOrCompletedEvent;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.model.ModelExportDTO;
 import org.secretflow.secretpad.persistence.entity.*;
@@ -35,7 +36,9 @@ import com.google.common.base.Strings;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import io.grpc.stub.StreamObserver;
 import jakarta.annotation.Resource;
+import lombok.Setter;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
@@ -47,6 +50,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Nonnull;
@@ -61,6 +65,7 @@ import static org.secretflow.secretpad.manager.integration.model.Constants.*;
  * @author yansi
  * @date 2023/5/23
  */
+@Setter
 public class JobManager extends AbstractJobManager {
 
     @Value("${secretpad.platform-type}")
@@ -91,6 +96,10 @@ public class JobManager extends AbstractJobManager {
     private final ProjectJobTaskRepository taskRepository;
     @Resource
     private CacheManager cacheManager;
+    @Resource
+    private JobServiceGrpc.JobServiceStub jobServiceAsyncStub;
+    @Resource
+    private ApplicationEventPublisher applicationEventPublisher;
 
 
     public JobManager(ProjectJobRepository projectJobRepository,
@@ -123,7 +132,6 @@ public class JobManager extends AbstractJobManager {
         return PlatformTypeEnum.valueOf(plaformType);
     }
 
-
     /**
      * Start synchronized job
      * <p>
@@ -132,9 +140,26 @@ public class JobManager extends AbstractJobManager {
     @Override
     public void startSync() {
         try {
-            Iterator<Job.WatchJobEventResponse> responses = jobStub.watchJob(Job.WatchJobRequest.newBuilder().setTimeoutSeconds(30L).build());
-            LOGGER.info("starter jobEvent ... ");
-            responses.forEachRemaining(this::syncJob);
+            jobServiceAsyncStub.watchJob(Job.WatchJobRequest.newBuilder().build(), new StreamObserver<>() {
+                        @Override
+                        public void onNext(Job.WatchJobEventResponse responses) {
+                            LOGGER.info("starter jobEvent ... {}", responses);
+                            syncJob(responses);
+                        }
+
+                        @Override
+                        public void onError(Throwable t) {
+                            LOGGER.error("watchJob onError: {}", t.getMessage(), t);
+                            applicationEventPublisher.publishEvent(new JobSyncErrorOrCompletedEvent(this));
+                        }
+
+                        @Override
+                        public void onCompleted() {
+                            LOGGER.info("======================================================== watchJob onCompleted");
+                            applicationEventPublisher.publishEvent(new JobSyncErrorOrCompletedEvent(this));
+                        }
+                    }
+            );
         } catch (Exception e) {
             LOGGER.error("startSync exception: {}, while restart", e.getMessage(), e);
         }
@@ -168,7 +193,8 @@ public class JobManager extends AbstractJobManager {
             LOGGER.info("watched jobEvent: jobId={}, but project job not exist, skip", it.getObject().getJobId());
             return;
         }
-        if (projectJobOpt.get().isFinished()) {
+        if (projectJobOpt.get().isFinished() && taskIsFinished(it)) {
+            LOGGER.warn("watched jobEvent: jobId={}, but project job all task  finished, skip", it.getObject().getJobId());
             return;
         }
         ProjectJobDO job = updateJob(it, projectJobOpt.get());
@@ -603,5 +629,27 @@ public class JobManager extends AbstractJobManager {
             return true;
         }
         return false;
+    }
+
+    /**
+     * determine whether the task is completed
+     *
+     * @param it event
+     * @return whether the task is completed
+     */
+    private boolean taskIsFinished(Job.WatchJobEventResponse it) {
+        Job.JobStatusDetail kusciaJobStatus = it.getObject().getStatus();
+        if (CollectionUtils.isEmpty(kusciaJobStatus.getTasksList())) {
+            return false;
+        }
+        for (Job.TaskStatus task : kusciaJobStatus.getTasksList()) {
+            GraphNodeTaskStatus currentTaskStatus = GraphNodeTaskStatus.formKusciaTaskStatus(task.getState());
+            if (currentTaskStatus != GraphNodeTaskStatus.STOPPED &&
+                    currentTaskStatus != GraphNodeTaskStatus.SUCCEED &&
+                    currentTaskStatus != GraphNodeTaskStatus.FAILED) {
+                return false;
+            }
+        }
+        return true;
     }
 }

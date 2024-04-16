@@ -20,6 +20,7 @@ package org.secretflow.secretpad.web.controller;
 import org.secretflow.secretpad.common.dto.SyncDataDTO;
 import org.secretflow.secretpad.persistence.datasync.route.RouteDetection;
 import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.GraphJobStatus;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.sync.p2p.DataSyncConsumerTemplate;
 
@@ -81,6 +82,7 @@ public class P2pDataSyncControllerTest extends ControllerTest {
                 .upk(new ProjectGraphDO.UPK("test", "test"))
                 .name("test")
                 .ownerId("test")
+                .nodeMaxIndex(32)
                 .build();
         projectGraphRepository.deleteAll();
         projectGraphRepository.saveAndFlush(projectGraphDO);
@@ -101,8 +103,20 @@ public class P2pDataSyncControllerTest extends ControllerTest {
                 .upk(new ProjectJobDO.UPK("test", "test"))
                 .name("test")
                 .build();
+        ProjectJobDO projectJobDO1 = ProjectJobDO.builder()
+                .upk(new ProjectJobDO.UPK("test1", "test1"))
+                .name("test1")
+                .status(GraphJobStatus.SUCCEED)
+                .build();
+        ProjectJobDO projectJobDO2 = ProjectJobDO.builder()
+                .upk(new ProjectJobDO.UPK("test2", "test2"))
+                .name("test2")
+                .status(GraphJobStatus.RUNNING)
+                .build();
         projectJobRepository.deleteAllAuthentic();
         projectJobRepository.saveAndFlush(projectJobDO);
+        projectJobRepository.saveAndFlush(projectJobDO1);
+        projectJobRepository.saveAndFlush(projectJobDO2);
         projectJobRepository.delete(projectJobDO);
     }
 
@@ -269,6 +283,15 @@ public class P2pDataSyncControllerTest extends ControllerTest {
                 .action("delete")
                 .tableName(ProjectDO.class.getTypeName())
                 .data(projectDO)
+                .build());
+        dataSyncConsumerTemplate.consumer("alice", SyncDataDTO.builder()
+                .action("update")
+                .tableName(ProjectJobDO.class.getTypeName())
+                .data(ProjectJobDO.builder()
+                        .upk(new ProjectJobDO.UPK("test1", "test1"))
+                        .name("test1")
+                        .status(GraphJobStatus.RUNNING)
+                        .build())
                 .build());
         projectNodeRepository.deleteAllAuthentic();
     }

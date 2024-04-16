@@ -39,8 +39,9 @@ message NodeEvalParam {
   string version = 3;
 
   // The path of attributes.
-  // The attribute path for a TableAttrDef is `(input|output)/(IoDef
-  // name)/(TableAttrDef name)(/(column name)(/(extra attributes))?)?`.
+  // The attribute path for a TableAttrDef is
+  // `(input\|output)/(IoDef name)/(TableAttrDef name)(/(column name)(/(extra
+  // attributes))?)?`.
   repeated string attr_paths = 4;
 
   // The value of the attribute.
@@ -55,6 +56,15 @@ message NodeEvalParam {
   // The output data uris, the order of output_uris must match outputs in
   // ComponentDef.
   repeated string output_uris = 7;
+
+  // If not empty:
+  // 1. Component will try to save checkpoint during training if the component
+  // supports it.
+  // 2. Component will try to reload checkpoint when starting to continue the
+  // previous training. If the checkpoint does not exist or cannot be loaded,
+  // training will be starting from scratch.
+  //
+  string checkpoint_uri = 8;
 }
 
 // NodeEvalResult contains outputs of a component evaluation.

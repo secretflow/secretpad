@@ -119,7 +119,8 @@ public class P2pNodeControllerTest extends ControllerTest {
 
             request.setMode(1);
             request.setDstNodeId(ALICE_NODE_ID);
-            request.setDstNetAddress("127.0.0.1:80");
+            request.setDstNetAddress("http://127.0.0.1:8080");
+            request.setSrcNetAddress("http://127.0.0.1:8090");
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
             Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(FakerUtils.fake(NodeDO.class));
@@ -144,8 +145,8 @@ public class P2pNodeControllerTest extends ControllerTest {
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_CREATE));
 
             request.setMode(1);
-            request.setSrcNetAddress("127.0.0.1:80");
-            request.setDstNetAddress("127.0.0.1:80");
+            request.setSrcNetAddress("http://127.0.0.1:80");
+            request.setDstNetAddress("http://127.0.0.1:80");
             return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "createP2pNode", P2pCreateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, NodeRouteErrorCode.NODE_ROUTE_CONFIG_ERROR);
@@ -161,7 +162,8 @@ public class P2pNodeControllerTest extends ControllerTest {
 
             request.setMode(1);
             request.setDstNodeId(ALICE_NODE_ID);
-            request.setDstNetAddress("127.0.0.1:80");
+            request.setDstNetAddress("https://127.0.0.1:80");
+            request.setSrcNetAddress("https://127.0.0.1:8090");
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
             Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "createP2pNode", P2pCreateNodeRequest.class)).
@@ -179,7 +181,8 @@ public class P2pNodeControllerTest extends ControllerTest {
 
             request.setMode(1);
             request.setDstNodeId(ALICE_NODE_ID);
-            request.setDstNetAddress("127.0.0.1:80");
+            request.setDstNetAddress("https://127.0.0.1:80");
+            request.setSrcNetAddress("https://127.0.0.1:8090");
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
             Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             Mockito.when(nodeRepository.findById(Mockito.any())).thenReturn(Optional.of(FakerUtils.fake(NodeDO.class)));
@@ -198,7 +201,8 @@ public class P2pNodeControllerTest extends ControllerTest {
 
             request.setMode(1);
             request.setDstNodeId(ALICE_NODE_ID);
-            request.setDstNetAddress("127.0.0.1:80");
+            request.setDstNetAddress("https://127.0.0.1:80");
+            request.setSrcNetAddress("https://127.0.0.1:8090");
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
             Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             Mockito.when(nodeRepository.findDeletedRecordByNodeId(Mockito.any())).thenReturn(Optional.of(FakerUtils.fake(NodeDO.class)));
@@ -219,7 +223,36 @@ public class P2pNodeControllerTest extends ControllerTest {
 
             request.setMode(1);
             request.setDstNodeId(ALICE_NODE_ID);
-            request.setDstNetAddress("127.0.0.1:80");
+            request.setDstNetAddress("https://127.0.0.1:80");
+            request.setSrcNetAddress("https://127.0.0.1:8090");
+            DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
+            Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(FakerUtils.fake(NodeDO.class));
+            DomainOuterClass.CreateDomainResponse createDomainResponse = buildCreateDomainResponse(0);
+            Mockito.when(domainServiceStub.createDomain(Mockito.any())).thenReturn(createDomainResponse);
+
+            DomainRoute.QueryDomainRouteResponse queryDomainRouteResponse = buildQueryDomainRouterResponse(0);
+            Mockito.when(domainRouteServiceStub.queryDomainRoute(Mockito.any())).thenReturn(queryDomainRouteResponse);
+
+            DomainRoute.CreateDomainRouteResponse createDomainRouteResponse = buildCreateDomainRouteResponse(1);
+            Mockito.when(domainRouteServiceStub.createDomainRoute(Mockito.any())).thenReturn(createDomainRouteResponse);
+            return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "createP2pNode", P2pCreateNodeRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        }, NodeRouteErrorCode.NODE_ROUTE_CREATE_ERROR);
+    }
+
+    @Test
+    void createNodeExtractProtocolHostIPException() throws Exception {
+        assertErrorCode(() -> {
+            P2pCreateNodeRequest request = FakerUtils.fake(P2pCreateNodeRequest.class);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_CREATE));
+            UserContext.getUser().setPlatformNodeId(BOB_NODE_ID);
+
+            request.setMode(1);
+            request.setDstNodeId(ALICE_NODE_ID);
+            request.setDstNetAddress("http://127.0.0.1:80:80");
+            request.setSrcNetAddress("http://127.0.0.1:8090:80");
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
             Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(FakerUtils.fake(NodeDO.class));

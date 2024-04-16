@@ -69,8 +69,8 @@ public class ApprovalControllerTest extends ControllerTest {
             NodeRouteVoteConfig nodeRouteVoteConfig = new NodeRouteVoteConfig();
             nodeRouteVoteConfig.setSrcNodeId("alice");
             nodeRouteVoteConfig.setDesNodeId("alice");
-            nodeRouteVoteConfig.setSrcNodeAddr("bob");
-            nodeRouteVoteConfig.setDesNodeAddr("bob");
+            nodeRouteVoteConfig.setSrcNodeAddr("http://127.0.0.1:8080");
+            nodeRouteVoteConfig.setDesNodeAddr("http://127.0.0.1:8080");
             createApprovalRequest.setVoteConfig(nodeRouteVoteConfig);
             return MockMvcRequestBuilders.post(getMappingUrl(ApprovalController.class, "create", CreateApprovalRequest.class))
                     .content(JsonUtils.toJSONString(createApprovalRequest));

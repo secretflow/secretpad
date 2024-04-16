@@ -259,4 +259,18 @@ public class GraphController {
         return SecretPadResponse.success(graphService.getGraphNodeLogs(request));
     }
 
+    /**
+     * Refresh  node max index api
+     *
+     * @param request update graph node request
+     * @return successful SecretPadResponse with null data
+     */
+    @Operation(summary = "update graph node,refresh  node max index")
+    @PostMapping("/graph/node/max_index")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.GRAPH_NODE_UPDATE)
+    public SecretPadResponse<GraphNodeMaxIndexRefreshVO> graphNodeMaxIndexRefresh(@Valid @RequestBody GraphNodeMaxIndexRefreshRequest request) {
+        GraphNodeMaxIndexRefreshVO vo = graphService.refreshNodeMaxIndex(request);
+        return SecretPadResponse.success(vo);
+    }
 }

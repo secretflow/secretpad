@@ -118,7 +118,7 @@ public class VoteRequestDO extends BaseAggregationRoot<VoteRequestDO> {
     /**
      * vote desc
      */
-    @Column(name = "desc", nullable = false, length = 64)
+    @Column(name = "description", nullable = false, length = 64)
     private String desc;
 
     @Column(name = "party_vote_info")

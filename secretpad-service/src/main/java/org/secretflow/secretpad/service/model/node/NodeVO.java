@@ -150,6 +150,12 @@ public class NodeVO {
     @Schema(description = "the count of node results")
     private Long resultCount;
 
+    /**
+     * kuscia api protocol
+     */
+    @Schema(description = "protocol")
+    private String protocol;
+
     public static NodeVO from(NodeDTO nodeDTO, List<DatatableDTO> datatables, List<NodeRouteDTO> nodeRoutes,
                               Long resultCount) {
         return NodeVO.builder().nodeId(nodeDTO.getNodeId()).nodeName(nodeDTO.getNodeName())
@@ -166,6 +172,7 @@ public class NodeVO {
                         .collect(Collectors.toList()))
                 .nodeRoutes(CollectionUtils.isEmpty(nodeRoutes) ? null : nodeRoutes.stream()
                         .map(NodeRouteVO::fromDto).collect(Collectors.toList()))
+                .protocol(nodeDTO.getProtocol())
                 .resultCount(resultCount).build();
     }
 

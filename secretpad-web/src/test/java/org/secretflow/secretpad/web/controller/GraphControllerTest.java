@@ -21,6 +21,7 @@ import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstant
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.GraphEdgeDO;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.model.graph.*;
 import org.secretflow.secretpad.web.utils.FakerUtils;
@@ -188,7 +189,136 @@ class GraphControllerTest extends ControllerTest {
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_START));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
-            projectGraphDO.setEdges(null);
+            String edges = "[\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-1-output-0__zxzyprqn-node-3-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-1\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-1-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-3\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-3-input-0\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-2-output-0__zxzyprqn-node-3-input-1\",\n" +
+                    "    \"source\": \"zxzyprqn-node-2\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-2-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-3\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-3-input-1\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-3-output-0__zxzyprqn-node-4-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-3\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-3-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-4\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-4-input-0\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-3-output-0__zxzyprqn-node-5-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-3\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-3-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-5\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-5-input-0\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-5-output-0__zxzyprqn-node-6-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-5\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-5-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-6\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-6-input-0\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-5-output-0__zxzyprqn-node-7-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-5\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-5-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-7\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-7-input-0\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-6-output-0__zxzyprqn-node-7-input-1\",\n" +
+                    "    \"source\": \"zxzyprqn-node-6\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-6-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-7\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-7-input-1\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-5-output-1__zxzyprqn-node-8-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-5\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-5-output-1\",\n" +
+                    "    \"target\": \"zxzyprqn-node-8\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-8-input-0\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-6-output-0__zxzyprqn-node-8-input-1\",\n" +
+                    "    \"source\": \"zxzyprqn-node-6\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-6-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-8\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-8-input-1\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-7-output-0__zxzyprqn-node-9-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-7\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-7-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-9\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-9-input-0\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-7-output-0__zxzyprqn-node-10-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-7\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-7-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-10\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-10-input-0\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-7-output-0__zxzyprqn-node-11-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-7\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-7-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-11\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-11-input-0\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-7-output-0__zxzyprqn-node-12-input-1\",\n" +
+                    "    \"source\": \"zxzyprqn-node-7\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-7-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-12\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-12-input-1\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-11-output-0__zxzyprqn-node-12-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-11\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-11-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-12\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-12-input-0\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-11-output-0__zxzyprqn-node-13-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-11\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-11-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-13\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-13-input-0\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-8-output-0__zxzyprqn-node-13-input-1\",\n" +
+                    "    \"source\": \"zxzyprqn-node-8\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-8-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-13\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-13-input-1\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-13-output-0__zxzyprqn-node-15-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-13\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-13-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-15\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-15-input-0\"\n" +
+                    "  },\n" +
+                    "  {\n" +
+                    "    \"edgeId\": \"zxzyprqn-node-13-output-0__zxzyprqn-node-14-input-0\",\n" +
+                    "    \"source\": \"zxzyprqn-node-13\",\n" +
+                    "    \"sourceAnchor\": \"zxzyprqn-node-13-output-0\",\n" +
+                    "    \"target\": \"zxzyprqn-node-14\",\n" +
+                    "    \"targetAnchor\": \"zxzyprqn-node-14-input-0\"\n" +
+                    "  }\n" +
+                    "]";
+
+            projectGraphDO.setEdges(JsonUtils.toJavaList(edges, GraphEdgeDO.class));
             Object nodeDef = JsonUtils.toJavaObject(NODE_DEF, Object.class);
             List<ProjectGraphNodeDO> nodes = projectGraphDO.getNodes();
             nodes.get(0).setUpk(new ProjectGraphNodeDO.UPK(startGraphRequest.getProjectId(), startGraphRequest.getGraphId(), startGraphRequest.getNodes().get(0)));
@@ -273,10 +403,28 @@ class GraphControllerTest extends ControllerTest {
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_NODE_LOGS));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
+            ProjectTaskDO projectTaskDO = new ProjectTaskDO();
+            ProjectGraphNodeDO graphNode = new ProjectGraphNodeDO();
+            graphNode.setCodeName("read_data/datatable");
+            projectTaskDO.setGraphNode(graphNode);
+            projectTaskDO.setUpk(new ProjectTaskDO.UPK("0dasda","1312fad","123131"));
             Mockito.when(taskRepository.findLatestTasks(graphNodeLogsRequest.getProjectId(), graphNodeLogsRequest.getGraphNodeId()))
-                    .thenReturn(Optional.of(FakerUtils.fake(ProjectTaskDO.class)));
+                    .thenReturn(Optional.of(projectTaskDO));
             return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "getGraphNodeLogs", GraphNodeLogsRequest.class))
                     .content(JsonUtils.toJSONString(graphNodeLogsRequest));
+        });
+    }
+
+    @Test
+    public void graphNodeMaxIndexRefresh() throws Exception {
+        assertResponse(() -> {
+            GraphNodeMaxIndexRefreshRequest request = new GraphNodeMaxIndexRefreshRequest();
+            request.setGraphId("graphId");
+            request.setProjectId(PROJECT_ID);
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_NODE_UPDATE));
+            Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(PROJECT_ID, "graphId"))).thenReturn(Optional.of(FakerUtils.fake(ProjectGraphDO.class)));
+            return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "graphNodeMaxIndexRefresh", GraphNodeMaxIndexRefreshRequest.class))
+                    .content(JsonUtils.toJSONString(request));
         });
     }
 }

@@ -170,4 +170,11 @@ public interface GraphService {
      */
     GraphNodeOutputVO getGraphNodeTaskOutputVO(GetProjectJobTaskOutputRequest request);
 
+    /**
+     * Refresh project node max index
+     *
+     * @param request refresh project node max index request
+     * @return max index of the graph nodes
+     */
+    GraphNodeMaxIndexRefreshVO refreshNodeMaxIndex(GraphNodeMaxIndexRefreshRequest request);
 }

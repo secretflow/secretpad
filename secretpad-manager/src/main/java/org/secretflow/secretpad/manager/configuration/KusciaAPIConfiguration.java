@@ -70,6 +70,19 @@ public class KusciaAPIConfiguration {
     }
 
     /**
+     * Create a new job service async stub via apiLite channel factory
+     *
+     * @param channelFactory
+     * @return a new job service blocking stub
+     */
+    @Bean
+    JobServiceGrpc.JobServiceStub jobServiceAsyncStub(KusciaAPIChannelFactory channelFactory) {
+        return JobServiceGrpc.newStub(channelFactory.newClientChannel())
+                .withMaxInboundMessageSize(Integer.MAX_VALUE)
+                .withMaxOutboundMessageSize(Integer.MAX_VALUE);
+    }
+
+    /**
      * Create a new domain route service blocking stub via apiLite channel factory
      *
      * @param channelFactory

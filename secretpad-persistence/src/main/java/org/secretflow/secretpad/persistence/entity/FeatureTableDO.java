@@ -51,7 +51,7 @@ public class FeatureTableDO extends BaseAggregationRoot<FeatureTableDO> {
     @Column(name = "type", nullable = false, length = 8)
     private String type;
 
-    @Column(name = "desc")
+    @Column(name = "description")
     private String desc;
 
     @Column(name = "url", nullable = false, length = 64)

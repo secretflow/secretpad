@@ -56,8 +56,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 
-import java.net.MalformedURLException;
-import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -92,13 +90,11 @@ public class NodeRouterServiceImpl implements NodeRouterService {
                 .srcNodeId(request.getSrcNodeId())
                 .dstNodeId(request.getDstNodeId())
                 .routeType(request.getRouteType())
-                .srcNetAddress(replaceNetAddressProtocol(request.getSrcNetAddress()))
-                .dstNetAddress(replaceNetAddressProtocol(request.getDstNetAddress()))
+                .srcNetAddress(request.getSrcNetAddress())
+                .dstNetAddress(request.getDstNetAddress())
                 .build();
         NodeDO srcNode = nodeRepository.findByNodeId(param.getSrcNodeId());
         NodeDO dstNode = nodeRepository.findByNodeId(param.getDstNodeId());
-        //checkNode(srcNode);
-        //checkNode(dstNode);
         if (StringUtils.isNotEmpty(param.getSrcNetAddress())) {
             srcNode.setNetAddress(param.getSrcNetAddress());
         }
@@ -175,8 +171,8 @@ public class NodeRouterServiceImpl implements NodeRouterService {
     public void updateNodeRouter(UpdateNodeRouterRequest request) {
         UpdateNodeRouteParam param = UpdateNodeRouteParam.builder()
                 .nodeRouteId(request.getRouterId())
-                .srcNetAddress(replaceNetAddressProtocol(request.getSrcNetAddress()))
-                .dstNetAddress(replaceNetAddressProtocol(request.getDstNetAddress()))
+                .srcNetAddress(request.getSrcNetAddress())
+                .dstNetAddress(request.getDstNetAddress())
                 .build();
         NodeRouteDO nodeRouteDO = nodeRouteRepository.findByRouteId(param.getNodeRouteId());
         if (org.apache.commons.lang3.ObjectUtils.isEmpty(nodeRouteDO)) {
@@ -251,16 +247,6 @@ public class NodeRouterServiceImpl implements NodeRouterService {
         }
         checkDataPermissions(nodeRouteDO.getDstNodeId());
         nodeRouteManager.deleteNodeRoute(routerId);
-    }
-
-    private String replaceNetAddressProtocol(String netAddress) {
-        try {
-            URL url = new URL(netAddress);
-            return String.format("%s:%d", url.getHost(), url.getPort());
-        } catch (MalformedURLException e) {
-            log.warn("replaceNetAddressProtocol str cast URL error");
-            return netAddress;
-        }
     }
 
     private void checkDataPermissions(String nodeId) {

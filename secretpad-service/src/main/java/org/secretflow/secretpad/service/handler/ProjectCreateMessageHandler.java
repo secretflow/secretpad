@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service.handler;
 
+import org.secretflow.secretpad.common.constant.CacheConstants;
 import org.secretflow.secretpad.common.enums.ProjectStatusEnum;
 import org.secretflow.secretpad.common.util.Base64Utils;
 import org.secretflow.secretpad.common.util.JsonUtils;
@@ -33,14 +34,13 @@ import org.secretflow.secretpad.service.model.approval.*;
 import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.Cache;
+import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -55,10 +55,13 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
 
     private final ProjectNodeRepository projectNodeRepository;
 
+    private final CacheManager cacheManager;
 
-    public ProjectCreateMessageHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, EnvService envService, ProjectApprovalConfigRepository projectApprovalConfigRepository, ProjectRepository projectRepository, CertificateService certificateService, NodeManager nodeManager, ProjectNodeRepository projectNodeRepository) {
+
+    public ProjectCreateMessageHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, EnvService envService, ProjectApprovalConfigRepository projectApprovalConfigRepository, ProjectRepository projectRepository, CertificateService certificateService, NodeManager nodeManager, ProjectNodeRepository projectNodeRepository, CacheManager cacheManager) {
         super(voteInviteRepository, voteRequestRepository, nodeRepository, envService, projectRepository, projectApprovalConfigRepository, nodeManager, certificateService);
         this.projectNodeRepository = projectNodeRepository;
+        this.cacheManager = cacheManager;
     }
 
 
@@ -77,6 +80,7 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
         ProjectCreateApprovalConfig projectCreateApprovalConfig = (ProjectCreateApprovalConfig) voteConfig;
         String projectId = projectCreateApprovalConfig.getProjectId();
         List<String> allParties = projectCreateApprovalConfig.getNodes();
+        cacheProjectParties(projectId, allParties);
         ProjectApprovalConfigDO projectApprovalConfigDO = ProjectApprovalConfigDO.builder()
                 .initiator(nodeID)
                 .projectId(projectId)
@@ -85,6 +89,11 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
                 .voteID(voteID)
                 .build();
         projectApprovalConfigRepository.saveAndFlush(projectApprovalConfigDO);
+    }
+
+    private void cacheProjectParties(String projectId, List<String> allParties) {
+        Cache cache = Objects.requireNonNull(cacheManager.getCache(CacheConstants.PROJECT_VOTE_PARTIES_CACHE));
+        cache.putIfAbsent(projectId, Lists.newArrayList(allParties));
     }
 
     @Override

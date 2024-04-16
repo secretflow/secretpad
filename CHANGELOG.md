@@ -14,6 +14,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `Fixed` for any bug fixes.
 `Security` in case of vulnerabilities.
 
+## [0.6.0b0] - 2024-04-15
+
+### Added
+
+- add Local development and debugging documentation|Stable component version matching
+- add Adaptation to MySQL (requires users to provide MySQL services)
+- add SLS logs to the cloud (requires users to have Alibaba Cloud SLS)
+- add no tls for kuscia network protocols
+- add adapt kuscia v0.7.0 SecretFlow v1.5.0
+- supports duplicate values of association keys for PSI component in platform
+
+### Fixed
+
+- fix When multiple parties participate in the execution of the canvas, more than 2 parties read the sample table and
+  the participants are accurately matched
+- fix Kuscia job watch timeout
+- fix The serial number of the front-end initiating component has a status
+
 ## [v0.5.0b0] - 2024-03-15
 
 ### Added

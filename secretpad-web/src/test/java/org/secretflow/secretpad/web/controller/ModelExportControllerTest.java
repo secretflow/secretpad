@@ -24,15 +24,10 @@ import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 import org.secretflow.secretpad.manager.integration.model.ModelExportDTO;
-import org.secretflow.secretpad.persistence.entity.NodeDO;
-import org.secretflow.secretpad.persistence.entity.ProjectGraphNodeDO;
-import org.secretflow.secretpad.persistence.entity.ProjectGraphNodeKusciaParamsDO;
-import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
+import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.GraphEdgeDO;
 import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
-import org.secretflow.secretpad.persistence.repository.NodeRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectGraphNodeKusciaParamsRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectGraphNodeRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectJobTaskRepository;
+import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.GraphService;
 import org.secretflow.secretpad.service.model.graph.GraphDetailVO;
 import org.secretflow.secretpad.service.model.model.export.ModelExportPackageRequest;
@@ -41,6 +36,7 @@ import org.secretflow.secretpad.service.model.model.export.ModelPartyConfig;
 import org.secretflow.secretpad.service.model.model.export.ModelPartyPathRequest;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
+import com.google.common.collect.Lists;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -71,6 +67,9 @@ public class ModelExportControllerTest extends ControllerTest {
     private NodeRepository nodeRepository;
     @MockBean
     private GraphService graphService;
+
+    @MockBean
+    private ProjectGraphRepository graphRepository;
     private static final String NODE_DEF = """
             {
                     "attrPaths": [
@@ -90,7 +89,9 @@ public class ModelExportControllerTest extends ControllerTest {
     @Test
     public void pack() throws Exception {
         assertResponse(() -> {
+            ProjectGraphDO projectGraphDO = buildProjectGraphDO();
             ModelExportPackageRequest request = FakerUtils.fake(ModelExportPackageRequest.class);
+            request.setTrainId("zxzyprqn-node-6");
             request.setModelPartyConfig(List.of(ModelPartyConfig.builder().modelParty("alice").modelDataName("1").modelDataSource("/home").build()));
             request.getModelComponent().forEach(component -> component.setDomain("ml.train"));
             Mockito.when(taskRepository.findLatestTasks(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(buildProjectTaskDO()));
@@ -98,6 +99,9 @@ public class ModelExportControllerTest extends ControllerTest {
             Mockito.when(graphService.getGraphDetail(Mockito.any())).thenReturn(GraphDetailVO.builder().build());
             Mockito.when(projectGraphNodeKusciaParamsRepository.findByUpk(Mockito.anyString(), Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(buildProjectGraphNodeKusciaParamsDO()));
             Mockito.when(projectGraphNodeRepository.findReadTableByProjectIdAndGraphId(Mockito.anyString(), Mockito.anyString())).thenReturn(buildProjectGraphNodeDOs());
+            projectGraphDO.setNodes(buildProjectGraphNodeDOs());
+            Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(request.getProjectId(), request.getGraphId()))).thenReturn(Optional.of(projectGraphDO));
+
             return MockMvcRequestBuilders.post(getMappingUrl(ModelExportController.class, "pack", ModelExportPackageRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });
@@ -106,7 +110,9 @@ public class ModelExportControllerTest extends ControllerTest {
     @Test
     public void packNotParty() throws Exception {
         assertResponse(() -> {
+            ProjectGraphDO projectGraphDO = buildProjectGraphDO();
             ModelExportPackageRequest request = FakerUtils.fake(ModelExportPackageRequest.class);
+            request.setTrainId("zxzyprqn-node-6");
             request.setModelPartyConfig(List.of(ModelPartyConfig.builder().modelParty("alice1").modelDataName("1").modelDataSource("/home").build()));
             request.getModelComponent().forEach(component -> component.setDomain("ml.train"));
             Mockito.when(taskRepository.findLatestTasks(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(buildProjectTaskDO()));
@@ -115,6 +121,9 @@ public class ModelExportControllerTest extends ControllerTest {
 
             Mockito.when(projectGraphNodeKusciaParamsRepository.findByUpk(Mockito.anyString(), Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(buildProjectGraphNodeKusciaParamsDO()));
             Mockito.when(projectGraphNodeRepository.findReadTableByProjectIdAndGraphId(Mockito.anyString(), Mockito.anyString())).thenReturn(buildProjectGraphNodeDOs());
+            projectGraphDO.setNodes(buildProjectGraphNodeDOs());
+            Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(request.getProjectId(), request.getGraphId()))).thenReturn(Optional.of(projectGraphDO));
+
             return MockMvcRequestBuilders.post(getMappingUrl(ModelExportController.class, "pack", ModelExportPackageRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });
@@ -173,7 +182,9 @@ public class ModelExportControllerTest extends ControllerTest {
     @Test
     public void packGraphReadTableNotFound() throws Exception {
         assertErrorCode(() -> {
+            ProjectGraphDO projectGraphDO = buildProjectGraphDO();
             ModelExportPackageRequest request = FakerUtils.fake(ModelExportPackageRequest.class);
+            request.setTrainId("zxzyprqn-node-6");
             request.setModelPartyConfig(List.of(ModelPartyConfig.builder().modelParty("alice").modelDataName("1").modelDataSource("/home").build()));
             request.getModelComponent().forEach(component -> component.setDomain("ml.train"));
             Mockito.when(taskRepository.findLatestTasks(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(buildProjectTaskDO()));
@@ -182,6 +193,8 @@ public class ModelExportControllerTest extends ControllerTest {
 
             Mockito.when(projectGraphNodeKusciaParamsRepository.findByUpk(Mockito.anyString(), Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(buildProjectGraphNodeKusciaParamsDO()));
             Mockito.when(projectGraphNodeRepository.findReadTableByProjectIdAndGraphId(Mockito.anyString(), Mockito.anyString())).thenReturn(null);
+            projectGraphDO.setNodes(buildProjectGraphNodeDOs());
+            Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(request.getProjectId(), request.getGraphId()))).thenReturn(Optional.of(projectGraphDO));
             return MockMvcRequestBuilders.post(getMappingUrl(ModelExportController.class, "pack", ModelExportPackageRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ModelExportErrorCode.MODEL_EXPORT_FAILED);
@@ -287,7 +300,7 @@ public class ModelExportControllerTest extends ControllerTest {
 
     private List<ProjectGraphNodeDO> buildProjectGraphNodeDOs() {
         Object nodeDef = JsonUtils.toJavaObject(NODE_DEF, Object.class);
-        return List.of(ProjectGraphNodeDO.builder().nodeDef(nodeDef).build());
+        return Lists.newArrayList(ProjectGraphNodeDO.builder().upk(new ProjectGraphNodeDO.UPK("", "", "zxzyprqn-node-2")).nodeDef(nodeDef).build(), ProjectGraphNodeDO.builder().upk(new ProjectGraphNodeDO.UPK("", "", "zxzyprqn-node-1")).nodeDef(nodeDef).build());
     }
 
     private ModelExportDTO buildSuccessModelExportDTO() {
@@ -320,5 +333,140 @@ public class ModelExportControllerTest extends ControllerTest {
                 .nodeId(UUIDUtils.random(4))
                 .name("test")
                 .build();
+    }
+
+    private ProjectGraphDO buildProjectGraphDO() throws Exception {
+        ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
+        String edges = "[\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-1-output-0__zxzyprqn-node-3-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-1\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-1-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-3\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-3-input-0\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-2-output-0__zxzyprqn-node-3-input-1\",\n" +
+                "    \"source\": \"zxzyprqn-node-2\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-2-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-3\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-3-input-1\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-3-output-0__zxzyprqn-node-4-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-3\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-3-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-4\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-4-input-0\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-3-output-0__zxzyprqn-node-5-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-3\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-3-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-5\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-5-input-0\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-5-output-0__zxzyprqn-node-6-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-5\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-5-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-6\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-6-input-0\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-5-output-0__zxzyprqn-node-7-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-5\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-5-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-7\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-7-input-0\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-6-output-0__zxzyprqn-node-7-input-1\",\n" +
+                "    \"source\": \"zxzyprqn-node-6\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-6-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-7\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-7-input-1\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-5-output-1__zxzyprqn-node-8-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-5\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-5-output-1\",\n" +
+                "    \"target\": \"zxzyprqn-node-8\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-8-input-0\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-6-output-0__zxzyprqn-node-8-input-1\",\n" +
+                "    \"source\": \"zxzyprqn-node-6\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-6-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-8\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-8-input-1\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-7-output-0__zxzyprqn-node-9-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-7\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-7-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-9\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-9-input-0\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-7-output-0__zxzyprqn-node-10-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-7\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-7-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-10\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-10-input-0\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-7-output-0__zxzyprqn-node-11-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-7\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-7-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-11\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-11-input-0\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-7-output-0__zxzyprqn-node-12-input-1\",\n" +
+                "    \"source\": \"zxzyprqn-node-7\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-7-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-12\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-12-input-1\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-11-output-0__zxzyprqn-node-12-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-11\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-11-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-12\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-12-input-0\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-11-output-0__zxzyprqn-node-13-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-11\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-11-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-13\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-13-input-0\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-8-output-0__zxzyprqn-node-13-input-1\",\n" +
+                "    \"source\": \"zxzyprqn-node-8\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-8-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-13\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-13-input-1\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-13-output-0__zxzyprqn-node-15-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-13\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-13-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-15\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-15-input-0\"\n" +
+                "  },\n" +
+                "  {\n" +
+                "    \"edgeId\": \"zxzyprqn-node-13-output-0__zxzyprqn-node-14-input-0\",\n" +
+                "    \"source\": \"zxzyprqn-node-13\",\n" +
+                "    \"sourceAnchor\": \"zxzyprqn-node-13-output-0\",\n" +
+                "    \"target\": \"zxzyprqn-node-14\",\n" +
+                "    \"targetAnchor\": \"zxzyprqn-node-14-input-0\"\n" +
+                "  }\n" +
+                "]";
+
+        projectGraphDO.setEdges(JsonUtils.toJavaList(edges, GraphEdgeDO.class));
+        return projectGraphDO;
     }
 }

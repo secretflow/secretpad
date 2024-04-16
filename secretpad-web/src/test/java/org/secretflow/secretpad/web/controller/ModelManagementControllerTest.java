@@ -45,6 +45,7 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -171,6 +172,38 @@ public class ModelManagementControllerTest extends ControllerTest {
         });
     }
 
+    @Test
+    public void testModelPackInfo() throws Exception {
+        assertResponse(() -> {
+            List<NodeDO> nodeDOList = buildNodeList();
+            ProjectModelPackDO projectModelPackDO = buildModelPack();
+            Mockito.when(projectModelPackRepository.findById("cirv-zrhi-model-export")).thenReturn(Optional.of(projectModelPackDO));
+            Mockito.when(nodeRepository.findByNodeIdIn(Lists.newArrayList("alice", "bob"))).thenReturn(nodeDOList);
+            QueryModelDetailRequest request = new QueryModelDetailRequest();
+            request.setModelId("cirv-zrhi-model-export");
+            request.setProjectId("abcjfvnx");
+            return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "modelPackInfo", QueryModelDetailRequest.class))
+                    .content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    @Test
+    public void testModelPackInfo1() throws Exception {
+        assertResponse(() -> {
+            List<NodeDO> nodeDOList = buildNodeList();
+            ProjectModelPackDO projectModelPackDO = buildModelPack();
+            Mockito.when(projectModelPackRepository.findById("cirv-zrhi-model-export")).thenReturn(Optional.of(projectModelPackDO));
+            Mockito.when(nodeRepository.findByNodeIdIn(Lists.newArrayList("alice", "bob"))).thenReturn(nodeDOList);
+            QueryModelDetailRequest request = new QueryModelDetailRequest();
+            request.setModelId("cirv-zrhi-model-export");
+            request.setProjectId("abcjfvnx");
+            projectModelPackDO.setServingId("chovyquu");
+            ProjectModelServingDO projectModelServingDO = buildProjectModelServing();
+            Mockito.when(projectModelServiceRepository.findById("chovyquu")).thenReturn(Optional.of(projectModelServingDO));
+            return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "modelPackInfo", QueryModelDetailRequest.class))
+                    .content(JsonUtils.toJSONString(request));
+        });
+    }
 
     @Test
     public void createServingErr() throws Exception {
@@ -430,5 +463,112 @@ public class ModelManagementControllerTest extends ControllerTest {
             return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "deleteModelPack", DeleteModelPackRequest.class))
                     .content(JsonUtils.toJSONString(deleteModelPackRequest));
         }, ProjectErrorCode.PROJECT_SERVING_NOT_OFFLINE);
+    }
+
+
+    private List<NodeDO> buildNodeList() {
+        String nodeList = """
+                 [
+                     {
+                         "auth": "alice",
+                         "controlNodeId": "alice",
+                         "description": "alice",
+                         "gmtCreate": "2024-03-20 08:52:18",
+                         "gmtModified": "2024-03-20 08:52:18",
+                         "id": 1,
+                         "isDeleted": false,
+                         "masterNodeId": "master",
+                         "mode": 1,
+                         "name": "alice",
+                         "netAddress": "127.0.0.1:28080",
+                         "nodeId": "alice",
+                         "nodeIds": [
+                             "alice"
+                         ],
+                         "token": "xx",
+                         "type": "embedded"
+                     },
+                     {
+                         "auth": "bob",
+                         "controlNodeId": "bob",
+                         "description": "bob",
+                         "gmtCreate": "2024-03-20 08:52:18",
+                         "gmtModified": "2024-03-20 08:52:18",
+                         "id": 2,
+                         "isDeleted": false,
+                         "masterNodeId": "master",
+                         "mode": 1,
+                         "name": "bob",
+                         "netAddress": "127.0.0.1:38080",
+                         "nodeId": "bob",
+                         "nodeIds": [
+                             "bob"
+                         ],
+                         "token": "xx",
+                         "type": "embedded"
+                     }
+                 ]
+                """;
+        return JsonUtils.toJavaList(nodeList, NodeDO.class);
+    }
+
+    private ProjectModelPackDO buildModelPack() {
+        String modelPackStr = """
+                {
+                    "gmtCreate": "2024-03-25 06:12:08",
+                    "gmtModified": "2024-03-25 06:12:08",
+                    "graphDetail": "{\\"edges\\":[{\\"edgeId\\":\\"drjgnbzr-node-1-output-0__drjgnbzr-node-3-input-0\\",\\"source\\":\\"drjgnbzr-node-1\\",\\"sourceAnchor\\":\\"drjgnbzr-node-1-output-0\\",\\"target\\":\\"drjgnbzr-node-3\\",\\"targetAnchor\\":\\"drjgnbzr-node-3-input-0\\"},{\\"edgeId\\":\\"drjgnbzr-node-2-output-0__drjgnbzr-node-3-input-1\\",\\"source\\":\\"drjgnbzr-node-2\\",\\"sourceAnchor\\":\\"drjgnbzr-node-2-output-0\\",\\"target\\":\\"drjgnbzr-node-3\\",\\"targetAnchor\\":\\"drjgnbzr-node-3-input-1\\"},{\\"edgeId\\":\\"drjgnbzr-node-3-output-0__drjgnbzr-node-4-input-0\\",\\"source\\":\\"drjgnbzr-node-3\\",\\"sourceAnchor\\":\\"drjgnbzr-node-3-output-0\\",\\"target\\":\\"drjgnbzr-node-4\\",\\"targetAnchor\\":\\"drjgnbzr-node-4-input-0\\"},{\\"edgeId\\":\\"drjgnbzr-node-5-output-0__drjgnbzr-node-7-input-0\\",\\"source\\":\\"drjgnbzr-node-5\\",\\"sourceAnchor\\":\\"drjgnbzr-node-5-output-0\\",\\"target\\":\\"drjgnbzr-node-7\\",\\"targetAnchor\\":\\"drjgnbzr-node-7-input-0\\"},{\\"edgeId\\":\\"drjgnbzr-node-6-output-0__drjgnbzr-node-7-input-1\\",\\"source\\":\\"drjgnbzr-node-6\\",\\"sourceAnchor\\":\\"drjgnbzr-node-6-output-0\\",\\"target\\":\\"drjgnbzr-node-7\\",\\"targetAnchor\\":\\"drjgnbzr-node-7-input-1\\"},{\\"edgeId\\":\\"drjgnbzr-node-7-output-0__drjgnbzr-node-8-input-0\\",\\"source\\":\\"drjgnbzr-node-7\\",\\"sourceAnchor\\":\\"drjgnbzr-node-7-output-0\\",\\"target\\":\\"drjgnbzr-node-8\\",\\"targetAnchor\\":\\"drjgnbzr-node-8-input-0\\"},{\\"edgeId\\":\\"drjgnbzr-node-3-output-0__drjgnbzr-node-9-input-0\\",\\"source\\":\\"drjgnbzr-node-3\\",\\"sourceAnchor\\":\\"drjgnbzr-node-3-output-0\\",\\"target\\":\\"drjgnbzr-node-9\\",\\"targetAnchor\\":\\"drjgnbzr-node-9-input-0\\"}],\\"graphId\\":\\"drjgnbzr\\",\\"name\\":\\"联合圈人模板\\",\\"nodes\\":[{\\"codeName\\":\\"read_data/datatable\\",\\"graphNodeId\\":\\"drjgnbzr-node-1\\",\\"inputs\\":[],\\"jobId\\":\\"mtzx\\",\\"label\\":\\"样本表\\",\\"nodeDef\\":{\\"attrPaths\\":[\\"datatable_selected\\"],\\"attrs\\":[{\\"is_na\\":false,\\"s\\":\\"alice-table\\"}],\\"domain\\":\\"read_data\\",\\"name\\":\\"datatable\\",\\"version\\":\\"0.0.1\\"},\\"outputs\\":[\\"drjgnbzr-node-1-output-0\\"],\\"status\\":\\"SUCCEED\\",\\"taskId\\":\\"mtzx-drjgnbzr-node-1\\",\\"x\\":-390,\\"y\\":-210},{\\"codeName\\":\\"read_data/datatable\\",\\"graphNodeId\\":\\"drjgnbzr-node-2\\",\\"inputs\\":[],\\"jobId\\":\\"mtzx\\",\\"label\\":\\"样本表\\",\\"nodeDef\\":{\\"attrPaths\\":[\\"datatable_selected\\"],\\"attrs\\":[{\\"is_na\\":false,\\"s\\":\\"bob-table\\"}],\\"domain\\":\\"read_data\\",\\"name\\":\\"datatable\\",\\"version\\":\\"0.0.1\\"},\\"outputs\\":[\\"drjgnbzr-node-2-output-0\\"],\\"status\\":\\"SUCCEED\\",\\"taskId\\":\\"mtzx-drjgnbzr-node-2\\",\\"x\\":-150,\\"y\\":-210},{\\"codeName\\":\\"data_prep/psi\\",\\"graphNodeId\\":\\"drjgnbzr-node-3\\",\\"inputs\\":[\\"drjgnbzr-node-1-output-0\\",\\"drjgnbzr-node-2-output-0\\"],\\"jobId\\":\\"jvvw\\",\\"label\\":\\"隐私求交\\",\\"nodeDef\\":{\\"attrPaths\\":[\\"input/receiver_input/key\\",\\"input/sender_input/key\\"],\\"attrs\\":[{\\"is_na\\":false,\\"ss\\":[\\"id1\\"]},{\\"is_na\\":false,\\"ss\\":[\\"id2\\"]}],\\"domain\\":\\"data_prep\\",\\"name\\":\\"psi\\",\\"version\\":\\"0.0.2\\"},\\"outputs\\":[\\"drjgnbzr-node-3-output-0\\"],\\"status\\":\\"SUCCEED\\",\\"taskId\\":\\"jvvw-drjgnbzr-node-3\\",\\"x\\":-260,\\"y\\":-100},{\\"codeName\\":\\"stats/table_statistics\\",\\"graphNodeId\\":\\"drjgnbzr-node-4\\",\\"inputs\\":[\\"drjgnbzr-node-3-output-0\\"],\\"jobId\\":\\"mtzx\\",\\"label\\":\\"全表统计\\",\\"nodeDef\\":{\\"attrPaths\\":[\\"input/input_data/features\\"],\\"attrs\\":[{\\"is_na\\":false,\\"ss\\":[\\"age\\",\\"education\\",\\"default\\",\\"balance\\",\\"housing\\",\\"loan\\",\\"day\\",\\"duration\\",\\"campaign\\",\\"pdays\\",\\"previous\\",\\"job_blue-collar\\",\\"job_entrepreneur\\",\\"job_housemaid\\",\\"job_management\\",\\"job_retired\\",\\"job_self-employed\\",\\"job_services\\",\\"job_student\\",\\"job_technician\\",\\"job_unemployed\\",\\"marital_divorced\\",\\"marital_married\\",\\"marital_single\\",\\"contact_cellular\\",\\"contact_telephone\\",\\"contact_unknown\\",\\"month_apr\\",\\"month_aug\\",\\"month_dec\\",\\"month_feb\\",\\"month_jan\\",\\"month_jul\\",\\"month_jun\\",\\"month_mar\\",\\"month_may\\",\\"month_nov\\",\\"month_oct\\",\\"month_sep\\",\\"poutcome_failure\\",\\"poutcome_other\\",\\"poutcome_success\\",\\"poutcome_unknown\\"]}],\\"domain\\":\\"stats\\",\\"name\\":\\"table_statistics\\",\\"version\\":\\"0.0.2\\"},\\"outputs\\":[\\"drjgnbzr-node-4-output-0\\"],\\"status\\":\\"SUCCEED\\",\\"taskId\\":\\"mtzx-drjgnbzr-node-4\\",\\"x\\":-260,\\"y\\":20},{\\"codeName\\":\\"read_data/datatable\\",\\"graphNodeId\\":\\"drjgnbzr-node-5\\",\\"inputs\\":[],\\"label\\":\\"样本表\\",\\"nodeDef\\":{\\"attrPaths\\":[\\"datatable_selected\\"],\\"attrs\\":[{\\"is_na\\":false,\\"s\\":\\"alice-table\\"}],\\"domain\\":\\"read_data\\",\\"name\\":\\"datatable\\",\\"version\\":\\"0.0.1\\"},\\"outputs\\":[\\"drjgnbzr-node-5-output-0\\"],\\"status\\":\\"STAGING\\",\\"x\\":-810,\\"y\\":-240},{\\"codeName\\":\\"read_data/datatable\\",\\"graphNodeId\\":\\"drjgnbzr-node-6\\",\\"inputs\\":[],\\"label\\":\\"样本表\\",\\"nodeDef\\":{\\"attrPaths\\":[\\"datatable_selected\\"],\\"attrs\\":[{\\"is_na\\":false,\\"s\\":\\"bob-table\\"}],\\"domain\\":\\"read_data\\",\\"name\\":\\"datatable\\",\\"version\\":\\"0.0.1\\"},\\"outputs\\":[\\"drjgnbzr-node-6-output-0\\"],\\"status\\":\\"STAGING\\",\\"x\\":-570,\\"y\\":-240},{\\"codeName\\":\\"data_prep/psi\\",\\"graphNodeId\\":\\"drjgnbzr-node-7\\",\\"inputs\\":[\\"drjgnbzr-node-5-output-0\\",\\"drjgnbzr-node-6-output-0\\"],\\"label\\":\\"隐私求交\\",\\"nodeDef\\":{\\"attrPaths\\":[\\"input/receiver_input/key\\",\\"input/sender_input/key\\"],\\"attrs\\":[{\\"is_na\\":false,\\"ss\\":[\\"id1\\"]},{\\"is_na\\":false,\\"ss\\":[\\"id2\\"]}],\\"domain\\":\\"data_prep\\",\\"name\\":\\"psi\\",\\"version\\":\\"0.0.2\\"},\\"outputs\\":[\\"drjgnbzr-node-7-output-0\\"],\\"status\\":\\"STAGING\\",\\"x\\":-680,\\"y\\":-130},{\\"codeName\\":\\"stats/table_statistics\\",\\"graphNodeId\\":\\"drjgnbzr-node-8\\",\\"inputs\\":[\\"drjgnbzr-node-7-output-0\\"],\\"label\\":\\"全表统计\\",\\"nodeDef\\":{\\"attrPaths\\":[\\"input/input_data/features\\"],\\"attrs\\":[{\\"is_na\\":false,\\"ss\\":[\\"age\\",\\"education\\",\\"default\\",\\"balance\\",\\"housing\\",\\"loan\\",\\"day\\",\\"duration\\",\\"campaign\\",\\"pdays\\",\\"previous\\",\\"job_blue-collar\\",\\"job_entrepreneur\\",\\"job_housemaid\\",\\"job_management\\",\\"job_retired\\",\\"job_self-employed\\",\\"job_services\\",\\"job_student\\",\\"job_technician\\",\\"job_unemployed\\",\\"marital_divorced\\",\\"marital_married\\",\\"marital_single\\",\\"contact_cellular\\",\\"contact_telephone\\",\\"contact_unknown\\",\\"month_apr\\",\\"month_aug\\",\\"month_dec\\",\\"month_feb\\",\\"month_jan\\",\\"month_jul\\",\\"month_jun\\",\\"month_mar\\",\\"month_may\\",\\"month_nov\\",\\"month_oct\\",\\"month_sep\\",\\"poutcome_failure\\",\\"poutcome_other\\",\\"poutcome_success\\",\\"poutcome_unknown\\"]}],\\"domain\\":\\"stats\\",\\"name\\":\\"table_statistics\\",\\"version\\":\\"0.0.2\\"},\\"outputs\\":[\\"drjgnbzr-node-8-output-0\\"],\\"status\\":\\"STAGING\\",\\"x\\":-680,\\"y\\":-10},{\\"codeName\\":\\"ml.train/ss_sgd_train\\",\\"graphNodeId\\":\\"drjgnbzr-node-9\\",\\"inputs\\":[\\"drjgnbzr-node-3-output-0\\"],\\"jobId\\":\\"wcce\\",\\"label\\":\\"逻辑回归训练\\",\\"nodeDef\\":{\\"attrPaths\\":[\\"input/train_dataset/feature_selects\\",\\"input/train_dataset/label\\",\\"epochs\\",\\"learning_rate\\",\\"batch_size\\",\\"sig_type\\",\\"reg_type\\",\\"penalty\\",\\"l2_norm\\",\\"eps\\"],\\"attrs\\":[{\\"is_na\\":false,\\"ss\\":[\\"contact_cellular\\",\\"contact_telephone\\",\\"contact_unknown\\",\\"month_apr\\",\\"month_aug\\",\\"month_dec\\",\\"month_feb\\",\\"month_jan\\",\\"month_jul\\",\\"month_jun\\",\\"month_mar\\",\\"month_may\\",\\"month_nov\\",\\"month_oct\\",\\"month_sep\\",\\"poutcome_failure\\",\\"poutcome_other\\",\\"poutcome_success\\",\\"poutcome_unknown\\",\\"age\\",\\"education\\",\\"default\\",\\"balance\\",\\"housing\\",\\"loan\\",\\"day\\",\\"duration\\",\\"campaign\\",\\"pdays\\",\\"previous\\",\\"job_blue-collar\\",\\"job_entrepreneur\\",\\"job_housemaid\\",\\"job_management\\",\\"job_retired\\",\\"job_self-employed\\",\\"job_services\\",\\"job_student\\",\\"job_technician\\",\\"job_unemployed\\",\\"marital_divorced\\",\\"marital_married\\",\\"marital_single\\"]},{\\"is_na\\":false,\\"ss\\":[\\"y\\"]},{\\"i64\\":10,\\"is_na\\":false},{\\"f\\":0.1,\\"is_na\\":false},{\\"i64\\":1024,\\"is_na\\":false},{\\"is_na\\":false,\\"s\\":\\"t1\\"},{\\"is_na\\":false,\\"s\\":\\"logistic\\"},{\\"is_na\\":false,\\"s\\":\\"None\\"},{\\"f\\":0.5,\\"is_na\\":false},{\\"f\\":0.001,\\"is_na\\":false}],\\"domain\\":\\"ml.train\\",\\"name\\":\\"ss_sgd_train\\",\\"version\\":\\"0.0.1\\"},\\"outputs\\":[\\"drjgnbzr-node-9-output-0\\"],\\"status\\":\\"SUCCEED\\",\\"taskId\\":\\"wcce-drjgnbzr-node-9\\",\\"x\\":-470,\\"y\\":30}],\\"projectId\\":\\"abcjfvnx\\"}",
+                    "id": 1,
+                    "initiator": "kuscia-system",
+                    "isDeleted": false,
+                    "modelDesc": "ssz",
+                    "modelId": "cirv-zrhi-model-export",
+                    "modelList": [
+                        "drjgnbzr-node-9"
+                    ],
+                    "modelName": "tests",
+                    "modelReportId": "cirv-zrhi-model-export-report",
+                    "modelStats": 0,
+                    "nodeIds": [
+
+                    ],
+                    "projectId": "abcjfvnx",
+                    "sampleTables": "{\\"alice\\":\\"alice-table\\",\\"bob\\":\\"bob-table\\"}",
+                    "trainId": "wcce-drjgnbzr-node-9-output-0"
+                }
+                """;
+
+        return JsonUtils.toJavaObject(modelPackStr, ProjectModelPackDO.class);
+    }
+
+    private ProjectModelServingDO buildProjectModelServing() {
+        String servingStr = """
+                {
+                    "gmtCreate": "2024-03-25 06:36:04",
+                    "gmtModified": "2024-03-25 06:36:04",
+                    "id": 1,
+                    "initiator": "alice",
+                    "isDeleted": false,
+                    "nodeIds": [
+
+                    ],
+                    "parties": "[\\"{\\\\n  \\\\\\"domain_id\\\\\\": \\\\\\"alice\\\\\\",\\\\n  \\\\\\"app_image\\\\\\": \\\\\\"sf-serving-image\\\\\\"\\\\n}\\",\\"{\\\\n  \\\\\\"domain_id\\\\\\": \\\\\\"bob\\\\\\",\\\\n  \\\\\\"app_image\\\\\\": \\\\\\"sf-serving-image\\\\\\"\\\\n}\\"]",
+                    "partyEndpoints": [
+                        {
+                            "endpoints": "chovyquu-service.alice.svc:53508",
+                            "nodeId": "alice"
+                        },
+                        {
+                            "endpoints": "chovyquu-service.bob.svc:53508",
+                            "nodeId": "bob"
+                        }
+                    ],
+                    "projectId": "abcjfvnx",
+                    "servingId": "chovyquu",
+                    "servingInputConfig": "{\\n  \\"party_configs\\": {\\n    \\"alice\\": {\\n      \\"server_config\\": {\\n        \\"feature_mapping\\": {\\n          \\"marital_divorced\\": \\"marital_divorced\\",\\n          \\"loan\\": \\"loan\\",\\n          \\"education\\": \\"education\\",\\n          \\"previous\\": \\"previous\\",\\n          \\"housing\\": \\"housing\\",\\n          \\"job_retired\\": \\"job_retired\\",\\n          \\"job_unemployed\\": \\"job_unemployed\\",\\n          \\"marital_single\\": \\"marital_single\\",\\n          \\"job_services\\": \\"job_services\\",\\n          \\"job_self-employed\\": \\"job_self-employed\\",\\n          \\"job_housemaid\\": \\"job_housemaid\\",\\n          \\"duration\\": \\"duration\\",\\n          \\"default\\": \\"default\\",\\n          \\"job_student\\": \\"job_student\\",\\n          \\"balance\\": \\"balance\\",\\n          \\"job_technician\\": \\"job_technician\\",\\n          \\"campaign\\": \\"campaign\\",\\n          \\"job_blue-collar\\": \\"job_blue-collar\\",\\n          \\"job_entrepreneur\\": \\"job_entrepreneur\\",\\n          \\"day\\": \\"day\\",\\n          \\"job_management\\": \\"job_management\\",\\n          \\"age\\": \\"age\\",\\n          \\"pdays\\": \\"pdays\\",\\n          \\"marital_married\\": \\"marital_married\\"\\n        }\\n      },\\n      \\"model_config\\": {\\n        \\"model_id\\": \\"cirv-zrhi-model-export\\",\\n        \\"base_path\\": \\"/\\",\\n        \\"source_path\\": \\"/home/kuscia/var/storage/data/ty_1711347106663\\",\\n        \\"source_type\\": \\"ST_FILE\\"\\n      },\\n      \\"feature_source_config\\": {\\n        \\"mock_opts\\": {\\n        }\\n      },\\n      \\"channel_desc\\": {\\n        \\"protocol\\": \\"http\\"\\n      }\\n    },\\n    \\"bob\\": {\\n      \\"server_config\\": {\\n        \\"feature_mapping\\": {\\n          \\"contact_telephone\\": \\"contact_telephone\\",\\n          \\"month_dec\\": \\"month_dec\\",\\n          \\"month_jul\\": \\"month_jul\\",\\n          \\"month_oct\\": \\"month_oct\\",\\n          \\"poutcome_unknown\\": \\"poutcome_unknown\\",\\n          \\"contact_cellular\\": \\"contact_cellular\\",\\n          \\"month_may\\": \\"month_may\\",\\n          \\"month_apr\\": \\"month_apr\\",\\n          \\"month_feb\\": \\"month_feb\\",\\n          \\"month_jun\\": \\"month_jun\\",\\n          \\"poutcome_failure\\": \\"poutcome_failure\\",\\n          \\"poutcome_success\\": \\"poutcome_success\\",\\n          \\"month_jan\\": \\"month_jan\\",\\n          \\"poutcome_other\\": \\"poutcome_other\\",\\n          \\"month_sep\\": \\"month_sep\\",\\n          \\"month_mar\\": \\"month_mar\\",\\n          \\"month_nov\\": \\"month_nov\\",\\n          \\"contact_unknown\\": \\"contact_unknown\\",\\n          \\"month_aug\\": \\"month_aug\\"\\n        }\\n      },\\n      \\"model_config\\": {\\n        \\"model_id\\": \\"cirv-zrhi-model-export\\",\\n        \\"base_path\\": \\"/\\",\\n        \\"source_path\\": \\"/home/kuscia/var/storage/data/ty_1711347106663\\",\\n        \\"source_type\\": \\"ST_FILE\\"\\n      },\\n      \\"feature_source_config\\": {\\n        \\"mock_opts\\": {\\n        }\\n      },\\n      \\"channel_desc\\": {\\n        \\"protocol\\": \\"http\\"\\n      }\\n    }\\n  }\\n}",
+                    "servingStats": "success"
+                }
+                """;
+        return JsonUtils.toJavaObject(servingStr, ProjectModelServingDO.class);
     }
 }

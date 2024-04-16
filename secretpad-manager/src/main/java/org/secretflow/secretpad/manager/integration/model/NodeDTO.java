@@ -69,6 +69,7 @@ public class NodeDTO {
     private String gmtCreate;
     private String gmtModified;
     private List<NodeInstanceDTO> nodeInstances;
+    private String protocol;
 
     /**
      * Convert NodeDO to NodeDTO

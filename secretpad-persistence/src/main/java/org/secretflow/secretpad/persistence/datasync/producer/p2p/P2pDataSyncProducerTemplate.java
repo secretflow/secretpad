@@ -40,7 +40,7 @@ import java.util.Map;
  */
 @Slf4j
 public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplate {
-    private static final Map<String, String> ownerId_cache = new HashMap<>();
+    public static final Map<String, String> ownerId_cache = new HashMap<>();
 
     @Value("${secretpad.node-id}")
     private String localNodeId;
@@ -159,7 +159,10 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
     private boolean filterProjectJobDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         ProjectJobDO source = (ProjectJobDO) event.getSource();
         String ownerId = ownerId_cache.get(source.getUpk().getProjectId() + "_" + source.getGraphId());
-        return !StringUtils.equals(localNodeId, ownerId) && StringUtils.equalsIgnoreCase(DbChangeAction.UPDATE.getVal(), event.getDType());
+        if (source.isFinished()) {
+            return true;
+        }
+        return !StringUtils.equals(localNodeId, ownerId);
     }
 
     private boolean filterProjectDatatableDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {

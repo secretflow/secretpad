@@ -31,16 +31,20 @@ import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.GraphService;
 import org.secretflow.secretpad.service.ModelExportService;
 import org.secretflow.secretpad.service.constant.JobConstants;
+import org.secretflow.secretpad.service.graph.ComponentTools;
 import org.secretflow.secretpad.service.graph.converter.KusciaJobConverter;
 import org.secretflow.secretpad.service.model.graph.GetGraphRequest;
 import org.secretflow.secretpad.service.model.graph.GraphDetailVO;
+import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 import org.secretflow.secretpad.service.model.model.export.*;
+import org.secretflow.secretpad.service.util.GraphUtils;
 
 import com.google.protobuf.Descriptors;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
 import com.secretflow.spec.v1.IndividualTable;
 import jakarta.annotation.Resource;
+import jakarta.validation.constraints.NotBlank;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
@@ -48,6 +52,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.secretflow.proto.kuscia.TaskConfig;
 import org.secretflow.proto.pipeline.Pipeline;
 import org.secretflow.v1alpha1.kusciaapi.Job;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.stereotype.Service;
@@ -55,6 +61,8 @@ import org.springframework.util.CollectionUtils;
 
 import java.time.Instant;
 import java.util.*;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * @author yutu
@@ -69,7 +77,8 @@ public class ModelExportServiceImpl implements ModelExportService {
     private ProjectGraphNodeKusciaParamsRepository projectGraphNodeKusciaParamsRepository;
     @Resource
     private KusciaJobConverter kusciaJobConverter;
-    @Resource
+    @Autowired
+    @Qualifier("jobManager")
     private AbstractJobManager jobManager;
 
     @Resource
@@ -88,6 +97,12 @@ public class ModelExportServiceImpl implements ModelExportService {
     private ProjectDatatableRepository projectDatatableRepository;
     @Resource
     private GraphService graphService;
+
+    @Resource
+    private ProjectGraphRepository graphRepository;
+
+    @Resource
+    private ProjectDatatableRepository datatableRepository;
 
     @Override
     public ModelExportPackageResponse exportModel(ModelExportPackageRequest request) throws InvalidProtocolBufferException {
@@ -215,6 +230,14 @@ public class ModelExportServiceImpl implements ModelExportService {
                 .setTaskInputConfig(json)
                 .build();
         List<ProjectGraphNodeDO> readTableByProjectIdAndGraphId = projectGraphNodeRepository.findReadTableByProjectIdAndGraphId(request.getProjectId(), request.getGraphId());
+        Optional<ProjectGraphDO> graphDOOptional = graphRepository.findById(new ProjectGraphDO.UPK(request.getProjectId(), request.getGraphId()));
+        if (graphDOOptional.isEmpty()) {
+            throw SecretpadException.of(GraphErrorCode.GRAPH_NOT_EXISTS);
+        }
+        ProjectGraphDO graphDO = graphDOOptional.get();
+        Set<String> topNodes = GraphUtils.findTopNodes(graphDO.getEdges(), request.getTrainId());
+        Set<String> topParties = findTopParties(topNodes, graphDO.getNodes(), request.getProjectId());
+        log.info("model {}  topParties = {}", request.getTrainId(), topParties);
         if (readTableByProjectIdAndGraphId == null || readTableByProjectIdAndGraphId.isEmpty()) {
             throw SecretpadException.of(ModelExportErrorCode.MODEL_EXPORT_FAILED, "read table not found");
         }
@@ -233,11 +256,13 @@ public class ModelExportServiceImpl implements ModelExportService {
         Map<String, String> simpleTable = new HashMap<>();
         List<ProjectDatatableDO> projectDatatableDOList = projectDatatableRepository.findByProjectId(request.getProjectId());
         projectDatatableDOList.forEach(p -> {
-            if (readTables.contains(p.getUpk().getDatatableId())) {
+            if (readTables.contains(p.getUpk().getDatatableId()) && topParties.contains(p.getUpk().getNodeId())) {
                 simpleTable.put(p.getUpk().getNodeId(), p.getUpk().getDatatableId());
             }
         });
-        modelExportDTO.setSampleTables(JsonUtils.toJSONString(simpleTable));
+        String sampleTables = JsonUtils.toJSONString(simpleTable);
+        log.info("model {}  sample tables = {}", request.getTrainId(), sampleTables);
+        modelExportDTO.setSampleTables(sampleTables);
         modelExportDTO.setJobId(jobId);
         modelExportDTO.setTaskId(taskId);
         modelExportDTO.setModelId(jobId.concat("-").concat(taskId));
@@ -248,6 +273,23 @@ public class ModelExportServiceImpl implements ModelExportService {
                 .setMaxParallelism(kusciaJobConverter.getMaxParallelism())
                 .addAllTasks(List.of(task))
                 .build();
+    }
+
+    private Set<String> findTopParties(Set<String> topNodes, List<ProjectGraphNodeDO> nodes, @NotBlank String projectId) {
+        Map<String, ProjectGraphNodeDO> nodeDOMap = nodes.stream().collect(Collectors.toMap(e -> (e.getUpk()).getGraphNodeId(), Function.identity()));
+        Set<String> partySet = new HashSet<>();
+        for (String topNode : topNodes) {
+            ProjectGraphNodeDO projectGraphNodeDO = nodeDOMap.get(topNode);
+            GraphNodeInfo graphNodeInfo = GraphNodeInfo.fromDO(projectGraphNodeDO);
+            String datatableId = ComponentTools.getDataTableId(graphNodeInfo);
+            if (StringUtils.isNotBlank(datatableId)) {
+                List<ProjectDatatableDO> datatableDOS = datatableRepository.findByDatableId(projectId, datatableId);
+                if (!CollectionUtils.isEmpty(datatableDOS)) {
+                    partySet.addAll(datatableDOS.stream().map(datatableDO -> datatableDO.getUpk().getNodeId()).collect(Collectors.toList()));
+                }
+            }
+        }
+        return partySet;
     }
 
     private String getModelExportReport(ModelExportDTO modelExportDTO) {

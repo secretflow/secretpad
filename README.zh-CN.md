@@ -15,6 +15,17 @@ SecretPad：
 * 你可以使用丰富的数据预处理，数据分析、数据建模能力，满足多样化的业务场景。
 * 你可以使用模型训练、模型预测的能力。
 
+## Secretpad-frontend
+
+* [secretpad-frontend](https://github.com/secretflow/secretpad-frontend)
+  是Secretpad的前端项目，你可以使用 ```make build``` 命令将前端代码部署在Secretpad项目中
+
+```text
+secretpad
+├──secretpad-web
+│  ├─src/main/resource
+```
+
 ## 组网模式
 
 支持两种组网模式：中心化组网模式和点对点组网模式。
@@ -58,15 +69,15 @@ sh install.sh master
 
 ```sh
 # 部署一个新的lite节点
-sh install.sh lite -n domainId -t token -p 30002 -m master endpoint -s 8089 -k 40812 -g 40813
+sh install.sh lite -n domainId -t token -p 30002 -m master endpoint -s 8089 -k 40812 -g 40813 -q 23801
 ```
 
 ```sh
 # 部署一个P2P节点
-sh install.sh p2p -n domainId  -s 8099 -g 8092 -k 8091 -p 8090
+sh install.sh p2p -n domainId  -s 8099 -g 8092 -k 8091 -p 8090 -q 33801
 ```
 
-详细内容, 请查看 [Development](./docs/development/build_secretpad_cn.md)
+详细内容, 请查看 [Development](./docs/deployment_experience/v0.6.0b0/deploy_secretpad.md)
 
 ## 组件版本
 
@@ -81,13 +92,18 @@ sh install.sh p2p -n domainId  -s 8099 -g 8092 -k 8091 -p 8090
 
 | secretpad Version | Kuscia Version | secretflow Version | trustedflow Version | serving Version |
 |-------------------|----------------|--------------------|---------------------|-----------------|
+| 0.6.0b0           | 0.7.0b0        | 1.5.0b0            | 0.1.1b0             | 0.2.1b0         |
 | 0.5.0b0           | 0.6.0b0        | 1.4.0b0            | 0.1.1b0             | 0.2.0b0         |
 | 0.4.1b0           | 0.5.0b0        | 1.4.0.dev24011601  | 0.1.1b0             |                 |
 | 0.3.0b0           | 0.4.0b0        | 1.3.0.dev20231109  | 0.1.1b0             |                 |
 
 ## 开发
 
-如果你想基于SecretPad进行二次开发，或者本地使用IDEA开发调试，我们会在不久提供相关的文档
+Kuscia notls 模式可以实现对 Kuscia GRPC 服务的远程访问，但由于文件服务的限制，它会
+在文件上传和下载中不可用，其他文件数据源将很快提供以实现真正的扩展
+
+- [IDEA本地开发调式文档](./docs/development/ru_in_idea_cn.md)
+- [使用mysql作为运行数据库](./docs/development/SUPPORT_MYSQL.md)
 
 ## Contact
 
