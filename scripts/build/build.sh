@@ -23,7 +23,7 @@ if [[ $WITH_FRONTEND_FLAG == "" ]]; then
 fi
 
 if [[ $WITH_FRONTEND_FLAG == true ]]; then
-	ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
+	ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../../" && pwd -P)
 	FRONTEND_LATEST_TAG=$(git ls-remote --sort='version:refname' --refs --tags https://github.com/secretflow/secretpad-frontend.git | tail -n1 | sed 's/.*\///')
 	WORK_DIR="./tmp/frontend"
 	mkdir -p $WORK_DIR
