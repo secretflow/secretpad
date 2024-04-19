@@ -7,10 +7,8 @@
 | 名称      | 版本    | 下载地址                                                                | 说明              |
 |---------|-------|---------------------------------------------------------------------|-----------------|
 | JDK     | 17    | [下载JDK](https://www.oracle.com/java/technologies/downloads/#java17) |                 |
-| Maven   | 3.8.+ | [下载Maven](https://maven.apache.org/download.cgi)                    |
-|
+| Maven   | 3.8.+ | [下载Maven](https://maven.apache.org/download.cgi)                    |                 |
 | SqlLite | 3.+   | [下载sqlite studio](https://sqlitestudio.pl/)                         |                 |
-| Docker  | 21.+  | [下载docker](https://www.docker.com/products/docker-desktop/)         | 需设置docker内存为8G+ |
 
 ### 前端 Secretpad-frontend (React)
 
