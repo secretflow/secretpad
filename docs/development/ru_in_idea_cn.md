@@ -134,7 +134,7 @@ cp /Users/lucky/kuscia/secretpad/config/server.jks /secretpad/config/server.jks
 
 > 目录举例
 
-![image.png](https://intranetproxy.alipay.com/skylark/lark/0/2023/png/122656402/1703493127609-2c39f495-ec7e-4a7a-9c82-b65e95094048.png#clientId=u0f93730d-0192-4&from=paste&height=343&id=u1120c4c2&originHeight=686&originWidth=410&originalType=binary&ratio=2&rotation=0&showTitle=false&size=96136&status=done&style=none&taskId=uef04c702-285a-4793-9ebc-163167278f2&title=&width=205)
+![image.png](../imgs/dir.png)
 
 #### secretpad本地启动准备-数据库配置（示例：sqlite）
 
