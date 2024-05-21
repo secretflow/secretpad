@@ -19,4 +19,7 @@ SecretPad 是一个基于 [Kuscia](https://github.com/secretflow/kuscia) 的隐�
 .. toctree::
    :maxdepth: 2
 
+   deployment/index
+   operation/index
+   asked/index
    development/index

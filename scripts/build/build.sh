@@ -36,4 +36,7 @@ if [[ $WITH_FRONTEND_FLAG == true ]]; then
 	rm -rf "$WORK_DIR"
 fi
 
+mvn -version
+java -version
+
 mvn clean package -DskipTests

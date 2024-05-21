@@ -1,0 +1,66 @@
+name: secretpad Issue Template
+description: Thank you for reporting the issue!
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please make sure that you report a code/doc bug, feature request or build/installation bug on GitHub.
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      description: What type of issue would you like to report?
+      multiple: false
+      options:
+        - Bug
+        - Build/Install
+        - Feature Request
+        - Documentation Feature Request
+        - Documentation Bug
+        - Others
+    validations:
+      required: true
+  - type: dropdown
+    id: source
+    attributes:
+      label: Source
+      description: Secretflow installed from
+      options:
+        - local
+        - docker
+    validations:
+      required: true
+  - type: input
+    id: secretpadversion
+    attributes:
+      label: secretpad Version
+      description:
+      placeholder: e.g., secretpad 0.6.0b0
+    validations:
+      required: true
+  - type: input
+    id: kusciaversion
+    attributes:
+      label: kuscia Version
+      description:
+      placeholder: e.g., kuscia 0.7.0b0
+    validations:
+      required: true
+  - type: input
+    id: OS
+    attributes:
+      label: OS Platform and Distribution
+      description:
+      placeholder: e.g., Linux Ubuntu 18.04
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happend and What you expected to happen.
+      description: Describe the bug, exepcted behavior and relevant log output.
+      placeholder: A bug happened!
+      value:
+      render: shell
+    validations:
+      required: true

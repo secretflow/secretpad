@@ -53,7 +53,7 @@ public class DbSyncUtil {
         String redirectUrl = HTTP_PREFIX + kusciaLiteGateway + DataSyncConstants.VOTE_DATA_SYNC;
         LOGGER.info("data push to center,request center before sync,dbSyncRequest = {}", JsonUtils.toJSONString(dbSyncRequest));
         SecretPadResponse secretPadResponse = RestTemplateUtil.sendPostJson(redirectUrl, VoteSyncRequest.builder().dbSyncRequests(Lists.newArrayList(dbSyncRequest)).build(), parseRequestHeader(), SecretPadResponse.class);
-        LOGGER.info("secretPadResponse status = {}", secretPadResponse.getStatus());
+        LOGGER.info("dbSyncRequest secretPadResponse status = {}", secretPadResponse.getStatus());
         if (secretPadResponse.getStatus().getCode() != 0) {
             throw SecretpadException.of(SystemErrorCode.REMOTE_CALL_ERROR, secretPadResponse.getStatus().getMsg());
         }
@@ -64,7 +64,7 @@ public class DbSyncUtil {
         String redirectUrl = HTTP_PREFIX + kusciaLiteGateway + DataSyncConstants.VOTE_DATA_SYNC;
         LOGGER.info("data push to center,request center before sync,voteSyncRequest = {}", JsonUtils.toJSONString(voteSyncRequest));
         SecretPadResponse secretPadResponse = RestTemplateUtil.sendPostJson(redirectUrl, voteSyncRequest, parseRequestHeader(), SecretPadResponse.class);
-        LOGGER.info("secretPadResponse status = {}", secretPadResponse.getStatus());
+        LOGGER.info("voteSyncRequest secretPadResponse status = {}", secretPadResponse.getStatus());
         if (secretPadResponse.getStatus().getCode() != 0) {
             throw SecretpadException.of(SystemErrorCode.REMOTE_CALL_ERROR, secretPadResponse.getStatus().getMsg());
         }

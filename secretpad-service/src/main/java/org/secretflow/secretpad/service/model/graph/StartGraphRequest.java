@@ -45,4 +45,8 @@ public class StartGraphRequest {
      */
     @NotEmpty
     private List<String> nodes;
+    /**
+     * breakpoint resuming training flag true：yes，false：no
+     */
+    public Boolean breakpoint = false;
 }

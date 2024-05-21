@@ -30,6 +30,8 @@ import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslProvider;
 import io.grpc.stub.MetadataUtils;
 import org.secretflow.v1alpha1.constant.KusciaAPIConstants;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -46,6 +48,7 @@ import static org.secretflow.secretpad.common.constant.KusciaConstants.KUSCIA_PR
  */
 public class KusciaAPIChannelFactory {
 
+    private static final Logger log = LoggerFactory.getLogger(KusciaAPIChannelFactory.class);
     private final String protocol;
     /**
      * ApiLite address
@@ -74,11 +77,17 @@ public class KusciaAPIChannelFactory {
      * @return a new client
      */
     public ManagedChannel newClientChannel() {
-        // init ssl context
-        SslContextBuilder clientContextBuilder = SslContextBuilder.forClient();
-        GrpcSslContexts.configure(clientContextBuilder, SslProvider.OPENSSL);
-        // load client certs
         try {
+            if (protocol.equals(KUSCIA_PROTOCOL_NOTLS)) {
+                return NettyChannelBuilder.forTarget(address)
+                        .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
+                        .negotiationType(NegotiationType.PLAINTEXT)
+                        .build();
+            }
+            // init ssl context
+            SslContextBuilder clientContextBuilder = SslContextBuilder.forClient();
+            GrpcSslContexts.configure(clientContextBuilder, SslProvider.OPENSSL);
+            // load client certs
             File certFile = FileUtils.readFile(tlsConfig.getCertFile());
             File keyFile = FileUtils.readFile(tlsConfig.getKeyFile());
             X509Certificate[] clientTrustedCaCerts = {CertUtils.loadX509Cert(tlsConfig.getCaFile())};
@@ -86,30 +95,20 @@ public class KusciaAPIChannelFactory {
                     .keyManager(certFile, keyFile)
                     .trustManager(clientTrustedCaCerts)
                     .build();
-
-            switch (protocol) {
-                case KUSCIA_PROTOCOL_NOTLS -> {
-                    return NettyChannelBuilder.forTarget(address)
-                            .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
-                            .negotiationType(NegotiationType.PLAINTEXT)
-                            .build();
-                }
-                default -> {
-                    String token = FileUtils.readFile2String(tokenFile);
-                    Metadata metadata = new Metadata();
-                    Metadata.Key<String> key = Metadata.Key.of(KusciaAPIConstants.TOKEN_HEADER, Metadata.ASCII_STRING_MARSHALLER);
-                    metadata.put(key, token);
-                    ClientInterceptor tokenInterceptor = MetadataUtils.newAttachHeadersInterceptor(metadata);
-                    return NettyChannelBuilder.forTarget(address)
-                            .intercept(tokenInterceptor)
-                            .negotiationType(NegotiationType.TLS)
-                            .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
-                            .sslContext(sslContext)
-                            .build();
-                }
-            }
+            String token = FileUtils.readFile2String(tokenFile);
+            Metadata metadata = new Metadata();
+            Metadata.Key<String> key = Metadata.Key.of(KusciaAPIConstants.TOKEN_HEADER, Metadata.ASCII_STRING_MARSHALLER);
+            metadata.put(key, token);
+            ClientInterceptor tokenInterceptor = MetadataUtils.newAttachHeadersInterceptor(metadata);
+            return NettyChannelBuilder.forTarget(address)
+                    .intercept(tokenInterceptor)
+                    .negotiationType(NegotiationType.TLS)
+                    .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
+                    .sslContext(sslContext)
+                    .build();
         } catch (CertificateException | IOException e) {
-            throw new RuntimeException(e);
+            log.error("init kuscia grpc client error", e);
+            return null;
         }
     }
 }

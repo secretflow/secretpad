@@ -44,6 +44,15 @@ message Attribute {
 }
 
 // Describe an attribute.
+// There are three kinds of attribute.
+// - Atomic Attributes: a solid field for users to fill-in.
+// - Struct Attributes: a group of closely related attributes(including atomic,
+// union and struct attributes).
+// - Union Attributes: a group of mutually exlusive attributes(including union,
+// group and dummy atomic attributes). Users should select only one children to
+// fill-in. An atmoic attribute with ATTR_TYPE_UNSPECIFIED AttrType is regarded
+// as dummy, which represents a selection of union without further
+// configurations.
 message AttributeDef {
   // Indicates the ancestors of a node,
   // e.g. `[name_a, name_b, name_c]` means the path prefixes of current

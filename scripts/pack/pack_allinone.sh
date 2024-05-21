@@ -15,13 +15,14 @@
 # limitations under the License.
 #
 
-KUSCIA_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.7.0b0"
-SECRETPAD_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.6.0b0"
-SECRETFLOW_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.5.0b0"
-SECRETFLOW_SERVING_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.2.1b0"
-TEE_APP_IMAGE="secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"
-TEE_DM_IMAGE="secretflow/sf-tee-dm-sim:0.1.0b0"
-CAPSULE_MANAGER_SIM_IMAGE="secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"
+# shellcheck disable=SC2223
+: ${KUSCIA_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.8.0b0"}
+: ${SECRETPAD_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.7.0b0"}
+: ${SECRETFLOW_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.6.0b0"}
+: ${SECRETFLOW_SERVING_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.3.0b0"}
+: ${TEE_APP_IMAGE:="secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"}
+: ${TEE_DM_IMAGE:="secretflow/sf-tee-dm-sim:0.1.0b0"}
+: ${CAPSULE_MANAGER_SIM_IMAGE:="secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"}
 
 GREEN='\033[0;32m'
 NC='\033[0m'
@@ -29,6 +30,25 @@ function log() {
 	local log_content=$1
 	echo -e "${GREEN}${log_content}${NC}"
 }
+
+NEED_TEE=true
+MVP_TAR_SUFFIX="linux-x86_64"
+
+if [ -z "$1" ]; then
+	platform="linux/amd64"
+	echo "platform is empty, make default $platform"
+else
+	if [ "$1" != "linux/amd64" ] && [ "$1" != "linux/arm64" ]; then
+		echo "platform is invalid, linux/amd64 or linux/arm64"
+		exit 1
+	fi
+	platform=$1
+fi
+if [ "$platform" = "linux/arm64" ]; then
+	NEED_TEE=false
+	MVP_TAR_SUFFIX="linux-aarch_64"
+fi
+echo "== start build $platform , TEE included:$NEED_TEE"
 
 # create dir
 echo "mkdir -p secretflow-allinone-package/images"
@@ -81,39 +101,22 @@ echo "secretpad image: $SECRETPAD_IMAGE"
 echo "secretflow image: $SECRETFLOW_IMAGE"
 echo "secretflow serving image: $SECRETFLOW_SERVING_IMAGE"
 
-echo "TEE_APP_IMAGE image: $TEE_APP_IMAGE"
-echo "TEE_DM_IMAGE image: $TEE_DM_IMAGE"
-echo "CAPSULE_MANAGER_SIM_IMAGE image: $CAPSULE_MANAGER_SIM_IMAGE"
-
 set -e
-echo "docker pull --platform=linux/amd64 ${KUSCIA_IMAGE}"
-docker pull --platform=linux/amd64 ${KUSCIA_IMAGE}
-log "docker pull --platform=linux/amd64 ${KUSCIA_IMAGE} done"
+echo "docker pull --platform=$platform ${KUSCIA_IMAGE}"
+docker pull --platform=$platform ${KUSCIA_IMAGE}
+log "docker pull --platform=$platform ${KUSCIA_IMAGE} done"
 
-echo "docker pull --platform=linux/amd64 ${SECRETPAD_IMAGE}"
-docker pull --platform=linux/amd64 ${SECRETPAD_IMAGE}
-log "docker pull --platform=linux/amd64 ${SECRETPAD_IMAGE} done"
+echo "docker pull --platform=$platform ${SECRETPAD_IMAGE}"
+docker pull --platform=$platform ${SECRETPAD_IMAGE}
+log "docker pull --platform=$platform ${SECRETPAD_IMAGE} done"
 
-echo "docker pull --platform=linux/amd64 ${SECRETFLOW_IMAGE}"
-docker pull --platform=linux/amd64 ${SECRETFLOW_IMAGE}
-log "docker pull --platform=linux/amd64 ${SECRETFLOW_IMAGE} done"
+echo "docker pull --platform=$platform ${SECRETFLOW_IMAGE}"
+docker pull --platform=$platform ${SECRETFLOW_IMAGE}
+log "docker pull --platform=$platform ${SECRETFLOW_IMAGE} done"
 
-echo "docker pull --platform=linux/amd64 ${SECRETFLOW_SERVING_IMAGE}"
-docker pull --platform=linux/amd64 ${SECRETFLOW_SERVING_IMAGE}
-log "docker pull --platform=linux/amd64 ${SECRETFLOW_SERVING_IMAGE} done"
-
-# tee
-echo "docker pull --platform=linux/amd64 ${TEE_APP_IMAGE}"
-docker pull --platform=linux/amd64 ${TEE_APP_IMAGE}
-log "docker pull --platform=linux/amd64 ${TEE_APP_IMAGE} done"
-
-echo "docker pull --platform=linux/amd64 ${TEE_DM_IMAGE}"
-docker pull --platform=linux/amd64 ${TEE_DM_IMAGE}
-log "docker pull --platform=linux/amd64 ${TEE_DM_IMAGE} done"
-
-echo "docker pull --platform=linux/amd64 ${CAPSULE_MANAGER_SIM_IMAGE}"
-docker pull --platform=linux/amd64 ${CAPSULE_MANAGER_SIM_IMAGE}
-log "docker pull --platform=linux/amd64 ${CAPSULE_MANAGER_SIM_IMAGE} done"
+echo "docker pull --platform=$platform ${SECRETFLOW_SERVING_IMAGE}"
+docker pull --platform=$platform ${SECRETFLOW_SERVING_IMAGE}
+log "docker pull --platform=$platform ${SECRETFLOW_SERVING_IMAGE} done"
 
 kusciaTag=${KUSCIA_IMAGE##*:}
 echo "kuscia tag: $kusciaTag"
@@ -123,13 +126,6 @@ secretflowTag=${SECRETFLOW_IMAGE##*:}
 echo "secretflow tag: $secretflowTag"
 secretflowServingTag=${SECRETFLOW_SERVING_IMAGE##*:}
 echo "secretflow serving tag: $secretflowServingTag"
-
-teeAppTag=${TEE_APP_IMAGE##*:}
-echo "tee app tag: $teeAppTag"
-teeDmTag=${TEE_DM_IMAGE##*:}
-echo "teeDmTag: $teeDmTag"
-capsuleManagerSimTag=${CAPSULE_MANAGER_SIM_IMAGE##*:}
-echo "capsuleManagerSimTag: $capsuleManagerSimTag"
 
 VERSION_TAG="$(git describe --tags)"
 echo "secretflow-allinone-package tag: $VERSION_TAG"
@@ -146,15 +142,43 @@ docker save -o ./secretflow-allinone-package/images/secretflow-${secretflowTag}.
 echo "docker save -o ./secretflow-allinone-package/images/serving-${secretflowServingTag}.tar ${SECRETFLOW_SERVING_IMAGE} "
 docker save -o ./secretflow-allinone-package/images/serving-${secretflowServingTag}.tar ${SECRETFLOW_SERVING_IMAGE}
 
-echo "docker save -o ./secretflow-allinone-package/images/teeapps-sim-${teeAppTag}.tar ${TEE_APP_IMAGE} "
-docker save -o ./secretflow-allinone-package/images/teeapps-sim-${teeAppTag}.tar ${TEE_APP_IMAGE}
+# tee
+if [ "$NEED_TEE" = "true" ]; then
+	echo "tee is needed"
+	echo "TEE_APP_IMAGE image: $TEE_APP_IMAGE"
+	echo "TEE_DM_IMAGE image: $TEE_DM_IMAGE"
+	echo "CAPSULE_MANAGER_SIM_IMAGE image: $CAPSULE_MANAGER_SIM_IMAGE"
 
-echo "docker save -o ./secretflow-allinone-package/images/sf-tee-dm-sim-${teeDmTag}.tar ${TEE_DM_IMAGE} "
-docker save -o ./secretflow-allinone-package/images/sf-tee-dm-sim-${teeDmTag}.tar ${TEE_DM_IMAGE}
+	echo "docker pull --platform=$platform ${TEE_APP_IMAGE}"
+	docker pull --platform=$platform ${TEE_APP_IMAGE}
+	log "docker pull --platform=$platform ${TEE_APP_IMAGE} done"
 
-echo "docker save -o ./secretflow-allinone-package/image/capsule-manager-sim-${capsuleManagerSimTag}.tar ${CAPSULE_MANAGER_SIM_IMAGE} "
-docker save -o ./secretflow-allinone-package/images/capsule-manager-sim-${capsuleManagerSimTag}.tar ${CAPSULE_MANAGER_SIM_IMAGE}
+	echo "docker pull --platform=$platform ${TEE_DM_IMAGE}"
+	docker pull --platform=$platform ${TEE_DM_IMAGE}
+	log "docker pull --platform=$platform ${TEE_DM_IMAGE} done"
 
-echo "tar --no-xattrs -zcvf secretflow-allinone-package-${VERSION_TAG}.tar.gz ./secretflow-allinone-package"
-tar --no-xattrs -zcvf secretflow-allinone-package-${VERSION_TAG}.tar.gz ./secretflow-allinone-package
+	echo "docker pull --platform=$platform ${CAPSULE_MANAGER_SIM_IMAGE}"
+	docker pull --platform=$platform ${CAPSULE_MANAGER_SIM_IMAGE}
+	log "docker pull --platform=$platform ${CAPSULE_MANAGER_SIM_IMAGE} done"
+
+	teeAppTag=${TEE_APP_IMAGE##*:}
+	echo "tee app tag: $teeAppTag"
+	teeDmTag=${TEE_DM_IMAGE##*:}
+	echo "teeDmTag: $teeDmTag"
+	capsuleManagerSimTag=${CAPSULE_MANAGER_SIM_IMAGE##*:}
+	echo "capsuleManagerSimTag: $capsuleManagerSimTag"
+
+	echo "docker save -o ./secretflow-allinone-package/images/teeapps-sim-${teeAppTag}.tar ${TEE_APP_IMAGE} "
+	docker save -o ./secretflow-allinone-package/images/teeapps-sim-${teeAppTag}.tar ${TEE_APP_IMAGE}
+
+	echo "docker save -o ./secretflow-allinone-package/images/sf-tee-dm-sim-${teeDmTag}.tar ${TEE_DM_IMAGE} "
+	docker save -o ./secretflow-allinone-package/images/sf-tee-dm-sim-${teeDmTag}.tar ${TEE_DM_IMAGE}
+
+	echo "docker save -o ./secretflow-allinone-package/image/capsule-manager-sim-${capsuleManagerSimTag}.tar ${CAPSULE_MANAGER_SIM_IMAGE} "
+	docker save -o ./secretflow-allinone-package/images/capsule-manager-sim-${capsuleManagerSimTag}.tar ${CAPSULE_MANAGER_SIM_IMAGE}
+fi
+
+echo "tar --no-xattrs -zcvf secretflow-allinone-${MVP_TAR_SUFFIX}-v${VERSION_TAG}.tar.gz ./secretflow-allinone-package"
+tar --no-xattrs -zcvf secretflow-allinone-${MVP_TAR_SUFFIX}-v"${VERSION_TAG}".tar.gz ./secretflow-allinone-package
+
 echo "package done"

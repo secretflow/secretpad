@@ -33,9 +33,18 @@ public class ComponentConstants {
      * binning_modifications
      */
     public static final String BINNING_MODIFICATIONS = "binning_modifications";
+    public static final String BINNING_MODIFICATIONS_CODENAME = "feature/binning_modifications";
+
 
     public static final String IO_READ_DATA = "read_data";
 
     public static final String IO_WRITE_DATA = "write_data";
     public static final String IO_IDENTITY = "identity";
+    /**
+     * model_param_modifications
+     */
+    public static final String MODEL_PARAM_MODIFICATIONS = "model_param_modifications";
+    public static final String MODEL_PARAM_MODIFICATIONS_CODENAME = "preprocessing/model_param_modifications";
+
+    public static final String DATA_PREP_UNION = "data_prep/union";
 }

@@ -64,6 +64,8 @@ public enum GraphErrorCode implements ErrorCode {
      */
     GRAPH_DEPENDENT_NODE_NOT_RUN(202011710),
     GRAPH_NODE_ROUTE_NOT_EXISTS(202011711),
+    GRAPH_NOT_OWNER_CANNOT_UPDATE(202011712),
+    NON_OUR_CREATION_CAN_VIEWED(202011713),
     ;
     private final int code;
 

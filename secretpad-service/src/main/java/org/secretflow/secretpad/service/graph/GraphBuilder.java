@@ -20,6 +20,7 @@ import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
@@ -34,6 +35,7 @@ import java.util.stream.Collectors;
  * @author yansi
  * @date 2023/6/4
  */
+@Slf4j
 public class GraphBuilder {
     private final Map<String, List<String>> dependencies = new HashMap<>();
     private final Map<String, String> output2node = new HashMap<>();
@@ -52,7 +54,7 @@ public class GraphBuilder {
                 String nodeId = node.getGraphNodeId();
                 List<String> outputs = node.getOutputs();
                 if (!CollectionUtils.isEmpty(outputs)) {
-                    outputs.stream().forEach(out -> {
+                    outputs.forEach(out -> {
                         output2node.put(out, nodeId);
                     });
                 }
@@ -68,11 +70,9 @@ public class GraphBuilder {
                 }
             }
         }
-        node2inputs.entrySet().forEach(entry -> {
-            String taskId = entry.getKey();
-            List<String> inputs = entry.getValue();
+        node2inputs.forEach((taskId, inputs) -> {
             if (!CollectionUtils.isEmpty(inputs)) {
-                dependencies.put(taskId, inputs.stream().filter(input -> output2node.containsKey(input)).map(input -> output2node.get(input)).collect(Collectors.toList()));
+                dependencies.put(taskId, inputs.stream().filter(output2node::containsKey).map(output2node::get).collect(Collectors.toList()));
             }
         });
     }
@@ -90,6 +90,7 @@ public class GraphBuilder {
                 return nodeMap.get(nodeId);
             }
         }
-        throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_NOT_EXISTS);
+        log.warn("Can't find node by input id {} input2node {}  nodeMap {}", inputId, input2node, nodeMap);
+        throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_NOT_EXISTS, inputId);
     }
 }

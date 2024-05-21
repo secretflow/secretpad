@@ -31,5 +31,6 @@ public class ComponentConstants {
 
     public static final String SECRETPAD = "secretpad";
     public static final String SECRETFLOW = "secretflow";
-
+    public static final String CHECKPOINT_SUB = "_checkpoint";
+    public static final String CHECKPOINT_PRE = "ck";
 }

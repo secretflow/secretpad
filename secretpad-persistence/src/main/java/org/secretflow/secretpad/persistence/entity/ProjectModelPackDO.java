@@ -16,7 +16,9 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
+import org.secretflow.secretpad.persistence.converter.BaseObjectListJsonConverter;
 import org.secretflow.secretpad.persistence.converter.StringListJsonConverter;
+import org.secretflow.secretpad.persistence.model.PartyDataSource;
 
 import jakarta.persistence.*;
 import lombok.*;
@@ -78,4 +80,16 @@ public class ProjectModelPackDO extends BaseAggregationRoot<ProjectModelPackDO> 
 
     @Column(name = "model_report_id", nullable = false)
     private String modelReportId;
+
+    @Column(name = "model_datasource", nullable = false)
+    @Convert(converter = PartyDataSourceConverter.class)
+    private List<PartyDataSource> partyDataSources;
+
+
+    @Converter
+    public static class PartyDataSourceConverter extends BaseObjectListJsonConverter<PartyDataSource> {
+        public PartyDataSourceConverter() {
+            super(PartyDataSource.class);
+        }
+    }
 }

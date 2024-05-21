@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.web;
 
+import org.secretflow.secretpad.web.constant.AuthConstants;
+
 import com.google.common.collect.Lists;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.catalina.connector.Connector;
@@ -58,7 +60,7 @@ public class SecretPadApplication {
     public static void main(String[] args) throws UnknownHostException {
         ConfigurableApplicationContext context = SpringApplication.run(SecretPadApplication.class, args);
         Environment environment = context.getBean(Environment.class);
-        log.info("SecretPad start success, http://{}:{} innerHttpPort:{} Profile:{}", InetAddress.getLocalHost().getHostAddress(), environment.getProperty("server.port"), environment.getProperty("server.http-port-inner"), environment.getActiveProfiles());
+        printEnvironment(environment);
     }
 
     /**
@@ -89,5 +91,23 @@ public class SecretPadApplication {
         ProtobufHttpMessageConverter protobufHttpMessageConverter = new ProtobufHttpMessageConverter();
         protobufHttpMessageConverter.setSupportedMediaTypes(Lists.newArrayList(MediaType.APPLICATION_JSON, MediaType.parseMediaType(MediaType.TEXT_PLAIN_VALUE + ";charset=ISO-8859-1")));
         return new HttpMessageConverters(protobufHttpMessageConverter);
+    }
+
+    private static void printEnvironment(Environment environment) throws UnknownHostException {
+        log.info("SecretPad start success, http://{}:{} innerHttpPort:{} Profile:{}", InetAddress.getLocalHost().getHostAddress(), environment.getProperty("server.port"), environment.getProperty("server.http-port-inner"), environment.getActiveProfiles());
+        String userName, password;
+        try {
+            userName = environment.getProperty("secretpad.auth.pad_name", String.class, AuthConstants.USER_NAME);
+        } catch (Exception e) {
+            log.debug("initUserAndPwd failed use default", e);
+            userName = AuthConstants.USER_NAME;
+        }
+        try {
+            password = environment.getProperty("secretpad.auth.pad_pwd", String.class, AuthConstants.PASSWORD);
+        } catch (Exception e) {
+            log.debug("initUserAndPwd failed use default", e);
+            password = AuthConstants.PASSWORD;
+        }
+        log.info("userNma:{} password:{}", userName, password);
     }
 }

@@ -92,18 +92,11 @@ sh install.sh p2p -n domainId  -s 8099 -g 8092 -k 8091 -p 8090 -q 33801
 
 | secretpad Version | Kuscia Version | secretflow Version | trustedflow Version | serving Version |
 |-------------------|----------------|--------------------|---------------------|-----------------|
+| 0.7.0b0           | 0.8.0b0        | 1.6.0b0            | 0.1.1b0             | 0.3.0b0         |
 | 0.6.0b0           | 0.7.0b0        | 1.5.0b0            | 0.1.1b0             | 0.2.1b0         |
 | 0.5.0b0           | 0.6.0b0        | 1.4.0b0            | 0.1.1b0             | 0.2.0b0         |
 | 0.4.1b0           | 0.5.0b0        | 1.4.0.dev24011601  | 0.1.1b0             |                 |
 | 0.3.0b0           | 0.4.0b0        | 1.3.0.dev20231109  | 0.1.1b0             |                 |
-
-## 开发
-
-Kuscia notls 模式可以实现对 Kuscia GRPC 服务的远程访问，但由于文件服务的限制，它会
-在文件上传和下载中不可用，其他文件数据源将很快提供以实现真正的扩展
-
-- [IDEA本地开发调式文档](./docs/development/ru_in_idea_cn.md)
-- [使用mysql作为运行数据库](./docs/development/SUPPORT_MYSQL.md)
 
 ## Contact
 

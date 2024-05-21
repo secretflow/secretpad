@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Ant Group Co., Ltd.
+ * Copyright 2024 Ant Group Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,7 +16,9 @@
 
 package org.secretflow.secretpad.service.configuration;
 
+import org.secretflow.secretpad.service.ICloudLogService;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
+import org.secretflow.secretpad.service.factory.CloudLogServiceFactory;
 import org.secretflow.secretpad.service.factory.JsonProtobufSourceFactory;
 import org.secretflow.secretpad.service.graph.JobChain;
 import org.secretflow.secretpad.service.graph.chain.AbstractJobHandler;
@@ -26,12 +28,14 @@ import com.secretflow.spec.v1.CompListDef;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 import org.springframework.util.CollectionUtils;
 
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_TEST;
 
 /**
  * Configuration for service layer
@@ -74,5 +78,11 @@ public class ServiceConfiguration {
             }
         });
         return voteTypeHandlerMap;
+    }
+
+    @Bean
+    @Profile(SKIP_TEST)
+    public ICloudLogService iCloudLogService(CloudLogServiceFactory cloudLogServiceFactory) {
+        return cloudLogServiceFactory.getLogServiceInstance();
     }
 }

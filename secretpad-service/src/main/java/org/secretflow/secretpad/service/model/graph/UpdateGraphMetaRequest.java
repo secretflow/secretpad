@@ -17,7 +17,9 @@
 package org.secretflow.secretpad.service.model.graph;
 
 import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 /**
  * Update graph meta request
@@ -25,6 +27,8 @@ import lombok.Data;
  * @author yansi
  * @date 2023/5/25
  */
+@AllArgsConstructor
+@NoArgsConstructor
 @Data
 public class UpdateGraphMetaRequest {
     /**

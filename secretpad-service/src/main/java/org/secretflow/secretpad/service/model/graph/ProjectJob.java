@@ -82,6 +82,11 @@ public class ProjectJob implements Serializable {
     private List<JobTask> tasks;
 
     /**
+     * Job Max parallelism
+     */
+    private Integer maxParallelism;
+
+    /**
      * Build a new project job via project graph data object, project graph node data object list and parties
      *
      * @param graphDO       project graph data object
@@ -92,6 +97,7 @@ public class ProjectJob implements Serializable {
     public static ProjectJob genProjectJob(ProjectGraphDO graphDO, List<ProjectGraphNodeDO> selectedNodes, Map<String, Set<String>> parties) {
         String jobId = UUIDUtils.random(4);
         ProjectJobBuilder jobBuilder = ProjectJob.builder()
+                .maxParallelism(graphDO.getMaxParallelism())
                 .projectId(graphDO.getUpk().getProjectId())
                 .graphId(graphDO.getUpk().getGraphId())
                 .name(graphDO.getName())

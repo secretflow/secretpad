@@ -72,16 +72,16 @@ public class SseServerImpl implements SseServer {
         }
         SseEmitter sseEmitter = new SseEmitter(Long.MAX_VALUE);
         sseEmitter.onError((err) -> {
-            log.error("type: SseSession Error, msg: {} session Id : {}", err.getMessage(), userId);
+            log.error("sse open by userId, type: SseSession Error, msg: {} session Id : {}", err.getMessage(), userId);
             SseSession.onError(userId, err);
             SseSession.remove(userId);
         });
         sseEmitter.onTimeout(() -> {
-            log.info("type: SseSession Timeout, session Id : {}", userId);
+            log.info("sse open by userId, type: SseSession Timeout, session Id : {}", userId);
             SseSession.remove(userId);
         });
         sseEmitter.onCompletion(() -> {
-            log.info("type: SseSession Completion, session Id : {}", userId);
+            log.info("sse open by userId, type: SseSession Completion, session Id : {}", userId);
             SseSession.remove(userId);
         });
         SseSession.add(userId, sseEmitter);

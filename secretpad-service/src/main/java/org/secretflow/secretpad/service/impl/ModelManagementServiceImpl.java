@@ -16,24 +16,32 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.constant.ServingConstants;
 import org.secretflow.secretpad.common.enums.ModelStatsEnum;
 import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
 import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
+import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.*;
 import org.secretflow.secretpad.manager.integration.data.DataManager;
+import org.secretflow.secretpad.manager.integration.model.PartyDTO;
 import org.secretflow.secretpad.manager.kuscia.grpc.KusciaServingRpc;
 import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.PartyDataSource;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.ModelManagementService;
 import org.secretflow.secretpad.service.constant.JobConstants;
 import org.secretflow.secretpad.service.model.graph.GraphDetailVO;
 import org.secretflow.secretpad.service.model.model.*;
+import org.secretflow.secretpad.service.model.serving.ResourceVO;
 import org.secretflow.secretpad.service.model.serving.ServingDetailVO;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.google.gson.reflect.TypeToken;
 import com.google.protobuf.util.JsonFormat;
 import com.secretflow.spec.v1.IndividualTable;
 import jakarta.annotation.Resource;
@@ -62,6 +70,9 @@ import secretflow.serving.kuscia.ServingConfig;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
+import static org.secretflow.secretpad.common.constant.ServingConstants.DEFAULT_MEMORY_UNIT;
+import static org.secretflow.secretpad.service.util.JobUtils.parseMemorySize;
 
 /**
  * @author chenmingliang
@@ -189,31 +200,16 @@ public class ModelManagementServiceImpl implements ModelManagementService {
         List<NodeDO> nodeDOList = nodeRepository.findByNodeIdIn(partyTableMap.keySet());
         Map<String, String> nodeMap = nodeDOList.stream().collect(Collectors.toMap(NodeDO::getNodeId, NodeDO::getName));
         List<ServingDetailVO.ServingDetail> servingDetails = new ArrayList<>();
-        String servingId = projectModelPackDO.getServingId();
-        if (StringUtils.isBlank(servingId)) {
-            partyTableMap.forEach((k, v) -> {
-                ServingDetailVO.ServingDetail servingDetail = ServingDetailVO.ServingDetail.builder()
-                        .nodeId(k)
-                        .nodeName(nodeMap.get(k))
-                        .sourcePath(null)
-                        .build();
-                servingDetails.add(servingDetail);
-            });
-        } else {
-            Optional<ProjectModelServingDO> projectModelServingDOOptional = projectModelServiceRepository.findById(servingId);
-            ProjectModelServingDO projectModelServingDO = projectModelServingDOOptional.get();
-            String servingInputConfig = projectModelServingDO.getServingInputConfig();
-            ServingConfig.KusciaServingConfig kusciaServingConfig = (ServingConfig.KusciaServingConfig) ProtoUtils.fromJsonString(servingInputConfig, ServingConfig.KusciaServingConfig.newBuilder());
-            Map<String, ServingConfig.KusciaServingConfig.PartyConfig> servingPartyConfigs = kusciaServingConfig.getPartyConfigsMap();
-            for (Map.Entry<String, ServingConfig.KusciaServingConfig.PartyConfig> partyConfigEntry : servingPartyConfigs.entrySet()) {
-                ServingDetailVO.ServingDetail servingDetail = ServingDetailVO.ServingDetail.builder()
-                        .nodeId(partyConfigEntry.getKey())
-                        .nodeName(nodeMap.get(partyConfigEntry.getKey()))
-                        .sourcePath(partyConfigEntry.getValue().getModelConfig().getSourcePath())
-                        .build();
-                servingDetails.add(servingDetail);
-            }
-        }
+        List<PartyDataSource> partyDataSources = projectModelPackDO.getPartyDataSources();
+        Map<String, String> partyDatasourceMap = partyDataSources.stream().collect(Collectors.toMap(PartyDataSource::getPartyId, PartyDataSource::getDatasource));
+        partyTableMap.forEach((k, v) -> {
+            ServingDetailVO.ServingDetail servingDetail = ServingDetailVO.ServingDetail.builder()
+                    .nodeId(k)
+                    .nodeName(nodeMap.get(k))
+                    .sourcePath(partyDatasourceMap.get(k))
+                    .build();
+            servingDetails.add(servingDetail);
+        });
         return ModelPackInfoVO.builder().modelGraphDetail(modelList).graphDetailVO(graphDetailVO).modelStats(ModelStatsEnum.parse(projectModelPackDO.getModelStats())).servingDetails(servingDetails).build();
     }
 
@@ -306,10 +302,20 @@ public class ModelManagementServiceImpl implements ModelManagementService {
                 kusciaServingConfig.set(kusciaServingConfig.get().toBuilder()
                         .putPartyConfigs(domainId, kusciaServingConfigPartyConfig)
                         .build());
-                Serving.ServingParty servingParty = Serving.ServingParty.newBuilder()
+                Serving.ServingParty.Builder servingPartyBuilder = Serving.ServingParty.newBuilder()
                         .setDomainId(domainId)
-                        .setAppImage(JobConstants.SECRETFLOW_SERVING_IMAGE)
-                        .build();
+                        .setAppImage(JobConstants.SECRETFLOW_SERVING_IMAGE);
+                for (ResourceVO resource : party.getResources()) {
+                    validateResourceConfig(resource, party.getNodeId());
+
+                    Serving.Resource.Builder resourceBuilder = Serving.Resource.newBuilder()
+                            .setMinCpu(resource.getMinCPU())
+                            .setMaxCpu(resource.getMaxCPU())
+                            .setMinMemory(resource.getMinMemory())
+                            .setMaxMemory(resource.getMaxMemory());
+                    servingPartyBuilder.addResources(resourceBuilder);
+                }
+                Serving.ServingParty servingParty = servingPartyBuilder.build();
                 servingParties.add(servingParty);
                 servingPartiesStr.add(ProtoUtils.toJsonString(servingParty, typeRegistry));
 
@@ -321,14 +327,34 @@ public class ModelManagementServiceImpl implements ModelManagementService {
                 servingId = projectModelPackDO.getServingId();
             }
             String initiator = envService.isCenter() ? servingParties.stream().findAny().get().getDomainId() : UserContext.getUser().getOwnerId();
+            // Filter out non-positive minimum resource values
+            List<Serving.ServingParty> filteredServingParties = servingParties.stream()
+                    .map(originalParty -> {
+                        Serving.ServingParty.Builder filteredServingPartyBuilder = originalParty.toBuilder();
+                        filteredServingPartyBuilder.clearResources();
+                        for (Serving.Resource resource : originalParty.getResourcesList()) {
+                            double minCPU = buildMinCpuValue(stringToDouble(resource.getMinCpu(), originalParty.getDomainId()));
+                            double minMemory = buildMinMemoryValue(parseMemorySize(resource.getMinMemory(), originalParty.getDomainId()));
+                            double maxCPU = buildMaxCpuValue(stringToDouble(resource.getMaxCpu(), originalParty.getDomainId()), minCPU);
+                            double maxMemory = buildMaxMemoryValue(parseMemorySize(resource.getMaxMemory(), originalParty.getDomainId()), minMemory);
+
+                            Serving.Resource.Builder resourceBuilder = Serving.Resource.newBuilder()
+                                    .setMinCpu(String.valueOf(minCPU))
+                                    .setMaxCpu(String.valueOf(maxCPU))
+                                    .setMinMemory(String.valueOf(minMemory).concat(DEFAULT_MEMORY_UNIT))
+                                    .setMaxMemory(String.valueOf(maxMemory).concat(DEFAULT_MEMORY_UNIT));
+                            log.info("Filtered  node:{}, resources: {}  ", originalParty.getDomainId(), resourceBuilder);
+                            filteredServingPartyBuilder.addResources(resourceBuilder);
+                        }
+                        return filteredServingPartyBuilder.build();
+                    }).collect(Collectors.toList());
             Serving.CreateServingRequest createServingRequest = Serving.CreateServingRequest.newBuilder()
                     .setInitiator(initiator)
                     .setServingId(servingId)
                     .setServingInputConfig(servingInputConfig)
-                    .addAllParties(servingParties)
+                    .addAllParties(filteredServingParties)
                     .build();
             kusciaServingRpc.createServing(createServingRequest);
-
             ProjectModelServingDO projectModelServingDO = ProjectModelServingDO.builder()
                     .servingId(servingId)
                     .projectId(projectId)
@@ -353,6 +379,15 @@ public class ModelManagementServiceImpl implements ModelManagementService {
             throw SecretpadException.of(ProjectErrorCode.PROJECT_SERVING_NOT_FOUND);
         }
         ProjectModelServingDO projectModelServingDO = projectModelServingDOOptional.get();
+
+        String partiesJsonString = projectModelServingDO.getParties();
+        Gson gson = new Gson();
+        List<String> partyStringList = gson.fromJson(partiesJsonString, new TypeToken<List<String>>() {
+        }.getType());
+        JsonArray partiesArray = new JsonArray();
+        partyStringList.forEach(partyJsonStr -> partiesArray.add(JsonParser.parseString(partyJsonStr)));
+        List<PartyDTO> partyDTOList = JsonUtils.toJavaList(partiesArray.toString(), PartyDTO.class);
+
         List<ProjectModelServingDO.PartyEndpoints> partyEndpoints = projectModelServingDO.getPartyEndpoints();
         AtomicReference<String> endpoints = new AtomicReference<>("");
         partyEndpoints.forEach(e -> {
@@ -368,6 +403,22 @@ public class ModelManagementServiceImpl implements ModelManagementService {
         String modelId = "";
         for (Map.Entry<String, ServingConfig.KusciaServingConfig.PartyConfig> partyConfigEntry : servingPartyConfigs.entrySet()) {
             FeatureConfig.FeatureSourceConfig featureSourceConfig = partyConfigEntry.getValue().getFeatureSourceConfig();
+            PartyDTO partyDTO = partyDTOList.stream()
+                    .filter(p -> partyConfigEntry.getKey().equals(p.getDomainId()))
+                    .findFirst()
+                    .orElse(null);
+            List<ResourceVO> resourcesList = new ArrayList<>();
+            if (partyDTO != null && partyDTO.getResources() != null) {
+                for (PartyDTO.Resource resource : partyDTO.getResources()) {
+                    ResourceVO resourceVO = ResourceVO.builder()
+                            .minCPU(resource.getMinCPU())
+                            .maxCPU(resource.getMaxCPU())
+                            .minMemory(resource.getMinMemory())
+                            .maxMemory(resource.getMaxMemory())
+                            .build();
+                    resourcesList.add(resourceVO);
+                }
+            }
             ServingDetailVO.ServingDetail servingDetail = ServingDetailVO.ServingDetail.builder()
                     .featureMappings(partyConfigEntry.getValue().getServerConfig().getFeatureMappingMap())
                     .nodeId(partyConfigEntry.getKey())
@@ -375,6 +426,7 @@ public class ModelManagementServiceImpl implements ModelManagementService {
                     .endpoints(StringUtils.isEmpty(endpointsMap.get(partyConfigEntry.getKey())) ?
                             endpoints.get().replaceAll("#", partyConfigEntry.getKey()) : endpointsMap.get(partyConfigEntry.getKey()))
                     .sourcePath(partyConfigEntry.getValue().getModelConfig().getSourcePath())
+                    .resources(resourcesList)
                     .build();
             modelId = partyConfigEntry.getValue().getModelConfig().getModelId();
             FeatureConfig.HttpOptions httpOpts = featureSourceConfig.getHttpOpts();
@@ -468,12 +520,10 @@ public class ModelManagementServiceImpl implements ModelManagementService {
                         return partyEndpoints;
 
                     }).collect(Collectors.toList());
-                    if (projectModelServingDOOptional.isPresent()) {
-                        projectModelServingDO.setPartyEndpoints(partyEndpointsList);
-                        projectModelServiceRepository.save(projectModelServingDO);
-                        projectModelServingDO.setServingStats("success");
-                        log.info("save endpoints success!");
-                    }
+                    projectModelServingDO.setPartyEndpoints(partyEndpointsList);
+                    projectModelServiceRepository.save(projectModelServingDO);
+                    projectModelServingDO.setServingStats("success");
+                    log.info("save endpoints success!");
                 } else if ("Failed".equals(state)) {
                     modelStats = ModelStatsEnum.PUBLISH_FAIL.name();
                     stats = ModelStatsEnum.PUBLISH_FAIL.getCode();
@@ -518,5 +568,45 @@ public class ModelManagementServiceImpl implements ModelManagementService {
             keyword = keyword.replaceAll("%", "!%").replaceAll("_", "!_");
         }
         return keyword;
+    }
+
+    private void validateResourceConfig(ResourceVO resource, String nodeId) {
+        double minCPU = stringToDouble(resource.getMinCPU(), nodeId);
+        double maxCPU = stringToDouble(resource.getMaxCPU(), nodeId);
+        if (minCPU > maxCPU || maxCPU <= 0) {
+            throw SecretpadException.of(SystemErrorCode.VALIDATION_ERROR, "CPU value setting error for nodeId: " + nodeId);
+        }
+
+        double minMemory = parseMemorySize(resource.getMinMemory(), nodeId);
+        double maxMemory = parseMemorySize(resource.getMaxMemory(), nodeId);
+        if (minMemory > maxMemory || maxMemory <= 0) {
+            throw SecretpadException.of(SystemErrorCode.VALIDATION_ERROR, "Memory value setting error for nodeId: " + nodeId);
+        }
+    }
+
+    private double stringToDouble(String str, String nodeId) {
+        try {
+            return Double.parseDouble(str);
+        } catch (NumberFormatException e) {
+            throw SecretpadException.of(SystemErrorCode.VALIDATION_ERROR, e, "Invalid resource value for nodeId: " + nodeId);
+        }
+    }
+
+    private double buildMinCpuValue(double minCpu) {
+        return Math.max(minCpu, ServingConstants.DEFAULT_CPU);
+    }
+
+    private double buildMinMemoryValue(double minMemory) {
+        return Math.max(minMemory, ServingConstants.DEFAULT_MEMORY);
+    }
+
+    private double buildMaxCpuValue(double maxCpu, double minCpu) {
+        maxCpu = Math.max(maxCpu, ServingConstants.DEFAULT_CPU);
+        return Math.max(maxCpu, minCpu);
+    }
+
+    private double buildMaxMemoryValue(double maxMemory, double minMemory) {
+        maxMemory = Math.max(maxMemory, ServingConstants.DEFAULT_MEMORY);
+        return Math.max(maxMemory, minMemory);
     }
 }

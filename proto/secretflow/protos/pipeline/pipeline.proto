@@ -43,11 +43,20 @@ message NodeDef {
 
   repeated google.protobuf.Struct  attrs = 6;
 
-//  repeated secretflow.spec.v1.Attribute attrs = 6;
+  //  repeated secretflow.spec.v1.Attribute attrs = 6;
 
   repeated secretflow.spec.v1.DistData inputs = 7;
 
   repeated string output_uris = 8;
+
+  // If not empty:
+  // 1. Component will try to save checkpoint during training if the component
+  // supports it.
+  // 2. Component will try to reload checkpoint when starting to continue the
+  // previous training. If the checkpoint does not exist or cannot be loaded,
+  // training will be starting from scratch.
+  //
+  string checkpoint_uri = 9;
 }
 
 // The pipeline(DAG) definition.

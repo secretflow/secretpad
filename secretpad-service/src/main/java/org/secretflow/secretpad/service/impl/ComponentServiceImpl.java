@@ -22,8 +22,10 @@ import org.secretflow.secretpad.common.util.FileUtils;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.service.ComponentService;
+import org.secretflow.secretpad.service.configuration.SecretFlowVersionConfig;
 import org.secretflow.secretpad.service.configuration.SecretpadComponentConfig;
 import org.secretflow.secretpad.service.constant.ComponentConstants;
+import org.secretflow.secretpad.service.model.component.ComponentVersion;
 import org.secretflow.secretpad.service.model.graph.CompListVO;
 import org.secretflow.secretpad.service.model.graph.ComponentKey;
 import org.secretflow.secretpad.service.model.graph.ComponentSummaryDef;
@@ -44,6 +46,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.*;
 
+import static org.secretflow.secretpad.common.constant.DeployModeConstants.*;
+
 /**
  * Component service implementation class
  *
@@ -62,6 +66,9 @@ public class ComponentServiceImpl implements ComponentService {
 
     @Resource
     private SecretpadComponentConfig secretpadComponentConfig;
+
+    @Autowired
+    private SecretFlowVersionConfig secretFlowVersionConfig;
 
     @Override
     public Map<String, CompListVO> listComponents() {
@@ -108,7 +115,7 @@ public class ComponentServiceImpl implements ComponentService {
         List<ComponentDef> result = new ArrayList<>();
         Map<ComponentKey, ComponentDef> componentMap = new HashMap<>();
         components.stream().filter(compListDef -> !CollectionUtils.isEmpty(compListDef.getCompsList())).forEach(compListDef -> {
-            compListDef.getCompsList().stream().forEach(componentDef -> {
+            compListDef.getCompsList().forEach(componentDef -> {
                 componentMap.put(new ComponentKey(compListDef.getName(), componentDef.getDomain(), componentDef.getName()), componentDef);
             });
         });
@@ -157,7 +164,6 @@ public class ComponentServiceImpl implements ComponentService {
                 Map.Entry<String, Object> entry = iterator.next();
                 String hide = key + "/" + entry.getKey();
                 if (secretpadComponentConfig.getHide().contains(hide)) {
-                    log.info("hide {}", hide);
                     iterator.remove();
                 }
             }
@@ -180,4 +186,31 @@ public class ComponentServiceImpl implements ComponentService {
         return ComponentConstants.READ_DATA.equals(domain) && ComponentConstants.DATA_TABLE.equals(name);
     }
 
+    @Override
+    public ComponentVersion listComponentVersion(String deployMode) {
+        var version = switch (deployMode) {
+            case MPC -> ComponentVersion.builder()
+                    .secretpadImage(secretFlowVersionConfig.getSecretpadImage())
+                    .secretflowImage(secretFlowVersionConfig.getSecretflowImage())
+                    .secretflowServingImage(secretFlowVersionConfig.getSecretflowServingImage())
+                    .kusciaImage(secretFlowVersionConfig.getKusciaImage()).build();
+
+            case TEE -> ComponentVersion.builder()
+                    .teeDmImage(secretFlowVersionConfig.getTeeDmImage())
+                    .teeAppImage(secretFlowVersionConfig.getTeeAppImage())
+                    .capsuleManagerSimImage(secretFlowVersionConfig.getCapsuleManagerSimImage()).build();
+
+            case ALL_IN_ONE -> ComponentVersion.builder()
+                    .teeDmImage(secretFlowVersionConfig.getTeeDmImage())
+                    .teeAppImage(secretFlowVersionConfig.getTeeAppImage())
+                    .capsuleManagerSimImage(secretFlowVersionConfig.getCapsuleManagerSimImage())
+                    .secretpadImage(secretFlowVersionConfig.getSecretpadImage())
+                    .secretflowServingImage(secretFlowVersionConfig.getSecretflowServingImage())
+                    .kusciaImage(secretFlowVersionConfig.getKusciaImage())
+                    .secretflowImage(secretFlowVersionConfig.getSecretflowImage()).build();
+            default -> null;
+        };
+        log.info("listALLINONEComponentVersion:{}", version);
+        return version;
+    }
 }

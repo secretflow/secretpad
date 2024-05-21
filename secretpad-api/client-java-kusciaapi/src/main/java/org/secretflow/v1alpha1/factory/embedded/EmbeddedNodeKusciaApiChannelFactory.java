@@ -29,6 +29,7 @@ import io.grpc.netty.shaded.io.netty.handler.ssl.SslContext;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslProvider;
 import io.grpc.stub.MetadataUtils;
+import lombok.extern.slf4j.Slf4j;
 import org.secretflow.v1alpha1.constant.KusciaAPIConstants;
 import org.secretflow.v1alpha1.factory.TlsConfig;
 
@@ -45,6 +46,7 @@ import static org.secretflow.secretpad.common.constant.KusciaConstants.KUSCIA_PR
  * @author cml
  * @date 2023/10/27
  */
+@Slf4j
 public class EmbeddedNodeKusciaApiChannelFactory {
     private final String protocol;
     /**
@@ -76,11 +78,17 @@ public class EmbeddedNodeKusciaApiChannelFactory {
      * @return a new client
      */
     public ManagedChannel newClientChannel() {
-        // init ssl context
-        SslContextBuilder clientContextBuilder = SslContextBuilder.forClient();
-        GrpcSslContexts.configure(clientContextBuilder, SslProvider.OPENSSL);
-        // load client certs
         try {
+            if (protocol.equals(KUSCIA_PROTOCOL_NOTLS)) {
+                return NettyChannelBuilder.forTarget(address)
+                        .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
+                        .negotiationType(NegotiationType.PLAINTEXT)
+                        .build();
+            }
+            // init ssl context
+            SslContextBuilder clientContextBuilder = SslContextBuilder.forClient();
+            GrpcSslContexts.configure(clientContextBuilder, SslProvider.OPENSSL);
+            // load client certs
             File certFile = FileUtils.readFile(tlsConfig.getCertFile());
             File keyFile = FileUtils.readFile(tlsConfig.getKeyFile());
             X509Certificate[] clientTrustedCaCerts = {CertUtils.loadX509Cert(tlsConfig.getCaFile())};
@@ -94,25 +102,15 @@ public class EmbeddedNodeKusciaApiChannelFactory {
             Metadata.Key<String> key = Metadata.Key.of(KusciaAPIConstants.TOKEN_HEADER, Metadata.ASCII_STRING_MARSHALLER);
             metadata.put(key, token);
             ClientInterceptor tokenInterceptor = MetadataUtils.newAttachHeadersInterceptor(metadata);
-
-            switch (protocol) {
-                case KUSCIA_PROTOCOL_NOTLS -> {
-                    return NettyChannelBuilder.forTarget(address)
-                            .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
-                            .negotiationType(NegotiationType.PLAINTEXT)
-                            .build();
-                }
-                default -> {
-                    return NettyChannelBuilder.forTarget(address)
-                            .intercept(tokenInterceptor)
-                            .negotiationType(NegotiationType.TLS)
-                            .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
-                            .sslContext(sslContext)
-                            .build();
-                }
-            }
+            return NettyChannelBuilder.forTarget(address)
+                    .intercept(tokenInterceptor)
+                    .negotiationType(NegotiationType.TLS)
+                    .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
+                    .sslContext(sslContext)
+                    .build();
         } catch (CertificateException | IOException e) {
-            throw new RuntimeException(e);
+            log.error("init kuscia grpc client error", e);
+            return null;
         }
     }
 }

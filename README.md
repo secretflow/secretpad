@@ -102,19 +102,11 @@ For more details, see [Development](./docs/deployment_experience/v0.6.0b0/deploy
 
 | secretpad Version | Kuscia Version | secretflow Version | trustedflow Version | serving Version |
 |-------------------|----------------|--------------------|---------------------|-----------------|
+| 0.7.0b0           | 0.8.0b0        | 1.6.0b0            | 0.1.1b0             | 0.3.0b0         |
 | 0.6.0b0           | 0.7.0b0        | 1.5.0b0            | 0.1.1b0             | 0.2.1b0         |
 | 0.5.0b0           | 0.6.0b0        | 1.4.0b0            | 0.1.1b0             | 0.2.0b0         |
 | 0.4.1b0           | 0.5.0b0        | 1.4.0.dev24011601  | 0.1.1b0             |                 |
 | 0.3.0b0           | 0.4.0b0        | 1.3.0.dev20231109  | 0.1.1b0             |                 |
-
-## Development
-
-Kuscia notls mode can realize remote access to the Kuscia GRPC service, but due to file service limitations, it will
-be unavailable in file upload and download, and other file data sources will be provided soon to achieve true extension
-deployment
-
-- [IDEA develop locally](./docs/development/ru_in_idea_cn.md)
-- [Use mysql as the running database](./docs/development/SUPPORT_MYSQL.md)
 
 ## Contact
 

@@ -2,11 +2,12 @@
 
 ## 开发环境搭建
 
-### 开发环境依赖
-
-* JDK: 17
-* Maven: 3.5+
-* Docker
+| 名称      | 推荐版本                                       | 下载地址                                                                | 说明 |
+|---------|--------------------------------------------|---------------------------------------------------------------------|----|
+| JDK     | OpenJDK17U-jdk_x64_linux_hotspot_17.0.11_9 | [下载JDK](https://www.oracle.com/java/technologies/downloads/#java17) |    |
+| Maven   | apache-maven-3.8.8                         | [下载Maven](https://maven.apache.org/download.cgi)                    |    |
+Docker|   要求最低版本 20.10      |                          [下载Docker Desktop](https://docs.docker.com/desktop/)                   |                                                                     |    |
+| SqlLite | 3.43.2                                     | [下载sqlite studio](https://sqlitestudio.pl/)                         |    |
 
 ## 构建 SecretPad
 
@@ -33,7 +34,7 @@ Development
 
 执行`make test`命令，该命令将会执行项目中所有的测试
 
-### 构建可执行JAR文件
+### 构建可执行 JAR 文件
 
 在 SecretPad 项目根目录下：
 
@@ -43,7 +44,7 @@ Development
 
 在 SecretPad 项目根目录下：
 
-执行`make image`命令，该命令将会使用 Docker 命令构建出 SecretPad 镜像。目前 SecretPad 暂时仅支持构建 linux/amd64 的 Anolis 镜像。
+执行`make image`命令，该命令将会使用 Docker 命令构建出 SecretPad 镜像。目前 SecretPad 支持构建 linux/amd64 和 linux/arm64 的 Anolis 镜像。
 
 ### 编译文档
 
@@ -57,18 +58,31 @@ Development
 
 在 SecretPad 项目根目录下：
 
-执行`make pack`命令，该命令会生成 secretflow-allinone-package-{github-tag}.tar.gz
-包含kuscia镜像、secretflow镜像、secretpad镜像、一键安装脚本、一键卸载脚本。
+执行`make pack platform="linux/amd64"`命令
+
+>platform参数是可选的，参数值有 "linux/amd64"、"linux/arm64"，如果没有指定platform，默认使用 platform="linux/amd64"。
+
+
+该命令会生成 secretflow-allinone-package-{VERSION_TAG}-{MVP_TAR_SUFFIX}.tar.gz
+包含 Kuscia 镜像、SecretFlow 镜像、SecretPad 镜像、一键安装脚本、一键卸载脚本。
 
 该命令执行结果依赖 环境变量配置，不配置默认使用最新的镜像
 
 ```shell
 KUSCIA_IMAGE=""
-SECRETPAD_IMAGE=""
+SecretPad_IMAGE=""
 SECRETFLOW_IMAGE=""
+SECRETFLOW_SERVING_IMAGE=""
+TEE_APP_IMAGE=""
+TEE_DM_IMAGE=""
+CAPSULE_MANAGER_SIM_IMAGE=""
 
 # 默认
 KUSCIA_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:latest
-SECRETPAD_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:latest
+SecretPad_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/SecretPad:latest
 SECRETFLOW_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:latest
+SECRETFLOW_SERVING_IMAGE:=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:latest
+TEE_APP_IMAGE:=secretflow/teeapps-sim-ubuntu20.04:latest
+TEE_DM_IMAGE:=secretflow/sf-tee-dm-sim:latest
+CAPSULE_MANAGER_SIM_IMAGE:=secretflow/capsule-manager-sim-ubuntu20.04:latest
 ```

@@ -109,8 +109,8 @@ public class ApiResourceCodeConstants {
     public static final String MODEL_DELETE = "MODEL_DELETE";
     public static final String SERV_CREATE = "SERV_CREATE";
     public static final String SERV_DELETE = "SERV_DELETE";
+    public static final String COMPONENT_VERSION_LIST = "COMPONENT_VERSION_LIST";
 }
-
 
 
 

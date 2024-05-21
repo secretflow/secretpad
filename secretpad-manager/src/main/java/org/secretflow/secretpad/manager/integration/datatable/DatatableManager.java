@@ -42,6 +42,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 import static org.secretflow.secretpad.manager.integration.model.Constants.STATUS_AVAILABLE;
 import static org.secretflow.secretpad.manager.integration.model.Constants.STATUS_UNAVAILABLE;
 
@@ -117,7 +118,7 @@ public class DatatableManager extends AbstractDatatableManager {
         }
         Domaindata.BatchQueryDomainDataResponse responses = dataStub.batchQueryDomainData(batchQueryDomainDataRequest);
         if (responses.getStatus().getCode() != 0) {
-            LOGGER.error("lock up from kusciaapi failed: code={}, message={}, request={}",
+            LOGGER.error("findByIds lock up from kusciaapi failed: code={}, message={}, request={}",
                     responses.getStatus().getCode(), responses.getStatus().getMessage(), JsonUtils.toJSONString(nodeDatatableIds));
             throw SecretpadException.of(DatatableErrorCode.QUERY_DATATABLE_FAILED);
         }

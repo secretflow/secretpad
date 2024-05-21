@@ -9,9 +9,9 @@ server:
   ssl:
     enabled: true
     key-store: "file:./config/server.jks"
-    key-store-password: secretpad
+    key-store-password: ${KEY_PASSWORD:secretpad}
     key-alias: secretpad-server
-    key-password: secretpad
+    key-password: ${KEY_PASSWORD:secretpad}
     key-store-type: JKS
   compression:
     enabled: true
@@ -39,6 +39,10 @@ spring:
       idle-timeout: 60000
       maximum-pool-size: 1
       connection-timeout: 5000
+  flyway:
+    baseline-on-migrate: true
+    locations:
+      - filesystem:./config/schema/center
 
   #datasource used for mysql
   #spring:
@@ -94,7 +98,7 @@ logging:
         type: info
 
 kusciaapi:
-  address: root-kuscia-master:8083
+  address: ${KUSCIA_API_ADDRESS:root-kuscia-master:8083}
   protocol: ${KUSCIA_PROTOCOL:tls} # notls tls mtls
   tls:
     cert-file: config/certs/client.crt
@@ -103,7 +107,7 @@ kusciaapi:
   token-file: config/certs/token
 
 kusciaapi-lite-alice:
-  address: root-kuscia-lite-alice:8083
+  address: ${KUSCIA_API_LITE_ALICE_ADDRESS:root-kuscia-lite-alice:8083}
   tls:
     cert-file: config/certs/alice/client.crt
     key-file: config/certs/alice/client.pem
@@ -111,7 +115,7 @@ kusciaapi-lite-alice:
   token-file: config/certs/alice/token
 
 kusciaapi-lite-bob:
-  address: root-kuscia-lite-bob:8083
+  address: ${KUSCIA_API_LITE_BOB_ADDRESS:root-kuscia-lite-bob:8083}
   tls:
     cert-file: config/certs/bob/client.crt
     key-file: config/certs/bob/client.pem
@@ -131,6 +135,8 @@ secretpad:
   gateway: ${KUSCIA_GW_ADDRESS:127.0.0.1:80}
   auth:
     enabled: true
+    pad_name: ${SECRETPAD_USER_NAME}
+    pad_pwd: ${SECRETPAD_PASSWORD}
   response:
     extra-headers:
       Content-Security-Policy: "base-uri 'self';frame-src 'self';worker-src blob: 'self' data:;object-src 'self';"
@@ -146,6 +152,11 @@ secretpad:
     secretpad-image: ${SECRETPAD_IMAGE:0.5.0b0}
     kuscia-image: ${KUSCIA_IMAGE:0.6.0b0}
     secretflow-image: ${SECRETFLOW_IMAGE:1.4.0b0}
+    secretflow-serving-image: ${SECRETFLOW_SERVING_IMAGE:0.2.0b0}
+    tee-app-image: ${TEE_APP_IMAGE:0.1.0b0}
+    tee-dm-image: ${TEE_DM_IMAGE:0.1.0b0}
+    capsule-manager-sim-image: ${CAPSULE_MANAGER_SIM_IMAGE:0.1.2b0}
+
   component:
     hide:
       - secretflow/io/read_data:0.0.1
@@ -153,7 +164,7 @@ secretpad:
       - secretflow/io/identity:0.0.1
       - secretflow/model/model_export:0.0.1
       - secretflow/ml.train/slnn_train:0.0.1
-      - secretflow/ml.predict/slnn_predict:0.0.1
+      - secretflow/ml.predict/slnn_predict:0.0.2
 
 sfclusterDesc:
   deviceConfig:

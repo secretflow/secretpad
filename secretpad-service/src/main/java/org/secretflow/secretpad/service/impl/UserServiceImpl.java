@@ -171,9 +171,6 @@ public class UserServiceImpl implements UserService {
     @Override
     public AccountsDO findLockedUser() {
         Optional<AccountsDO> userOptional = userAccountsRepository.findLockedUser();
-        if (userOptional.isEmpty()) {
-            return null;
-        }
-        return userOptional.get();
+        return userOptional.orElse(null);
     }
 }

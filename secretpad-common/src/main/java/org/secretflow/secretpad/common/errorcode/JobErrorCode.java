@@ -39,6 +39,15 @@ public enum JobErrorCode implements ErrorCode {
      * Failed to delete the project job
      */
     PROJECT_JOB_DELETE_ERROR(202011904),
+    /**
+     * Failed to get the project job cloud log
+     */
+    PROJECT_JOB_CLOUD_LOG_ERROR(202011905),
+
+    /**
+     * permission denied to get the project job cloud log
+     */
+    PROJECT_JOB_NODE_PERMISSION_ERROR(202011906),
     ;
 
     private final int code;

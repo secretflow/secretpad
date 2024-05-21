@@ -36,11 +36,10 @@ import static org.secretflow.secretpad.manager.integration.model.Constants.KUSCI
 /**
  * Initializer node route for center mode
  *
- *
  * @author chixian
  * @date 2024/03/29
  */
-@Profile(value = {SystemConstants.DEFAULT, SystemConstants.TEST,SystemConstants.DEV})
+@Profile(value = {SystemConstants.DEFAULT, SystemConstants.TEST, SystemConstants.DEV})
 @RequiredArgsConstructor
 @Slf4j
 @Service
@@ -54,16 +53,16 @@ public class MasterRouteInit implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        List<NodeRouteDO> nodeRouteList =nodeRouteRepository.findAllById(List.of("1","2","3"));
-        if (CollectionUtils.isEmpty(nodeRouteList)){
+        List<NodeRouteDO> nodeRouteList = nodeRouteRepository.findAllById(List.of("1", "2", "3"));
+        if (CollectionUtils.isEmpty(nodeRouteList)) {
             log.warn("node router list is empty");
             return;
         }
         String kusciaProtocol = KUSCIA_PROTOCOL.equals(protocol) ? "http://" : "https://";
         log.info("kuscia protocol: {}", kusciaProtocol);
         for (NodeRouteDO nodeRouteDO : nodeRouteList) {
-            if (nodeRouteDO.getSrcNetAddress().contains(HTTP_PREFIX) || nodeRouteDO.getDstNetAddress().contains(HTTP_PREFIX)){
-                log.info("router id {} the protocol has been added, srcNetAddress :{}, dstNetAddress :{}",nodeRouteDO.getRouteId(),nodeRouteDO.getSrcNetAddress(),nodeRouteDO.getDstNetAddress());
+            if (nodeRouteDO.getSrcNetAddress().contains(HTTP_PREFIX) || nodeRouteDO.getDstNetAddress().contains(HTTP_PREFIX)) {
+                log.info("router id {} the protocol has been added, srcNetAddress :{}, dstNetAddress :{}", nodeRouteDO.getRouteId(), nodeRouteDO.getSrcNetAddress(), nodeRouteDO.getDstNetAddress());
                 continue;
             }
             nodeRouteDO.setDstNetAddress(kusciaProtocol + nodeRouteDO.getDstNetAddress());

@@ -16,6 +16,9 @@
 
 package org.secretflow.secretpad.service.util;
 
+import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
+import org.secretflow.secretpad.common.exception.SecretpadException;
+
 /**
  * Job utils
  *
@@ -54,5 +57,20 @@ public class JobUtils {
      */
     public static String genExtendTaskId(String jobId, String extend) {
         return String.format("%s--%s", jobId, extend);
+    }
+
+    /**
+     * Parses the memory size string and returns the numeric part after removing the 'Gi' unit.
+     *
+     * @param memorySize A string representing the memory size with 'Gi' unit, e.g., "4Gi".
+     * @return The numeric part of the memory size as an integer.
+     * @throws NumberFormatException if the string cannot be parsed as an integer.
+     */
+    public static double parseMemorySize(String memorySize, String nodeId) {
+        try {
+            return Double.parseDouble(memorySize.replace("Gi", "").trim());
+        } catch (NumberFormatException e) {
+            throw SecretpadException.of(SystemErrorCode.VALIDATION_ERROR, e, "Invalid memory value for nodeId: " + nodeId);
+        }
     }
 }

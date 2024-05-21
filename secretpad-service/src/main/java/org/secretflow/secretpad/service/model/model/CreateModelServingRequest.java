@@ -16,11 +16,12 @@
 
 package org.secretflow.secretpad.service.model.model;
 
+import org.secretflow.secretpad.service.model.serving.ResourceVO;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import java.util.List;
 
@@ -30,6 +31,9 @@ import java.util.List;
  */
 @Getter
 @Setter
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
 public class CreateModelServingRequest {
 
     @NotBlank
@@ -52,7 +56,10 @@ public class CreateModelServingRequest {
 
         @NotNull
         private Boolean isMock;
+
         List<Feature> features;
+
+        private @Valid List<ResourceVO> resources;
 
         @Getter
         @Setter

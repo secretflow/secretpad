@@ -15,10 +15,10 @@
 # limitations under the License.
 #
 
-export KUSCIA_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.7.0b0"
-export SECRETPAD_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.6.0b0"
-export SECRETFLOW_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.5.0b0"
-export SECRETFLOW_SERVING_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.2.1b0"
+export KUSCIA_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.8.0b0"
+export SECRETPAD_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.7.0b0"
+export SECRETFLOW_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.6.0b0"
+export SECRETFLOW_SERVING_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.3.0b0"
 export TEE_APP_IMAGE="secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"
 export TEE_DM_IMAGE="secretflow/sf-tee-dm-sim:0.1.0b0"
 export CAPSULE_MANAGER_SIM_IMAGE="secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"
@@ -28,9 +28,9 @@ export DEPLOY_MODE="ALL-IN-ONE"
 export KUSCIA_PROTOCOL="tls"
 
 set -e
+start_time=$(date +%s)
 I_PATH="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 RED='\033[0;31m'
-BLUE='\033[0;34m'
 
 usage() {
 	echo "$(basename "$0") DEPLOY_MODE [OPTIONS]
@@ -40,22 +40,22 @@ NETWORK_MODE:
     autonomy          deploy autonomy  node
 
 lite OPTIONS:
-    -m              [mandatory] The master endpoint.
-    -n              [mandatory] Domain id to be deployed.
+    -m              [optional]  (Only used in lite mode)The master endpoint.
+    -n              [optional]  Domain id to be deployed.
     -s              [optional]  The port exposed by secretpad-web, default 8080
-    -p              [optional]  The port exposed by kuscia-gateway, default 10800
+    -p              [optional]  The port exposed by kuscia-gateway, default 18080
     -k              [optional]  The port exposed by kuscia-api-http, default 40802
     -g              [optional]  The port exposed by kuscia-api-grpc, default 40803
-    -t              [optional]  The deploy token, get this token from secretpad platform.
+    -t              [optional]  (Only used in lite mode)The deploy token, get this token from secretpad platform.
     -d              [optional]  The install directory. Default is ${INSTALL_DIR}.
     -P              [optional]  kuscia protocol. Default is ${KUSCIA_PROTOCOL}.
-    -q              (Only used in autonomy or lite mode)The port exposed for internal use by domain. You can set Env 'DOMAIN_HOST_INTERNAL_PORT' instead default 13081.
+    -q              [optional]  (Only used in autonomy or lite mode)The port exposed for internal use by domain. You can set Env 'DOMAIN_HOST_INTERNAL_PORT' instead default 13081.
     -h              [optional]  Show this help text.
 
 example:
     install.sh master
-    install.sh lite -n alice -m 'https://root-kuscia-master:1080' -t xdeploy-tokenx -p 10080  -k 40802 -g 40803 -s 8080 -q 13081 -P notls
-    install.sh autonomy -n alice -s 8080 -g 40803 -k 40802 -p 10080 -q 13081 -P mtls
+    install.sh lite -n alice -m 'https://root-kuscia-master:1080' -t xdeploy-tokenx -p 18080  -k 40802 -g 40803 -s 8080 -q 13081 -P notls
+    install.sh autonomy -n alice -s 8080 -g 40803 -k 40802 -p 18080 -q 13081 -P mtls
     "
 }
 case "${1}" in
@@ -189,28 +189,28 @@ function check_tee_image() {
 }
 
 function show_all_images() {
-	echo -e "${BLUE}[INFO]${NC} SECRETPAD_IMAGE           ${SECRETPAD_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} KUSCIA_IMAGE              ${KUSCIA_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} SECRETFLOW_IMAGE          ${SECRETFLOW_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} SECRETFLOW_SERVING_IMAGE  ${SECRETFLOW_SERVING_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} TEE_APP_IMAGE             ${TEE_APP_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} TEE_DM_IMAGE              ${TEE_DM_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} CAPSULE_MANAGER_SIM_IMAGE ${CAPSULE_MANAGER_SIM_IMAGE}"
+	echo "SECRETPAD_IMAGE           ${SECRETPAD_IMAGE}"
+	echo "KUSCIA_IMAGE              ${KUSCIA_IMAGE}"
+	echo "SECRETFLOW_IMAGE          ${SECRETFLOW_IMAGE}"
+	echo "SECRETFLOW_SERVING_IMAGE  ${SECRETFLOW_SERVING_IMAGE}"
+	echo "TEE_APP_IMAGE             ${TEE_APP_IMAGE}"
+	echo "TEE_DM_IMAGE              ${TEE_DM_IMAGE}"
+	echo "CAPSULE_MANAGER_SIM_IMAGE ${CAPSULE_MANAGER_SIM_IMAGE}"
 }
 
 function show_mpc_images() {
-	echo -e "${BLUE}[INFO]${NC} SECRETPAD_IMAGE           ${SECRETPAD_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} KUSCIA_IMAGE              ${KUSCIA_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} SECRETFLOW_IMAGE          ${SECRETFLOW_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} SECRETFLOW_SERVING_IMAGE  ${SECRETFLOW_SERVING_IMAGE}"
+	echo "SECRETPAD_IMAGE           ${SECRETPAD_IMAGE}"
+	echo "KUSCIA_IMAGE              ${KUSCIA_IMAGE}"
+	echo "SECRETFLOW_IMAGE          ${SECRETFLOW_IMAGE}"
+	echo "SECRETFLOW_SERVING_IMAGE  ${SECRETFLOW_SERVING_IMAGE}"
 }
 
 function show_tee_images() {
-	echo -e "${BLUE}[INFO]${NC} SECRETPAD_IMAGE           ${SECRETPAD_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} KUSCIA_IMAGE              ${KUSCIA_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} TEE_APP_IMAGE             ${TEE_APP_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} TEE_DM_IMAGE              ${TEE_DM_IMAGE}"
-	echo -e "${BLUE}[INFO]${NC} CAPSULE_MANAGER_SIM_IMAGE ${CAPSULE_MANAGER_SIM_IMAGE}"
+	echo "SECRETPAD_IMAGE           ${SECRETPAD_IMAGE}"
+	echo "KUSCIA_IMAGE              ${KUSCIA_IMAGE}"
+	echo "TEE_APP_IMAGE             ${TEE_APP_IMAGE}"
+	echo "TEE_DM_IMAGE              ${TEE_DM_IMAGE}"
+	echo "CAPSULE_MANAGER_SIM_IMAGE ${CAPSULE_MANAGER_SIM_IMAGE}"
 }
 
 function empty_image_env() {
@@ -275,17 +275,32 @@ function update_tee_image_name() {
 
 function load_docker_images() {
 	if [ -d "$I_PATH/images" ]; then
-		echo -e "${BLUE}[INFO] load docker image by local images $I_PATH/images ${NC}"
+		echo "load docker image by local images $I_PATH/images"
 		init_images_from_files
 	else
-		echo -e "${BLUE}[INFO] load docker image by environment variable ${NC}"
-		docker pull "${SECRETPAD_IMAGE}"
-		docker pull "${KUSCIA_IMAGE}"
-		docker pull "${SECRETFLOW_IMAGE}"
-		docker pull "${SECRETFLOW_SERVING_IMAGE}"
-		docker pull "${TEE_APP_IMAGE}"
-		docker pull "${TEE_DM_IMAGE}"
-		docker pull "${CAPSULE_MANAGER_SIM_IMAGE}"
+		echo "load docker image by environment variable"
+		if [ "${DEPLOY_MODE}" = 'ALL-IN-ONE' ]; then
+			docker pull "${SECRETPAD_IMAGE}"
+			docker pull "${KUSCIA_IMAGE}"
+			docker pull "${SECRETFLOW_IMAGE}"
+			docker pull "${SECRETFLOW_SERVING_IMAGE}"
+			docker pull "${TEE_APP_IMAGE}"
+			docker pull "${TEE_DM_IMAGE}"
+			docker pull "${CAPSULE_MANAGER_SIM_IMAGE}"
+		fi
+		if [ "${DEPLOY_MODE}" = 'MPC' ]; then
+			docker pull "${SECRETPAD_IMAGE}"
+			docker pull "${KUSCIA_IMAGE}"
+			docker pull "${SECRETFLOW_IMAGE}"
+			docker pull "${SECRETFLOW_SERVING_IMAGE}"
+		fi
+		if [ "${DEPLOY_MODE}" = 'TEE' ]; then
+			docker pull "${SECRETPAD_IMAGE}"
+			docker pull "${KUSCIA_IMAGE}"
+			docker pull "${TEE_APP_IMAGE}"
+			docker pull "${TEE_DM_IMAGE}"
+			docker pull "${CAPSULE_MANAGER_SIM_IMAGE}"
+		fi
 	fi
 }
 
@@ -294,7 +309,7 @@ function init_deploy_shell() {
 	TEMP_CONTAINER=$(docker create "$SECRETPAD_IMAGE")
 	docker cp "$TEMP_CONTAINER:/app/scripts/deploy" "$I_PATH/deploy"
 	docker rm "$TEMP_CONTAINER"
-	docker run --rm  "$KUSCIA_IMAGE" cat /home/kuscia/scripts/deploy/deploy.sh >"$I_PATH"/deploy.sh && chmod u+x "$I_PATH"/deploy.sh
+	docker run --rm "$KUSCIA_IMAGE" cat /home/kuscia/scripts/deploy/kuscia.sh >kuscia.sh && chmod u+x "$I_PATH"/kuscia.sh
 }
 
 function check_image_ok() {
@@ -334,19 +349,26 @@ function deploy_secretpad() {
 	bash "$I_PATH"/deploy/secretpad.sh
 }
 
-function del_autonomy_table() {
-  docker exec -it "${USER}"-kuscia-autonomy-"${NODE_ID}" kubectl delete domaindata alice-dp-table -n "${NODE_ID}"
-  docker exec -it "${USER}"-kuscia-autonomy-"${NODE_ID}" kubectl delete domaindata bob-dp-table -n "${NODE_ID}"
-
-  docker exec -it "${USER}"-kuscia-autonomy-"${NODE_ID}" kubectl delete domaindata alice-table -n "${NODE_ID}"
-  docker exec -it "${USER}"-kuscia-autonomy-"${NODE_ID}" kubectl delete domaindata bob-table -n "${NODE_ID}"
+function build_kuscia_master_endpoint() {
+	if is_alice_lite || is_bob_lite || is_tee_lite; then
+		# shellcheck disable=SC2155
+		local host_ip=$(getIPV4Address)
+		host_ip=${USER}-kuscia-master:1080
+		if noTls; then
+			export KUSCIA_MASTER_ENDPOINT="http://${host_ip}:${KUSCIA_GATEWAY_PORT}"
+			export KUSCIA_MASTER_ENDPOINT="http://${host_ip}"
+		else
+			export KUSCIA_MASTER_ENDPOINT="https://${host_ip}:${KUSCIA_GATEWAY_PORT}"
+			export KUSCIA_MASTER_ENDPOINT="https://${host_ip}"
+		fi
+	fi
 }
 
 function deploy_kuscia() {
+	build_kuscia_master_endpoint
 	init_kuscia_config
-	log "bash $I_PATH/deploy.sh ${MODE} -n ${NODE_ID} -p ${KUSCIA_GATEWAY_PORT} -k ${KUSCIA_API_HTTP_PORT} -g ${KUSCIA_API_GRPC_PORT} -d ${KUSCIA_INSTALL_DIR} -m ${KUSCIA_MASTER_ENDPOINT} -t ${KUSCIA_TOKEN} -c ${KUSCIA_CTR}/kuscia.yaml -l ${KUSCIA_LOG_PATH} -q ${DOMAIN_HOST_INTERNAL_PORT}"
-	bash "$I_PATH"/deploy.sh "${MODE}" -n "${NODE_ID}" -p "${KUSCIA_GATEWAY_PORT}" -k "${KUSCIA_API_HTTP_PORT}" -g "${KUSCIA_API_GRPC_PORT}" -d "${KUSCIA_INSTALL_DIR}" -m "${KUSCIA_MASTER_ENDPOINT}" -t "${KUSCIA_TOKEN}" -c "${KUSCIA_CTR}/kuscia.yaml" -l "${KUSCIA_LOG_PATH}" -q "${DOMAIN_HOST_INTERNAL_PORT}"
-	probe_kuscia "${KUSCIA_CTR}"
+	log "bash $I_PATH/kuscia.sh start  -p ${KUSCIA_GATEWAY_PORT} -k ${KUSCIA_API_HTTP_PORT} -g ${KUSCIA_API_GRPC_PORT} -d ${KUSCIA_INSTALL_DIR} -t ${KUSCIA_TOKEN} -c ${KUSCIA_CTR}/kuscia.yaml -l ${KUSCIA_LOG_PATH} -q ${DOMAIN_HOST_INTERNAL_PORT}"
+	bash "$I_PATH"/kuscia.sh start -p "${KUSCIA_GATEWAY_PORT}" -k "${KUSCIA_API_HTTP_PORT}" -g "${KUSCIA_API_GRPC_PORT}" -d "${KUSCIA_INSTALL_DIR}" -t "${KUSCIA_TOKEN}" -c "${KUSCIA_CTR}"/kuscia.yaml -l "${KUSCIA_LOG_PATH}" -q "${DOMAIN_HOST_INTERNAL_PORT}" probe_kuscia "${KUSCIA_CTR}"
 	if is_lite; then
 		if need_tee; then
 			saveAndLoad2Container "$TEE_DM_IMAGE" "$KUSCIA_CTR"
@@ -356,15 +378,16 @@ function deploy_kuscia() {
 		fi
 	fi
 	if is_p2p; then
-	  del_autonomy_table
 		if need_mpc; then
-		  applySfServingAppImage
+			applySfServingAppImage
 			saveAndLoad2Container "$SECRETFLOW_SERVING_IMAGE" "$KUSCIA_CTR"
 		fi
 	fi
 	if is_master; then
 		applySfServingAppImage
 	fi
+	log "docker exec -it ${KUSCIA_CTR} sh scripts/deploy/init_kusciaapi_client_certs.sh"
+	docker exec -it "${KUSCIA_CTR}" sh scripts/deploy/init_kusciaapi_client_certs.sh
 }
 
 function add_kuscia_domain_lite() {
@@ -375,32 +398,24 @@ function add_kuscia_domain_lite() {
 function add_alice_bob_data() {
 	docker exec -it "${USER}"-kuscia-master scripts/deploy/create_domaindata_alice_table.sh alice
 	docker exec -it "${USER}"-kuscia-master scripts/deploy/create_domaindata_bob_table.sh bob
-	docker run --rm  "$KUSCIA_IMAGE" cat /home/kuscia/var/storage/data/alice.csv >"$INSTALL_DIR"/"$PAD_MASTER"/"$PAD_DATA"/alice/alice.csv
-	docker run --rm  "$KUSCIA_IMAGE" cat /home/kuscia/var/storage/data/bob.csv >"${KUSCIA_INSTALL_DIR}"/bob.csv
+	docker run --rm "$KUSCIA_IMAGE" cat /home/kuscia/var/storage/data/alice.csv >"$INSTALL_DIR"/"$PAD_MASTER"/"$PAD_DATA"/alice/alice.csv
+	docker run --rm "$KUSCIA_IMAGE" cat /home/kuscia/var/storage/data/bob.csv >"${KUSCIA_INSTALL_DIR}"/bob.csv
 	docker exec -it "${USER}"-kuscia-lite-alice curl https://127.0.0.1:8070/api/v1/datamesh/domaindatagrant/create -X POST -H 'content-type: application/json' -d '{"author":"alice","domaindata_id":"alice-table","grant_domain":"bob"}' --cacert var/certs/ca.crt --cert var/certs/ca.crt --key var/certs/ca.key
 	docker exec -it "${USER}"-kuscia-lite-bob curl https://127.0.0.1:8070/api/v1/datamesh/domaindatagrant/create -X POST -H 'content-type: application/json' -d '{"author":"bob","domaindata_id":"bob-table","grant_domain":"alice"}' --cacert var/certs/ca.crt --cert var/certs/ca.crt --key var/certs/ca.key
 }
 
 function del_alice_bob_dp_table() {
-  docker exec -it "${USER}"-kuscia-master kubectl delete domaindata alice-dp-table -n alice
-  docker exec -it "${USER}"-kuscia-master kubectl delete domaindata bob-dp-table -n bob
+	docker exec -it "${USER}"-kuscia-master kubectl delete domaindata alice-dp-table -n alice
+	docker exec -it "${USER}"-kuscia-master kubectl delete domaindata bob-dp-table -n bob
 }
 
 function deploy_kuscia_lite_alice_bob_tee() {
 	if is_master; then
-		# shellcheck disable=SC2155
-		local host_ip=$(getIPV4Address)
-		if noTls; then
-			export KUSCIA_MASTER_ENDPOINT="http://${host_ip}:18080"
-		else
-			export KUSCIA_MASTER_ENDPOINT="https://${host_ip}:18080"
-		fi
-
 		if need_lite_alice_bob; then
 			log 'init kuscia lite alice'
 			export MODE='lite'
 			export NODE_ID='alice'
-			export DOMAIN_HOST_INTERNAL_PORT="13081"
+			export DOMAIN_HOST_INTERNAL_PORT="23081"
 			add_kuscia_domain_lite
 			prepare_environment
 			deploy_kuscia
@@ -408,7 +423,7 @@ function deploy_kuscia_lite_alice_bob_tee() {
 			log 'init kuscia lite bob'
 			export MODE='lite'
 			export NODE_ID='bob'
-			export DOMAIN_HOST_INTERNAL_PORT="23081"
+			export DOMAIN_HOST_INTERNAL_PORT="33081"
 			add_kuscia_domain_lite
 			prepare_environment
 			deploy_kuscia
@@ -421,7 +436,7 @@ function deploy_kuscia_lite_alice_bob_tee() {
 			log 'init kuscia lite tee'
 			export MODE='lite'
 			export NODE_ID='tee'
-			export DOMAIN_HOST_INTERNAL_PORT="33081"
+			export DOMAIN_HOST_INTERNAL_PORT="43081"
 			add_kuscia_domain_lite
 			prepare_environment
 			deploy_kuscia
@@ -440,3 +455,7 @@ deploy_kuscia
 deploy_kuscia_lite_alice_bob_tee
 deploy_secretpad
 clear_env
+end_time=$(date +%s)
+# shellcheck disable=SC2004
+execution_time=$(($end_time - $start_time))
+log "All components started successfully, time spend: $execution_time second"

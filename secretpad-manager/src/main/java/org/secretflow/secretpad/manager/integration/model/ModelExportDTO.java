@@ -20,6 +20,7 @@ import org.secretflow.secretpad.common.enums.ModelStatsEnum;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.ProjectModelPackDO;
 import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
+import org.secretflow.secretpad.persistence.model.PartyDataSource;
 
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -64,6 +65,8 @@ public class ModelExportDTO implements Serializable {
     private String graphDetail;
     private String modelReportId;
 
+    private List<PartyDataSource> partyDataSources;
+
     @Builder.Default
     @Enumerated(value = EnumType.STRING)
     private GraphNodeTaskStatus status = GraphNodeTaskStatus.INITIALIZED;
@@ -86,6 +89,7 @@ public class ModelExportDTO implements Serializable {
                 .modelList(modelExportDTO.getModelList())
                 .graphDetail(modelExportDTO.getGraphDetail())
                 .modelReportId(modelExportDTO.getModelReportId())
+                .partyDataSources(modelExportDTO.getPartyDataSources())
                 .build();
     }
 }

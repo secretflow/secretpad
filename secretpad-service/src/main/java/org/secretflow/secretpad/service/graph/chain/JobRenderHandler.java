@@ -41,7 +41,6 @@ import com.secretflow.spec.v1.DistData;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.secretflow.proto.pipeline.Pipeline;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
@@ -58,13 +57,13 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
-    @Autowired
+    @Resource
     private ComponentService componentService;
-    @Autowired
+    @Resource
     private ProjectDatatableRepository datatableRepository;
-    @Autowired
+    @Resource
     private AbstractDatatableManager datatableManager;
-    @Autowired
+    @Resource
     private ProjectJobTaskRepository taskRepository;
 
     @Resource
@@ -196,11 +195,7 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
                 if (!CollectionUtils.isEmpty(inputs)) {
                     List<String> newInputs = new ArrayList<>();
                     for (String input : inputs) {
-                        if (outputMap.containsKey(input)) {
-                            newInputs.add(outputMap.get(input));
-                        } else {
-                            newInputs.add(input);
-                        }
+                        newInputs.add(outputMap.getOrDefault(input, input));
                     }
                     graphNode.setInputs(newInputs);
                 }

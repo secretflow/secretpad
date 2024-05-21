@@ -1,5 +1,9 @@
-FROM secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad-base-lite:0.2
+ARG BASE_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad-base-lite:0.3
+FROM ${BASE_IMAGE}
 
+ARG TARGETPLATFORM
+
+ENV TZ=Asia/Shanghai
 ENV LANG=C.UTF-8
 WORKDIR /app
 
@@ -8,7 +12,7 @@ RUN mkdir -p /var/log/secretpad && mkdir -p /app/db && mkdir -p /app/config/cert
 COPY config /app/config
 COPY scripts /app/scripts
 COPY demo/data /app/data
-COPY target/*.jar secretpad.jar
+COPY target/secretpad.jar secretpad.jar
 ENV JAVA_OPTS="-server -Xmx3100m -Xms3100m -XX:+UseZGC" SPRING_PROFILES_ACTIVE="default"
 EXPOSE 80
 EXPOSE 8080

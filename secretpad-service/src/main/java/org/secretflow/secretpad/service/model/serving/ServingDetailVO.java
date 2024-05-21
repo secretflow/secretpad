@@ -55,5 +55,8 @@ public class ServingDetailVO {
         private Map<String, String> featureMappings;
 
         private String sourcePath;
+
+        private List<ResourceVO> resources;
     }
+
 }

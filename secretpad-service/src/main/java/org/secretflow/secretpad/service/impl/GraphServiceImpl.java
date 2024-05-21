@@ -67,6 +67,8 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import static org.secretflow.secretpad.common.constant.ComponentConstants.BINNING_MODIFICATIONS_CODENAME;
+import static org.secretflow.secretpad.common.constant.ComponentConstants.MODEL_PARAM_MODIFICATIONS_CODENAME;
 import static org.secretflow.secretpad.service.constant.ComponentConstants.READ_DATA_DATATABLE;
 import static org.secretflow.secretpad.service.constant.Constants.TEE_PROJECT_MODE;
 import static org.secretflow.secretpad.service.util.JobUtils.genTaskOutputId;
@@ -173,14 +175,14 @@ public class GraphServiceImpl implements GraphService {
         String name = request.getName();
         String graphId = UUIDUtils.random(8);
         String ownerId = UserContext.getUser().getOwnerId();
-        ProjectGraphDO graphDO = ProjectGraphDO.builder().upk(new ProjectGraphDO.UPK(projectId, graphId)).name(name).ownerId(ownerId).build();
+        ProjectGraphDO graphDO = ProjectGraphDO.builder().upk(new ProjectGraphDO.UPK(projectId, graphId)).name(name).ownerId(ownerId).maxParallelism(1).build();
         List<GraphNode> nodes = request.getNodes();
         if (!CollectionUtils.isEmpty(nodes)) {
             graphDO.setNodes(nodes.stream().map(node -> GraphNode.toDO(projectId, graphId, node)).collect(Collectors.toList()));
         }
         List<GraphEdge> edges = request.getEdges();
         if (!CollectionUtils.isEmpty(edges)) {
-            graphDO.setEdges(edges.stream().map(edge -> GraphEdge.toDO(edge)).collect(Collectors.toList()));
+            graphDO.setEdges(edges.stream().map(GraphEdge::toDO).collect(Collectors.toList()));
         }
         graphDO.setNodeMaxIndex(DEFAULT_INITIAL_INDEX);
         graphRepository.save(graphDO);
@@ -189,6 +191,8 @@ public class GraphServiceImpl implements GraphService {
 
     @Override
     public void deleteGraph(DeleteGraphRequest request) {
+        // check project graph owner
+        ownerCheck(request.getProjectId(), request.getGraphId());
         graphRepository.deleteById(new ProjectGraphDO.UPK(request.getProjectId(), request.getGraphId()));
     }
 
@@ -196,7 +200,7 @@ public class GraphServiceImpl implements GraphService {
     public List<GraphMetaVO> listGraph(ListGraphRequest request) {
         List<ProjectGraphDO> graphDOList = graphRepository.findByProjectId(request.getProjectId());
         if (!CollectionUtils.isEmpty(graphDOList)) {
-            return graphDOList.stream().map(graphDO -> GraphMetaVO.fromDO(graphDO)).collect(Collectors.toList());
+            return graphDOList.stream().map(GraphMetaVO::fromDO).collect(Collectors.toList());
         }
         return new ArrayList<>();
     }
@@ -206,6 +210,9 @@ public class GraphServiceImpl implements GraphService {
         Optional<ProjectGraphDO> graphDOOptional = graphRepository.findById(new ProjectGraphDO.UPK(request.getProjectId(), request.getGraphId()));
         if (graphDOOptional.isEmpty()) {
             throw SecretpadException.of(GraphErrorCode.GRAPH_NOT_EXISTS);
+        }
+        if (PlatformTypeEnum.AUTONOMY.equals(UserContext.getUser().getPlatformType()) && !UserContext.getUser().getOwnerId().equalsIgnoreCase(graphDOOptional.get().getOwnerId())) {
+            throw SecretpadException.of(GraphErrorCode.GRAPH_NOT_OWNER_CANNOT_UPDATE);
         }
         ProjectGraphDO graphDO = graphDOOptional.get();
         graphDO.setName(request.getName());
@@ -217,14 +224,18 @@ public class GraphServiceImpl implements GraphService {
     public void fullUpdateGraph(FullUpdateGraphRequest request) {
         String projectId = request.getProjectId();
         String graphId = request.getGraphId();
-        Optional<ProjectGraphDO> graphDOOptional = graphRepository.findById(new ProjectGraphDO.UPK(projectId, graphId));
-        if (graphDOOptional.isEmpty()) {
-            throw SecretpadException.of(GraphErrorCode.GRAPH_NOT_EXISTS);
+        // check project graph owner
+        ProjectGraphDO graphDO = ownerCheck(projectId, graphId);
+        if (!CollectionUtils.isEmpty(request.getNodes())) {
+            graphDO.getNodes().clear();
+            graphDO.setNodes(GraphNodeInfo.toDOList(projectId, graphId, request.getNodes()));
         }
-        ProjectGraphDO graphDO = graphDOOptional.get();
-        graphDO.getNodes().clear();
-        graphDO.setNodes(GraphNodeInfo.toDOList(projectId, graphId, request.getNodes()));
-        graphDO.setEdges(GraphEdge.toDOList(request.getEdges()));
+        if (!CollectionUtils.isEmpty(request.getEdges())) {
+            graphDO.setEdges(GraphEdge.toDOList(request.getEdges()));
+        }
+        if (Objects.nonNull(request.getMaxParallelism())) {
+            graphDO.setMaxParallelism(request.getMaxParallelism());
+        }
         graphRepository.save(graphDO);
     }
 
@@ -232,6 +243,8 @@ public class GraphServiceImpl implements GraphService {
     public void updateGraphNode(UpdateGraphNodeRequest request) {
         String projectId = request.getProjectId();
         String graphId = request.getGraphId();
+        // check project graph owner
+        ownerCheck(projectId, graphId);
         String graphNodeId = request.getNode().getGraphNodeId();
         Optional<ProjectGraphNodeDO> graphNodeDOOptional = graphNodeRepository.findById(new ProjectGraphNodeDO.UPK(projectId, graphId, graphNodeId));
         if (graphNodeDOOptional.isEmpty()) {
@@ -347,8 +360,8 @@ public class GraphServiceImpl implements GraphService {
             if (CollectionUtils.isEmpty(outputs) || outputs.contains(outputId)) {
                 String latestOutputId = genTaskOutputId(jobId, outputId);
                 List<ProjectResultDO> resultDOS = resultRepository.findByOutputId(projectId, taskId, latestOutputId);
-                //task file compensation binning modifications
-                compensationBinningModifications(taskDO, outputId, outputVO);
+                //task file compensation binning modifications and model param modifications
+                compensationSecertPadComponent(taskDO, outputId, outputVO);
                 if (!CollectionUtils.isEmpty(resultDOS)) {
                     for (ProjectResultDO resultDO : resultDOS) {
                         ResultKind resultKind = resultDO.getUpk().getKind();
@@ -426,20 +439,19 @@ public class GraphServiceImpl implements GraphService {
         return outputVO;
     }
 
-    private void compensationBinningModifications(ProjectTaskDO taskDO, String outputId, GraphNodeOutputVO outputVO) {
+    private void compensationSecertPadComponent(ProjectTaskDO taskDO, String outputId, GraphNodeOutputVO outputVO) {
         String projectId = taskDO.getUpk().getProjectId();
         ProjectGraphNodeDO graphNode = taskDO.getGraphNode();
         String type = outputId.substring(outputId.length() - 1);
-        log.info("Label:{} -------> outputId:{}  --------> type：{}", graphNode.getLabel(), outputId, type);
-        if ("分箱修改".equals(graphNode.getLabel()) && "1".equals(type)) {
-
+        log.debug("CodeName:{} -------> outputId:{}  --------> type：{} --------> Label:{}", graphNode.getCodeName(), outputId, type, graphNode.getLabel());
+        if ((BINNING_MODIFICATIONS_CODENAME.equals(graphNode.getCodeName()) && "1".equals(type)) || (MODEL_PARAM_MODIFICATIONS_CODENAME.equals(graphNode.getCodeName()) && "1".equals(type))) {
             String inputId = taskDO.getGraphNode().getInputs().get(0);
             String graphNodeId = inputId;
             int i = graphNodeId.lastIndexOf('-');
             graphNodeId = graphNodeId.substring(0, i);
             i = graphNodeId.lastIndexOf('-');
             graphNodeId = graphNodeId.substring(0, i);
-            log.info("-- inputId {} graphNodeId {}", inputId, graphNodeId);
+            log.debug("-- inputId {} graphNodeId {}", inputId, graphNodeId);
             Optional<ProjectTaskDO> projectTaskDOOptional = taskRepository.findLatestTasks(projectId, graphNodeId);
             if (projectTaskDOOptional.isEmpty()) {
                 throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
@@ -451,7 +463,7 @@ public class GraphServiceImpl implements GraphService {
             if (!ObjectUtils.isEmpty(projectReadDataDO)) {
                 String contentResult = projectReadDataDO.getRaw();
                 outputVO.setTabs(contentResult);
-                log.info("tabs result is {}", contentResult);
+                log.debug("tabs result is {}", contentResult);
                 outputVO.setType(GraphNodeOutputVO.typeFromResultKind(ResultKind.READ_DATA));
                 outputVO.setCodeName(taskDO.getGraphNode().getCodeName());
             }
@@ -557,11 +569,8 @@ public class GraphServiceImpl implements GraphService {
     @Transactional
     @Override
     public StartGraphVO startGraph(StartGraphRequest request) {
-        Optional<ProjectGraphDO> graphDOOptional = graphRepository.findById(new ProjectGraphDO.UPK(request.getProjectId(), request.getGraphId()));
-        if (graphDOOptional.isEmpty()) {
-            throw SecretpadException.of(GraphErrorCode.GRAPH_NOT_EXISTS);
-        }
-        ProjectGraphDO graphDO = graphDOOptional.get();
+        // check project graph owner
+        ProjectGraphDO graphDO = ownerCheck(request.getProjectId(), request.getGraphId());
         List<ProjectGraphNodeDO> nodeDOList = graphDO.getNodes();
         if (CollectionUtils.isEmpty(nodeDOList)) {
             throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_NOT_EXISTS);
@@ -578,7 +587,7 @@ public class GraphServiceImpl implements GraphService {
         List<GraphContext.GraphParty> partyList = new ArrayList<>();
         Map<String, Set<String>> topNodes = findTopNodes(graphDO.getEdges(), selectedNodes);
         Map<String, Set<String>> parties = findParties(graphDO.getNodes(), topNodes, request.getProjectId(), partyList);
-        GraphContext.set(projectOpt.get(), GraphContext.GraphParties.builder().parties(partyList).build());
+        GraphContext.set(projectOpt.get(), GraphContext.GraphParties.builder().parties(partyList).build(), request.getBreakpoint());
         if (GraphContext.isTee()) {
             parties = new HashMap<>();
             String teeNodeId = GraphContext.getTeeNodeId();
@@ -593,6 +602,26 @@ public class GraphServiceImpl implements GraphService {
         jobChain.proceed(projectJob);
         GraphContext.remove();
         return new StartGraphVO(projectJob.getJobId());
+    }
+
+    /**
+     * check project Graph owner
+     *
+     * @param projectId Project id
+     * @param graphId   Graph Id
+     * @return ProjectGraphDO
+     */
+    private ProjectGraphDO ownerCheck(String projectId, String graphId) {
+        Optional<ProjectGraphDO> graphOptional = graphRepository.findById(new ProjectGraphDO.UPK(projectId, graphId));
+        if (graphOptional.isEmpty()) {
+            throw SecretpadException.of(GraphErrorCode.GRAPH_NOT_EXISTS);
+        }
+        ProjectGraphDO graphDO = graphOptional.get();
+        String ownerId = UserContext.getUser().getOwnerId();
+        if (!StringUtils.equals(ownerId, graphDO.getOwnerId())) {
+            throw SecretpadException.of(GraphErrorCode.NON_OUR_CREATION_CAN_VIEWED);
+        }
+        return graphDO;
     }
 
     @Override
@@ -622,7 +651,7 @@ public class GraphServiceImpl implements GraphService {
 
         // find the latest task associated with graphNode
         if (!CollectionUtils.isEmpty(nodes)) {
-            List<String> graphNodeIds = nodes.stream().map(node -> node.getUpk().getGraphNodeId()).collect(Collectors.toList());
+            List<String> graphNodeIds = nodes.stream().map(node -> node.getUpk().getGraphNodeId()).toList();
             for (String graphNodeId : graphNodeIds) {
                 GraphNodeStatusVO nodeStatusVO = new GraphNodeStatusVO();
                 nodeStatusVO.setGraphNodeId(graphNodeId);
@@ -687,6 +716,8 @@ public class GraphServiceImpl implements GraphService {
         String projectId = request.getProjectId();
         String graphId = request.getGraphId();
         String graphNodeId = request.getGraphNodeId();
+        // check project graph owner
+        ownerCheck(projectId, graphId);
         List<StopProjectJobTaskRequest> stopRequests = new ArrayList<>();
         if (Strings.isNullOrEmpty(graphNodeId)) {
             // find all running jobs in whole graph
