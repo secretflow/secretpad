@@ -47,4 +47,9 @@ public class FullUpdateGraphRequest {
      * Graph edge list
      */
     private List<GraphEdge> edges;
+
+    /**
+     * Graph max parallelism
+     */
+    private Integer maxParallelism;
 }

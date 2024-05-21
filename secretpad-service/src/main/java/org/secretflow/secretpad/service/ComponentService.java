@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service;
 
+import org.secretflow.secretpad.service.model.component.ComponentVersion;
 import org.secretflow.secretpad.service.model.graph.CompListVO;
 import org.secretflow.secretpad.service.model.graph.ComponentKey;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
@@ -72,4 +73,11 @@ public interface ComponentService {
      * @return true is secretpad component, false is not
      */
     boolean isSecretpadComponent(GraphNodeInfo node);
+
+    /**
+     * list component version
+     *
+     * @return SecretFlowVersionConfig
+     */
+    ComponentVersion listComponentVersion(String deployMode);
 }

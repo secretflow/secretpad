@@ -58,6 +58,11 @@ public class GraphDetailVO {
     private List<GraphEdge> edges;
 
     /**
+     * Graph max parallelism
+     */
+    private Integer maxParallelism;
+
+    /**
      * Build a new graph detail view object from project graph data object and graph node status view object list
      *
      * @param graphDO    project graph data object
@@ -72,6 +77,7 @@ public class GraphDetailVO {
                 .name(graphDO.getName())
                 .nodes(GraphNodeDetail.fromDOList(graphDO.getNodes(), nodeStatus))
                 .edges(GraphEdge.fromDOList(graphDO.getEdges()))
+                .maxParallelism(graphDO.getMaxParallelism())
                 .build();
     }
 }

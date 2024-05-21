@@ -16,9 +16,16 @@
 
 package org.secretflow.secretpad.persistence.configuration;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.jdbc.datasource.init.DataSourceInitializer;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.Statement;
 
 /**
  * Configuration for persistence layer
@@ -26,8 +33,23 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
  * @author yansi
  * @date 2023/5/9
  */
+@Slf4j
 @EntityScan(basePackages = "org.secretflow.secretpad.persistence.*")
 @EnableJpaRepositories(basePackages = {"org.secretflow.secretpad.persistence.*"})
 @Configuration
 public class PersistenceConfiguration {
+
+    @Bean
+    public DataSourceInitializer dataSourceInitializer(final DataSource dataSource) {
+        log.info("making sure database is WAL mode");
+        DataSourceInitializer initializer = new DataSourceInitializer();
+        initializer.setDataSource(dataSource);
+        initializer.setDatabasePopulator((Connection connection) -> {
+            try (Statement statement = connection.createStatement()) {
+                statement.execute("PRAGMA journal_mode=WAL;");
+            }
+        });
+        return initializer;
+    }
+
 }

@@ -39,6 +39,7 @@ import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -55,6 +56,9 @@ import static org.secretflow.secretpad.manager.integration.datatable.AbstractDat
  * @author guyu
  * @date 2023/8/1
  */
+@TestPropertySource(properties = {
+        "secretpad.data.dir-path=./tmp/"
+})
 class DataControllerTest extends ControllerTest {
 
     @MockBean

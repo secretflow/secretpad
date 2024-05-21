@@ -46,7 +46,7 @@ public class CenterDataSyncProducerTemplate extends AbstractDataSyncProducerTemp
 
     @Override
     public boolean filter(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
-        log.debug("CenterDataSyncProducerTemplate push filter {}", event);
+        log.debug("CenterDataSyncProducerTemplate  filter {}", event);
         List<String> sync = dataSyncConfig.getSync();
         String dType = event.getDType();
         if (!sync.contains(dType)) {

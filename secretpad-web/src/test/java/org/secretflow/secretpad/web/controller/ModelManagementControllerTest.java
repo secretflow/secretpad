@@ -18,6 +18,7 @@ package org.secretflow.secretpad.web.controller;
 
 import org.secretflow.secretpad.common.enums.ModelStatsEnum;
 import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
+import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.persistence.entity.FeatureTableDO;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
@@ -28,6 +29,7 @@ import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectModelPackRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectModelServiceRepository;
 import org.secretflow.secretpad.service.model.model.*;
+import org.secretflow.secretpad.service.model.serving.ResourceVO;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
 import com.google.common.collect.Lists;
@@ -44,6 +46,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -215,10 +218,20 @@ public class ModelManagementControllerTest extends ControllerTest {
 
     }
 
+
     @Test
     public void createServing() throws Exception {
         assertResponseWithEmptyData(() -> {
+
             CreateModelServingRequest createModelServingRequest = FakerUtils.fake(CreateModelServingRequest.class);
+
+            ResourceVO resourceVO = new ResourceVO();
+            resourceVO.setMinCPU("2");
+            resourceVO.setMaxCPU("3");
+            resourceVO.setMinMemory("100Gi");
+            resourceVO.setMaxMemory("200Gi");
+            createModelServingRequest.getPartyConfigs().get(0).setResources(List.of(resourceVO));
+
             ProjectModelPackDO projectModelPackDO = FakerUtils.fake(ProjectModelPackDO.class);
             Mockito.when(projectModelPackRepository.findById(createModelServingRequest.getModelId())).thenReturn(Optional.of(projectModelPackDO));
             String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
@@ -237,7 +250,204 @@ public class ModelManagementControllerTest extends ControllerTest {
             return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
                     .content(JsonUtils.toJSONString(createModelServingRequest));
         });
+    }
 
+    @Test
+    public void createServingResourceCpuUnset() throws Exception {
+        assertResponseWithEmptyData(() -> {
+
+            CreateModelServingRequest createModelServingRequest = FakerUtils.fake(CreateModelServingRequest.class);
+
+            ResourceVO resourceVO = new ResourceVO();
+            resourceVO.setMinCPU("-4.3");
+            resourceVO.setMaxCPU("3.2");
+            resourceVO.setMinMemory("100.4Gi");
+            resourceVO.setMaxMemory("200.5Gi");
+            createModelServingRequest.getPartyConfigs().get(0).setResources(List.of(resourceVO));
+
+            ProjectModelPackDO projectModelPackDO = FakerUtils.fake(ProjectModelPackDO.class);
+            Mockito.when(projectModelPackRepository.findById(createModelServingRequest.getModelId())).thenReturn(Optional.of(projectModelPackDO));
+            String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
+            Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
+            Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
+            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
+
+            FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+
+            featureTableDO.setUpk(upk);
+            Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
+
+            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
+                    .content(JsonUtils.toJSONString(createModelServingRequest));
+        });
+    }
+
+    @Test
+    public void createServingResourceCpuFormatError() throws Exception {
+        assertErrorCode(() -> {
+
+            CreateModelServingRequest createModelServingRequest = FakerUtils.fake(CreateModelServingRequest.class);
+
+            ResourceVO resourceVO = new ResourceVO();
+            resourceVO.setMinCPU("1.3");
+            resourceVO.setMaxCPU("illegal");
+            resourceVO.setMinMemory("100.1Gi");
+            resourceVO.setMaxMemory("200.2Gi");
+            createModelServingRequest.getPartyConfigs().get(0).setResources(List.of(resourceVO));
+
+            ProjectModelPackDO projectModelPackDO = FakerUtils.fake(ProjectModelPackDO.class);
+            Mockito.when(projectModelPackRepository.findById(createModelServingRequest.getModelId())).thenReturn(Optional.of(projectModelPackDO));
+            String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
+            Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
+            Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
+            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
+
+            FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+
+            featureTableDO.setUpk(upk);
+            Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
+
+            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
+                    .content(JsonUtils.toJSONString(createModelServingRequest));
+        }, SystemErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
+    public void createServingResourceCpuValueError() throws Exception {
+        assertErrorCode(() -> {
+
+            CreateModelServingRequest createModelServingRequest = FakerUtils.fake(CreateModelServingRequest.class);
+
+            ResourceVO resourceVO = new ResourceVO();
+            resourceVO.setMinCPU("3.3");
+            resourceVO.setMaxCPU("2.2");
+            resourceVO.setMinMemory("300.3Gi");
+            resourceVO.setMaxMemory("200.2Gi");
+            createModelServingRequest.getPartyConfigs().get(0).setResources(List.of(resourceVO));
+
+            ProjectModelPackDO projectModelPackDO = FakerUtils.fake(ProjectModelPackDO.class);
+            Mockito.when(projectModelPackRepository.findById(createModelServingRequest.getModelId())).thenReturn(Optional.of(projectModelPackDO));
+            String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
+            Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
+            Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
+            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
+
+            FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+
+            featureTableDO.setUpk(upk);
+            Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
+
+            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
+                    .content(JsonUtils.toJSONString(createModelServingRequest));
+        }, SystemErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
+    public void createServingResourceMemoryUnset() throws Exception {
+        assertResponseWithEmptyData(() -> {
+
+            CreateModelServingRequest createModelServingRequest = FakerUtils.fake(CreateModelServingRequest.class);
+
+            ResourceVO resourceVO = new ResourceVO();
+            resourceVO.setMinCPU("2.1");
+            resourceVO.setMaxCPU("3.3");
+            resourceVO.setMinMemory("-300.2Gi");
+            resourceVO.setMaxMemory("200.3Gi");
+            createModelServingRequest.getPartyConfigs().get(0).setResources(List.of(resourceVO));
+
+            ProjectModelPackDO projectModelPackDO = FakerUtils.fake(ProjectModelPackDO.class);
+            Mockito.when(projectModelPackRepository.findById(createModelServingRequest.getModelId())).thenReturn(Optional.of(projectModelPackDO));
+            String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
+            Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
+            Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
+            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
+
+            FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+
+            featureTableDO.setUpk(upk);
+            Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
+
+            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
+                    .content(JsonUtils.toJSONString(createModelServingRequest));
+        });
+    }
+
+    @Test
+    public void createServingResourceMemoryFormatError() throws Exception {
+        assertErrorCode(() -> {
+
+            CreateModelServingRequest createModelServingRequest = FakerUtils.fake(CreateModelServingRequest.class);
+
+            ResourceVO resourceVO = new ResourceVO();
+            resourceVO.setMinCPU("2");
+            resourceVO.setMaxCPU("3");
+            resourceVO.setMinMemory("illegal");
+            resourceVO.setMaxMemory("200Gi");
+            createModelServingRequest.getPartyConfigs().get(0).setResources(List.of(resourceVO));
+
+            ProjectModelPackDO projectModelPackDO = FakerUtils.fake(ProjectModelPackDO.class);
+            Mockito.when(projectModelPackRepository.findById(createModelServingRequest.getModelId())).thenReturn(Optional.of(projectModelPackDO));
+            String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
+            Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
+            Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
+            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
+
+            FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+
+            featureTableDO.setUpk(upk);
+            Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
+
+            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
+                    .content(JsonUtils.toJSONString(createModelServingRequest));
+        }, SystemErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
+    public void createServingResourceMemoryValueError() throws Exception {
+        assertErrorCode(() -> {
+
+            CreateModelServingRequest createModelServingRequest = FakerUtils.fake(CreateModelServingRequest.class);
+
+            ResourceVO resourceVO = new ResourceVO();
+            resourceVO.setMinCPU("2.2");
+            resourceVO.setMaxCPU("3.3");
+            resourceVO.setMinMemory("300.3Gi");
+            resourceVO.setMaxMemory("200.2Gi");
+            createModelServingRequest.getPartyConfigs().get(0).setResources(List.of(resourceVO));
+
+            ProjectModelPackDO projectModelPackDO = FakerUtils.fake(ProjectModelPackDO.class);
+            Mockito.when(projectModelPackRepository.findById(createModelServingRequest.getModelId())).thenReturn(Optional.of(projectModelPackDO));
+            String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
+            Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
+            Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
+            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
+
+            FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+
+            featureTableDO.setUpk(upk);
+            Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
+
+            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
+                    .content(JsonUtils.toJSONString(createModelServingRequest));
+        }, SystemErrorCode.VALIDATION_ERROR);
     }
 
     @Test
@@ -363,6 +573,32 @@ public class ModelManagementControllerTest extends ControllerTest {
                     "    }\n" +
                     "  }\n" +
                     "}";
+
+            String partiesJson = """
+                    [
+                      "{
+                      \\"domain_id\\": \\"bob\\",
+                      \\"app_image\\": \\"sf-serving-image\\",
+                      \\"resources\\": [{
+                          \\"min_cpu\\": \\"1\\",
+                          \\"max_cpu\\": \\"2\\",
+                          \\"min_memory\\": \\"1Gi\\",
+                          \\"max_memory\\": \\"2Gi\\"
+                        }]
+                      }",
+                      "{
+                      \\"domain_id\\": \\"alice\\",
+                      \\"app_image\\": \\"sf-serving-image\\",
+                      \\"resources\\": [{
+                          \\"min_cpu\\": \\"3\\",
+                          \\"max_cpu\\": \\"4\\",
+                          \\"min_memory\\": \\"3Gi\\",
+                          \\"max_memory\\": \\"4Gi\\"
+                        }]
+                      }"
+                    ]
+                    """;
+            projectModelServingDO.setParties(partiesJson);
             ProjectModelServingDO.PartyEndpoints partyEndpoints = new ProjectModelServingDO.PartyEndpoints();
             partyEndpoints.setEndpoints("127.0.0.1");
             partyEndpoints.setNodeId("alice");
@@ -534,7 +770,8 @@ public class ModelManagementControllerTest extends ControllerTest {
                     ],
                     "projectId": "abcjfvnx",
                     "sampleTables": "{\\"alice\\":\\"alice-table\\",\\"bob\\":\\"bob-table\\"}",
-                    "trainId": "wcce-drjgnbzr-node-9-output-0"
+                    "trainId": "wcce-drjgnbzr-node-9-output-0",
+                    "partyDataSources":[{"partyId":"alice","datasource":"alice-table"},{"partyId":"bob","datasource":"bob-table"}]
                 }
                 """;
 

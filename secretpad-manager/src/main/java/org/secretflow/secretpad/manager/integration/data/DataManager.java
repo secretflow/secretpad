@@ -76,7 +76,7 @@ public class DataManager extends AbstractDataManager {
                                 .collect(Collectors.toList()))
                         .build();
         Domaindata.CreateDomainDataResponse domainData = this.dataStub.createDomainData(createDomainDataRequest);
-        LOGGER.info("finish create domainData, description = {}",
+        LOGGER.info("createData finish create domainData, description = {}",
                 createDomainDataRequest.getAttributesMap().get("description"));
         return domainData.getData().getDomaindataId();
     }

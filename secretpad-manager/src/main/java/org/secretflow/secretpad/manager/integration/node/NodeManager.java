@@ -342,7 +342,7 @@ public class NodeManager extends AbstractNodeManager {
         AtomicReference<NodeTokenDTO> nodeTokenDTO = new AtomicReference<>(new NodeTokenDTO());
         NodeDO nodeDO = nodeRepository.findByNodeId(nodeId);
         if (ObjectUtils.isEmpty(nodeDO)) {
-            LOGGER.error("Cannot find node by nodeId {}.", nodeId);
+            LOGGER.error("getNodeToken Cannot find node by nodeId {}.", nodeId);
             throw SecretpadException.of(NodeErrorCode.NODE_NOT_EXIST_ERROR);
         }
         DomainOuterClass.QueryDomainRequest queryDomainRequest =

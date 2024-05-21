@@ -513,21 +513,22 @@ create unique index `upk_vote_invite_participant_id` on `vote_invite` (`vote_id`
 create table if not exists `project_model_pack`
 (
     `id`              int auto_increment primary key,
-    `project_id`      varchar(64) not null, -- project ID
-    `model_id`        varchar(64) not null, -- modelId
-    `initiator`       varchar(64) not null, -- model pack initiator
-    `model_name`      varchar(256) not null, -- modelName
-    `model_desc`      text default null, -- model description
-    `model_stats`     tinyint(1) not null default '0', -- modelStatus online,offline,discard,deleted
-    `serving_id`      varchar(64) default null, -- serving id
-    `sample_tables`   text not null, -- model training read table participants
-    `model_list`      text not null, -- model training participants
-    `train_id`        varchar(64) not null, -- model training id
-    `model_report_id` varchar(64) not null, -- model_report_id
-    `graph_detail`    text default null, -- model graph_detail
-    `is_deleted`      tinyint(1) default '0' not null, -- delete flag
-    `gmt_create`      datetime default current_timestamp not null, -- create time
-    `gmt_modified`    datetime default current_timestamp not null -- modified time
+    `project_id`      varchar(64) not null,                         -- project ID
+    `model_id`        varchar(64) not null,                         -- modelId
+    `initiator`       varchar(64) not null,                         -- model pack initiator
+    `model_name`      varchar(256) not null,                        -- modelName
+    `model_desc`      text default null,                            -- model description
+    `model_stats`     tinyint(1) not null default '0',              -- modelStatus online,offline,discard,deleted
+    `serving_id`      varchar(64) default null,                     -- serving id
+    `sample_tables`   text not null,                                -- model training read table participants
+    `model_list`      text not null,                                -- model training participants
+    `train_id`        varchar(64) not null,                         -- model training id
+    `model_report_id` varchar(64) not null,                         -- model_report_id
+    `graph_detail`    text default null,                            -- model graph_detail
+     model_datasource varchar(64)    not null,                      -- model datasource
+    `is_deleted`      tinyint(1) default '0' not null,              -- delete flag
+    `gmt_create`      datetime default current_timestamp not null,  -- create time
+    `gmt_modified`    datetime default current_timestamp not null   -- modified time
 );
 
 create unique index `upk_model_id` on `project_model_pack` (`model_id`);

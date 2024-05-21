@@ -42,5 +42,6 @@ docs: ## Build docs.
 	cd docs && pip install -r requirements.txt && make html
 
 .PHONY: pack
+platform="linux/amd64"
 pack: ## Build pack all in one with tar.gz.
-	./scripts/pack/pack_allinone.sh
+	./scripts/pack/pack_allinone.sh ${platform}

@@ -31,7 +31,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.1.10</version>
+        <version>3.1.11</version>
     </parent>
     <groupId>org.secretflow</groupId>
     <artifactId>secretpad-parent</artifactId>
@@ -44,7 +44,7 @@
         <maven.compiler.target>17</maven.compiler.target>
         <lombok.version>1.18.24</lombok.version>
         <protobuf.version>3.22.2</protobuf.version>
-        <grpc.version>1.54.1</grpc.version>
+        <grpc.version>1.62.2</grpc.version>
         <jackson.version>2.15.0</jackson.version>
         <swagger.version>2.1.6</swagger.version>
         <sqlite-jdbc.version>3.42.0.0</sqlite-jdbc.version>
@@ -68,6 +68,7 @@
         <jacoco.version>0.8.11</jacoco.version>
         <surefire.version>3.0.0-M4</surefire.version>
         <mysql-connector.version>8.0.28</mysql-connector.version>
+        <sls-version>0.6.104</sls-version>
     </properties>
 
     <dependencyManagement>
@@ -233,6 +234,11 @@
                 <groupId>mysql</groupId>
                 <artifactId>mysql-connector-java</artifactId>
                 <version>${mysql-connector.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aliyun.openservices</groupId>
+                <artifactId>aliyun-log</artifactId>
+                <version>${sls-version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

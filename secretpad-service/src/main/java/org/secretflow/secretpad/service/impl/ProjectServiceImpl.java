@@ -58,6 +58,7 @@ import org.secretflow.secretpad.service.model.graph.GraphDetailVO;
 import org.secretflow.secretpad.service.model.graph.GraphEdge;
 import org.secretflow.secretpad.service.model.graph.GraphNodeDetail;
 import org.secretflow.secretpad.service.model.graph.GraphNodeTaskLogsVO;
+import org.secretflow.secretpad.service.model.node.NodeSimpleInfo;
 import org.secretflow.secretpad.service.model.project.*;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
 
@@ -555,17 +556,35 @@ public class ProjectServiceImpl implements ProjectService {
                 .edges(CollectionUtils.isEmpty(job.getEdges()) ? Collections.emptyList() : job.getEdges().stream().map(GraphEdge::fromDO).collect(Collectors.toList()))
                 .nodes(CollectionUtils.isEmpty(job.getTasks()) ? Collections.emptyList() : job.getTasks().values().stream().map(it -> GraphNodeDetail.fromDO(
                                         it.getGraphNode(), it.getStatus(), taskResults.get(it.getUpk().getTaskId()))
-                                .withJobTask(it.getUpk().getJobId(), it.getUpk().getTaskId()))
+                                .withJobTask(it.getUpk().getJobId(), it.getUpk().getTaskId()).withJobParties(getParties(it.getParties(), nodeRepository)))
                         .collect(Collectors.toList()))
                 .build();
         return ProjectJobVO.from(job, detailVO);
     }
+
+    private List<NodeSimpleInfo> getParties(List<String> parties, NodeRepository nodeRepository) {
+        return nodeRepository.findByNodeIdIn(parties).stream().map(e -> {
+            NodeSimpleInfo build = NodeSimpleInfo.builder().nodeName(e.getName()).nodeId(e.getNodeId()).build();
+            return build;
+        }).collect(Collectors.toList());
+    }
+
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void stopProjectJob(StopProjectJobTaskRequest request) {
         openProject(request.getProjectId());
         ProjectJobDO job = openProjectJob(request.getProjectId(), request.getJobId());
+        // check project graph owner
+        Optional<ProjectGraphDO> graphOptional = graphRepository.findById(new ProjectGraphDO.UPK(request.getProjectId(), job.getGraphId()));
+        if (graphOptional.isEmpty()) {
+            throw SecretpadException.of(GraphErrorCode.GRAPH_NOT_EXISTS);
+        }
+        ProjectGraphDO graphDO = graphOptional.get();
+        String ownerId = UserContext.getUser().getOwnerId();
+        if (!StringUtils.equals(ownerId, graphDO.getOwnerId())) {
+            throw SecretpadException.of(GraphErrorCode.NON_OUR_CREATION_CAN_VIEWED);
+        }
         job.stop();
         // TODO: we don't check the status, because of we can't know error reason. For job not found, should be treat as success now.
         jobStub.stopJob(Job.StopJobRequest.newBuilder().setJobId(job.getUpk().getJobId()).build());
@@ -658,7 +677,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public void archiveProject(ArchiveProjectRequest archiveProjectRequest) {
         Optional<ProjectDO> projectDOOptional = projectRepository.findById(archiveProjectRequest.getProjectId());
-        if (!projectDOOptional.isPresent()) {
+        if (projectDOOptional.isEmpty()) {
             throw SecretpadException.of(ProjectErrorCode.PROJECT_NOT_EXISTS);
         }
         String ownerId = projectDOOptional.get().getOwnerId();

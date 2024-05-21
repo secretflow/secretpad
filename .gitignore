@@ -38,9 +38,7 @@ secretpad-web/config
 
 ### VS Code ###
 .vscode/
-
 tmp/
-db/
 log/
 config/certs
 config/server.jks
@@ -52,3 +50,11 @@ docs/_build
 /test/TEST-secretpad.xml
 /.jpb/
 /secretpad-common/src/test/resources/config/
+/secretflow-allinone-package/
+/secretflow-allinone-package-v0.6.0b0-36-g08b4e1cc.tar.gz
+/scripts/oss/secretflow-allinone-package/
+/scripts/oss/secretflow-allinone-package-v0.6.0b0-41-g9af69f63.tar.gz
+/secretpad-web/db/
+/db/secretpad.sqlite
+/db/secretpad.sqlite-shm
+/db/secretpad.sqlite-wal

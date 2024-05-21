@@ -30,10 +30,11 @@ function generate_secretpad_serverkey() {
 }
 
 function init_secretpad_db() {
-	docker run -it --rm --entrypoint /bin/bash --volume="${volume_path}"/db:/app/db -e SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE}"  "${SECRETPAD_IMAGE}" -c "scripts/sql/update-sql.sh"
+	docker run -it --rm --entrypoint /bin/bash --volume="${volume_path}"/db:/app/db -e SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE}" "${SECRETPAD_IMAGE}" -c "scripts/sql/update-sql.sh"
 	log "initialize ${SPRING_PROFILES_ACTIVE}  webserver database done "
 }
 
+# @Deprecated: This function should no longer be used, use env pass to app exec
 function create_secretpad_user_password() {
 	local volume_path=$1
 	local user_name=$2
@@ -44,9 +45,26 @@ function create_secretpad_user_password() {
 
 function copy_secretpad_file_to_volume() {
 	local dst_path=$1
+	if [ -f "${dst_path}/db/.update" ]; then
+		log "back up the secretpad file ..."
+		x=$(cat "${dst_path}"/db/.update)
+		cp -rp "${dst_path}" "${dst_path}"_back_up_"${x}"
+	else
+		log "create ${dst_path}/db/.update"
+		rm -rf "${dst_path}/*"
+		docker run --rm --entrypoint /bin/bash -v "${dst_path}":/tmp/secretpad "$SECRETPAD_IMAGE" -c 'cp -R /app/db /tmp/secretpad/'
+		echo "${SECRETPAD_IMAGE##*:}" >"${dst_path}"/db/.update
+	fi
 	docker run --rm --entrypoint /bin/bash -v "${dst_path}":/tmp/secretpad "$SECRETPAD_IMAGE" -c 'cp -R /app/config /tmp/secretpad/'
-	docker run --rm --entrypoint /bin/bash -v "${dst_path}":/tmp/secretpad "$SECRETPAD_IMAGE" -c 'cp -R /app/db /tmp/secretpad/'
 	log "copy webserver config and database file done"
+}
+
+function update_sf_comp() {
+	mkdir -p "${volume_path}"/scripts
+	TEMP_CONTAINER=$(docker create "$SECRETPAD_IMAGE")
+	docker cp "$TEMP_CONTAINER:/app/scripts/update_components.sh" "${volume_path}"/scripts/update_components.sh
+	docker rm "$TEMP_CONTAINER"
+	bash "${volume_path}"/scripts/update_components.sh "${SECRETFLOW_IMAGE}" false
 }
 
 function copy_kuscia_api_client_certs() {
@@ -55,11 +73,11 @@ function copy_kuscia_api_client_certs() {
 	tmp_path=${volume_path}/temp/certs
 	mkdir -p "${tmp_path}"
 	# shellcheck disable=SC2086
-	docker cp ${KUSCIA_CTR}:/${CTR_CERT_ROOT}/ca.crt ${tmp_path}/ca.crt
-	docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/kusciaapi-client.crt "${tmp_path}"/client.crt
-	docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/kusciaapi-client.key "${tmp_path}"/client.pem
 	if ! noTls; then
-	  docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/token "${tmp_path}"/token
+		docker cp ${KUSCIA_CTR}:/${CTR_CERT_ROOT}/ca.crt ${tmp_path}/ca.crt
+		docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/kusciaapi-client.crt "${tmp_path}"/client.crt
+		docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/kusciaapi-client.key "${tmp_path}"/client.pem
+		docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/token "${tmp_path}"/token
 	fi
 	docker run -d --rm --name "${KUSCIA_CTR_PREFIX}"-dummy --volume="${volume_path}"/config:/tmp/temp "$KUSCIA_IMAGE" tail -f /dev/null >/dev/null 2>&1
 	docker cp -a "${tmp_path}" "${KUSCIA_CTR_PREFIX}"-dummy:/tmp/temp/
@@ -70,24 +88,11 @@ function copy_kuscia_api_client_certs() {
 
 function render_secretpad_config() {
 	local volume_path=$1
-	local tmpl_path=${volume_path}/config/template/application.yaml.tmpl
 	local store_key_password=$2
-	#local default_login_password
-	# create data mesh service
-	log "kuscia_lite_ip: '${KUSCIA_CTR}'"
-	# render kuscia api address
-	sed "s/{{.KUSCIA_API_ADDRESS}}/${KUSCIA_CTR}/g;
-  s/{{.KUSCIA_API_LITE_ALICE_ADDRESS}}/${KUSCIA_CTR_PREFIX}-lite-alice/g;
-  s/{{.KUSCIA_API_LITE_BOB_ADDRESS}}/${KUSCIA_CTR_PREFIX}-lite-bob/g" \
-		"${tmpl_path}" >"${volume_path}"/application_01.yaml
-	# render store password
-	sed "s/{{.PASSWORD}}/${store_key_password}/g" "${volume_path}"/application_01.yaml >"${volume_path}"/application.yaml
-	docker run -d --rm --name "${KUSCIA_CTR_PREFIX}"-dummy --volume="${volume_path}"/config:/tmp/temp "$KUSCIA_IMAGE" tail -f /dev/null >/dev/null 2>&1
-	docker cp "${volume_path}"/application.yaml "${KUSCIA_CTR_PREFIX}"-dummy:/tmp/temp/
-	docker rm -f "${KUSCIA_CTR_PREFIX}"-dummy >/dev/null 2>&1
-	# rm temp file
-	rm -rf "${volume_path}"/application_01.yaml "${volume_path}"/application.yaml
-	# render default_login_password
+	export KEY_PASSWORD=${store_key_password}
+	export KUSCIA_API_ADDRESS=${KUSCIA_CTR}:8083
+	export KUSCIA_API_LITE_ALICE_ADDRESS=${KUSCIA_CTR_PREFIX}-lite-alice:8083
+	export KUSCIA_API_LITE_BOB_ADDRESS=${KUSCIA_CTR_PREFIX}-lite-bob:8083
 	log "Render webserver config done"
 }
 
@@ -155,13 +160,40 @@ including uppercase and lowercase letters, numbers, and special characters."
 				log "Password not match! please reset"
 			fi
 		elif [ "${RET}" -ne 0 ] && [ "${i}" == 2 ]; then
-			log "Would use default password: 12#\$qwER"
-			SECRETPAD_PASSWORD="12#\$qwER"
+			export LC_ALL=C
+			SECRETPAD_PASSWORD=$(generate_password)
+			log "Would use random password: ${SECRETPAD_PASSWORD}"
 		fi
 	done
 	set -e
 	stty echo # enable display
 	log "The user and password have been set up successfully."
+}
+
+generate_password() {
+	local length=${1:-7}
+	local lcs="abcdefghijklmnopqrstuvwxyz"
+	local ucs="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	local digits="0123456789"
+	local special="!@#$%^&*()+=-"
+	# Generate a random password that may not contain all types of characters
+	local password=$(openssl rand -base64 12 | tr -d '/+=' | cut -c1-"$length")
+	# Ensure that the password contains lowercase letters, uppercase letters, and numbers
+	while [[ ! "$password" =~ [$lcs] || ! "$password" =~ [$ucs] || ! "$password" =~ [$digits] ]]; do
+		password=$(openssl rand -base64 12 | tr -d '/+=' | cut -c1-"$length")
+	done
+	# If the password still does not meet the length requirement, then supplement
+	while ((${#password} < $length)); do
+		local char_type=$((RANDOM % 3))
+		case $char_type in
+		0) password+="${lcs:$((RANDOM % ${#lcs})):1}" ;;
+		1) password+="${ucs:$((RANDOM % ${#ucs})):1}" ;;
+		2) password+="${digits:$((RANDOM % ${#digits})):1}" ;;
+		esac
+	done
+	# Add a special character
+	password+="${special:$((RANDOM % ${#digits})):1}"
+	echo "$password"
 }
 
 function copy_kuscia_api_lite_client_certs() {
@@ -173,11 +205,11 @@ function copy_kuscia_api_lite_client_certs() {
 		# copy result
 		tmp_path=${volume_path}/temp/certs/${domain_id}
 		mkdir -p "${tmp_path}"
-		docker cp "${domain_ctr}":/"${CTR_CERT_ROOT}"/ca.crt "${tmp_path}"/ca.crt
-		docker cp "${domain_ctr}":/"${CTR_CERT_ROOT}"/kusciaapi-client.crt "${tmp_path}"/client.crt
-		docker cp "${domain_ctr}":/"${CTR_CERT_ROOT}"/kusciaapi-client.key "${tmp_path}"/client.pem
 		if ! noTls; then
-		  docker cp "${domain_ctr}":/"${CTR_CERT_ROOT}"/token "${tmp_path}"/token
+			docker cp "${domain_ctr}":/"${CTR_CERT_ROOT}"/ca.crt "${tmp_path}"/ca.crt
+			docker cp "${domain_ctr}":/"${CTR_CERT_ROOT}"/kusciaapi-client.crt "${tmp_path}"/client.crt
+			docker cp "${domain_ctr}":/"${CTR_CERT_ROOT}"/kusciaapi-client.key "${tmp_path}"/client.pem
+			docker cp "${domain_ctr}":/"${CTR_CERT_ROOT}"/token "${tmp_path}"/token
 		fi
 		docker run -d --rm --name "${KUSCIA_CTR_PREFIX}"-dummy --volume="${volume_path}"/config/certs:/tmp/temp "$IMAGE" tail -f /dev/null >/dev/null 2>&1
 		docker cp -a "${tmp_path}" "${KUSCIA_CTR_PREFIX}"-dummy:/tmp/temp/
@@ -188,14 +220,14 @@ function copy_kuscia_api_lite_client_certs() {
 }
 
 function create_secretpad_svc() {
-  local ctr=$1
-  local secretpad_ctr=$2
-  local domain_id=$3
+	local ctr=$1
+	local secretpad_ctr=$2
+	local domain_id=$3
 	if is_master || is_p2p; then
-	  if is_master; then
-	    ctr=${KUSCIA_MASTER_CTR}
-	    domain_id=${KUSCIA_MASTER_NODE_ID}
-	  fi
+		if is_master; then
+			ctr=${KUSCIA_MASTER_CTR}
+			domain_id=${KUSCIA_MASTER_NODE_ID}
+		fi
 		docker exec -it "${ctr}" scripts/deploy/create_secretpad_svc.sh "${secretpad_ctr}" "${domain_id}"
 	fi
 }
@@ -230,11 +262,8 @@ function start() {
 		log "Generate server key '$volume_path' ..."
 		generate_secretpad_serverkey "${volume_path}" ${secretpad_key_pass}
 		# initialize secretpad dbd
-		log "initialize secretpad db ..."
-		init_secretpad_db
-		# create secretpad user and password
-		log "create secretpad user and password ..."
-		create_secretpad_user_password "${volume_path}" "$SECRETPAD_USER_NAME" "$SECRETPAD_PASSWORD"
+		#		log "initialize secretpad db ..."
+		#		init_secretpad_db
 		# copy kuscia api client certs
 		log "copy kuscia api client certs ..."
 		copy_kuscia_api_client_certs "${volume_path}"
@@ -255,12 +284,26 @@ function start() {
 			-p "${PAD_PORT}":8080 \
 			-e SPRING_PROFILES_ACTIVE="${SPRING_PROFILES_ACTIVE}" \
 			-e NODE_ID="${NODE_ID}" \
-			-e KUSCIA_API_ADDRESS="${KUSCIA_CTR}" \
+			-e DEPLOY_MODE="${DEPLOY_MODE}" \
 			-e KUSCIA_GW_ADDRESS="${KUSCIA_CTR}":80 \
-			-e SECRETPAD_IMAGE="${SECRETPAD_IMAGE}" \
-			-e KUSCIA_IMAGE="${KUSCIA_IMAGE}" \
-			-e SECRETFLOW_IMAGE="${SECRETFLOW_IMAGE}" \
+			-e SECRETPAD_IMAGE="${SECRETPAD_IMAGE##*:}" \
+			-e KUSCIA_IMAGE="${KUSCIA_IMAGE##*:}" \
+			-e SECRETFLOW_IMAGE="${SECRETFLOW_IMAGE##*:}" \
+			-e SECRETFLOW_SERVING_IMAGE="${SECRETFLOW_SERVING_IMAGE##*:}" \
+			-e TEE_APP_IMAGE="${TEE_APP_IMAGE##*:}" \
+			-e TEE_DM_IMAGE="${TEE_DM_IMAGE##*:}" \
+			-e CAPSULE_MANAGER_SIM_IMAGE="${CAPSULE_MANAGER_SIM_IMAGE##*:}" \
+			-e SECRETPAD_CLOUD_LOG_SLS_AK="${SECRETPAD_CLOUD_LOG_SLS_AK}" \
+			-e SECRETPAD_CLOUD_LOG_SLS_SK="${SECRETPAD_CLOUD_LOG_SLS_SK}" \
+			-e SECRETPAD_CLOUD_LOG_SLS_HOST="${SECRETPAD_CLOUD_LOG_SLS_HOST}" \
+			-e SECRETPAD_CLOUD_LOG_SLS_PROJECT="${SECRETPAD_CLOUD_LOG_SLS_PROJECT}" \
 			-e KUSCIA_PROTOCOL="${KUSCIA_PROTOCOL}" \
+			-e KEY_PASSWORD="${KEY_PASSWORD}" \
+			-e KUSCIA_API_ADDRESS="${KUSCIA_API_ADDRESS}" \
+			-e KUSCIA_API_LITE_ALICE_ADDRESS="${KUSCIA_API_LITE_ALICE_ADDRESS}" \
+			-e KUSCIA_API_LITE_BOB_ADDRESS="${KUSCIA_API_LITE_BOB_ADDRESS}" \
+			-e SECRETPAD_USER_NAME="${SECRETPAD_USER_NAME}" \
+			-e SECRETPAD_PASSWORD="${SECRETPAD_PASSWORD}" \
 			-e JAVA_OPTS="${JAVA_OPTS}" \
 			"${SECRETPAD_IMAGE}"
 		probe_secret_pad "${PAD_CTR}"
@@ -269,9 +312,13 @@ function start() {
 		log "Please visit the website http://localhost:${PAD_PORT} (or http://{the IPAddress of this machine}:$PAD_PORT) to experience the Kuscia web's functions ."
 		log "The login name:'${SECRETPAD_USER_NAME}' ,The login password:'${SECRETPAD_PASSWORD}' ."
 		log "The demo data would be stored in the path: $PAD_INSTALL_DIR ."
-		log "the SECRETPAD_IMAGE is: ${SECRETPAD_IMAGE} ."
-		log "the KUSCIA_IMAGE is: ${KUSCIA_IMAGE} ."
-		log "the SECRETFLOW_TAG is: ${SECRETFLOW_IMAGE} ."
+		log "The SECRETPAD_IMAGE is: ${SECRETPAD_IMAGE} ."
+		log "The KUSCIA_IMAGE is: ${KUSCIA_IMAGE} ."
+		log "The SECRETFLOW_TAG is: ${SECRETFLOW_IMAGE} ."
+		log "The SECRETFLOW_SERVING_IMAGE is: ${SECRETFLOW_SERVING_IMAGE} ."
+		log "The TEE_APP_IMAGE is: ${TEE_APP_IMAGE} ."
+		log "The TEE_DM_IMAGE is: ${TEE_DM_IMAGE} ."
+		log "The CAPSULE_MANAGER_SIM_IMAGE is: ${CAPSULE_MANAGER_SIM_IMAGE} ."
 	fi
 }
 

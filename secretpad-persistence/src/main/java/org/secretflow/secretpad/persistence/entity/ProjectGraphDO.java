@@ -85,6 +85,9 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
     @Column(name = "node_max_index", nullable = false)
     private Integer nodeMaxIndex;
 
+    @Column(name = "max_parallelism", nullable = false)
+    private Integer maxParallelism;
+
     public void setNodes(List<ProjectGraphNodeDO> nodes) {
         if (this.nodes == null) {
             this.nodes = new ArrayList<>();

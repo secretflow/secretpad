@@ -164,7 +164,7 @@ function is_p2p() {
 }
 
 function is_alice_lite() {
-	if [ "$NODE_ID" = 'alice' ]; then
+	if [ "$NODE_ID" = 'alice' ] && is_lite; then
 		return 0
 	else
 		return 1
@@ -172,7 +172,7 @@ function is_alice_lite() {
 }
 
 function is_bob_lite() {
-	if [ "$NODE_ID" = 'bob' ]; then
+	if [ "$NODE_ID" = 'bob' ] && is_lite; then
 		return 0
 	else
 		return 1
@@ -180,7 +180,7 @@ function is_bob_lite() {
 }
 
 function is_tee_lite() {
-	if [ "$NODE_ID" = 'tee' ]; then
+	if [ "$NODE_ID" = 'tee' ] && is_lite; then
 		return 0
 	else
 		return 1
@@ -345,9 +345,9 @@ function saveAndLoad2Container() {
 	local image_basename=$1
 	local container_id=$2
 	if docker exec -it "$container_id" crictl inspecti "${image_basename}" >/dev/null 2>&1; then
-      log "Image '${image_basename}' already exists in domain '${container_id}'"
-      return
-  fi
+		log "Image '${image_basename}' already exists in domain '${container_id}'"
+		return
+	fi
 	save_image "$image_basename"
 	log "Save image: $image_basename path: $image_tar_path"
 	log "loadImage2Container $container_id $image_tar_path"
@@ -394,10 +394,10 @@ function init_tee() {
 	local alice=${KUSCIA_CTR_PREFIX}-${PAD_LITE}-alice
 	local bob=${KUSCIA_CTR_PREFIX}-${PAD_LITE}-bob
 	local tee=${KUSCIA_CTR_PREFIX}-${PAD_LITE}-tee
-  local protocol="http"
-  if ! noTls; then
-    protocol="https"
-  fi
+	local protocol="http"
+	if ! noTls; then
+		protocol="https"
+	fi
 	log "create domain route: alice -> tee"
 	docker exec -it "${KUSCIA_MASTER_CTR}" sh scripts/deploy/create_cluster_domain_route.sh alice tee ${protocol}://"${tee}":1080
 	log "create domain route: tee -> alice"
@@ -413,7 +413,7 @@ function applySfServingAppImage() {
 	local container_id=${KUSCIA_MASTER_CTR}
 	if is_p2p; then
 		container_id=${KUSCIA_CTR}
-  fi
+	fi
 	log "apply sf serving appImage"
 	# shellcheck disable=SC2046
 	docker run --rm --entrypoint /bin/bash -v $(pwd):/tmp/secretpad "$SECRETPAD_IMAGE" -c 'cp -R /app/scripts/templates/sf-serving.yaml /tmp/secretpad/'
@@ -435,9 +435,9 @@ function create_alice_bob_domain_route() {
 	local alice=${KUSCIA_CTR_PREFIX}-${PAD_LITE}-alice
 	local bob=${KUSCIA_CTR_PREFIX}-${PAD_LITE}-bob
 	local protocol="http"
-  if ! noTls; then
-	protocol="https"
-  fi
+	if ! noTls; then
+		protocol="https"
+	fi
 	log "create domain route: alice -> bob"
 	docker exec -it "${KUSCIA_MASTER_CTR}" sh scripts/deploy/create_cluster_domain_route.sh alice bob ${protocol}://"${bob}":1080
 	log "create domain route: bob -> alice"
@@ -449,16 +449,16 @@ function init_kuscia_config() {
 	mkdir -p "${KUSCIA_CTR}"
 	log "kuscia init kuscia.yaml ${kuscia_config_file}"
 	if is_master; then
-		docker run -it --rm "${KUSCIA_IMAGE}" kuscia init --mode Master --domain "${KUSCIA_MASTER_NODE_ID}" --protocol "${KUSCIA_PROTOCOL}" >"${kuscia_config_file}"
+		docker run -it --rm "${KUSCIA_IMAGE}" kuscia init --mode master --domain "${KUSCIA_MASTER_NODE_ID}" --protocol "${KUSCIA_PROTOCOL}" >"${kuscia_config_file}"
 	fi
 	if is_lite; then
 		# shellcheck disable=SC2155
-		if is_alice_lite  || is_bob_lite || is_tee_lite; then
-		   export KUSCIA_TOKEN=$(docker exec -it "${KUSCIA_MASTER_CTR}" scripts/deploy/add_domain_lite.sh "${NODE_ID}" "${KUSCIA_MASTER_NODE_ID}" | tr -d '\r\n')
+		if is_alice_lite || is_bob_lite || is_tee_lite; then
+			export KUSCIA_TOKEN=$(docker exec -it "${KUSCIA_MASTER_CTR}" scripts/deploy/add_domain_lite.sh "${NODE_ID}" "${KUSCIA_MASTER_NODE_ID}" | tr -d '\r\n')
 		fi
-		docker run -it --rm "${KUSCIA_IMAGE}" kuscia init --mode Lite --domain "${NODE_ID}" --master-endpoint "${KUSCIA_MASTER_ENDPOINT}" --lite-deploy-token "${KUSCIA_TOKEN}" --protocol "${KUSCIA_PROTOCOL}" >"${kuscia_config_file}"
+		docker run -it --rm "${KUSCIA_IMAGE}" kuscia init --mode lite --domain "${NODE_ID}" --master-endpoint "${KUSCIA_MASTER_ENDPOINT}" --lite-deploy-token "${KUSCIA_TOKEN}" --protocol "${KUSCIA_PROTOCOL}" >"${kuscia_config_file}"
 	fi
 	if is_p2p; then
-		docker run -it --rm "${KUSCIA_IMAGE}" kuscia init --mode Autonomy --domain "${NODE_ID}" --protocol "${KUSCIA_PROTOCOL}" >"${kuscia_config_file}"
+		docker run -it --rm "${KUSCIA_IMAGE}" kuscia init --mode autonomy --domain "${NODE_ID}" --protocol "${KUSCIA_PROTOCOL}" >"${kuscia_config_file}"
 	fi
 }

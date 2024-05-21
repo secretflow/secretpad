@@ -36,8 +36,8 @@ jobs:
       - checkout
       - setup_remote_docker
       - run:
-          name: Build Docker image
-          command: make image
+          name: Build Jar
+          command: make build
       - run:
           name: Push to Docker Hub
           command: |
@@ -47,14 +47,46 @@ jobs:
             docker login -u ${ALIYUN_DOCKER_USERNAME} -p ${ALIYUN_DOCKER_PASSWORD}  secretflow-registry.cn-hangzhou.cr.aliyuncs.com
             CIRCLETAG=$(echo ${CIRCLE_TAG} | sed 's/v//')
 
-            docker tag $(docker images --format "{{.Repository}}:{{.Tag}}" | sed -n '1p') secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:latest
-            docker tag $(docker images --format "{{.Repository}}:{{.Tag}}" | sed -n '1p') secretflow/secretpad:latest
-            docker tag $(docker images --format "{{.Repository}}:{{.Tag}}" | sed -n '1p') secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:${CIRCLETAG}
-            docker tag $(docker images --format "{{.Repository}}:{{.Tag}}" | sed -n '1p') secretflow/secretpad:${CIRCLETAG}
-            docker push secretflow/secretpad:${CIRCLETAG}
-            docker push secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:${CIRCLETAG}
-            docker push secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:latest
-            docker push secretflow/secretpad:latest
+            BUILDER_EXISTS=$(
+              docker buildx inspect secretpad_image_buildx >/dev/null 2>&1
+              echo $?
+            )
+
+            if [ "$BUILDER_EXISTS" -eq 0 ]; then
+              echo "existing buildx builder: secretpad_image_buildx"
+              docker buildx use secretpad_image_buildx
+            else
+              echo "creating new buildx builder: secretpad_image_buildx"
+              docker buildx create --name secretpad_image_buildx --use
+            fi
+
+            remote_image="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:latest"
+            docker buildx build \
+            --platform linux/arm64,linux/amd64 \
+            --tag "${remote_image}" \
+            -f ./build/Dockerfiles/anolis.Dockerfile . \
+            --push
+
+            remote_image="secretflow/secretpad:latest"
+            docker buildx build \
+            --platform linux/arm64,linux/amd64 \
+            --tag "${remote_image}" \
+            -f ./build/Dockerfiles/anolis.Dockerfile . \
+            --push
+
+            remote_image="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:${CIRCLETAG}"
+            docker buildx build \
+            --platform linux/arm64,linux/amd64 \
+            --tag "${remote_image}" \
+            -f ./build/Dockerfiles/anolis.Dockerfile . \
+            --push
+
+            remote_image="secretflow/secretpad:${CIRCLETAG}"
+            docker buildx build \
+            --platform linux/arm64,linux/amd64 \
+            --tag "${remote_image}" \
+            -f ./build/Dockerfiles/anolis.Dockerfile . \
+            --push
 
 workflows:
   build-deploy:

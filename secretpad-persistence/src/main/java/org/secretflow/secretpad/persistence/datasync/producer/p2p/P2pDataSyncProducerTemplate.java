@@ -58,7 +58,6 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
             case "ProjectGraphDO" -> filterProjectGraph(event);
             case "ProjectGraphNodeDO" -> filterProjectGraphNode(event);
             case "ProjectJobDO" -> filterProjectJobDO(event);
-            case "ProjectTaskDO" -> filterProjectTaskDO(event);
             case "ProjectDatatableDO" -> filterProjectDatatableDO(event);
             case "VoteRequestDO" -> filterVoteRequestDO(event);
             case "VoteInviteDO" -> filterVoteInviteDO(event);
@@ -78,7 +77,7 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
         String projectId = source.getProjectId();
         String ownerId = ownerId_cache.get(projectId);
         if (!StringUtils.equals(localNodeId, ownerId)) {
-            log.debug("local node not initiator,stop sync");
+            log.debug("ProjectNodeDO local node not initiator,stop sync {}", localNodeId);
             return true;
         }
         return false;
@@ -88,7 +87,7 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
         ProjectModelPackDO source = (ProjectModelPackDO) event.getSource();
         String initiator = source.getInitiator();
         if (!StringUtils.equals(localNodeId, initiator)) {
-            log.debug("local node not initiator,stop sync");
+            log.debug("ProjectModelPackDO local node not initiator,stop sync {}", localNodeId);
             return true;
         }
         return false;
@@ -99,7 +98,7 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
         ProjectFeatureTableDO source = (ProjectFeatureTableDO) event.getSource();
         String initiator = source.getUpk().getNodeId();
         if (!StringUtils.equals(localNodeId, initiator)) {
-            log.debug("local node not initiator,stop sync");
+            log.debug("ProjectFeatureTableDO local node not initiator,stop sync {}", localNodeId);
             return true;
         }
         return false;
@@ -109,7 +108,7 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
         ProjectModelServingDO source = (ProjectModelServingDO) event.getSource();
         String initiator = source.getInitiator();
         if (!StringUtils.equals(localNodeId, initiator)) {
-            log.debug("local node not initiator,stop sync");
+            log.debug("ProjectModelServingDO local node not initiator,stop sync {}", localNodeId);
             return true;
         }
         return false;
@@ -123,9 +122,9 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
         if (!sync.contains(dType)) {
             return;
         }
-        log.debug("------- data:{} action:{} projectId: {} nodeIds: {}", event.getDType(), event.getAction(), event.getProjectId(), event.getNodeIds());
+        log.debug("before paddingNodes data:{} action:{} projectId: {} nodeIds: {}", event.getDType(), event.getAction(), event.getProjectId(), event.getNodeIds());
         p2pPaddingNodeServiceImpl.paddingNodes(event);
-        log.debug("-------after paddingNodes data:{} action:{} projectId: {} nodeIds: {}", event.getDType(), event.getAction(), event.getProjectId(), event.getNodeIds());
+        log.debug("after paddingNodes data:{} action:{} projectId: {} nodeIds: {}", event.getDType(), event.getAction(), event.getProjectId(), event.getNodeIds());
         if (PlatformTypeEnum.valueOf(platformType).equals(PlatformTypeEnum.AUTONOMY) && !filter(event)) {
             log.debug("start to push");
             dataSyncDataBufferTemplate.push(event);
@@ -159,7 +158,7 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
     private boolean filterProjectJobDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         ProjectJobDO source = (ProjectJobDO) event.getSource();
         String ownerId = ownerId_cache.get(source.getUpk().getProjectId() + "_" + source.getGraphId());
-        if (source.isFinished()) {
+        if (source.isFinished() || StringUtils.equalsIgnoreCase(DbChangeAction.UPDATE.getVal(), event.getDType())) {
             return true;
         }
         return !StringUtils.equals(localNodeId, ownerId);
@@ -171,6 +170,7 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
         return !StringUtils.equals(localNodeId, nodeId);
     }
 
+    @Deprecated
     private boolean filterProjectTaskDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         ProjectTaskDO source = (ProjectTaskDO) event.getSource();
         String ownerId = ownerId_cache.get(source.getUpk().getProjectId() + "_" + source.getGraphNode().getUpk().getGraphId());

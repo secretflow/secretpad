@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.service.impl;
 
 import org.secretflow.secretpad.common.constant.CacheConstants;
+import org.secretflow.secretpad.common.constant.ComponentConstants;
 import org.secretflow.secretpad.common.constant.KusciaDataSourceConstants;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
@@ -26,6 +27,7 @@ import org.secretflow.secretpad.common.util.*;
 import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 import org.secretflow.secretpad.manager.integration.model.ModelExportDTO;
 import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.PartyDataSource;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.GraphService;
@@ -134,6 +136,7 @@ public class ModelExportServiceImpl implements ModelExportService {
                 .modelName(request.getModelName())
                 .modelDesc(request.getModelDesc())
                 .graphDetail(JsonUtils.toJSONString(graphDetail))
+                .partyDataSources(request.getModelPartyConfig().stream().map(e -> PartyDataSource.builder().partyId(e.getModelParty()).datasource(e.getModelDataSource() + "/" + modelDataName).build()).collect(Collectors.toList()))
                 .modelList(cList)
                 .trainId(trainId)
                 .build();
@@ -251,7 +254,9 @@ public class ModelExportServiceImpl implements ModelExportService {
                 Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
                 pipelineNodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeDef, nodeDefBuilder);
             }
-            readTables.add(pipelineNodeDef.getAttrs(0).getFieldsOrThrow("s").getStringValue());
+            if (topNodes.contains(table.getUpk().getGraphNodeId())) {
+                readTables.add(pipelineNodeDef.getAttrs(0).getFieldsOrThrow("s").getStringValue());
+            }
         });
         Map<String, String> simpleTable = new HashMap<>();
         List<ProjectDatatableDO> projectDatatableDOList = projectDatatableRepository.findByProjectId(request.getProjectId());
@@ -285,7 +290,7 @@ public class ModelExportServiceImpl implements ModelExportService {
             if (StringUtils.isNotBlank(datatableId)) {
                 List<ProjectDatatableDO> datatableDOS = datatableRepository.findByDatableId(projectId, datatableId);
                 if (!CollectionUtils.isEmpty(datatableDOS)) {
-                    partySet.addAll(datatableDOS.stream().map(datatableDO -> datatableDO.getUpk().getNodeId()).collect(Collectors.toList()));
+                    partySet.addAll(datatableDOS.stream().map(datatableDO -> datatableDO.getUpk().getNodeId()).toList());
                 }
             }
         }
@@ -318,9 +323,14 @@ public class ModelExportServiceImpl implements ModelExportService {
             if (graphNodeKusciaParamsDO.isEmpty()) {
                 throw SecretpadException.of(ModelExportErrorCode.MODEL_EXPORT_FAILED, "component needs to have been successfully run: " + component.getGraphNodeId());
             }
-            inputs.addAll(JsonUtils.toJavaList(graphNodeKusciaParamsDO.get().getInputs(), String.class));
-            outputs.addAll(JsonUtils.toJavaList(graphNodeKusciaParamsDO.get().getOutputs(), String.class));
-            params.add(Base64Utils.encode(graphNodeKusciaParamsDO.get().getNodeEvalParam().getBytes()));
+            String nodeEvalParam = graphNodeKusciaParamsDO.get().getNodeEvalParam();
+            String name = JsonUtils.parseObject(nodeEvalParam).path("name").asText();
+            if (!StringUtils.equals(ComponentConstants.IO_READ_DATA, name) && !StringUtils.equals(ComponentConstants.IO_IDENTITY, name) && !StringUtils.equals(ComponentConstants.IO_WRITE_DATA, name)) {
+                inputs.addAll(JsonUtils.toJavaList(graphNodeKusciaParamsDO.get().getInputs(), String.class));
+                outputs.addAll(JsonUtils.toJavaList(graphNodeKusciaParamsDO.get().getOutputs(), String.class));
+                params.add(Base64Utils.encode(nodeEvalParam.getBytes()));
+            }
+
         });
         Map<String, Object> nodeEvalParam = Map.of(
                 "domain", "model",

@@ -19,10 +19,15 @@ SecretPadAddress="SecretPad"
 Password=$1
 OutPath=$2
 usage="$(basename "$0") password"
-
+SECRETPAD_ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)
+echo "root path is: $SECRETPAD_ROOT"
 if [[ ${Password} == "" ]]; then
-	echo "missing argument: $usage"
-	exit 1
+	Password="secretpad"
+	echo "missing argument: $usage  use default $Password"
+fi
+if [[ ${OutPath} == "" ]]; then
+	OutPath=$SECRETPAD_ROOT/config
+	echo "missing argument: $usage use default $OutPath"
 fi
 # generate jks
 set +e

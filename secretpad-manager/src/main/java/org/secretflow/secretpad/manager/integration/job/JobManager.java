@@ -25,6 +25,7 @@ import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
+import org.secretflow.secretpad.manager.integration.datatablegrant.DatatableGrantManager;
 import org.secretflow.secretpad.manager.integration.job.event.JobSyncErrorOrCompletedEvent;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.model.ModelExportDTO;
@@ -57,6 +58,7 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static org.secretflow.secretpad.common.constant.ComponentConstants.DATA_PREP_UNION;
 import static org.secretflow.secretpad.manager.integration.model.Constants.*;
 
 /**
@@ -100,6 +102,10 @@ public class JobManager extends AbstractJobManager {
     private JobServiceGrpc.JobServiceStub jobServiceAsyncStub;
     @Resource
     private ApplicationEventPublisher applicationEventPublisher;
+    @Resource
+    private DatatableGrantManager datatableGrantManager;
+    @Resource
+    private ProjectNodeRepository projectNodeRepository;
 
 
     public JobManager(ProjectJobRepository projectJobRepository,
@@ -176,7 +182,7 @@ public class JobManager extends AbstractJobManager {
             return;
         }
         LOGGER.info("watched jobEvent: jobId={}, jobState={}, task=[{}], endTime={}", it.getObject().getJobId(), it.getObject().getStatus().getState(),
-                it.getObject().getStatus().getTasksList().stream().map(t -> String.format("taskId=%s,state=%s", t.getTaskId(), t.getState())).collect(Collectors.joining("|")),
+                it.getObject().getStatus().getTasksList().stream().map(t -> String.format("taskId=%s,alias=%s,state=%s", t.getTaskId(), t.getAlias(), t.getState())).collect(Collectors.joining("|")),
                 it.getObject().getStatus().getEndTime());
         // sync tee job first
         if (syncTeeJob(it)) {
@@ -193,7 +199,7 @@ public class JobManager extends AbstractJobManager {
             LOGGER.info("watched jobEvent: jobId={}, but project job not exist, skip", it.getObject().getJobId());
             return;
         }
-        if (projectJobOpt.get().isFinished() && taskIsFinished(it)) {
+        if (projectJobOpt.get().isFinished()) {
             LOGGER.warn("watched jobEvent: jobId={}, but project job all task  finished, skip", it.getObject().getJobId());
             return;
         }
@@ -226,6 +232,7 @@ public class JobManager extends AbstractJobManager {
                 String domainDataId = String.format("%s-%s", jobId, output);
                 nodeDatatableIds.addAll(parties.stream().map(party -> DatatableDTO.NodeDatatableId.from(party, domainDataId)).toList());
                 domainDataMap.put(domainDataId, taskDO.getUpk());
+                createDomainGrantByUnion(taskDO, domainDataId);
             }
         }
         if (PlatformTypeEnum.EDGE.equals(getPlaformType())) {
@@ -391,8 +398,8 @@ public class JobManager extends AbstractJobManager {
                 Map<String, Job.TaskStatus> map = new HashMap<>();
                 kusciaJobStatus.getTasksList().forEach(kusciaTaskStatus -> {
                             LOGGER.info("watched jobEvent: kuscia status {}", kusciaTaskStatus.toString());
-                            String rawTaskId = kusciaTaskStatus.getTaskId();
-                            String taskId = removeContentAfterUnderscore(kusciaTaskStatus.getTaskId(), map, kusciaTaskStatus);
+                            String rawTaskId = kusciaTaskStatus.getAlias();
+                            String taskId = removeContentAfterUnderscore(kusciaTaskStatus.getAlias(), map, kusciaTaskStatus);
                             ProjectTaskDO task = projectJob.getTasks().get(taskId);
                             if (ObjectUtils.isEmpty(task)) {
                                 LOGGER.error("watched jobEvent: jobId={} taskId={} secretpad not exist but kuscia exist, now just skip", projectJob.getUpk().getJobId(), taskId);
@@ -581,14 +588,16 @@ public class JobManager extends AbstractJobManager {
             if (map.containsKey(taskId)) {
                 Job.TaskStatus taskStatus = map.get(taskId);
                 GraphNodeTaskStatus graphNodeTaskStatus = GraphNodeTaskStatus.formKusciaTaskStatus(taskStatus.getState());
-                if (graphNodeTaskStatus == GraphNodeTaskStatus.FAILED) {
-                    builder.setState("Failed").setErrMsg(taskStatus.getErrMsg());
-                }
+
                 if (rawGraphNodeTaskStatus == GraphNodeTaskStatus.INITIALIZED) {
                     if (graphNodeTaskStatus != GraphNodeTaskStatus.INITIALIZED) {
                         builder.setState("Running");
                     }
                 }
+                if (graphNodeTaskStatus == GraphNodeTaskStatus.FAILED) {
+                    builder.setState("Failed").setErrMsg(taskStatus.getErrMsg());
+                }
+
             }
         }
         return builder.build();
@@ -631,25 +640,38 @@ public class JobManager extends AbstractJobManager {
         return false;
     }
 
-    /**
-     * determine whether the task is completed
-     *
-     * @param it event
-     * @return whether the task is completed
-     */
-    private boolean taskIsFinished(Job.WatchJobEventResponse it) {
-        Job.JobStatusDetail kusciaJobStatus = it.getObject().getStatus();
-        if (CollectionUtils.isEmpty(kusciaJobStatus.getTasksList())) {
-            return false;
+    private void createDomainGrantByUnion(ProjectTaskDO taskDO, String domainDataId) {
+        if (!taskDO.getGraphNode().getCodeName().equalsIgnoreCase(DATA_PREP_UNION)) {
+            return;
         }
-        for (Job.TaskStatus task : kusciaJobStatus.getTasksList()) {
-            GraphNodeTaskStatus currentTaskStatus = GraphNodeTaskStatus.formKusciaTaskStatus(task.getState());
-            if (currentTaskStatus != GraphNodeTaskStatus.STOPPED &&
-                    currentTaskStatus != GraphNodeTaskStatus.SUCCEED &&
-                    currentTaskStatus != GraphNodeTaskStatus.FAILED) {
-                return false;
+        // Only one node and a union need to create a domain grant
+        // Table synchronization is only required when sample tables are merged, and kuscia will complete the union tables
+        if (taskDO.getParties().size() != 1) {
+            return;
+        }
+        String projectId = taskDO.getUpk().getProjectId();
+        List<String> nodeIdList;
+        List<ProjectNodeDO> projectNodeDOList = projectNodeRepository.findByProjectId(projectId);
+        if (!CollectionUtils.isEmpty(projectNodeDOList)) {
+            nodeIdList = projectNodeDOList.stream().map(ProjectNodeDO::getUpk)
+                    .map(ProjectNodeDO.UPK::getNodeId).filter(nodeId -> !taskDO.getParties().contains(nodeId)).toList();
+            if (!CollectionUtils.isEmpty(nodeIdList)) {
+                nodeIdList.forEach(nodeId -> {
+                    LOGGER.info("checkOrCreateDomainDataGrant: nodeId = {}, grantNodeId = {}, domainDataId = {}", taskDO.getParties().get(0), nodeId, domainDataId);
+                    checkOrCreateDomainDataGrant(taskDO.getParties().get(0), nodeId, domainDataId);
+                });
             }
         }
-        return true;
+    }
+
+    private void checkOrCreateDomainDataGrant(String nodeId, String grantNodeId, String domainDataId) {
+        String domainDataGrantId = domainDataId + "-" + grantNodeId;
+        try {
+            datatableGrantManager.queryDomainGrant(nodeId, domainDataGrantId);
+            return;
+        } catch (Exception e) {
+            LOGGER.warn("domain data grant not exists, nodeId = {}, domainDataGrantId = {}", nodeId, domainDataGrantId, e);
+        }
+        datatableGrantManager.createDomainGrant(nodeId, grantNodeId, domainDataId, domainDataGrantId);
     }
 }

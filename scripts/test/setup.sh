@@ -81,13 +81,4 @@ init_kusciaapi_certs "$SECRETPAD_ROOT/config/certs/bob"
 echo "generate kusciaapi certs successfully"
 gen_secretpad_serverkey secretpad "${SECRETPAD_ROOT}"/config
 
-echo "start to init sqlite"
 mkdir -p "${SECRETPAD_ROOT}/db"
-SQL_PATH="${SECRETPAD_ROOT}/config/schema/init.sql"
-DB_PATH="${SECRETPAD_ROOT}/db/secretpad.sqlite"
-if [ ! -e "${DB_PATH}" ]; then
-	echo >"${DB_PATH}"
-	sqlite3 "${DB_PATH}" ".read ${SQL_PATH}"
-	sqlite3 "${DB_PATH}" "insert into user_accounts (name, password_hash, owner_type, owner_id) values ('test', 'test', 'EDGE', 'test' );"
-fi
-echo "init sqlite successfully"

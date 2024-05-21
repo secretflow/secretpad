@@ -55,9 +55,9 @@ public class KusciaDomainRpcImpl implements KusciaDomainRpc {
 
     @Override
     public DomainOuterClass.QueryDomainResponse queryDomainNoCheck(DomainOuterClass.QueryDomainRequest request) {
-        log.info("DomainServiceGrpc queryDomain request{}", request);
+        log.info("DomainServiceGrpc queryDomainNoCheck request{}", request);
         DomainOuterClass.QueryDomainResponse response = domainServiceBlockingStub.queryDomain(request);
-        log.info("DomainServiceGrpc queryDomain response{}", response);
+        log.info("DomainServiceGrpc queryDomainNoCheck response{}", response);
         return response;
     }
 
@@ -81,9 +81,9 @@ public class KusciaDomainRpcImpl implements KusciaDomainRpc {
 
     @Override
     public DomainOuterClass.BatchQueryDomainResponse batchQueryDomain(DomainOuterClass.BatchQueryDomainRequest request) {
-        log.info("DomainServiceGrpc batchQueryDomainStatus request{}", request);
+        log.info("DomainServiceGrpc batchQueryDomain request{}", request);
         DomainOuterClass.BatchQueryDomainResponse response = domainServiceBlockingStub.batchQueryDomain(request);
-        log.info("DomainServiceGrpc batchQueryDomainStatus response{}", response);
+        log.info("DomainServiceGrpc batchQueryDomain response{}", response);
         checkResponse(response.getStatus());
         return response;
     }

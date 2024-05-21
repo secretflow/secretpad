@@ -20,16 +20,21 @@ import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.persistence.entity.ProjectGraphNodeKusciaParamsDO;
+import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
 import org.secretflow.secretpad.persistence.repository.ProjectGraphNodeKusciaParamsRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectJobTaskRepository;
 import org.secretflow.secretpad.service.constant.JobConstants;
+import org.secretflow.secretpad.service.graph.GraphContext;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
+import org.secretflow.secretpad.service.util.JobUtils;
 
 import com.google.protobuf.util.JsonFormat;
 import com.secretflow.spec.v1.IndividualTable;
 import jakarta.annotation.Resource;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.secretflow.proto.component.Cluster;
 import org.secretflow.proto.kuscia.TaskConfig;
 import org.secretflow.proto.pipeline.Pipeline;
@@ -38,12 +43,12 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.ObjectUtils;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
+
+import static org.secretflow.secretpad.service.constant.ComponentConstants.CHECKPOINT_PRE;
 
 /**
  * Job converter for message in apiLite
@@ -66,6 +71,9 @@ public class KusciaJobConverter implements JobConverter {
 
     @Resource
     private ProjectGraphNodeKusciaParamsRepository projectGraphNodeKusciaParamsRepository;
+
+    @Resource
+    private ProjectJobTaskRepository taskRepository;
 
     @Value("${secretpad.node-id}")
     private String localNodeId;
@@ -127,7 +135,7 @@ public class KusciaJobConverter implements JobConverter {
         return Job.CreateJobRequest.newBuilder()
                 .setJobId(job.getJobId())
                 .setInitiator(initiator)
-                .setMaxParallelism(maxParallelism)
+                .setMaxParallelism(job.getMaxParallelism())
                 .addAllTasks(jobTasks)
                 .build();
     }
@@ -151,6 +159,23 @@ public class KusciaJobConverter implements JobConverter {
         } else {
             Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
             pipelineNodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeDef, nodeDefBuilder);
+        }
+        if (GraphContext.isBreakpoint()) {
+            String checkpointUri = "";
+            List<ProjectTaskDO> latestTasks = taskRepository.findLastTimeTasks(Objects.requireNonNull(GraphContext.getProject()).getProjectId(), task.getNode().graphNodeId);
+            if (!CollectionUtils.isEmpty(latestTasks) && latestTasks.size() == 2 && !ObjectUtils.isEmpty(latestTasks.get(1))) {
+                ProjectTaskDO latestTask = latestTasks.get(1);
+                List<String> lastTasksOutput = latestTask.getGraphNode().getOutputs();
+                if (!lastTasksOutput.isEmpty()) {
+                    checkpointUri = JobUtils.genTaskOutputId(CHECKPOINT_PRE + latestTask.getUpk().getJobId(), lastTasksOutput.get(0));
+                    pipelineNodeDef = pipelineNodeDef.toBuilder().clearCheckpointUri().setCheckpointUri(checkpointUri).build();
+                }
+            }
+            log.info("breakpoint task {} node {} checkpointUri {}", task.getTaskId(), task.getNode().graphNodeId, checkpointUri);
+        } else {
+            if (!CollectionUtils.isEmpty(outputs) && StringUtils.isNotEmpty(outputs.get(0))) {
+                pipelineNodeDef = pipelineNodeDef.toBuilder().clearCheckpointUri().setCheckpointUri(CHECKPOINT_PRE + outputs.get(0)).build();
+            }
         }
         Cluster.SFClusterDesc sfClusterDesc = buildSfClusterDesc(parties);
         TaskConfig.TaskInputConfig taskInputConfig = TaskConfig.TaskInputConfig.newBuilder()
@@ -189,12 +214,12 @@ public class KusciaJobConverter implements JobConverter {
 
     public Cluster.SFClusterDesc buildSfClusterDesc(List<String> parties) {
         List<Cluster.SFClusterDesc.DeviceDesc> deviceDescs = new ArrayList<>();
-        deviceConfig.entrySet().forEach(entry -> {
+        deviceConfig.forEach((key, value) -> {
             Cluster.SFClusterDesc.DeviceDesc deviceDesc = Cluster.SFClusterDesc.DeviceDesc.newBuilder()
-                    .setType(entry.getKey())
-                    .setName(entry.getKey())
+                    .setType(key)
+                    .setName(key)
                     .addAllParties(parties)
-                    .setConfig(entry.getValue())
+                    .setConfig(value)
                     .build();
             deviceDescs.add(deviceDesc);
         });

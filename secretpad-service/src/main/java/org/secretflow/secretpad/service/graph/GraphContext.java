@@ -48,6 +48,13 @@ public final class GraphContext {
         return getComputeMode().equals(ProjectConstants.ComputeModeEnum.TEE.name());
     }
 
+    public static boolean isBreakpoint() {
+        if (GRAPH_CONTEXT_BEAN_THREAD_LOCAL.get() == null) {
+            return false;
+        }
+        return GRAPH_CONTEXT_BEAN_THREAD_LOCAL.get().breakpoint;
+    }
+
     public static ProjectDO getProject() {
         if (GRAPH_CONTEXT_BEAN_THREAD_LOCAL.get() == null) {
             return null;
@@ -78,14 +85,30 @@ public final class GraphContext {
         GRAPH_CONTEXT_BEAN_THREAD_LOCAL.set(new GraphContextBean(projectDO, parties));
     }
 
+    public static void set(ProjectDO projectDO, GraphParties parties, Boolean breakpoint) {
+        GRAPH_CONTEXT_BEAN_THREAD_LOCAL.set(new GraphContextBean(projectDO, parties, breakpoint));
+    }
+
     public static void remove() {
         GRAPH_CONTEXT_BEAN_THREAD_LOCAL.remove();
     }
 
-    @AllArgsConstructor
     public static class GraphContextBean {
         ProjectDO projectDO;
         GraphParties graphParties;
+        Boolean breakpoint = false;
+
+
+        public GraphContextBean(ProjectDO projectDO, GraphParties graphParties) {
+            this.projectDO = projectDO;
+            this.graphParties = graphParties;
+        }
+
+        public GraphContextBean(ProjectDO projectDO, GraphParties graphParties, Boolean breakpoint) {
+            this.projectDO = projectDO;
+            this.graphParties = graphParties;
+            this.breakpoint = breakpoint;
+        }
     }
 
     @Builder

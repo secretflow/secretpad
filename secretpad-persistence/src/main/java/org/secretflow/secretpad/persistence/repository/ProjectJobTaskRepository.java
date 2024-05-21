@@ -47,6 +47,16 @@ public interface ProjectJobTaskRepository extends BaseRepository<ProjectTaskDO, 
     Optional<ProjectTaskDO> findLatestTasks(@Param("projectId") String projectId, @Param("graphNodeId") String graphNodeId);
 
     /**
+     * Query the latest project job task result by projectId and graphNodeId
+     *
+     * @param projectId   target projectId
+     * @param graphNodeId target graphNodeId
+     * @return the latest project job task result
+     */
+    @Query(value = "select * from project_job_task where project_id=:projectId and graph_node_id=:graphNodeId order by id desc limit 2", nativeQuery = true)
+    List<ProjectTaskDO> findLastTimeTasks(@Param("projectId") String projectId, @Param("graphNodeId") String graphNodeId);
+
+    /**
      * Query project job task results by projectId, graphNodeId and status
      *
      * @param projectId   target projectId

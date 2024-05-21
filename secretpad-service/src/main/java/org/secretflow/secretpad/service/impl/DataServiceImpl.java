@@ -137,7 +137,8 @@ public class DataServiceImpl implements DataService {
         NodeResultDTO nodeResult = nodeManager.getNodeResult(request.getNodeId(), request.getDomainDataId());
         String relativeUri = nodeResult.getRelativeUri();
         relativeUriValidCheck(relativeUri);
-        String dir = storeDir + request.getNodeId() + FILE_SEPETATOR;
+        String dirPath = storeDir + request.getNodeId();
+        String dir = dirPath + FILE_SEPETATOR;
         String filePath = dir + relativeUri;
         File f = new File(filePath);
         try {
@@ -151,6 +152,12 @@ public class DataServiceImpl implements DataService {
                     LOGGER.error("failed to create empty file.");
                     throw SecretpadException.of(SystemErrorCode.UNKNOWN_ERROR, "failed to create empty file for return.");
                 }
+            }
+            // Security Recommendation Verification The download file path will not be overridden and is a subdirectory in the storeDir directory
+            File dirPathFile = new File(dirPath);
+            if (!f.getCanonicalPath().startsWith(dirPathFile.getCanonicalPath())) {
+                LOGGER.error("The result ralative uri file {} is not in the storeDir {}", filePath, dir);
+                throw SecretpadException.of(DataErrorCode.FILE_NOT_EXISTS_ERROR);
             }
             String downloadFilePath = null;
             String fileName = null;

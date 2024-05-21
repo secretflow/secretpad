@@ -14,6 +14,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `Fixed` for any bug fixes.
 `Security` in case of vulnerabilities.
 
+## [0.7.0b0] - 2024-05-15
+
+### Added
+
+- [Feature] Secretpad arm & amd image builds, MVP package supports arm & amd.
+- [Feature] Canvas supports changes in SecretFlow 1.6.0: support for GLM model in pvalue evaluation, onehot encoding
+  supports dropping the mode column, LR training components add an option to output weights, addition of vertical union
+  operator for datasets, psi version upgrade, etc.
+- [Feature] Support for changes in kuscia.sh, watch job interface changes, arm changes, and other kuscia 0.8.0
+  modifications.
+- [Feature] Canvas task parallel value configuration.
+- [Feature] Front-end display of Secretpad component versions.
+- [Feature] Integration with Alibaba Cloud SLS to display detailed logs of SLS components on the web interface.
+- [Feature] Secretpad version upgrade data retention.
+- [Feature] Serving online prediction release can specify system resources CPU, memory.
+- [Feature] Addition of platform component linear model parameter modification (currently supports modification of glm
+  model).
+- [Documentation] Supplemental documentation for Secretpad and Secretpad frontend development.
+- [Documentation] Secretpad GitHub technical documentation covering deployment, usage, common issues, development.
+
+### Changed
+
+- [Optimization] Kuscia grpc-related code refactoring and optimization.
+- [Optimization] Adjustment and standardization of data initialization operations.
+- [Optimization] Optimization of unit test structure, log output content, and format.
+
+### Security
+
+- [Vulnerability] Fixes for CVE-2022-40897, CVE-2024-20952, CVE-2024-20932, CVE-2024-20918, CVE-2024-22262,
+  CVE-2024-29025.
+
 ## [0.6.0b0] - 2024-04-15
 
 ### Added

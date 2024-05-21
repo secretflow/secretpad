@@ -113,7 +113,7 @@ public class EdgeRequestFilter implements Filter, Ordered {
                 out.flush();
                 return;
             }
-            log.info("----------- edge forward {} ", uri);
+            log.info("edge forward {} ", uri);
             String redirectUrl = "http://" + kusciaLiteGateway + uri;
             MultiValueMap<String, String> headers = parseRequestHeader(req);
             byte[] body = parseRequestBody(req);

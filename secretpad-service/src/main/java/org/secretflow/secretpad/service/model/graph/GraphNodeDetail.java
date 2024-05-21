@@ -18,6 +18,7 @@ package org.secretflow.secretpad.service.model.graph;
 
 import org.secretflow.secretpad.persistence.entity.ProjectGraphNodeDO;
 import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
+import org.secretflow.secretpad.service.model.node.NodeSimpleInfo;
 import org.secretflow.secretpad.service.model.project.MergedProjectResult;
 import org.secretflow.secretpad.service.model.project.ProjectResultBaseVO;
 
@@ -64,6 +65,11 @@ public class GraphNodeDetail extends GraphNodeInfo {
      * Project result base view object list
      */
     private List<ProjectResultBaseVO> results;
+
+    /**
+     * the graph node running parties
+     */
+    private List<NodeSimpleInfo> parties;
 
     public GraphNodeDetail(ProjectGraphNodeDO graphNodeDO, GraphNodeTaskStatus status, List<MergedProjectResult> results) {
         this.codeName = graphNodeDO.getCodeName();
@@ -141,4 +147,10 @@ public class GraphNodeDetail extends GraphNodeInfo {
         this.taskId = taskId;
         return this;
     }
+
+    public GraphNodeDetail withJobParties(List<NodeSimpleInfo> parties) {
+        this.parties = parties;
+        return this;
+    }
+
 }

@@ -27,10 +27,10 @@ import org.springframework.test.context.TestPropertySource;
 @TestPropertySource(properties = {
         "kusciaapi.protocol=notls"
 })
-public class MasterRouteInitTest extends ControllerTest{
+public class MasterRouteInitTest extends ControllerTest {
 
     @RepeatedTest(2)
-    public void testRun(){
+    public void testRun() {
         log.info("Initializer node route for center mode");
     }
 }

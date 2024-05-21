@@ -82,7 +82,7 @@ class ProjectControllerTest extends ControllerTest {
     private JobServiceGrpc.JobServiceBlockingStub jobStub;
 
     private ProjectDO buildProjectDO() {
-        return ProjectDO.builder().projectId(PROJECT_ID).build();
+        return ProjectDO.builder().projectId(PROJECT_ID).ownerId(UserContext.getUser().getOwnerId()).build();
     }
 
     private InstDO buildInstDO() {
@@ -673,7 +673,10 @@ class ProjectControllerTest extends ControllerTest {
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
             Mockito.when(projectResultRepository.findByProjectJobId(Mockito.anyString(), Mockito.anyString())).thenReturn(buildProjectResultDOList());
-
+            ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
+            projectGraphDO.setOwnerId(UserContext.getUser().getOwnerId());
+            Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(request.getProjectId(), GRAPH_ID)))
+                    .thenReturn(Optional.of(projectGraphDO));
             Mockito.when(jobStub.stopJob(Mockito.any())).thenReturn(org.secretflow.v1alpha1.kusciaapi.Job.StopJobResponse.newBuilder().build());
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "stopJob", StopProjectJobTaskRequest.class)).
                     content(JsonUtils.toJSONString(request));

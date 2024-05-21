@@ -27,6 +27,7 @@ import org.secretflow.secretpad.manager.integration.model.ModelExportDTO;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.GraphEdgeDO;
 import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
+import org.secretflow.secretpad.persistence.model.PartyDataSource;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.GraphService;
 import org.secretflow.secretpad.service.model.graph.GraphDetailVO;
@@ -290,11 +291,24 @@ public class ModelExportControllerTest extends ControllerTest {
     }
 
     private ProjectGraphNodeKusciaParamsDO buildProjectGraphNodeKusciaParamsDO() {
+        String param = """
+                {
+                  "domain": "io",
+                  "name": "write_data",
+                  "version": "0.0.1",
+                  "attr_paths": ["write_data", "write_data_type"],
+                  "attrs": [{
+                    "s": "{\\"modelHash\\":\\"f4cfa281-dbb8-4b60-bd78-97d3fa5674fb\\",\\"featureWeights\\":[{\\"featureName\\":\\"age\\",\\"party\\":\\"alice\\",\\"featureWeight\\":0},{\\"featureName\\":\\"balance\\",\\"party\\":\\"alice\\",\\"featureWeight\\":0.088554493}],\\"bias\\":-0.043597333}"
+                  }, {
+                    "s": "sf.model.ss_glm"
+                  }]
+                }
+                """;
         return ProjectGraphNodeKusciaParamsDO.builder()
                 .upk(ProjectGraphNodeKusciaParamsDO.UPK.builder().projectId(UUIDUtils.random(4)).graphNodeId(UUIDUtils.random(4)).graphNodeId(UUIDUtils.random(4)).build())
                 .inputs(JsonUtils.toJSONString(List.of("1")))
                 .outputs(JsonUtils.toJSONString(List.of("1")))
-                .nodeEvalParam("xxx")
+                .nodeEvalParam(param)
                 .build();
     }
 
@@ -318,6 +332,7 @@ public class ModelExportControllerTest extends ControllerTest {
                 .status(GraphNodeTaskStatus.SUCCEED)
                 .graphDetail(JsonUtils.toJSONString(GraphDetailVO.builder().graphId("test").build()))
                 .modelReportId("111")
+                .partyDataSources(Lists.newArrayList(PartyDataSource.builder().partyId("alice").datasource("alice").build()))
                 .build();
     }
 

@@ -24,6 +24,8 @@ package org.secretflow.secretpad.web.constant;
  */
 public class AuthConstants {
     public static final String TOKEN_NAME = "User-Token";
+    public static final String USER_NAME = "admin";
+    public static final String PASSWORD = "12#$qwER";
 
 
     /**
