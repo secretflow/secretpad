@@ -32,8 +32,8 @@ body:
     id: link
     attributes:
       label: Link to Relevant Documentation
-      description: Link to Relevant Documentation
-      placeholder: For faster problem-solving, if there are relevant documents, please attach a link.
+      description: For faster problem-solving, if there are relevant documents, please attach a link.
+      placeholder: e.g.,https://www.secretflow.org.cn/zh-CN/docs/secretpad-all-in-one/latest/kvu445094gvtkp3f
     validations:
       required: false
   - type: textarea
