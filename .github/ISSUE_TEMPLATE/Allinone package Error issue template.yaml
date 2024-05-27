@@ -4,7 +4,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please ensure that you are reporting the consultation issue on GitHub.（Install/Deploy、Running、Other）
+        Please ensure that you are reporting the consultation issue on GitHub.（Install/Deploy、Running、Others）
   - type: dropdown
     id: issue-type
     attributes:
