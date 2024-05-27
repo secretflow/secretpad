@@ -4,7 +4,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Please ensure that you are reporting the consultation issue on GitHub.（Api Usage、Existed Feature、Document、Other）
+        Please ensure that you are reporting the consultation issue on GitHub.（Api Usage、Feature、Document、Others）
   - type: dropdown
     id: issue-type
     attributes:
@@ -13,8 +13,7 @@ body:
       multiple: false
       options:
         - Api Usage
-        - Existed Feature
-        - New Feature
+        - Feature
         - Document
         - Others
     validations:
@@ -34,9 +33,9 @@ body:
     attributes:
       label: Link to Relevant Documentation
       description: Link to Relevant Documentation
-      placeholder: https://...
+      placeholder: For faster problem-solving, if there are relevant documents, please attach a link.
     validations:
-      required: true
+      required: false
   - type: textarea
     id: Question-Details
     attributes:
