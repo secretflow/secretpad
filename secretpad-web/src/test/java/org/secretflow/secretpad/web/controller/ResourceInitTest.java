@@ -18,6 +18,7 @@ package org.secretflow.secretpad.web.controller;
 
 import org.secretflow.secretpad.common.constant.SystemConstants;
 import org.secretflow.secretpad.manager.kuscia.grpc.impl.KusciaDomainRpcImpl;
+import org.secretflow.secretpad.service.DatatableService;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -41,11 +42,14 @@ import org.springframework.test.context.TestPropertySource;
 public class ResourceInitTest extends ControllerTest {
     @MockBean
     private KusciaDomainRpcImpl kusciaDomainRpc;
+    @MockBean
+    private DatatableService datatableService;
 
     @Test
     void init() {
         DomainOuterClass.QueryDomainResponse response = DomainOuterClass.QueryDomainResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(1).build()).build();
         DomainOuterClass.CreateDomainResponse createDomainResponse = DomainOuterClass.CreateDomainResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(0).build()).build();
+        Mockito.doNothing().when(datatableService).pushDatatableToTeeNode(Mockito.any());
         Mockito.when(kusciaDomainRpc.queryDomain(Mockito.any())).thenReturn(response);
         Mockito.when(kusciaDomainRpc.queryDomainNoCheck(Mockito.any())).thenReturn(DomainOuterClass.QueryDomainResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(0).build()).build());
         Mockito.when(kusciaDomainRpc.createDomain(Mockito.any())).thenReturn(createDomainResponse);

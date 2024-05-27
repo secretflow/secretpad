@@ -102,7 +102,7 @@ For more details, see [Development](./docs/deployment_experience/v0.6.0b0/deploy
 
 | secretpad Version | Kuscia Version | secretflow Version | trustedflow Version | serving Version |
 |-------------------|----------------|--------------------|---------------------|-----------------|
-| 0.7.0b0           | 0.8.0b0        | 1.6.0b0            | 0.1.1b0             | 0.3.0b0         |
+| 0.7.1b0           | 0.8.0b0        | 1.6.1b0            | 0.1.1b0             | 0.3.1b0         |
 | 0.6.0b0           | 0.7.0b0        | 1.5.0b0            | 0.1.1b0             | 0.2.1b0         |
 | 0.5.0b0           | 0.6.0b0        | 1.4.0b0            | 0.1.1b0             | 0.2.0b0         |
 | 0.4.1b0           | 0.5.0b0        | 1.4.0.dev24011601  | 0.1.1b0             |                 |
