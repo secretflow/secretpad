@@ -24,6 +24,8 @@ import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
 import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.NodeRouteRepository;
+import org.secretflow.secretpad.service.DatatableService;
+import org.secretflow.secretpad.service.model.datatable.PushDatatableToTeeRequest;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -35,6 +37,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import static org.secretflow.secretpad.common.constant.DomainConstants.*;
 import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_P2P;
 
 /**
@@ -51,6 +54,7 @@ public class TeeResourceInit implements CommandLineRunner {
     private final NodeRepository nodeRepository;
     private final NodeRouteRepository nodeRouteRepository;
     private final KusciaDomainRpc kusciaDomainRpc;
+    private final DatatableService datatableService;
 
     @Value("${secretpad.deploy-mode}")
     private String deployMode;
@@ -71,6 +75,7 @@ public class TeeResourceInit implements CommandLineRunner {
         ) {
             initTeeNodeInKuscia(initTeeNodeInDb());
             initTeeNodeRouteInDb();
+            initAliceBobDatableToTee();
         }
     }
 
@@ -120,5 +125,20 @@ public class TeeResourceInit implements CommandLineRunner {
         // Create a route from TEE to BOB
         NodeRouteDO teeBob = NodeRouteDO.builder().routeId("6").srcNodeId("tee").dstNodeId("bob").srcNetAddress("127.0.0.1:48080").dstNetAddress("127.0.0.1:38080").build();
         nodeRouteRepository.save(teeBob);
+    }
+
+    public void initAliceBobDatableToTee() {
+        PushDatatableToTeeRequest aliceTableRequest = PushDatatableToTeeRequest.builder()
+                .nodeId(ALICE)
+                .datatableId(ALICE_TABLE)
+                .build();
+        PushDatatableToTeeRequest bobTableRequest = PushDatatableToTeeRequest.builder()
+                .nodeId(BOB)
+                .datatableId(BOB_TABLE)
+                .build();
+        log.info("push {} datatable to tee node", ALICE_TABLE);
+        datatableService.pushDatatableToTeeNode(aliceTableRequest);
+        log.info("push {} datatable to tee node", BOB_TABLE);
+        datatableService.pushDatatableToTeeNode(bobTableRequest);
     }
 }

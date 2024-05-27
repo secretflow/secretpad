@@ -22,6 +22,11 @@ package org.secretflow.secretpad.common.constant;
  */
 public class DomainConstants {
 
+    public static final String ALICE = "alice";
+    public static final String BOB = "bob";
+    public static final String ALICE_TABLE = "alice-table";
+    public static final String BOB_TABLE = "bob-table";
+
     public enum TokenStatusEnum {
         used,
         unused
