@@ -1,0 +1,87 @@
+name: All_in_one Error Issue Template
+description: Please use this template for Install/Deploy or Running issues with the allinone package
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Please ensure that you are reporting the consultation issue on GitHub.（Install/Deploy、Running、Others）
+  - type: dropdown
+    id: issue-type
+    attributes:
+      label: Issue Type
+      description: What type of issue would you like to report?
+      multiple: false
+      options:
+        - Install/Deploy
+        - Running
+        - Others
+    validations:
+      required: true
+  - type: dropdown
+    id: searched-for-existing-issues
+    attributes:
+      label: Have you searched for existing documents and issues? 
+      description: Existing [documents](https://www.secretflow.org.cn/zh-CN/docs/secretpad-all-in-one/latest/mvp-platform) and [issues](https://github.com/secretflow/secretpad/issues)
+      options:
+        - 'Yes'
+        - 'No'
+    validations:
+      required: true
+  - type: input
+    id: OS
+    attributes:
+      label: OS Platform and Distribution
+      description:
+      placeholder: e.g., Linux Ubuntu 18.04
+    validations:
+      required: true
+  - type: input
+    id: all_in_one-version
+    attributes:
+      label: All_in_one Version
+      description:
+      placeholder: e.g., v0.3.0
+    validations:
+      required: true
+  - type: dropdown
+    id: module-type
+    attributes:
+      label: Module type
+      description: which app module on kuscia
+      options:
+        - secretflow
+        - kuscia
+        - serving
+        - secretpad
+        - others
+    validations:
+      required: true
+  - type: input
+    id: module-version
+    attributes:
+      label: Module version
+      description: module version
+      placeholder: e.g., secretflow 1.5.0b0
+    validations:
+      required: true
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happend and What you expected to happen.
+      description: Describe the bug, expected behavior.
+      placeholder: A bug happened!
+      value:
+      render: shell
+    validations:
+      required: true
+  - type: textarea
+    id: log-output
+    attributes:
+      label: Log output.
+      description: Relevant log output
+      placeholder: |
+        job log output or Relevant module log output,
+      value:
+      render: shell
+    validations:
+      required: true
