@@ -27,12 +27,9 @@ import org.secretflow.secretpad.manager.integration.model.CreateNodeRouteParam;
 import org.secretflow.secretpad.manager.integration.model.UpdateNodeRouteParam;
 import org.secretflow.secretpad.manager.integration.node.NodeManager;
 import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
-import org.secretflow.secretpad.persistence.entity.NodeDO;
-import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
-import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
-import org.secretflow.secretpad.persistence.repository.NodeRepository;
-import org.secretflow.secretpad.persistence.repository.NodeRouteRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
+import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.GraphJobStatus;
+import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.NodeRouterService;
 import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
@@ -45,6 +42,9 @@ import org.secretflow.secretpad.service.model.noderoute.PageNodeRouteRequest;
 import org.secretflow.secretpad.service.model.noderoute.UpdateNodeRouterRequest;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
 
+import java.util.*;
+import java.util.stream.Collectors;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -55,9 +55,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
-
-import java.util.*;
-import java.util.stream.Collectors;
 
 /**
  * @author yutu
@@ -74,6 +71,9 @@ public class NodeRouterServiceImpl implements NodeRouterService {
 
     private final NodeRepository nodeRepository;
     private final ProjectNodeRepository projectNodeRepository;
+
+    private final ProjectApprovalConfigRepository projectApprovalConfigRepository;
+    private final ProjectJobRepository projectJobRepository;
 
     private final EnvService envService;
 
@@ -181,6 +181,8 @@ public class NodeRouterServiceImpl implements NodeRouterService {
         }
         NodeDO srcNode = nodeRepository.findByNodeId(nodeRouteDO.getSrcNodeId());
         NodeDO dstNode = nodeRepository.findByNodeId(nodeRouteDO.getDstNodeId());
+        validateNoRunningJobs(srcNode, dstNode);
+
         checkDataPermissions(dstNode.getNodeId());
         if (StringUtils.isNotEmpty(param.getDstNetAddress())) {
             dstNode.setNetAddress(param.getDstNetAddress());
@@ -255,4 +257,41 @@ public class NodeRouterServiceImpl implements NodeRouterService {
             throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "no Permissions");
         }
     }
+
+    private void validateNoRunningJobs(NodeDO srcNode, NodeDO dstNode) {
+        List<ProjectApprovalConfigDO> projectApprovalConfigDOList = projectApprovalConfigRepository
+                .findByInitiator(srcNode.getNodeId(), dstNode.getNodeId());
+        projectApprovalConfigDOList = projectApprovalConfigDOList.stream()
+                .filter(pac -> pac.getParties().contains(srcNode.getNodeId()) && pac.getParties().contains(dstNode.getNodeId()))
+                .toList();
+        if (projectApprovalConfigDOList.isEmpty()) {
+            return;
+        }
+
+        List<String> commonProjectIds = projectApprovalConfigDOList.stream()
+                .map(ProjectApprovalConfigDO::getProjectId)
+                .collect(Collectors.toList());
+        if (commonProjectIds.isEmpty()) {
+            return;
+        }
+
+        List<ProjectJobDO> projectJobDOList = projectJobRepository.findByProjectIds(commonProjectIds);
+        if (projectJobDOList.isEmpty()) {
+            return;
+        }
+
+        List<String> jobIds = projectJobDOList.stream()
+                .map(job -> job.getUpk().getJobId())
+                .toList();
+        if (jobIds.isEmpty()) {
+            return;
+        }
+
+        List<GraphJobStatus> statusList = projectJobRepository.findStatusByJobIds(jobIds);
+        // If the status set contains RUNNING, throw an exception and do not update the node route
+        if (statusList.contains(GraphJobStatus.RUNNING)) {
+            throw SecretpadException.of(NodeRouteErrorCode.NODE_ROUTE_UPDATE_ERROR, "cannot update node route while a job is running.");
+        }
+    }
+
 }

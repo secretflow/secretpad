@@ -131,6 +131,15 @@ public class ProjectJobDO extends BaseAggregationRoot<ProjectJobDO> {
     }
 
     /**
+     * Whether the graph job status is finished not STOPPED
+     *
+     * @return whether finished not STOPPED
+     */
+    public boolean isFinishedNotIncludedStopped() {
+        return this.status == GraphJobStatus.SUCCEED || this.status == GraphJobStatus.FAILED;
+    }
+
+    /**
      * Stop the graph job and associated tasks
      */
     public void stop() {

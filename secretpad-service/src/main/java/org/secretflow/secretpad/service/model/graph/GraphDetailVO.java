@@ -18,11 +18,10 @@ package org.secretflow.secretpad.service.model.graph;
 
 import org.secretflow.secretpad.persistence.entity.ProjectGraphDO;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -61,6 +60,30 @@ public class GraphDetailVO {
      * Graph max parallelism
      */
     private Integer maxParallelism;
+
+    /**
+     * data source configuration
+     */
+    private List<DataSourceConfig> dataSourceConfig;
+
+    @Setter
+    @Getter
+    @ToString
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    @EqualsAndHashCode
+    public static class DataSourceConfig implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        private Boolean editEnable;
+        private String nodeId;
+        private String nodeName;
+        private String dataSourceName;
+        private String dataSourceId;
+    }
+
 
     /**
      * Build a new graph detail view object from project graph data object and graph node status view object list

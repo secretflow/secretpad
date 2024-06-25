@@ -55,7 +55,7 @@ public class DbChangeEventListener {
     private void sync(EntityChangeListener.DbChangeEvent event) {
         if (event.getSource() instanceof ProjectFeatureTableDO) {
             ProjectNodesInfo r = event.getSource();
-            Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(((ProjectFeatureTableDO) r).getUpk().getFeatureTableId(), ((ProjectFeatureTableDO) r).getUpk().getNodeId()));
+            Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(((ProjectFeatureTableDO) r).getUpk().getFeatureTableId(), ((ProjectFeatureTableDO) r).getUpk().getNodeId(), ((ProjectFeatureTableDO) r).getUpk().getDatasourceId()));
             if (featureTableDOOptional.isEmpty()) {
                 log.warn("featureTableDOOptional is empty");
             }

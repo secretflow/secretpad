@@ -17,8 +17,10 @@
 package org.secretflow.secretpad.service.model.graph;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.Data;
+import lombok.*;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -52,4 +54,21 @@ public class FullUpdateGraphRequest {
      * Graph max parallelism
      */
     private Integer maxParallelism;
+
+    private List<GraphDataSourceConfig> dataSourceConfig;
+
+    @Setter
+    @Getter
+    @ToString
+    @AllArgsConstructor
+    @NoArgsConstructor
+    @Builder
+    @EqualsAndHashCode
+    public static class GraphDataSourceConfig implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        private String nodeId;
+        private String dataSourceId;
+    }
 }

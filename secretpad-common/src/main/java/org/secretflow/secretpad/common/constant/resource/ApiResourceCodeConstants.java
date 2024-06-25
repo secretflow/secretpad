@@ -42,6 +42,7 @@ public class ApiResourceCodeConstants {
     public static final String DATA_UPLOAD = "DATA_UPLOAD";
     public static final String DATA_DOWNLOAD = "DATA_DOWNLOAD";
     public static final String DATA_LIST_DATASOURCE = "DATA_LIST_DATASOURCE";
+    public static final String DATATABLE_CREATE = "DATATABLE_CREATE";
     public static final String DATATABLE_LIST = "DATATABLE_LIST";
     public static final String DATATABLE_GET = "DATATABLE_GET";
     public static final String DATATABLE_DELETE = "DATATABLE_DELETE";

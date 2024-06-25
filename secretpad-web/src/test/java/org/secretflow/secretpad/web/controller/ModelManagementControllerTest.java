@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.common.enums.ModelStatsEnum;
 import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
@@ -46,7 +47,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Optional;
@@ -241,7 +241,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
-            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId, DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID);
 
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
@@ -274,7 +274,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
-            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId, DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID);
 
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
@@ -307,7 +307,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
-            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId, DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID);
 
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
@@ -340,7 +340,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
-            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId, DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID);
 
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
@@ -373,7 +373,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
-            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId, DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID);
 
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
@@ -406,7 +406,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
-            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId, DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID);
 
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
@@ -439,7 +439,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
-            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId);
+            FeatureTableDO.UPK upk = new FeatureTableDO.UPK(featureTableId, nodeId, DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID);
 
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));

@@ -17,9 +17,12 @@
 package org.secretflow.secretpad.service.model.graph;
 
 import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
+import org.secretflow.secretpad.service.model.node.NodeSimpleInfo;
 
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 /**
  * Graph node status view object
@@ -47,4 +50,10 @@ public class GraphNodeStatusVO {
      * Graph node task status
      */
     private GraphNodeTaskStatus status;
+
+
+    /**
+     * Graph node job parties
+     */
+    private List<NodeSimpleInfo> parties;
 }

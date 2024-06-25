@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.constant.KusciaDataSourceConstants;
 import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
 import org.secretflow.secretpad.common.errorcode.*;
 import org.secretflow.secretpad.common.util.DateTimes;
@@ -31,9 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.proto.pipeline.Pipeline;
 import org.secretflow.v1alpha1.common.Common;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
-import org.secretflow.v1alpha1.kusciaapi.Domaindata;
-import org.secretflow.v1alpha1.kusciaapi.JobServiceGrpc;
+import org.secretflow.v1alpha1.kusciaapi.*;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
@@ -80,6 +79,9 @@ class ProjectControllerTest extends ControllerTest {
 
     @MockBean
     private JobServiceGrpc.JobServiceBlockingStub jobStub;
+
+    @MockBean
+    private DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub domainDataSourceServiceBlockingStub;
 
     private ProjectDO buildProjectDO() {
         return ProjectDO.builder().projectId(PROJECT_ID).ownerId(UserContext.getUser().getOwnerId()).build();
@@ -776,6 +778,8 @@ class ProjectControllerTest extends ControllerTest {
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);
             Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
 
+            Mockito.when(domainDataSourceServiceBlockingStub.queryDomainDataSource(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
+
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJobTaskOutput", GetProjectJobTaskOutputRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });
@@ -822,6 +826,8 @@ class ProjectControllerTest extends ControllerTest {
             Mockito.when(projectJobRepository.findByJobId(Mockito.anyString())).thenReturn(Optional.of(buildProjectJobDO(false)));
             Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
             Mockito.when(projectResultRepository.findByOutputId(Mockito.anyString(), Mockito.anyString(), Mockito.anyString())).thenReturn(buildProjectResultDOList());
+            Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(buildQueryDomainDataResponse(0));
+            Mockito.when(domainDataSourceServiceBlockingStub.queryDomainDataSource(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
 
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJobTaskOutput", GetProjectJobTaskOutputRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -844,9 +850,9 @@ class ProjectControllerTest extends ControllerTest {
 
             Mockito.when(projectDatatableRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectDatatableDO()));
 
-            Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(1);
+            Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);
             Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
-
+            Mockito.when(domainDataSourceServiceBlockingStub.queryDomainDataSource(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJobTaskOutput", GetProjectJobTaskOutputRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, ProjectErrorCode.PROJECT_NOT_EXISTS);
@@ -874,6 +880,80 @@ class ProjectControllerTest extends ControllerTest {
 
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJobTaskOutput", GetProjectJobTaskOutputRequest.class)).
                     content(JsonUtils.toJSONString(request));
-        }, DatatableErrorCode.QUERY_DATATABLE_FAILED);
+        }, DataErrorCode.ILLEGAL_PARAMS_ERROR);
+    }
+
+    @Test
+    void updateProjectTableConfig() throws Exception {
+        assertResponse(() -> {
+            GetProjectGraphDomainDataSourceRequest request = FakerUtils.fake(GetProjectGraphDomainDataSourceRequest.class);
+            request.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_GET));
+            Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
+            Mockito.when(projectNodeRepository.findByProjectId(Mockito.any())).thenReturn(buildFindByProjectId(request));
+            Mockito.when(domainDataSourceServiceBlockingStub.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
+
+            return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "projectGraphDomainDataSourceList", GetProjectGraphDomainDataSourceRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    @Test
+    void updateProjectTableConfigByProjectNotFound() throws Exception {
+        assertErrorCode(() -> {
+            GetProjectGraphDomainDataSourceRequest request = FakerUtils.fake(GetProjectGraphDomainDataSourceRequest.class);
+            request.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_GET));
+            Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.empty());
+            Mockito.when(projectNodeRepository.findByProjectId(Mockito.any())).thenReturn(buildFindByProjectId(request));
+            Mockito.when(domainDataSourceServiceBlockingStub.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
+
+            return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "projectGraphDomainDataSourceList", GetProjectGraphDomainDataSourceRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        }, ProjectErrorCode.PROJECT_NOT_EXISTS);
+    }
+
+    @Test
+    void updateProjectTableConfigByProjectNodeNotFound() throws Exception {
+        assertErrorCode(() -> {
+            GetProjectGraphDomainDataSourceRequest request = FakerUtils.fake(GetProjectGraphDomainDataSourceRequest.class);
+            request.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_GET));
+            Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
+            Mockito.when(projectNodeRepository.findByProjectId(Mockito.any())).thenReturn(null);
+            Mockito.when(domainDataSourceServiceBlockingStub.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
+
+            return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "projectGraphDomainDataSourceList", GetProjectGraphDomainDataSourceRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        }, SystemErrorCode.VALIDATION_ERROR);
+    }
+
+    private Domaindatasource.ListDomainDataSourceResponse buildBatchQueryDomainResponse(Integer code) {
+        return Domaindatasource.ListDomainDataSourceResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(code).build())
+                .setData(Domaindatasource.DomainDataSourceList.newBuilder().addDatasourceList(Domaindatasource.DomainDataSource.newBuilder()
+                        .setName(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                        .setDatasourceId(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                        .setType("localfs")
+                        .build()))
+                .build();
+    }
+
+    private Domaindatasource.QueryDomainDataSourceResponse buildQueryDomainResponse(Integer code) {
+        return Domaindatasource.QueryDomainDataSourceResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(code).build())
+                .setData(Domaindatasource.DomainDataSource.newBuilder()
+                        .setName(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                        .setDatasourceId(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                        .setType("localfs")
+                        .build())
+                .build();
+    }
+
+    private List<ProjectNodeDO> buildFindByProjectId(GetProjectGraphDomainDataSourceRequest request) {
+        return List.of(ProjectNodeDO.builder()
+                .upk(new ProjectNodeDO.UPK(request.getProjectId(), "alice"))
+                .build());
     }
 }

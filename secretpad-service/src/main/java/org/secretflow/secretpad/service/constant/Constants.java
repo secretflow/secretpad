@@ -32,4 +32,19 @@ public class Constants {
     public static final String HTTP_PREFIX_REG = "^http://.*";
 
     public static final String IP_PREFIX_REG = "^(http|https)://.*";
+
+    /**
+     * domain patten:
+     * https://xxx.xxx.cn-xxx.com  or http://127.0.0.1:9000
+     */
+    public static final String DOMAIN_PATTEN = "(http://|https://)" +
+            "((([a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}|localhost)" +
+            "|((25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)\\.(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)\\." +
+            "(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)\\.(25[0-5]|2[0-4]\\d|1\\d{2}|[1-9]?\\d)))" +
+            "(:[1-9][0-9]{0,3}|:[1-5][0-9]{4}|:6[0-4][0-9]{3}|:65[0-4][0-9]{2}|:655[0-2][0-9]|:6553[0-5])?" +
+            "/?";
+
+    public static final String BUCKET_PATTEN = "^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$";
+
+    public static final String DEFAULT_REGION = "us-east-1";
 }

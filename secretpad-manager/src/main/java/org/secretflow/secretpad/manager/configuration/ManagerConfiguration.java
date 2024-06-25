@@ -18,13 +18,15 @@ package org.secretflow.secretpad.manager.configuration;
 
 import org.secretflow.secretpad.manager.integration.data.AbstractDataManager;
 import org.secretflow.secretpad.manager.integration.data.DataManager;
+import org.secretflow.secretpad.manager.integration.datasource.AbstractDatasourceManager;
+import org.secretflow.secretpad.manager.integration.datasource.DatasourceManager;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.datatable.DatatableManager;
 import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 import org.secretflow.secretpad.manager.integration.job.JobManager;
 import org.secretflow.secretpad.persistence.repository.*;
-
 import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
+import org.secretflow.v1alpha1.kusciaapi.DomainDataSourceServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.JobServiceGrpc;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -97,5 +99,16 @@ public class ManagerConfiguration {
         return new DataManager(dataStub);
     }
 
+    /**
+     * Create a new abstract datasource manager via domain data source service blocking stub
+     * @param datasourceStub
+     * @return
+     */
+    @Bean
+    AbstractDatasourceManager datasourceManager(
+            DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub datasourceStub
+    ) {
+        return new DatasourceManager(datasourceStub);
+    }
 }
 

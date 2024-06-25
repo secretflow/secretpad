@@ -87,10 +87,10 @@ public class CenterDataSyncControllerTest {
         nodeRepository.deleteAuthentic("test");
         nodeRepository.save(NodeDO.builder().name("test").nodeId("test").controlNodeId("test").mode(0).build());
         nodeRepository.delete(NodeDO.builder().name("test").nodeId("test").controlNodeId("test").mode(0).build());
-        ProjectFeatureTableDO.UPK upk = new ProjectFeatureTableDO.UPK("project", "node", "featuretable");
+        ProjectFeatureTableDO.UPK upk = new ProjectFeatureTableDO.UPK("project", "node", "featuretable", "datasourceId");
         projectFeatureTableRepository.saveAndFlush(ProjectFeatureTableDO.builder()
                 .upk(upk)
-                .featureTable(FeatureTableDO.builder().upk(new FeatureTableDO.UPK("f", "n")).type("http").url("http://1.1.1.1").desc("desc").status("").featureTableName("s").columns(new ArrayList<>()).build())
+                .featureTable(FeatureTableDO.builder().upk(new FeatureTableDO.UPK("f", "n", "d")).type("http").url("http://1.1.1.1").desc("desc").status("").featureTableName("s").columns(new ArrayList<>()).build())
                 .source(ProjectDatatableDO.ProjectDatatableSource.IMPORTED)
                 .tableConfig(new ArrayList<>())
                 .build());

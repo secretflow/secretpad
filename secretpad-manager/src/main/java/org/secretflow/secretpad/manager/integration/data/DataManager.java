@@ -58,7 +58,7 @@ public class DataManager extends AbstractDataManager {
 
     @Override
     public String createData(String domainId, String name, String realName, String tableName, String description,
-                             List<DatatableSchema> datatableSchemaList) {
+                             String datasourceType, String datasourceName, List<DatatableSchema> datatableSchemaList) {
         if (realName == null) {
             realName = name;
         }
@@ -68,6 +68,8 @@ public class DataManager extends AbstractDataManager {
         Domaindata.CreateDomainDataRequest createDomainDataRequest =
                 Domaindata.CreateDomainDataRequest.newBuilder()
                         .setDomaindataId(domainDataId)
+                        .putAttributes("DatasourceType",datasourceType)
+                        .putAttributes("DatasourceName",datasourceName)
                         .setDomainId(domainId).setName(tableName).setType("table")
                         .setRelativeUri(realName).putAttributes("description", description)
                         .addAllColumns(datatableSchemaList
@@ -83,7 +85,7 @@ public class DataManager extends AbstractDataManager {
 
     @Override
     public String createDataByDataSource(String domainId, String name, String tablePath, String datasourceId,
-                                         String description, List<DatatableSchema> datatableSchemaList) {
+                                         String description, String datasourceType,String datasourceName, List<DatatableSchema> datatableSchemaList) {
         String domainDataId = genDomainDataId();
         LOGGER.info("starter create domainData, description = {}", description);
         description = description == null ? "" : description;
@@ -91,6 +93,8 @@ public class DataManager extends AbstractDataManager {
                 Domaindata.CreateDomainDataRequest.newBuilder()
                         .setDomaindataId(domainDataId)
                         .setDomainId(domainId).setName(name).setType("table")
+                        .putAttributes("DatasourceType",datasourceType)
+                        .putAttributes("DatasourceName",datasourceName)
                         .setDatasourceId(datasourceId).setRelativeUri(tablePath).putAttributes("description", description)
                         .addAllColumns(datatableSchemaList
                                 .stream().map(it -> Common.DataColumn.newBuilder().setName(it.getFeatureName())

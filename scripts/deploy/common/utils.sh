@@ -361,7 +361,8 @@ function init_tee() {
 	docker run --rm --entrypoint /bin/bash -v $(pwd):/tmp/secretpad "$SECRETPAD_IMAGE" -c 'cp -R /app/scripts/templates/tee-image.yaml /tmp/secretpad/'
 	# shellcheck disable=SC2046
 	docker run --rm --entrypoint /bin/bash -v $(pwd):/tmp/secretpad "$SECRETPAD_IMAGE" -c 'cp -R /app/scripts/templates/tee-capsule-manager.yaml /tmp/secretpad/'
-	sed "s|{{.USER}}|${USER}|g;
+	TEE_NODE_NAME=$(docker exec -it "${USER}"-kuscia-master kubectl get nodes | grep tee | awk '{print $1}')
+	sed "s|{{.TEE_NODE_NAME}}|${TEE_NODE_NAME}|g;
   s|{{.TEE_CAPSULE_MANAGER_SIM_IMAGE}}|${CAPSULE_MANAGER_SIM_IMAGE}|g" \
 		tee-capsule-manager.yaml >tee-capsule-manager-0.yaml
 
@@ -389,8 +390,8 @@ function init_tee() {
 
 	log "create tee capsule deploy"
 	docker cp tee-capsule-manager-0.yaml "${KUSCIA_MASTER_CTR}":/home/kuscia
+	docker exec -it "${KUSCIA_MASTER_CTR}" kubectl delete -f tee-capsule-manager-0.yaml || true
 	docker exec -it "${KUSCIA_MASTER_CTR}" kubectl apply -f tee-capsule-manager-0.yaml
-
 	local alice=${KUSCIA_CTR_PREFIX}-${PAD_LITE}-alice
 	local bob=${KUSCIA_CTR_PREFIX}-${PAD_LITE}-bob
 	local tee=${KUSCIA_CTR_PREFIX}-${PAD_LITE}-tee
@@ -445,8 +446,15 @@ function create_alice_bob_domain_route() {
 }
 
 function init_kuscia_config() {
-	kuscia_config_file="${KUSCIA_CTR}/kuscia.yaml"
 	mkdir -p "${KUSCIA_CTR}"
+	kuscia_config_file="${KUSCIA_CTR}/kuscia.yaml"
+	local domainKeyData=""
+	if [ -f "${kuscia_config_file}" ]; then
+		echo "${kuscia_config_file} exit, use old domainKeyData"
+		domainKeyData=$(grep "domainKeyData" "${kuscia_config_file}" | awk '{ print $2 }')
+	else
+		touch "${kuscia_config_file}"
+	fi
 	log "kuscia init kuscia.yaml ${kuscia_config_file}"
 	if is_master; then
 		docker run -it --rm "${KUSCIA_IMAGE}" kuscia init --mode master --domain "${KUSCIA_MASTER_NODE_ID}" --protocol "${KUSCIA_PROTOCOL}" >"${kuscia_config_file}"
@@ -461,4 +469,9 @@ function init_kuscia_config() {
 	if is_p2p; then
 		docker run -it --rm "${KUSCIA_IMAGE}" kuscia init --mode autonomy --domain "${NODE_ID}" --protocol "${KUSCIA_PROTOCOL}" >"${kuscia_config_file}"
 	fi
+	if [ -n "$domainKeyData" ]; then
+		echo "domainKeyData is not empty, cover kuscia.yaml"
+		sed -i "s/^domainKeyData: .*/domainKeyData: ${domainKeyData}/" "${kuscia_config_file}"
+	fi
+
 }

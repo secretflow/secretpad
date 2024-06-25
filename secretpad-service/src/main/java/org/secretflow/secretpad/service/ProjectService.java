@@ -21,6 +21,7 @@ import org.secretflow.secretpad.service.model.graph.GraphNodeTaskLogsVO;
 import org.secretflow.secretpad.service.model.project.*;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Project service interface
@@ -190,4 +191,6 @@ public interface ProjectService {
     ProjectDO openProject(String projectId);
 
     boolean checkNodeArchive(String projectId);
+
+    Set<ProjectGraphDomainDataSourceVO> getProjectGraphDomainDataSource(GetProjectGraphDomainDataSourceRequest request);
 }

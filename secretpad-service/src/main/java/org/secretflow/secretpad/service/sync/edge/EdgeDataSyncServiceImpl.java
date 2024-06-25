@@ -63,6 +63,8 @@ public class EdgeDataSyncServiceImpl implements EdgeDataSyncService {
     private String kusciaLiteGateway;
     @Value("${secretpad.center-platform-service}")
     private String routeHeader;
+    @Value("${secretpad.node-id}")
+    private String nodeId;
 
     private final JpaSyncDataService jpaSyncDataService;
     private final DataSyncConfig dataSyncConfig;
@@ -89,6 +91,7 @@ public class EdgeDataSyncServiceImpl implements EdgeDataSyncService {
         WebClient webClient = WebClient.create(url);
         Flux<ServerSentEvent<String>> eventStream = webClient.get()
                 .header("host", routeHeader)
+                .header("kuscia-origin-source", nodeId)
                 .retrieve()
                 .bodyToFlux(new ParameterizedTypeReference<ServerSentEvent<String>>() {
                 })

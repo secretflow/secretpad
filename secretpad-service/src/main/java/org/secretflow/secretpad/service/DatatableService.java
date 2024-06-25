@@ -18,6 +18,8 @@ package org.secretflow.secretpad.service;
 
 import org.secretflow.secretpad.service.model.datatable.*;
 
+import java.util.List;
+
 /**
  * Datatable service interface
  *
@@ -73,4 +75,15 @@ public interface DatatableService {
      */
     void pullResultFromTeeNode(String nodeId, String datatableId, String targetTeeNodeId, String datasourceId, String relativeUri, String voteResult,
                                String projectId, String projectJobId, String projectJobTaskId, String resultType);
+
+    /**
+     * create data table
+     * @param createDatatableRequest
+     * @return
+     */
+    String createDataTable(CreateDatatableRequest createDatatableRequest);
+
+
+
+    List<DatatableVO> findDatatableByNodeId(String nodeId);
 }

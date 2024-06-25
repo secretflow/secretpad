@@ -16,8 +16,9 @@
 
 package org.secretflow.secretpad.manager.integration.model;
 
+import org.secretflow.secretpad.common.constant.DomainDataConstants;
+import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO;
-
 import lombok.*;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.springframework.util.CollectionUtils;
@@ -65,6 +66,16 @@ public class DatatableDTO {
     private String datasourceId;
 
     /**
+     * Datasource type
+     */
+    private String datasourceType;
+
+    /**
+     * Datasource name
+     */
+    private String datasourceName;
+
+    /**
      * Datatable attributes
      */
     private Map<String, String> attributes;
@@ -96,6 +107,8 @@ public class DatatableDTO {
                 .datatableId(domainData.getDomaindataId())
                 .datatableName(domainData.getName())
                 .nodeId(domainData.getAuthor())
+                .datasourceType(domainData.getAttributesMap().get(DomainDatasourceConstants.DATASOURCE_TYPE) == null ? DomainDataConstants.DEFAULT_LOCAL_DATASOURCE_TYPE : domainData.getAttributesMap().get(DomainDatasourceConstants.DATASOURCE_TYPE))
+                .datasourceName(domainData.getAttributesMap().get(DomainDatasourceConstants.DATASOURCE_NAME) == null ? DomainDataConstants.DEFAULT_LOCAL_DATASOURCE_NAME : domainData.getAttributesMap().get(DomainDatasourceConstants.DATASOURCE_NAME))
                 .relativeUri(domainData.getRelativeUri())
                 .datasourceId(domainData.getDatasourceId())
                 .attributes(domainData.getAttributesMap())

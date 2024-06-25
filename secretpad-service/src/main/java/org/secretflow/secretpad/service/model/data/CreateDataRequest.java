@@ -70,6 +70,14 @@ public class CreateDataRequest {
     @Schema(description = "datatable description")
     private String description;
 
+    @Schema(description = "datasource type")
+    @NotBlank
+    private String datasourceType;
+
+    @Schema(description = "datasource name")
+    @NotBlank
+    private String datasourceName;
+
     /**
      * Datatable schema
      */

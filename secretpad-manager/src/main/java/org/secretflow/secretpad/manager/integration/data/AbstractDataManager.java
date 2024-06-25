@@ -45,6 +45,8 @@ public abstract class AbstractDataManager {
             String realName,
             String tableName,
             String description,
+            String datasourceType,
+            String datasourceName,
             List<DatatableSchema> datatableSchemaList
     );
 
@@ -55,6 +57,8 @@ public abstract class AbstractDataManager {
      * @param name
      * @param tablePath
      * @param description
+     * @param datasourceType
+     * @param datasourceName
      * @param datasourceId
      * @param datatableSchemaList
      * @return domain data id
@@ -65,6 +69,8 @@ public abstract class AbstractDataManager {
             String tablePath,
             String datasourceId,
             String description,
+            String datasourceType,
+            String datasourceName,
             List<DatatableSchema> datatableSchemaList
     );
 

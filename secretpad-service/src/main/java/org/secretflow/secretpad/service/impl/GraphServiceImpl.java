@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
@@ -23,10 +24,12 @@ import org.secretflow.secretpad.common.errorcode.JobErrorCode;
 import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.*;
+import org.secretflow.secretpad.manager.integration.data.DataManager;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
 import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
+import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainDatasourceRpc;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.GraphEdgeDO;
 import org.secretflow.secretpad.persistence.model.GraphJobStatus;
@@ -41,6 +44,7 @@ import org.secretflow.secretpad.service.graph.ComponentTools;
 import org.secretflow.secretpad.service.graph.GraphContext;
 import org.secretflow.secretpad.service.graph.JobChain;
 import org.secretflow.secretpad.service.model.graph.*;
+import org.secretflow.secretpad.service.model.node.NodeSimpleInfo;
 import org.secretflow.secretpad.service.model.project.GetProjectJobTaskOutputRequest;
 import org.secretflow.secretpad.service.model.project.StopProjectJobTaskRequest;
 import org.secretflow.secretpad.service.util.GraphUtils;
@@ -57,6 +61,8 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.secretflow.v1alpha1.kusciaapi.Domaindata;
+import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -66,7 +72,6 @@ import org.springframework.util.CollectionUtils;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
 import static org.secretflow.secretpad.common.constant.ComponentConstants.BINNING_MODIFICATIONS_CODENAME;
 import static org.secretflow.secretpad.common.constant.ComponentConstants.MODEL_PARAM_MODIFICATIONS_CODENAME;
 import static org.secretflow.secretpad.service.constant.ComponentConstants.READ_DATA_DATATABLE;
@@ -137,6 +142,15 @@ public class GraphServiceImpl implements GraphService {
     @Autowired
     private ProjectReadDtaRepository readDtaRepository;
 
+    @Resource
+    private ProjectGraphDomainDatasourceServiceImpl projectGraphDomainDatasourceService;
+
+    @Resource
+    private DataManager dataManager;
+
+    @Resource
+    private KusciaDomainDatasourceRpc kusciaDomainDatasourceRpc;
+
 
     @Value("${tee.domain-id:tee}")
     private String teeNodeId;
@@ -147,6 +161,8 @@ public class GraphServiceImpl implements GraphService {
     private String localNodeId;
 
     private static final Integer DEFAULT_INITIAL_INDEX = 32;
+    @Autowired
+    private EnvServiceImpl envServiceImpl;
 
     @Override
     public Map<String, CompListVO> listComponents() {
@@ -186,6 +202,7 @@ public class GraphServiceImpl implements GraphService {
         }
         graphDO.setNodeMaxIndex(DEFAULT_INITIAL_INDEX);
         graphRepository.save(graphDO);
+        projectGraphDomainDatasourceService.createGraphAndInitDefaultDataSource(request, graphId);
         return CreateGraphVO.builder().graphId(graphId).build();
     }
 
@@ -225,7 +242,16 @@ public class GraphServiceImpl implements GraphService {
         String projectId = request.getProjectId();
         String graphId = request.getGraphId();
         // check project graph owner
-        ProjectGraphDO graphDO = ownerCheck(projectId, graphId);
+        ProjectGraphDO graphDO = null;
+        if (envServiceImpl.isCenter()) {
+            graphDO = ownerCheck(projectId, graphId);
+        } else {
+            Optional<ProjectGraphDO> graphOptional = graphRepository.findById(new ProjectGraphDO.UPK(projectId, graphId));
+            if (graphOptional.isEmpty()) {
+                throw SecretpadException.of(GraphErrorCode.GRAPH_NOT_EXISTS);
+            }
+            graphDO = graphOptional.get();
+        }
         if (!CollectionUtils.isEmpty(request.getNodes())) {
             graphDO.getNodes().clear();
             graphDO.setNodes(GraphNodeInfo.toDOList(projectId, graphId, request.getNodes()));
@@ -237,6 +263,7 @@ public class GraphServiceImpl implements GraphService {
             graphDO.setMaxParallelism(request.getMaxParallelism());
         }
         graphRepository.save(graphDO);
+        projectGraphDomainDatasourceService.updateProjectGraphDomainDatasourceDOByFullUpdateGraphRequest(request);
     }
 
     @Override
@@ -264,7 +291,9 @@ public class GraphServiceImpl implements GraphService {
         }
         ProjectGraphDO graphDO = graphDOOptional.get();
         List<GraphNodeStatusVO> nodeStatus = getLatestTaskStatus(graphDO).getNodes();
-        return GraphDetailVO.fromDO(graphDO, nodeStatus);
+        GraphDetailVO graphDetailVO = GraphDetailVO.fromDO(graphDO, nodeStatus);
+        graphDetailVO.setDataSourceConfig(projectGraphDomainDatasourceService.convertToGraphDetailVODataSourceConfig(request));
+        return graphDetailVO;
     }
 
     @Override
@@ -352,7 +381,7 @@ public class GraphServiceImpl implements GraphService {
             outputVO.setTaskId(taskId);
             outputVO.setJobId(jobId);
             Optional<ProjectJobDO> projectJobDOOptional = jobRepository.findById(new ProjectJobDO.UPK(projectId, jobId));
-            if (!projectJobDOOptional.isPresent()) {
+            if (projectJobDOOptional.isEmpty()) {
                 throw SecretpadException.of(JobErrorCode.PROJECT_JOB_NOT_EXISTS);
             }
             outputVO.setGraphID(projectJobDOOptional.get().getGraphId());
@@ -370,6 +399,14 @@ public class GraphServiceImpl implements GraphService {
                         outputVO.setGmtCreate(DateTimes.toRfc3339(resultDO.getGmtCreate()));
                         outputVO.setGmtModified(DateTimes.toRfc3339(resultDO.getGmtModified()));
                         String nodeId = resultDO.getUpk().getNodeId();
+                        String refId = resultDO.getUpk().getRefId();
+                        GraphNodeOutputVO.OutputResult outputResult;
+                        String content;
+                        Domaindata.DomainData domainData = dataManager.queryDomainData(nodeId, refId);
+                        String datasourceId = domainData.getDatasourceId();
+                        Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaDomainDatasourceRpc.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
+                                .setDomainId(nodeId).setDatasourceId(datasourceId).build());
+                        String datasourceType = DataSourceTypeEnum.kuscia2platform(queryDomainDataSourceResponse.getData().getType());
                         switch (resultKind) {
                             case Report:
                                 Optional<ProjectReportDO> reportDOOptional = reportRepository.findById(new ProjectReportDO.UPK(projectId, latestOutputId));
@@ -377,7 +414,7 @@ public class GraphServiceImpl implements GraphService {
                                     throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_OUTPUT_NOT_EXISTS);
                                 }
                                 ProjectReportDO reportDO = reportDOOptional.get();
-                                String content = reportDO.getContent();
+                                content = reportDO.getContent();
                                 JsonNode jsonNode = JsonUtils.parseObject(content);
                                 Object tabs = null;
                                 if (ObjectUtils.isNotEmpty(jsonNode)) {
@@ -412,11 +449,11 @@ public class GraphServiceImpl implements GraphService {
                                 outputVO.setTabs(json);
                                 return outputVO;
                             case Model:
-                                GraphNodeOutputVO.OutputResult outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(nodeId).path(latestOutputId).type(ResultKind.Model.getName()).tableId(latestOutputId).build();
+                                outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(nodeId).path(latestOutputId).type(ResultKind.Model.getName()).tableId(latestOutputId).dsId(datasourceId).datasourceType(datasourceType).build();
                                 outputResults.add(outputResult);
                                 break;
                             case Rule:
-                                outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(nodeId).path(latestOutputId).type(ResultKind.Rule.getName()).tableId(latestOutputId).build();
+                                outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(nodeId).path(latestOutputId).type(ResultKind.Rule.getName()).tableId(latestOutputId).dsId(datasourceId).datasourceType(datasourceType).build();
                                 outputResults.add(outputResult);
                                 break;
                             case FedTable:
@@ -425,6 +462,7 @@ public class GraphServiceImpl implements GraphService {
                                     throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
                                 }
                                 outputResult = fromDatatable(datatableDOOptional.get(), null, null);
+                                outputResult.setDatasourceType(datasourceType);
                                 outputResults.add(outputResult);
                                 break;
                             default:
@@ -499,6 +537,7 @@ public class GraphServiceImpl implements GraphService {
             centerResultId = resultId.replace(nodeId + "-", "");
             centerNodeId = teeNodeId;
         }
+        GraphNodeOutputVO.OutputResult outputResult;
         switch (resultKind) {
             case Report:
                 Optional<ProjectReportDO> reportDOOptional = reportRepository.findById(new ProjectReportDO.UPK(projectId, centerResultId));
@@ -512,7 +551,7 @@ public class GraphServiceImpl implements GraphService {
                 return outputVO;
             case Model:
             case Rule:
-                GraphNodeOutputVO.OutputResult outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(centerNodeId).path(centerResultId).build();
+                outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(centerNodeId).path(centerResultId).build();
                 outputResults.add(outputResult);
                 break;
             case FedTable:
@@ -544,7 +583,7 @@ public class GraphServiceImpl implements GraphService {
         List<String> fields = new ArrayList<>();
         List<String> types = new ArrayList<>();
         if (!CollectionUtils.isEmpty(tableConfig)) {
-            tableConfig.stream().forEach(config -> {
+            tableConfig.forEach(config -> {
                 fields.add(config.getColName());
                 types.add(config.getColType());
             });
@@ -661,6 +700,7 @@ public class GraphServiceImpl implements GraphService {
                     status = taskDOOptional.get().getStatus();
                     nodeStatusVO.setTaskId(taskDOOptional.get().getUpk().getTaskId());
                     nodeStatusVO.setJobId(taskDOOptional.get().getUpk().getJobId());
+                    nodeStatusVO.setParties(nodeRepository.findByNodeIdIn(taskDOOptional.get().getParties()).stream().map(e -> NodeSimpleInfo.builder().nodeName(e.getName()).nodeId(e.getNodeId()).build()).collect(Collectors.toList()));
                     jobIds.add(taskDOOptional.get().getUpk().getJobId());
                 }
                 nodeStatusVO.setStatus(status);
@@ -733,7 +773,7 @@ public class GraphServiceImpl implements GraphService {
             }
         }
         if (!CollectionUtils.isEmpty(stopRequests)) {
-            stopRequests.stream().forEach(req -> projectService.stopProjectJob(req));
+            stopRequests.forEach(req -> projectService.stopProjectJob(req));
         }
     }
 
@@ -807,26 +847,23 @@ public class GraphServiceImpl implements GraphService {
     private Map<String, Set<String>> findParties(List<ProjectGraphNodeDO> nodes, Map<String, Set<String>> tops, String projectId, List<GraphContext.GraphParty> partyList) {
         Map<String, Set<String>> result = new HashMap<>();
         Map<String, ProjectGraphNodeDO> nodeDOMap = nodes.stream().collect(Collectors.toMap(e -> (e.getUpk()).getGraphNodeId(), Function.identity()));
-        tops.entrySet().forEach(entry -> {
-                    Set<String> parties = new HashSet<>();
-                    entry.getValue().forEach(e -> {
-                        ProjectGraphNodeDO projectGraphNodeDO = nodeDOMap.get(e);
-                        GraphNodeInfo graphNodeInfo = GraphNodeInfo.fromDO(projectGraphNodeDO);
-                        String datatableId = ComponentTools.getDataTableId(graphNodeInfo);
-                        if (StringUtils.isNotBlank(datatableId)) {
-                            List<ProjectDatatableDO> datatableDOS = datatableRepository.findByDatableId(projectId, datatableId);
-                            if (!CollectionUtils.isEmpty(datatableDOS)) {
-                                parties.addAll(datatableDOS.stream().map(datatableDO -> datatableDO.getUpk().getNodeId()).collect(Collectors.toList()));
-                                partyList.add(GraphContext.GraphParty.builder().datatableId(datatableId).node(datatableDOS.get(0).getUpk().getNodeId()).build());
-                            }
-                        }
-
-                    });
-                    result.put(entry.getKey(), parties);
+        tops.forEach((key, value) -> {
+            Set<String> parties = new HashSet<>();
+            value.forEach(e -> {
+                ProjectGraphNodeDO projectGraphNodeDO = nodeDOMap.get(e);
+                GraphNodeInfo graphNodeInfo = GraphNodeInfo.fromDO(projectGraphNodeDO);
+                String datatableId = ComponentTools.getDataTableId(graphNodeInfo);
+                if (StringUtils.isNotBlank(datatableId)) {
+                    List<ProjectDatatableDO> datatableDOS = datatableRepository.findByDatableId(projectId, datatableId);
+                    if (!CollectionUtils.isEmpty(datatableDOS)) {
+                        parties.addAll(datatableDOS.stream().map(datatableDO -> datatableDO.getUpk().getNodeId()).toList());
+                        partyList.add(GraphContext.GraphParty.builder().datatableId(datatableId).node(datatableDOS.get(0).getUpk().getNodeId()).build());
+                    }
                 }
 
-        );
+            });
+            result.put(key, parties);
+        });
         return result;
     }
-
 }

@@ -25,13 +25,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
 
-import static org.secretflow.secretpad.manager.integration.model.Constants.HTTP_PREFIX;
-import static org.secretflow.secretpad.manager.integration.model.Constants.KUSCIA_PROTOCOL;
+import static org.secretflow.secretpad.common.constant.Constants.HTTP_PREFIX;
+import static org.secretflow.secretpad.common.constant.Constants.KUSCIA_PROTOCOL;
 
 /**
  * Initializer node route for center mode
@@ -43,6 +45,7 @@ import static org.secretflow.secretpad.manager.integration.model.Constants.KUSCI
 @RequiredArgsConstructor
 @Slf4j
 @Service
+@Order(Ordered.LOWEST_PRECEDENCE)
 public class MasterRouteInit implements CommandLineRunner {
 
     @Value("${kusciaapi.protocol:mtls}")

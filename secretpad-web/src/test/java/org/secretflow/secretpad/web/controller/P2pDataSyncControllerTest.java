@@ -26,6 +26,7 @@ import org.secretflow.secretpad.service.sync.p2p.DataSyncConsumerTemplate;
 
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.junit.jupiter.api.Test;
 import org.springframework.test.context.TestPropertySource;
 
 import java.util.List;
@@ -76,6 +77,9 @@ public class P2pDataSyncControllerTest extends ControllerTest {
     @Resource
     NodeRepository nodeRepository;
 
+    @Resource
+    ProjectGraphDomainDatasourceRepository projectGraphDomainDatasourceRepository;
+
     void saveProjectGraphDO() {
         ProjectGraphDO projectGraphDO = ProjectGraphDO.builder()
                 .upk(new ProjectGraphDO.UPK("test", "test"))
@@ -88,6 +92,19 @@ public class P2pDataSyncControllerTest extends ControllerTest {
         projectGraphRepository.saveAndFlush(projectGraphDO);
         projectGraphRepository.delete(projectGraphDO);
     }
+
+    void saveProjectGraphDomainDatasourceDO() {
+        ProjectGraphDomainDatasourceDO projectGraphDomainDatasourceDO = ProjectGraphDomainDatasourceDO.builder()
+                .upk(new ProjectGraphDomainDatasourceDO.UPK("test", "test", "test"))
+                .dataSourceId("test")
+                .dataSourceName("test")
+                .editEnable(true)
+                .build();
+        projectGraphDomainDatasourceRepository.deleteAll();
+        projectGraphDomainDatasourceRepository.saveAndFlush(projectGraphDomainDatasourceDO);
+        projectGraphDomainDatasourceRepository.delete(projectGraphDomainDatasourceDO);
+    }
+
 
     void saveProjectGraphNodeDO() {
         ProjectGraphNodeDO projectGraphNodeDO = ProjectGraphNodeDO.builder()
@@ -240,6 +257,7 @@ public class P2pDataSyncControllerTest extends ControllerTest {
                 .modelList(List.of("1"))
                 .trainId("1")
                 .modelReportId("1")
+                .partyDataSources(List.of())
                 .build();
         projectModelPackRepository.deleteAll();
         projectModelPackRepository.saveAndFlush(projectModelPackDO);
@@ -251,7 +269,7 @@ public class P2pDataSyncControllerTest extends ControllerTest {
         nodeRepository.saveAndFlush(NodeDO.builder().nodeId("a").mode(0).name("test").controlNodeId("test").build());
     }
 
-    //@Test
+    @Test
     void testP2pDatasync() {
         saveProjectNode();
         routeDetection.addAvailableNode("a");
@@ -278,6 +296,7 @@ public class P2pDataSyncControllerTest extends ControllerTest {
         saveProjectGraphNodeKusciaParamsDO();
         saveProjectModelServingDO();
         saveProjectModelPackDO();
+        saveProjectGraphDomainDatasourceDO();
         projectRepository.delete(projectDO);
         dataSyncConsumerTemplate.consumer("alice", SyncDataDTO.builder()
                 .action("delete")
@@ -291,6 +310,16 @@ public class P2pDataSyncControllerTest extends ControllerTest {
                         .upk(new ProjectJobDO.UPK("test1", "test1"))
                         .name("test1")
                         .status(GraphJobStatus.RUNNING)
+                        .build())
+                .build());
+        dataSyncConsumerTemplate.consumer("alice", SyncDataDTO.builder()
+                .action("create")
+                .tableName(ProjectGraphDomainDatasourceDO.class.getTypeName())
+                .data(ProjectGraphDomainDatasourceDO.builder()
+                        .upk(new ProjectGraphDomainDatasourceDO.UPK("test", "test", "test"))
+                        .dataSourceId("test")
+                        .dataSourceName("test")
+                        .editEnable(true)
                         .build())
                 .build());
         projectNodeRepository.deleteAllAuthentic();

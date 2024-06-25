@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.persistence.entity;
 
 import org.secretflow.secretpad.common.constant.DomainConstants;
+import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
@@ -61,6 +62,8 @@ public class ProjectFeatureTableDO extends BaseAggregationRoot<ProjectFeatureTab
             @JoinColumn(name = "feature_table_id", referencedColumnName = "feature_table_id",
                     insertable = false, updatable = false),
             @JoinColumn(name = "node_id", referencedColumnName = "node_id",
+                    insertable = false, updatable = false),
+            @JoinColumn(name = "datasource_id", referencedColumnName = "datasource_id",
                     insertable = false, updatable = false)
     })
     private FeatureTableDO featureTable;
@@ -89,13 +92,16 @@ public class ProjectFeatureTableDO extends BaseAggregationRoot<ProjectFeatureTab
          */
         @Column(name = "feature_table_id", nullable = false, length = 64)
         private String featureTableId;
+
+        @Column(name = "datasource_id", nullable = false, length = 64)
+        private String datasourceId;
     }
 
     public static class Factory {
         public static ProjectFeatureTableDO newProjectFeatureTable(String projectId, String nodeId, String featureTableId,
-                                                                   List<ProjectDatatableDO.TableColumnConfig> configs) {
+                                                                   List<ProjectDatatableDO.TableColumnConfig> configs, String datasourceId) {
             return ProjectFeatureTableDO.builder()
-                    .upk(new ProjectFeatureTableDO.UPK(projectId, nodeId, featureTableId))
+                    .upk(new ProjectFeatureTableDO.UPK(projectId, nodeId, featureTableId, StringUtils.isBlank(datasourceId) ? DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID : datasourceId))
                     .source(ProjectDatatableDO.ProjectDatatableSource.IMPORTED)
                     .tableConfig(configs)
                     .build();

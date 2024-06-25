@@ -22,6 +22,7 @@ import org.secretflow.secretpad.common.util.SpringContextUtil;
 
 import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
+import org.springframework.http.HttpStatus;
 
 import java.io.IOException;
 import java.net.URL;
@@ -89,8 +90,9 @@ public final class HttpUtils {
                 .url(url)
                 .head()
                 .build();
+        log.info("detection url {}", url);
         try (Response response = client.newCall(request).execute()) {
-            return response.isSuccessful();
+            return response.isSuccessful() || response.code() != HttpStatus.INTERNAL_SERVER_ERROR.value();
         } catch (Exception e) {
             log.error("HttpUtils detection fail", e);
             return false;

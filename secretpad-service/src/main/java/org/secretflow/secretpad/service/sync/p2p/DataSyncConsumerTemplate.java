@@ -16,14 +16,22 @@
 
 package org.secretflow.secretpad.service.sync.p2p;
 
+import org.secretflow.secretpad.common.constant.KusciaDataSourceConstants;
+import org.secretflow.secretpad.common.constant.SystemConstants;
 import org.secretflow.secretpad.common.dto.SyncDataDTO;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
+import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.BaseAggregationRoot;
+import org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO;
+import org.secretflow.secretpad.persistence.model.DbChangeAction;
+import org.secretflow.secretpad.service.impl.ProjectGraphDomainDatasourceServiceImpl;
 import org.secretflow.secretpad.service.sync.JpaSyncDataService;
 
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 /**
@@ -33,16 +41,43 @@ import org.springframework.stereotype.Service;
 @Slf4j
 @Service
 public class DataSyncConsumerTemplate {
+
+    @Value("${secretpad.node-id}")
+    private String nodeId;
+
     @Resource
     private JpaSyncDataService jpaSyncDataService;
 
+    @Resource
+    private ProjectGraphDomainDatasourceServiceImpl projectGraphDomainDatasourceService;
+
     public SyncDataDTO consumer(String nodeId, SyncDataDTO syncDataDTO) {
         checkSourceNodeId(nodeId, syncDataDTO);
-        UserContext.setBaseUser(UserContextDTO.builder().name("admin").build());
+        UserContext.setBaseUser(UserContextDTO.builder()
+                .name(SystemConstants.USER_ADMIN)
+                .ownerId(nodeId)
+                .platformType(PlatformTypeEnum.AUTONOMY)
+                .ownerType(UserOwnerTypeEnum.P2P)
+                .build());
         jpaSyncDataService.syncDataP2p(syncDataDTO);
         Object data = syncDataDTO.getData();
         if (data instanceof BaseAggregationRoot) {
             log.debug("consumer data instanceof BaseAggregationRoot");
+            if (data instanceof ProjectGraphDomainDatasourceDO datasourceDO && syncDataDTO.getAction().equalsIgnoreCase(DbChangeAction.CREATE.getVal())) {
+                log.info("consumer data instanceof ProjectGraphDomainDatasourceDO {}", datasourceDO);
+                ProjectGraphDomainDatasourceDO newDatasourceDO = new ProjectGraphDomainDatasourceDO();
+                newDatasourceDO.setUpk(ProjectGraphDomainDatasourceDO.UPK.builder()
+                        .graphId(datasourceDO.getUpk().getGraphId())
+                        .projectId(datasourceDO.getUpk().getProjectId())
+                        .domainId(this.nodeId)
+                        .build());
+                newDatasourceDO.setDataSourceId(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE);
+                newDatasourceDO.setDataSourceName(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE);
+                newDatasourceDO.setEditEnable(Boolean.TRUE);
+                log.info("consumer data ProjectGraphDomainDatasourceDO event handle {}", newDatasourceDO);
+                projectGraphDomainDatasourceService.save(newDatasourceDO);
+            }
+
         }
         UserContext.remove();
         return syncDataDTO;

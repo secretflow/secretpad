@@ -69,6 +69,8 @@
         <surefire.version>3.0.0-M4</surefire.version>
         <mysql-connector.version>8.0.28</mysql-connector.version>
         <sls-version>0.6.104</sls-version>
+        <aws-sdk-java.version>1.12.725</aws-sdk-java.version>
+        <client-version>4.5.13</client-version>
     </properties>
 
     <dependencyManagement>
@@ -239,6 +241,16 @@
                 <groupId>com.aliyun.openservices</groupId>
                 <artifactId>aliyun-log</artifactId>
                 <version>${sls-version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.amazonaws</groupId>
+                <artifactId>aws-java-sdk-s3</artifactId>
+                <version>${aws-sdk-java.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.apache.httpcomponents</groupId>
+                <artifactId>httpclient</artifactId>
+                <version>${client-version}</version>
             </dependency>
         </dependencies>
     </dependencyManagement>

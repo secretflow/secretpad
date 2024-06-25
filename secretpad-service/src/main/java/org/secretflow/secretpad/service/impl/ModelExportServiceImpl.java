@@ -20,6 +20,7 @@ import org.secretflow.secretpad.common.constant.CacheConstants;
 import org.secretflow.secretpad.common.constant.ComponentConstants;
 import org.secretflow.secretpad.common.constant.KusciaDataSourceConstants;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
+import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
 import org.secretflow.secretpad.common.errorcode.ModelExportErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
@@ -39,6 +40,7 @@ import org.secretflow.secretpad.service.model.graph.GetGraphRequest;
 import org.secretflow.secretpad.service.model.graph.GraphDetailVO;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 import org.secretflow.secretpad.service.model.model.export.*;
+import org.secretflow.secretpad.service.model.project.ProjectGraphDomainDataSourceVO;
 import org.secretflow.secretpad.service.util.GraphUtils;
 
 import com.google.protobuf.Descriptors;
@@ -105,6 +107,8 @@ public class ModelExportServiceImpl implements ModelExportService {
 
     @Resource
     private ProjectDatatableRepository datatableRepository;
+    @Resource
+    private ProjectGraphDomainDatasourceServiceImpl projectGraphDomainDatasourceService;
 
     @Override
     public ModelExportPackageResponse exportModel(ModelExportPackageRequest request) throws InvalidProtocolBufferException {
@@ -187,9 +191,20 @@ public class ModelExportServiceImpl implements ModelExportService {
             if (ObjectUtils.isEmpty(node)) {
                 throw SecretpadException.of(ModelExportErrorCode.MODEL_EXPORT_FAILED, "node not found");
             }
-            responses.add(ModelPartyPathResponse.builder().nodeId(p).nodeName(node.getName())
-                    .dataSource(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
-                    .dataSourcePath(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE_PATH).build());
+            responses.add(ModelPartyPathResponse.builder()
+                    .nodeId(p)
+                    .nodeName(node.getName())
+                    // serving not only support local data source
+                    // However, when serving, you need to know the data source information of the project participants, and the node can only see its own in the current P2P mode, so a data synchronization may be required here
+                    .dataSources(Set.of(ProjectGraphDomainDataSourceVO.DataSource.builder()
+                            .dataSourceName(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                            .nodeId(p)
+                            .type(DataSourceTypeEnum.LOCAL.name())
+                            .dataSourceId(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                            .build()
+                    ))
+                    .build()
+            );
         });
         return responses;
     }
@@ -304,7 +319,7 @@ public class ModelExportServiceImpl implements ModelExportService {
 
     private TaskConfig.TaskInputConfig buildTaskInputConfig(ModelExportPackageRequest request, List<String> parties, List<String> outputs, List<String> outputsUrls) {
         return TaskConfig.TaskInputConfig.newBuilder()
-                .putAllSfDatasourceConfig(kusciaJobConverter.defaultDatasourceConfig(parties))
+                .putAllSfDatasourceConfig(kusciaJobConverter.modelExportDatasourceConfig(parties, request.getProjectId(), request.getGraphId(), request))
                 .addAllSfOutputIds(outputs)
                 .addAllSfOutputUris(outputsUrls)
                 .setSfClusterDesc(kusciaJobConverter.buildSfClusterDesc(parties))

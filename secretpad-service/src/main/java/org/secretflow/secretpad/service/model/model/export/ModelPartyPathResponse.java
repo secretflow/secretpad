@@ -16,17 +16,15 @@
 
 package org.secretflow.secretpad.service.model.model.export;
 
+import org.secretflow.secretpad.service.model.project.ProjectGraphDomainDataSourceVO;
+
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-import org.apache.commons.lang3.builder.EqualsBuilder;
-import org.apache.commons.lang3.builder.HashCodeBuilder;
+import lombok.*;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.Set;
 
 /**
  * model export status request
@@ -34,7 +32,10 @@ import java.io.Serializable;
  * @author yutu
  * @date 2024/01/29
  */
-@Data
+@Setter
+@Getter
+@ToString
+@EqualsAndHashCode
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
@@ -50,29 +51,6 @@ public class ModelPartyPathResponse implements Serializable {
     @JsonProperty("nodeName")
     private String nodeName;
 
-    @NotBlank
-    @JsonProperty("dataSource")
-    private String dataSource;
-
-    @NotBlank
-    @JsonProperty("dataSourcePath")
-    private String dataSourcePath;
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-
-        if (!(o instanceof ModelPartyPathResponse that)) {
-            return false;
-        }
-
-        return new EqualsBuilder().append(nodeId, that.nodeId).append(nodeName, that.nodeName).append(dataSource, that.dataSource).append(dataSourcePath, that.dataSourcePath).isEquals();
-    }
-
-    @Override
-    public int hashCode() {
-        return new HashCodeBuilder(17, 37).append(nodeId).append(nodeName).append(dataSource).append(dataSourcePath).toHashCode();
-    }
+    @JsonProperty("dataSources")
+    private Set<ProjectGraphDomainDataSourceVO.DataSource> dataSources;
 }

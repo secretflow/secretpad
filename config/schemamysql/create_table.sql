@@ -263,6 +263,7 @@ create table if not exists `project_graph`
     `edges`          text,
     `owner_id`       varchar(64) default '' not null,
     `node_max_index` int not null,
+    `max_parallelism` int default 1 not null,
     `is_deleted`     tinyint(1) default '0' not null, -- delete flag
     `gmt_create`     datetime default current_timestamp not null, -- create time
     `gmt_modified`   datetime default current_timestamp not null -- modified time
@@ -568,6 +569,7 @@ create table if not exists `feature_table`
 );
 
 create unique index `upk_feature_table_id` on `feature_table` (`feature_table_id`);
+create unique index `upk_datasource_feature_table_id` on feature_table (`feature_table_id`, `node_id`, `datasource_id`);
 
 create table if not exists `project_feature_table`
 (
@@ -575,6 +577,7 @@ create table if not exists `project_feature_table`
     `project_id`       varchar(64) not null,
     `node_id`          varchar(64) not null,
     `feature_table_id` varchar(64) not null,
+    `datasource_id`      varchar(64) not null default "", -- feature datasource id
     `table_configs`    text not null, -- project feature table config
     `source`           varchar(16) not null, -- project feature table from: IMPORTED/CREATED
     `is_deleted`       tinyint(1) default '0' not null, -- delete flag
@@ -601,3 +604,23 @@ create table if not exists `project_graph_node_kuscia_params`
 );
 
 create unique index `upk_project_graph_node_kuscia_params_id` on `project_graph_node_kuscia_params` (`project_id`, `graph_id`, `graph_node_id`);
+
+-- project_graph_domain_datasource
+create table if not exists `project_graph_domain_datasource`
+(
+    id             integer primary key autoincrement,
+    project_id     varchar(64)                               not null, -- project_id
+    graph_id       varchar(64)                               not null, -- graph_id
+    domain_id      varchar(64)                               not null, -- domain_id
+    data_source_id varchar(64) default 'default-data-source' not null, -- data_source_id
+    data_source_name varchar(64) default 'default-data-source' not null, -- data_source_name
+    edit_enable    tinyint(1)  default '1'                   not null, -- edit enabled flag
+    is_deleted     tinyint(1)  default '0'                   not null, -- delete flag
+    gmt_create     datetime    default CURRENT_TIMESTAMP     not null, -- create time
+    gmt_modified   datetime    default CURRENT_TIMESTAMP     not null  -- modified time
+);
+create unique index `upk_project_graph_domain` on project_graph_domain_datasource (`project_id`, `graph_id`, `domain_id`);
+
+-- todo mysql table column if not exists
+alter table project_feature_table add column `datasource_id` varchar(64) not null default "";
+alter table feature_table add column `datasource_id` varchar(64) not null default "";

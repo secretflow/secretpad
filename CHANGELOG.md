@@ -14,6 +14,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `Fixed` for any bug fixes.
 `Security` in case of vulnerabilities.
 
+## [0.8.0b0] - 2024-06-15
+
+### Added
+
+- [Feature] Added a type conversion component.
+- [Feature] Added a sampling component that supports stratified sampling, random sampling, and systematic sampling.
+- [Feature] Added a scorecard assessment component to convert binary classification results into scores
+- [Feature] Added a PSI (Population Stability Index) component to assess feature stability.
+- [Feature] Added data source management module with OSS data source support.
+- [Feature] Supports configuration of the default storage data source.
+- [Feature] Adapted to Kuscia 0.9.0b0 version, supports data retention after reinstallation of SecretPad.
+
+### Changed
+
+- [Optimization] A prompt has been added that prohibits modifying the route during task execution.
+
+### Fixed
+
+-  [Fixed] Fix the version prompt on the edge node in center deploy mode.
+-  [Fixed] Fix the official website documentation has some blank sections.
+
 ## [0.7.0b0] - 2024-05-15
 
 ### Added

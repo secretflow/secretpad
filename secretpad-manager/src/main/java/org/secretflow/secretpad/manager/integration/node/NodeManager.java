@@ -19,10 +19,7 @@ package org.secretflow.secretpad.manager.integration.node;
 import org.secretflow.secretpad.common.constant.DomainConstants;
 import org.secretflow.secretpad.common.constant.role.RoleCodeConstants;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
-import org.secretflow.secretpad.common.enums.PermissionTargetTypeEnum;
-import org.secretflow.secretpad.common.enums.PermissionUserTypeEnum;
-import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
-import org.secretflow.secretpad.common.enums.ProjectStatusEnum;
+import org.secretflow.secretpad.common.enums.*;
 import org.secretflow.secretpad.common.errorcode.*;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.DateTimes;
@@ -30,6 +27,7 @@ import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.manager.integration.model.*;
+import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainDatasourceRpc;
 import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainRpc;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.repository.*;
@@ -39,10 +37,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
-import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
-import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
-import org.secretflow.v1alpha1.kusciaapi.Domaindata;
+import org.secretflow.v1alpha1.kusciaapi.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -80,6 +75,8 @@ public class NodeManager extends AbstractNodeManager {
 
     private final DomainServiceGrpc.DomainServiceBlockingStub domainServiceBlockingStub;
     private final KusciaDomainRpc kusciaDomainRpc;
+
+    private final KusciaDomainDatasourceRpc kusciaDomainDatasourceRpc;
     private final SysUserPermissionRelRepository permissionRelRepository;
 
     @Value("${secretpad.master-node-id:master}")
@@ -643,11 +640,18 @@ public class NodeManager extends AbstractNodeManager {
     private NodeResultDTO findNodeResult(Domaindata.DomainData domainData, ProjectResultDO projectResultDO) {
         // query projectDO from project table
         Optional<ProjectDO> projectDO = projectRepository.findById(projectResultDO.getUpk().getProjectId());
+        Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaDomainDatasourceRpc.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
+                .setDatasourceId(domainData.getDatasourceId())
+                .setDomainId(domainData.getDomainId())
+                .build());
+        Domaindatasource.DomainDataSource dataSourceResponseData = queryDomainDataSourceResponse.getData();
         if (!projectDO.isPresent()) {
             // the results are displayed normally even after the item has been deleted
             LOGGER.warn("The project is deleted, and the result will not show any project info and train flow info.");
             return NodeResultDTO.builder()
                     .domainDataId(domainData.getDomaindataId())
+                    .datasourceId(dataSourceResponseData.getDatasourceId())
+                    .datasourceType(DataSourceTypeEnum.kuscia2platform(dataSourceResponseData.getType()))
                     .resultName(domainData.getDomaindataId())
                     .resultKind(domainData.getType())
                     .sourceProjectId(null)
@@ -664,6 +668,8 @@ public class NodeManager extends AbstractNodeManager {
             // Use graph name saved in project_job.name
             return NodeResultDTO.builder()
                     .domainDataId(domainData.getDomaindataId())
+                    .datasourceId(dataSourceResponseData.getDatasourceId())
+                    .datasourceType(DataSourceTypeEnum.kuscia2platform(dataSourceResponseData.getType()))
                     .resultName(domainData.getDomaindataId())
                     .resultKind(domainData.getType())
                     .sourceProjectId(projectDO.get().getProjectId())
@@ -679,6 +685,8 @@ public class NodeManager extends AbstractNodeManager {
         }
         return NodeResultDTO.builder()
                 .domainDataId(domainData.getDomaindataId())
+                .datasourceId(dataSourceResponseData.getDatasourceId())
+                .datasourceType(DataSourceTypeEnum.kuscia2platform(dataSourceResponseData.getType()))
                 .resultName(domainData.getDomaindataId())
                 .resultKind(domainData.getType())
                 .sourceProjectId(projectDO.get().getProjectId())

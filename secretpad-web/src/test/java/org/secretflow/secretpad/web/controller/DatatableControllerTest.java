@@ -28,17 +28,21 @@ import org.secretflow.secretpad.persistence.repository.FeatureTableRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectDatatableRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectFeatureTableRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectRepository;
+import org.secretflow.secretpad.service.decorator.awsoss.OssAutoCloseableClient;
+import org.secretflow.secretpad.service.factory.OssClientFactory;
+import org.secretflow.secretpad.service.model.datatable.CreateDatatableRequest;
 import org.secretflow.secretpad.service.model.datatable.DeleteDatatableRequest;
 import org.secretflow.secretpad.service.model.datatable.GetDatatableRequest;
 import org.secretflow.secretpad.service.model.datatable.ListDatatableRequest;
 import org.secretflow.secretpad.web.utils.FakerUtils;
-
 import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.common.Common;
 import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
+import org.secretflow.v1alpha1.kusciaapi.DomainDataSourceServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
+import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
@@ -66,6 +70,9 @@ class DatatableControllerTest extends ControllerTest {
     private DomainDataServiceGrpc.DomainDataServiceBlockingStub dataStub;
 
     @MockBean
+    private DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub datasourceStub;
+
+    @MockBean
     private ProjectDatatableRepository datatableRepository;
 
     @MockBean
@@ -76,6 +83,37 @@ class DatatableControllerTest extends ControllerTest {
 
     @MockBean
     private ProjectFeatureTableRepository projectFeatureTableRepository;
+    @MockBean
+    private OssClientFactory ossClientFactory;
+
+
+    /**
+     * createDatable test
+     *
+     * @throws Exception
+     */
+    @Test
+    public void createDatable() throws Exception {
+        CreateDatatableRequest request = FakerUtils.fake(CreateDatatableRequest.class);
+        request.setDatasourceType("OSS");
+        request.setDatasourceName("ossDatasource");
+        request.setNodeId("alice");
+        UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_CREATE));
+        Domaindata.CreateDomainDataResponse response = Domaindata.CreateDomainDataResponse.newBuilder()
+                .setData(Domaindata.CreateDomainDataResponseData.newBuilder()
+                        .setDomaindataId(request.getNodeId())
+                        .build())
+                .build();
+        Mockito.when(dataStub.createDomainData(
+                Mockito.any())).thenReturn(response);
+
+        // Act & Assert
+        assertResponse(() -> {
+            return MockMvcRequestBuilders.post(getMappingUrl(DatatableController.class, "createDataTable", CreateDatatableRequest.class))
+                    .content(JsonUtils.toJSONString(request));
+        });
+    }
+
 
     @Test
     void listDatatables() throws Exception {
@@ -137,6 +175,161 @@ class DatatableControllerTest extends ControllerTest {
             return MockMvcRequestBuilders.post(getMappingUrl(DatatableController.class, "getDatatable", GetDatatableRequest.class))
                     .content(JsonUtils.toJSONString(request));
         });
+    }
+
+    /**
+     * getOSSDatatable test
+     *
+     * @throws Exception
+     */
+    @Test
+    void getOSSDatatable() throws Exception {
+        assertResponse(() -> {
+            GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
+            request.setNodeId("alice");
+            request.setType("CSV");
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_GET));
+
+            Domaindata.QueryDomainDataResponse response = Domaindata.QueryDomainDataResponse.newBuilder()
+                    .setData(
+                            Domaindata.DomainData.newBuilder().putAttributes("DatasourceType", "OSS")
+                                    .setStatus("1").build()
+                    )
+                    .build();
+            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder()
+                            .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
+                                    .setDomainId(request.getNodeId())
+                                    .setDomaindataId(request.getDatatableId())
+                                    .build())
+                            .build()))
+                    .thenReturn(response);
+            //datasourceResponse
+            Domaindatasource.QueryDomainDataSourceResponse datasourceResponse = Domaindatasource.QueryDomainDataSourceResponse.newBuilder()
+                    .setStatus(Common.Status.newBuilder().setCode(0).build())
+                    .setData(
+                            Domaindatasource.DomainDataSource.newBuilder()
+                                    .setDatasourceId(response.getData().getDatasourceId())
+                                    .setInfo(Domaindatasource.DataSourceInfo.newBuilder().setOss(Domaindatasource.OssDataSourceInfo.newBuilder()
+                                                    .setAccessKeySecret("XXXX")
+                                                    .setEndpoint("http://xxxxx.com")
+                                                    .setBucket("secretflow-dev")
+                                                    .setAccessKeyId("XXXX")
+                                                    .build())
+                                            .build())
+                                    .build()).build();
+            Mockito.when(datasourceStub.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
+                            .setDomainId(response.getData().getDatasourceId())
+                            .setDatasourceId(response.getData().getDatasourceId())
+                            .build())
+                    )
+                    .thenReturn(datasourceResponse);
+            OssAutoCloseableClient ossAutoCloseableClient = Mockito.mock(OssAutoCloseableClient.class);
+            Mockito.when(ossClientFactory.getOssClient(Mockito.any())).thenReturn(ossAutoCloseableClient);
+            Mockito.when(ossAutoCloseableClient.doesObjectExist(Mockito.anyString(), Mockito.anyString())).thenReturn(true);
+
+            return MockMvcRequestBuilders.post(getMappingUrl(DatatableController.class, "getDatatable", GetDatatableRequest.class))
+                    .content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    @Test
+    void getOSSDatatableAwsFalse() throws Exception {
+
+        GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
+        request.setNodeId("alice");
+        request.setType("CSV");
+
+        UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_GET));
+
+        Domaindata.QueryDomainDataResponse response = Domaindata.QueryDomainDataResponse.newBuilder()
+                .setData(
+                        Domaindata.DomainData.newBuilder()
+                                .setType("OSS")
+                                .setRelativeUri("alice.csv")
+                                .build()
+                )
+                .build();
+
+        Domaindatasource.QueryDomainDataSourceResponse datasourceResponse = Domaindatasource.QueryDomainDataSourceResponse.newBuilder()
+                .setStatus(Common.Status.newBuilder().setCode(0).build())
+                .setData(
+                        Domaindatasource.DomainDataSource.newBuilder()
+                                .setDatasourceId(response.getData().getDatasourceId())
+                                .setInfo(Domaindatasource.DataSourceInfo.newBuilder().setOss(Domaindatasource.OssDataSourceInfo.newBuilder()
+                                        .setAccessKeySecret("XXXX")
+                                        .setEndpoint("http://127.0.0.1:9000/")
+                                        .setAccessKeyId("XXXX")
+                                        .setBucket("alice")
+                                        .build()))
+                                .build()
+                )
+                .build();
+        Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder()
+                .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
+                        .setDomainId(request.getNodeId())
+                        .setDomaindataId(request.getDatatableId())
+                        .build())
+                .build())).thenReturn(response);
+        Mockito.when(datasourceStub.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
+                .setDatasourceId(response.getData().getDatasourceId())
+                .setDatasourceId(response.getData().getDatasourceId())
+                .build())).thenReturn(datasourceResponse);
+        assertResponse(() -> {
+            return MockMvcRequestBuilders.post(getMappingUrl(DatatableController.class, "getDatatable", GetDatatableRequest.class))
+                    .content(JsonUtils.toJSONString(request));
+
+        });
+
+    }
+
+
+    @Test
+    void getOSSDatatableAwsTrue() throws Exception {
+
+        GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
+        request.setNodeId("alice");
+        request.setType("CSV");
+
+        UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_GET));
+
+        Domaindata.QueryDomainDataResponse response = Domaindata.QueryDomainDataResponse.newBuilder()
+                .setData(
+                        Domaindata.DomainData.newBuilder()
+                                .setType("OSS")
+                                .setRelativeUri("alice.csv")
+                                .build()
+                )
+                .build();
+
+        Domaindatasource.QueryDomainDataSourceResponse datasourceResponse = Domaindatasource.QueryDomainDataSourceResponse.newBuilder()
+                .setStatus(Common.Status.newBuilder().setCode(0).build())
+                .setData(
+                        Domaindatasource.DomainDataSource.newBuilder()
+                                .setDatasourceId(response.getData().getDatasourceId())
+                                .setInfo(Domaindatasource.DataSourceInfo.newBuilder().setOss(Domaindatasource.OssDataSourceInfo.newBuilder()
+                                        .setAccessKeySecret("XXXXX")
+                                        .setEndpoint("http://127.0.0.1:9000/")
+                                        .setAccessKeyId("XXX")
+                                        .setBucket("alice")
+                                        .build()))
+                                .build()
+                )
+                .build();
+        Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder()
+                .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
+                        .setDomainId(request.getNodeId())
+                        .setDomaindataId(request.getDatatableId())
+                        .build())
+                .build())).thenReturn(response);
+        Mockito.when(datasourceStub.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
+                .setDatasourceId(response.getData().getDatasourceId())
+                .setDatasourceId(response.getData().getDatasourceId())
+                .build())).thenReturn(datasourceResponse);
+        assertResponse(() -> {
+            return MockMvcRequestBuilders.post(getMappingUrl(DatatableController.class, "getDatatable", GetDatatableRequest.class)).content(JsonUtils.toJSONString(request));
+        });
+
     }
 
     @Test

@@ -53,8 +53,6 @@ import java.util.stream.Collectors;
 @Slf4j
 @Component
 public class KusciaTrustedFlowJobConverter implements JobConverter {
-    @Value("${job.max-parallelism:1}")
-    private int maxParallelism;
     @Value("${tee.capsule-manager:capsule-manager.#.svc}")
     private String teeCapsuleMana;
 
@@ -87,7 +85,7 @@ public class KusciaTrustedFlowJobConverter implements JobConverter {
         return Job.CreateJobRequest.newBuilder()
                 .setJobId(job.getJobId())
                 .setInitiator(initiator)
-                .setMaxParallelism(maxParallelism)
+                .setMaxParallelism(job.getMaxParallelism())
                 .addAllTasks(jobTasks)
                 .build();
     }
@@ -98,7 +96,7 @@ public class KusciaTrustedFlowJobConverter implements JobConverter {
      * @param task project job task
      * @return json string of task input config message
      */
-    private String renderTaskInputConfig(ProjectJob.JobTask task) {
+    public String renderTaskInputConfig(ProjectJob.JobTask task) {
         ProjectDO project = GraphContext.getProject();
         String teeNodeId = GraphContext.getTeeNodeId();
         assert project != null;

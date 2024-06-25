@@ -21,7 +21,7 @@ body:
   - type: dropdown
     id: searched-for-existing-issues
     attributes:
-      label: Have you searched for existing issues? 
+      label: Have you searched for existing issues?
       description: Existing [documents](https://www.secretflow.org.cn/zh-CN/docs/secretpad-all-in-one/latest/mvp-platform) and [issues](https://github.com/secretflow/secretpad/issues)
       options:
         - 'Yes'

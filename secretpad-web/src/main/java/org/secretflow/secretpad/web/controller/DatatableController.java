@@ -24,7 +24,6 @@ import org.secretflow.secretpad.common.enums.DataResourceTypeEnum;
 import org.secretflow.secretpad.service.DatatableService;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
 import org.secretflow.secretpad.service.model.datatable.*;
-
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -41,6 +40,19 @@ public class DatatableController {
 
     @Autowired
     private DatatableService datatableService;
+
+
+    /**
+     * Create datatable api
+     * @param request create datatable request
+     * @return
+     */
+    @PostMapping(value = "/create", consumes = "application/json")
+    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @ApiResource(code = ApiResourceCodeConstants.DATATABLE_CREATE)
+    public SecretPadResponse<String> createDataTable(@RequestBody @Valid CreateDatatableRequest request) {
+        return SecretPadResponse.success(datatableService.createDataTable(request));
+    }
 
     /**
      * List datatable api

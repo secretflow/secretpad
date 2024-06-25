@@ -38,5 +38,7 @@ public interface FeatureTableRepository extends BaseRepository<FeatureTableDO, F
     @Query("from FeatureTableDO ft where ft.upk.featureTableId in :featureTableIds")
     List<FeatureTableDO> findByFeatureTableIdIn(@Param("featureTableIds") Collection<String> featureTableIds);
 
+    List<FeatureTableDO> findByUpkDatasourceId(String datasourceId);
+
 
 }

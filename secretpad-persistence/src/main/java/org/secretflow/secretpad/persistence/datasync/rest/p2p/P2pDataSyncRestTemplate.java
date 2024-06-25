@@ -47,7 +47,7 @@ public class P2pDataSyncRestTemplate extends DataSyncRestTemplate {
                             .tableName(event.getDType())
                             .action(event.getAction())
                             .data(event.getSource()).build();
-                    syncResp = p2pDataSyncRestService.sync("secretpad." + node + ".svc", syncDataDTO.toJson());
+                    syncResp = p2pDataSyncRestService.sync(node, "secretpad." + node + ".svc", syncDataDTO.toJson());
                     if (0 == syncResp.getStatus().getCode()) {
                         onSuccess(node, event);
                     } else {

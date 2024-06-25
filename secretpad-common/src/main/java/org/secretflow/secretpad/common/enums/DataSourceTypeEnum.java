@@ -16,11 +16,44 @@
 
 package org.secretflow.secretpad.common.enums;
 
+import java.util.Locale;
+
 /**
  * @author chenmingliang
  * @date 2024/02/02
  */
 public enum DataSourceTypeEnum {
-    HTTP,
-    CSV,
+    HTTP(false),
+    OSS(true),
+    LOCAL(true),
+    MYSQL(true),
+    ;
+
+    /**
+     * true : the datasource is manager by kuscia
+     * false: the datasource is manager by secretpad or other
+     */
+    private final boolean isKusciaControl;
+
+    DataSourceTypeEnum(boolean isKusciaControl) {
+        this.isKusciaControl = isKusciaControl;
+    }
+
+    public boolean isKusciaControl() {
+        return isKusciaControl;
+    }
+
+    public static DataSourceTypeEnum fromString(String str) {
+        return switch (str.toLowerCase(Locale.ROOT)) {
+            case "localfs" -> LOCAL;
+            case "oss" -> OSS;
+            case "mysql" -> MYSQL;
+            default -> throw new IllegalArgumentException("Invalidate DataSource type: " + str);
+        };
+    }
+
+
+    public static String kuscia2platform(String str) {
+        return fromString(str).name();
+    }
 }

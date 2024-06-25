@@ -35,6 +35,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * Project controller
@@ -320,6 +321,21 @@ public class ProjectController {
     public SecretPadResponse<Void> updateProjectTableConfig(@Valid @RequestBody AddProjectDatatableRequest request) {
         projectService.updateProjectTableConfig(request);
         return SecretPadResponse.success();
+    }
+
+    /**
+     * Update project schema api
+     *
+     * @param request update project request
+     * @return successful SecretPadResponse with null data
+     */
+    @ResponseBody
+    @PostMapping(value = "/datasource/list", consumes = "application/json")
+    @Operation(summary = "Obtain the list of data sources that are controlled by the node as project participants", description = "Obtain the list of data sources that are controlled by the node as project participants")
+    @DataResource(field = "projectId", resourceType = DataResourceTypeEnum.PROJECT_ID)
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_GET)
+    public SecretPadResponse<Set<ProjectGraphDomainDataSourceVO>> projectGraphDomainDataSourceList(@Valid @RequestBody GetProjectGraphDomainDataSourceRequest request) {
+        return SecretPadResponse.success(projectService.getProjectGraphDomainDataSource(request));
     }
 
 }

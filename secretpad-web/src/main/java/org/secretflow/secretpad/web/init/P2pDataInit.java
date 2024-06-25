@@ -26,6 +26,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 import static org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pDataSyncProducerTemplate.ownerId_cache;
@@ -40,6 +42,7 @@ import static org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pData
 @RequiredArgsConstructor
 @Slf4j
 @Service
+@Order(Ordered.LOWEST_PRECEDENCE)
 public class P2pDataInit implements CommandLineRunner {
 
     private final NodeService nodeService;

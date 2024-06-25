@@ -57,9 +57,8 @@ import org.springframework.util.CollectionUtils;
 import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.stream.Collectors;
-
 import static org.secretflow.secretpad.common.constant.ComponentConstants.DATA_PREP_UNION;
-import static org.secretflow.secretpad.manager.integration.model.Constants.*;
+import static org.secretflow.secretpad.common.constant.Constants.*;
 
 /**
  * Manager job operation
