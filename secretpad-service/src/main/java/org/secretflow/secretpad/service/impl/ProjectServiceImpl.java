@@ -17,8 +17,9 @@
 package org.secretflow.secretpad.service.impl;
 
 import org.secretflow.secretpad.common.constant.DatabaseConstants;
+import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.common.constant.ProjectConstants;
-import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
+import org.secretflow.secretpad.common.enums.DataTableTypeEnum;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.enums.ProjectStatusEnum;
 import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
@@ -70,6 +71,7 @@ import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.compress.utils.Sets;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.sql.Update;
 import org.secretflow.v1alpha1.kusciaapi.Job;
@@ -89,9 +91,9 @@ import org.springframework.util.ObjectUtils;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+import static org.secretflow.secretpad.common.constant.DomainDatasourceConstants.DEFAULT_DATASOURCE;
 import static org.secretflow.secretpad.service.constant.Constants.TEE_PROJECT_MODE;
 import static org.secretflow.secretpad.service.constant.DomainDataConstants.SYSTEM_DOMAIN_ID;
-import static org.secretflow.secretpad.service.impl.DataServiceImpl.DEFAULT_DATASOURCE;
 
 /**
  * Project service implementation class
@@ -193,6 +195,9 @@ public class ProjectServiceImpl implements ProjectService {
 
     @Autowired
     private ProjectGraphNodeRepository projectGraphNodeRepository;
+
+    @Resource
+    ProjectGraphDomainDatasourceServiceImpl projectGraphDomainDatasourceService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -324,10 +329,10 @@ public class ProjectServiceImpl implements ProjectService {
     private Map<DatatableDTO.NodeDatatableId, DatatableDTO> getProjectDatatableDtos(String projectId) {
         List<ProjectDatatableDO.UPK> pdUpks = projectDatatableRepository.findUpkByProjectId(projectId,
                 ProjectDatatableDO.ProjectDatatableSource.IMPORTED);
-        log.debug("--- getProjectDatatableDtos pdUpks {}", pdUpks);
+        log.debug("getProjectDatatableDtos pdUpks {}", pdUpks);
         List<DatatableDTO.NodeDatatableId> nodeDatatableIds = pdUpks.stream().map(upk -> DatatableDTO.NodeDatatableId.from(upk.getNodeId(), upk.getDatatableId()))
                 .collect(Collectors.toList());
-        log.debug("--- getProjectDatatableDtos nodeDatatableIds {}", nodeDatatableIds);
+        log.debug("getProjectDatatableDtos nodeDatatableIds {}", nodeDatatableIds);
         return datatableManager.findByIds(nodeDatatableIds);
     }
 
@@ -364,7 +369,7 @@ public class ProjectServiceImpl implements ProjectService {
                     it -> configs.put(it.getColName(), it)
             );
         }
-        if (DataSourceTypeEnum.HTTP.name().equals(request.getType())) {
+        if (DataTableTypeEnum.HTTP.name().equals(request.getType())) {
             FeatureTableDO featureTableDO = openFeatureTable(request.getNodeId(), request.getDatatableId());
             ProjectFeatureTableDO projectFeatureTableDO = ProjectFeatureTableDO.Factory.newProjectFeatureTable(
                     request.getProjectId(), request.getNodeId(), request.getDatatableId(),
@@ -376,7 +381,7 @@ public class ProjectServiceImpl implements ProjectService {
                                             configs.containsKey(c.getColName()) && configs.get(c.getColName()).isLabelKey(),
                                             configs.containsKey(c.getColName()) && configs.get(c.getColName()).isProtection()
                                     ))
-                            .collect(Collectors.toList()));
+                            .collect(Collectors.toList()), request.getDatasourceId());
             projectFeatureTableDO.setFeatureTable(featureTableDO);
             projectFeatureTableRepository.save(projectFeatureTableDO);
             return;
@@ -487,7 +492,7 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public ProjectDatatableVO getProjectDatatable(GetProjectDatatableRequest request) {
         openProject(request.getProjectId());
-        if (DataSourceTypeEnum.HTTP.name().equals(request.getType())) {
+        if (DataTableTypeEnum.HTTP.name().equals(request.getType())) {
             ProjectFeatureTableDO projectFeatureTableDO = openProjectFeatureTable(request.getProjectId(), request.getNodeId(), request.getDatatableId());
             FeatureTableDO featureTableDO = openFeatureTable(request.getNodeId(), request.getDatatableId());
             return new ProjectDatatableVO(projectFeatureTableDO.getUpk().getFeatureTableId(), featureTableDO.getFeatureTableName(),
@@ -502,9 +507,9 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteDatatableToProject(DeleteProjectDatatableRequest request) {
-        if (DataSourceTypeEnum.HTTP.name().equals(request.getType())) {
+        if (DataTableTypeEnum.HTTP.name().equals(request.getType())) {
             openProjectFeatureTable(request.getProjectId(), request.getNodeId(), request.getDatatableId());
-            projectFeatureTableRepository.deleteById(new ProjectFeatureTableDO.UPK(request.getProjectId(), request.getNodeId(), request.getDatatableId()));
+            projectFeatureTableRepository.deleteById(new ProjectFeatureTableDO.UPK(request.getProjectId(), request.getNodeId(), request.getDatatableId(), DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID));
             return;
         }
         openProjectDatatable(request.getProjectId(), request.getNodeId(), request.getDatatableId());
@@ -635,13 +640,13 @@ public class ProjectServiceImpl implements ProjectService {
         }
         //archived and reviewing project
         List<ProjectApprovalConfigDO> projectApprovalConfigDOS = projectApprovalConfigRepository.listProjectApprovalConfigByType(VoteTypeEnum.PROJECT_CREATE.name());
-        Set<String> notApprovedProjectIds = projectApprovalConfigDOS.stream().map(pa -> pa.getProjectId()).collect(Collectors.toSet());
+        Set<String> notApprovedProjectIds = projectApprovalConfigDOS.stream().map(ProjectApprovalConfigDO::getProjectId).collect(Collectors.toSet());
         approvedProjectIds.addAll(notApprovedProjectIds);
         List<ProjectDO> projects = projectRepository.findAllById(approvedProjectIds);
         List<ProjectApprovalConfigDO> allProjectVote = projectApprovalConfigRepository.findByType(VoteTypeEnum.PROJECT_CREATE.name());
-        Map<String, String> projectIdVoteId = allProjectVote.stream().collect(Collectors.toMap(e -> e.getProjectId(), e -> e.getVoteID()));
+        Map<String, String> projectIdVoteId = allProjectVote.stream().collect(Collectors.toMap(ProjectApprovalConfigDO::getProjectId, ProjectApprovalConfigDO::getVoteID));
         List<VoteRequestDO> voteRequestDOS = voteRequestRepository.findAllById(projectIdVoteId.values());
-        Map<String, Set<VoteRequestDO.PartyVoteInfo>> voteIdPartyInfoMap = voteRequestDOS.stream().collect(Collectors.toMap(e -> e.getVoteID(), e -> e.getPartyVoteInfos()));
+        Map<String, Set<VoteRequestDO.PartyVoteInfo>> voteIdPartyInfoMap = voteRequestDOS.stream().collect(Collectors.toMap(VoteRequestDO::getVoteID, VoteRequestDO::getPartyVoteInfos));
         // TODO: merge find.
         return projects.stream().map(projectDO -> {
             String projectId = projectDO.getProjectId();
@@ -654,10 +659,10 @@ public class ProjectServiceImpl implements ProjectService {
             }
             Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = voteIdPartyInfoMap.get(projectIdVoteId.get(projectId));
             Set<PartyVoteInfoVO> partyVoteInfoVOS = JsonUtils.toJavaSet(partyVoteInfos, PartyVoteInfoVO.class);
-            List<String> nodeIds = partyVoteInfoVOS.stream().map(e -> e.getNodeId()).collect(Collectors.toList());
-            Map<String, String> nodeMap = nodeRepository.findByNodeIdIn(nodeIds).stream().collect(Collectors.toMap(e -> e.getNodeId(), e -> e.getName()));
+            List<String> nodeIds = partyVoteInfoVOS.stream().map(PartyVoteInfoVO::getNodeId).collect(Collectors.toList());
+            Map<String, String> nodeMap = nodeRepository.findByNodeIdIn(nodeIds).stream().collect(Collectors.toMap(NodeDO::getNodeId, NodeDO::getName));
             partyVoteInfoVOS = partyVoteInfoVOS.stream().filter(e -> !StringUtils.equals(e.getNodeId(), projectDO.getOwnerId())).collect(Collectors.toSet());
-            partyVoteInfoVOS.stream().forEach(e -> e.setNodeName(nodeMap.get(e.getNodeId())));
+            partyVoteInfoVOS.forEach(e -> e.setNodeName(nodeMap.get(e.getNodeId())));
             return ProjectVO.builder().projectId(projectId).projectName(projectDO.getName())
                     .description(projectDO.getDescription()).computeMode(projectDO.getComputeMode())
                     .teeNodeId(ObjectUtils.isEmpty(projectDO.getProjectInfo()) ? null : projectDO.getProjectInfo().getTeeDomainId())
@@ -778,7 +783,7 @@ public class ProjectServiceImpl implements ProjectService {
      */
     private ProjectFeatureTableDO openProjectFeatureTable(String projectId, String nodeId, String featureTableId) {
         Optional<ProjectFeatureTableDO> projectFeatureTableDOOptional = projectFeatureTableRepository.findById(
-                new ProjectFeatureTableDO.UPK(projectId, nodeId, featureTableId));
+                new ProjectFeatureTableDO.UPK(projectId, nodeId, featureTableId, DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID));
         if (projectFeatureTableDOOptional.isEmpty()) {
             throw SecretpadException.of(ProjectErrorCode.PROJECT_FEATURE_TABLE_NOT_EXISTS);
         }
@@ -793,7 +798,7 @@ public class ProjectServiceImpl implements ProjectService {
      * @return project datatable data object
      */
     private FeatureTableDO openFeatureTable(String nodeId, String featureTableId) {
-        Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(featureTableId, nodeId));
+        Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(featureTableId, nodeId, DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID));
         if (featureTableDOOptional.isEmpty()) {
             throw SecretpadException.of(ProjectErrorCode.PROJECT_FEATURE_TABLE_NOT_EXISTS);
         }
@@ -855,7 +860,7 @@ public class ProjectServiceImpl implements ProjectService {
                     it -> configs.put(it.getColName(), it)
             );
         }
-        if (DataSourceTypeEnum.HTTP.name().equals(request.getType())) {
+        if (DataTableTypeEnum.HTTP.name().equals(request.getType())) {
             ProjectFeatureTableDO projectFeatureTableDO = openProjectFeatureTable(request.getProjectId(), request.getNodeId(), request.getDatatableId());
             projectFeatureTableDO.setTableConfig(
                     projectFeatureTableDO.getTableConfig().stream().map(c ->
@@ -911,6 +916,25 @@ public class ProjectServiceImpl implements ProjectService {
         graphNodeTaskLogsVO.setLogs(uniqueList);
         return uniqueList;
     }
+
+    @Override
+    public Set<ProjectGraphDomainDataSourceVO> getProjectGraphDomainDataSource(GetProjectGraphDomainDataSourceRequest request) {
+        openProject(request.getProjectId());
+        Set<ProjectGraphDomainDataSourceVO> result = Sets.newHashSet();
+        Set<String> controlNodeIds = projectGraphDomainDatasourceService.getControlNodeIds(request.getProjectId());
+        if (!CollectionUtils.isEmpty(controlNodeIds)) {
+            controlNodeIds.forEach(n -> {
+                NodeDO nodeDO = nodeRepository.findByNodeId(n);
+                result.add(ProjectGraphDomainDataSourceVO.builder()
+                        .nodeId(n)
+                        .nodeName(ObjectUtils.isEmpty(nodeDO) ? n : nodeDO.getName())
+                        .dataSources(projectGraphDomainDatasourceService.getDomainDataSourcesByProjectAndComputeMode(request.getProjectId(), n))
+                        .build());
+            });
+        }
+        return result;
+    }
+
 }
 
 

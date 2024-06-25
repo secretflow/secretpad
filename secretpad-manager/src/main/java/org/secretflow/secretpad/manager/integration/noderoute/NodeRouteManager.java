@@ -42,7 +42,7 @@ import java.net.URL;
 import java.util.List;
 import java.util.Optional;
 
-import static org.secretflow.secretpad.manager.integration.model.Constants.PROTOCOL_HTTPS;
+import static org.secretflow.secretpad.common.constant.Constants.PROTOCOL_HTTPS;
 
 /**
  * @author yutu

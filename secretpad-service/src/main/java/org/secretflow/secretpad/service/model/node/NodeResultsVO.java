@@ -44,6 +44,18 @@ public class NodeResultsVO {
     private String domainDataId;
 
     /**
+     * Domain datasource id
+     */
+    @Schema(description = "domain datasource id")
+    private String datasourceId;
+
+    /**
+     * Domain datasource type
+     */
+    @Schema(description = "domain datasource type")
+    private String datasourceType;
+
+    /**
      * Node result name
      */
     @Schema(description = "node result name")
@@ -117,6 +129,8 @@ public class NodeResultsVO {
     public static NodeResultsVO fromNodeResultDTO(NodeResultDTO nodeResultDTO, TeeNodeDatatableManagementDO managementDO) {
         return NodeResultsVO.builder()
                 .domainDataId(nodeResultDTO.getDomainDataId())
+                .datasourceId(nodeResultDTO.getDatasourceId())
+                .datasourceType(nodeResultDTO.getDatasourceType())
                 .productName(nodeResultDTO.getResultName())
                 .datatableType(nodeResultDTO.getResultKind())
                 .sourceProjectId(nodeResultDTO.getSourceProjectId())

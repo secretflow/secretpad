@@ -15,10 +15,10 @@
 # limitations under the License.
 #
 
-export KUSCIA_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.8.0b0"
-export SECRETPAD_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.7.1b0"
-export SECRETFLOW_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.6.1b0"
-export SECRETFLOW_SERVING_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.3.1b0"
+export KUSCIA_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.9.0b0"
+export SECRETPAD_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.8.0b0"
+export SECRETFLOW_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.7.0b0"
+export SECRETFLOW_SERVING_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.4.0b0"
 export TEE_APP_IMAGE="secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"
 export TEE_DM_IMAGE="secretflow/sf-tee-dm-sim:0.1.0b0"
 export CAPSULE_MANAGER_SIM_IMAGE="secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"
@@ -345,6 +345,20 @@ source "${I_PATH}/deploy/common/log.sh"
 source "${I_PATH}/deploy/common/utils.sh"
 source "${I_PATH}/deploy/common/secretpad.env"
 
+function delete_dp_datasource() {
+	local delete_dp_datasource_url="http://localhost:8082/api/v1/domaindatasource/delete"
+	if ! noTls; then
+		delete_dp_datasource_url="https://localhost:8082/api/v1/domaindatasource/delete"
+	fi
+	sed "s|{{.URL}}|${delete_dp_datasource_url}|g;
+    s|{{.NODE_ID}}|${NODE_ID}|g" \
+		"$I_PATH"/deploy/common/delete_dp_datasource.sh >delete_dp_datasource-0.sh
+	log "delete_dp_datasource"
+	docker cp delete_dp_datasource-0.sh "${KUSCIA_CTR}":/home/kuscia
+	docker exec -it "${KUSCIA_CTR}" sh delete_dp_datasource-0.sh
+	echo
+}
+
 function deploy_secretpad() {
 	bash "$I_PATH"/deploy/secretpad.sh
 }
@@ -367,8 +381,8 @@ function build_kuscia_master_endpoint() {
 function deploy_kuscia() {
 	build_kuscia_master_endpoint
 	init_kuscia_config
-	log "bash $I_PATH/kuscia.sh start  -p ${KUSCIA_GATEWAY_PORT} -k ${KUSCIA_API_HTTP_PORT} -g ${KUSCIA_API_GRPC_PORT} -d ${KUSCIA_INSTALL_DIR} -t ${KUSCIA_TOKEN} -c ${KUSCIA_CTR}/kuscia.yaml -l ${KUSCIA_LOG_PATH} -q ${DOMAIN_HOST_INTERNAL_PORT}"
-	bash "$I_PATH"/kuscia.sh start -p "${KUSCIA_GATEWAY_PORT}" -k "${KUSCIA_API_HTTP_PORT}" -g "${KUSCIA_API_GRPC_PORT}" -d "${KUSCIA_INSTALL_DIR}" -t "${KUSCIA_TOKEN}" -c "${KUSCIA_CTR}"/kuscia.yaml -l "${KUSCIA_LOG_PATH}" -q "${DOMAIN_HOST_INTERNAL_PORT}" probe_kuscia "${KUSCIA_CTR}"
+	log "bash $I_PATH/kuscia.sh start  -p ${KUSCIA_GATEWAY_PORT} -k ${KUSCIA_API_HTTP_PORT} -g ${KUSCIA_API_GRPC_PORT} -d ${KUSCIA_INSTALL_DIR}  -c ${KUSCIA_CTR}/kuscia.yaml -l ${KUSCIA_LOG_PATH} -q ${DOMAIN_HOST_INTERNAL_PORT}"
+	bash "$I_PATH"/kuscia.sh start -p "${KUSCIA_GATEWAY_PORT}" -k "${KUSCIA_API_HTTP_PORT}" -g "${KUSCIA_API_GRPC_PORT}" -d "${KUSCIA_INSTALL_DIR}" -c "${KUSCIA_CTR}"/kuscia.yaml -l "${KUSCIA_LOG_PATH}" -q "${DOMAIN_HOST_INTERNAL_PORT}" probe_kuscia "${KUSCIA_CTR}"
 	if is_lite; then
 		if need_tee; then
 			saveAndLoad2Container "$TEE_DM_IMAGE" "$KUSCIA_CTR"
@@ -376,12 +390,14 @@ function deploy_kuscia() {
 		if need_mpc; then
 			saveAndLoad2Container "$SECRETFLOW_SERVING_IMAGE" "$KUSCIA_CTR"
 		fi
+		delete_dp_datasource
 	fi
 	if is_p2p; then
 		if need_mpc; then
 			applySfServingAppImage
 			saveAndLoad2Container "$SECRETFLOW_SERVING_IMAGE" "$KUSCIA_CTR"
 		fi
+		delete_dp_datasource
 	fi
 	if is_master; then
 		applySfServingAppImage

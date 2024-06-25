@@ -28,7 +28,7 @@ import org.secretflow.secretpad.service.enums.VoteExecuteEnum;
 import org.secretflow.secretpad.service.enums.VoteStatusEnum;
 import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
-import org.secretflow.secretpad.service.handler.VoteTypeHandler;
+import org.secretflow.secretpad.service.handler.vote.VoteTypeHandler;
 import org.secretflow.secretpad.service.model.approval.VoteRequestMessage;
 import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
 import org.secretflow.secretpad.service.util.DbSyncUtil;

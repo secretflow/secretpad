@@ -32,6 +32,7 @@ data:
     - org.secretflow.secretpad.persistence.entity.ProjectModelPackDO
     - org.secretflow.secretpad.persistence.entity.FeatureTableDO
     - org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO
+    - org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO
 
 
 edge:
@@ -46,6 +47,7 @@ edge:
     - /api/v1alpha1/project/update/tableConfig
     - /api/v1alpha1/data/create
     - /api/v1alpha1/feature_datasource/create
+    - /api/v1alpha1/datatable/create
   include:
     - /api/login
     - /api/logout
@@ -66,6 +68,11 @@ edge:
     - /api/v1alpha1/datatable/get
     - /api/v1alpha1/datatable/pushToTee
     - /api/v1alpha1/datatable/delete
+    # datasource
+    - /api/v1alpha1/datasource/list
+    - /api/v1alpha1/datasource/create
+    - /api/v1alpha1/datasource/delete
+    - /api/v1alpha1/datasource/detail
     # data
     - /api/v1alpha1/data/upload
     - /api/v1alpha1/data/create
@@ -90,5 +97,6 @@ edge:
     - /api/v1alpha1/user/get
     - /api/v1alpha1/component/list
     - /api/v1alpha1/component/batch
+    - /api/v1alpha1/version/list
 
 

@@ -30,7 +30,7 @@ import org.secretflow.secretpad.service.MessageService;
 import org.secretflow.secretpad.service.enums.VoteStatusEnum;
 import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
-import org.secretflow.secretpad.service.handler.VoteTypeHandler;
+import org.secretflow.secretpad.service.handler.vote.VoteTypeHandler;
 import org.secretflow.secretpad.service.model.approval.VoteReplyBody;
 import org.secretflow.secretpad.service.model.approval.VoteReplyMessage;
 import org.secretflow.secretpad.service.model.approval.VoteRequestBody;

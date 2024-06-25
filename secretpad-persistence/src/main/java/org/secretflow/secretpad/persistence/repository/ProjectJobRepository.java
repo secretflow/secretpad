@@ -22,6 +22,9 @@ import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
 import org.secretflow.secretpad.persistence.projection.CountProjection;
 import org.secretflow.secretpad.persistence.projection.ProjectJobStatus;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -31,9 +34,6 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.Optional;
-
 /**
  * Project job repository
  *
@@ -42,6 +42,24 @@ import java.util.Optional;
  */
 @Repository
 public interface ProjectJobRepository extends BaseRepository<ProjectJobDO, ProjectJobDO.UPK> {
+
+    /**
+     * find ProjectJobDO list by projectId
+     *
+     * @param projectIds target projectId list
+     * @return project job list
+     */
+    @Query("from ProjectJobDO pj where pj.upk.projectId in :projectIds")
+    List<ProjectJobDO> findByProjectIds(@Param("projectIds") List<String> projectIds);
+
+    /**
+     * find GraphJobStatus list by project jobId
+     *
+     * @param jobIds target jobId list
+     * @return project job status list
+     */
+    @Query("select pj.status from ProjectJobDO pj where pj.upk.jobId in :jobIds")
+    List<GraphJobStatus> findStatusByJobIds(@Param("jobIds") List<String> jobIds);
 
     /**
      * Query project job result by jobId

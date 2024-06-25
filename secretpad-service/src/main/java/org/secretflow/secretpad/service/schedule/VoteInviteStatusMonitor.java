@@ -164,7 +164,7 @@ public class VoteInviteStatusMonitor {
         String voter = voteReplyBody.getVoter();
         String cert = nodeManager.getCert(voter);
         String rootCert = Base64Utils.encode(certChain.get(1).getBytes());
-        if (!rootCert.equals(cert)) {
+        if (!EncryptUtils.compareCertPubKey(cert, rootCert)) {
             LOGGER.info("cert does not match,verify fail");
             return false;
         }

@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.web.controller;
 
 import org.secretflow.secretpad.common.constant.CacheConstants;
+import org.secretflow.secretpad.common.constant.KusciaDataSourceConstants;
 import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
 import org.secretflow.secretpad.common.errorcode.ModelExportErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
@@ -41,6 +42,9 @@ import com.google.common.collect.Lists;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.secretflow.v1alpha1.common.Common;
+import org.secretflow.v1alpha1.kusciaapi.DomainDataSourceServiceGrpc;
+import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
@@ -71,6 +75,9 @@ public class ModelExportControllerTest extends ControllerTest {
 
     @MockBean
     private ProjectGraphRepository graphRepository;
+    @MockBean
+    private DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub domainDataSourceServiceBlockingStub;
+
     private static final String NODE_DEF = """
             {
                     "attrPaths": [
@@ -236,6 +243,7 @@ public class ModelExportControllerTest extends ControllerTest {
     public void modelPartyPath() throws Exception {
         assertResponse(() -> {
             ModelPartyPathRequest request = FakerUtils.fake(ModelPartyPathRequest.class);
+            Mockito.when(domainDataSourceServiceBlockingStub.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
             Mockito.when(taskRepository.findLatestTasks(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(buildProjectTaskDO()));
             Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(buildNodeDO());
             return MockMvcRequestBuilders.post(getMappingUrl(ModelExportController.class, "modelPartyPath", ModelPartyPathRequest.class)).
@@ -483,5 +491,15 @@ public class ModelExportControllerTest extends ControllerTest {
 
         projectGraphDO.setEdges(JsonUtils.toJavaList(edges, GraphEdgeDO.class));
         return projectGraphDO;
+    }
+
+    private Domaindatasource.ListDomainDataSourceResponse buildBatchQueryDomainResponse(Integer code) {
+        return Domaindatasource.ListDomainDataSourceResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(code).build())
+                .setData(Domaindatasource.DomainDataSourceList.newBuilder().addDatasourceList(Domaindatasource.DomainDataSource.newBuilder()
+                        .setName(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                        .setDatasourceId(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                        .setType("localfs")
+                        .build()))
+                .build();
     }
 }

@@ -19,12 +19,12 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectApprovalConfigDO;
 
+import java.util.List;
+import java.util.Optional;
+
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.util.List;
-import java.util.Optional;
 
 /**
  * @author cml
@@ -52,4 +52,14 @@ public interface ProjectApprovalConfigRepository extends BaseRepository<ProjectA
      */
     @Query("from ProjectApprovalConfigDO where projectId in :projectIds and type=:type")
     List<ProjectApprovalConfigDO> findByProjectIdsAndType(@Param("projectIds") List<String> projectIds, @Param("type") String type);
+
+    /**
+     * find ProjectApprovalConfigDO list by initiator
+     *
+     * @param srcNodeId target source node id
+     * @param dstNodeId target destination node id
+     * @return project list
+     */
+    @Query("select pac from ProjectApprovalConfigDO pac where pac.initiator in (:srcNodeId, :dstNodeId)")
+    List<ProjectApprovalConfigDO> findByInitiator(@Param("srcNodeId") String srcNodeId, @Param("dstNodeId") String dstNodeId);
 }

@@ -46,6 +46,8 @@ import java.io.IOException;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+import static org.secretflow.secretpad.common.constant.DomainDatasourceConstants.DEFAULT_DATASOURCE;
+import static org.secretflow.secretpad.common.constant.DomainDatasourceConstants.DEFAULT_DATASOURCE_TYPE;
 
 /**
  * Data service implementation class
@@ -59,11 +61,6 @@ public class DataServiceImpl implements DataService {
     private final static Logger LOGGER = LoggerFactory.getLogger(DataServiceImpl.class);
 
     private final static List<String> SUPPORT_FILE_TYPE = List.of(".csv");
-
-    public final static String DEFAULT_DATASOURCE = "default-data-source";
-    public final static String HTTP_DATASOURCE = "http-data-source";
-
-    private final static String DEFAULT_DATASOURCE_TYPE = "localfs";
 
     private final static SecureRandom RANDOM = new SecureRandom(TypeConvertUtils.long2Bytes(System.currentTimeMillis()));
 
@@ -122,6 +119,8 @@ public class DataServiceImpl implements DataService {
                 request.getRealName(),
                 request.getTableName(),
                 request.getDescription(),
+                request.getDatasourceType(),
+                request.getDatasourceName(),
                 request.getDatatableSchema()
         );
     }
@@ -129,7 +128,7 @@ public class DataServiceImpl implements DataService {
     @Override
     public String createDataByDataSource(CreateDataByDataSourceRequest request) {
         return dataManager.createDataByDataSource(request.getNodeId(), request.getName(), request.getTablePath(),
-                request.getDatasourceId(), request.getDescription(), request.getDatatableSchema());
+                request.getDatasourceId(), request.getDescription(), request.getDatasourceType(), request.getDatasourceName(), request.getDatatableSchema());
     }
 
     @Override

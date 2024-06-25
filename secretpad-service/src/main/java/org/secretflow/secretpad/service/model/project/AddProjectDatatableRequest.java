@@ -17,7 +17,7 @@
 package org.secretflow.secretpad.service.model.project;
 
 import org.secretflow.secretpad.common.annotation.OneOfType;
-import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
+import org.secretflow.secretpad.common.constant.DomainDataConstants;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
@@ -73,6 +73,6 @@ public class AddProjectDatatableRequest {
     private String datasourceId;
 
     @Schema(description = "table type")
-    @OneOfType(types = {"HTTP", "CSV"})
-    private String type = DataSourceTypeEnum.CSV.name();
+    @OneOfType(types = {DomainDataConstants.DEFAULT_DATATABLE_TYPE, DomainDataConstants.HTTP_DATATABLE_TYPE})
+    private String type = DomainDataConstants.DEFAULT_DATATABLE_TYPE;
 }

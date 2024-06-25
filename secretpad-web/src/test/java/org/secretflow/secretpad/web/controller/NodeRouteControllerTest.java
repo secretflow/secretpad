@@ -8,9 +8,10 @@ import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
-import org.secretflow.secretpad.persistence.repository.NodeRepository;
-import org.secretflow.secretpad.persistence.repository.NodeRouteRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectResultRepository;
+import org.secretflow.secretpad.persistence.entity.ProjectApprovalConfigDO;
+import org.secretflow.secretpad.persistence.entity.ProjectJobDO;
+import org.secretflow.secretpad.persistence.model.GraphJobStatus;
+import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
 import org.secretflow.secretpad.service.model.datasync.vote.VoteSyncRequest;
 import org.secretflow.secretpad.service.model.noderoute.PageNodeRouteRequest;
@@ -18,6 +19,10 @@ import org.secretflow.secretpad.service.model.noderoute.RouterIdRequest;
 import org.secretflow.secretpad.service.model.noderoute.UpdateNodeRouterRequest;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
 import org.secretflow.secretpad.web.utils.FakerUtils;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
@@ -31,9 +36,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-
-import java.util.Optional;
-import java.util.Set;
 
 /**
  * NodeRoute controller test
@@ -56,6 +58,10 @@ class NodeRouteControllerTest extends ControllerTest {
 
     @MockBean
     private ProjectResultRepository resultRepository;
+    @MockBean
+    private ProjectApprovalConfigRepository projectApprovalConfigRepository;
+    @MockBean
+    private ProjectJobRepository projectJobRepository;
 
     @Test
     void update() throws Exception {
@@ -78,6 +84,44 @@ class NodeRouteControllerTest extends ControllerTest {
     }
 
     @Test
+    void updateByProhibitUpdate() throws Exception {
+        assertErrorCode(() -> {
+            UpdateNodeRouterRequest request = buildUpdateNodeRouterRequest();
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_ROUTE_UPDATE));
+
+            ProjectApprovalConfigDO projectApprovalConfigDO = ProjectApprovalConfigDO.builder()
+                    .projectId("projectId")
+                    .initiator("alice")
+                    .parties(List.of("alice", "bob"))
+                    .build();
+            ProjectJobDO projectJobDO = ProjectJobDO.builder()
+                    .upk(new ProjectJobDO.UPK("projectId", "jobId"))
+                    .status(GraphJobStatus.RUNNING)
+                    .build();
+
+            Mockito.when(projectApprovalConfigRepository.findByInitiator(Mockito.anyString(), Mockito.anyString()))
+                    .thenReturn(List.of(projectApprovalConfigDO));
+            Mockito.when(projectJobRepository.findByProjectIds(List.of("projectId")))
+                    .thenReturn(List.of(projectJobDO));
+            Mockito.when(projectJobRepository.findStatusByJobIds(List.of("jobId")))
+                    .thenReturn(List.of(GraphJobStatus.RUNNING));
+
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(buildNodeDO());
+            Mockito.when(nodeRouteRepository.findByRouteId(Mockito.anyString())).thenReturn(buildNodeRouteDO().get());
+            Mockito.when(nodeRouteRepository.save(Mockito.any())).thenReturn(buildNodeRouteDO().get());
+            Mockito.when(nodeRouteRepository.findBySrcNodeIdAndDstNodeId(Mockito.anyString(), Mockito.anyString())).thenReturn(buildNodeRouteDO());
+            Mockito.when(domainRouteServiceBlockingStub.createDomainRoute(Mockito.any())).thenReturn(buildCreateDomainRouteResponse(0));
+            Mockito.when(domainRouteServiceBlockingStub.queryDomainRoute(Mockito.any())).thenReturn(buildQueryDomainRouteResponse(0));
+            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
+
+            pushToCenterUtilMockedStatic.when(() -> DbSyncUtil.dbDataSyncToCenter(Mockito.any(VoteSyncRequest.class))).thenReturn(SecretPadResponse.success());
+            return MockMvcRequestBuilders.post(getMappingUrl(NodeRouteController.class, "update", UpdateNodeRouterRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+
+        }, NodeRouteErrorCode.NODE_ROUTE_UPDATE_ERROR);
+    }
+
+    @Test
     void updateByRouteNotExist() throws Exception {
         assertErrorCode(() -> {
             UpdateNodeRouterRequest request = buildUpdateNodeRouterRequest();
@@ -92,6 +136,7 @@ class NodeRouteControllerTest extends ControllerTest {
             Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
 
             pushToCenterUtilMockedStatic.when(() -> DbSyncUtil.dbDataSyncToCenter(Mockito.any(VoteSyncRequest.class))).thenReturn(SecretPadResponse.success());
+
             return MockMvcRequestBuilders.post(getMappingUrl(NodeRouteController.class, "update", UpdateNodeRouterRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, NodeRouteErrorCode.NODE_ROUTE_NOT_EXIST_ERROR);

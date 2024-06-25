@@ -16,7 +16,6 @@
 
 package org.secretflow.v1alpha1.factory.embedded;
 
-import org.secretflow.secretpad.common.util.CertUtils;
 import org.secretflow.secretpad.common.util.FileUtils;
 
 import io.grpc.ClientInterceptor;
@@ -28,6 +27,7 @@ import io.grpc.netty.shaded.io.grpc.netty.NettyChannelBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContext;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslContextBuilder;
 import io.grpc.netty.shaded.io.netty.handler.ssl.SslProvider;
+import io.grpc.netty.shaded.io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import io.grpc.stub.MetadataUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.secretflow.v1alpha1.constant.KusciaAPIConstants;
@@ -35,8 +35,6 @@ import org.secretflow.v1alpha1.factory.TlsConfig;
 
 import java.io.File;
 import java.io.IOException;
-import java.security.cert.CertificateException;
-import java.security.cert.X509Certificate;
 
 import static org.secretflow.secretpad.common.constant.KusciaConstants.KUSCIA_PROTOCOL_NOTLS;
 
@@ -91,10 +89,9 @@ public class EmbeddedNodeKusciaApiChannelFactory {
             // load client certs
             File certFile = FileUtils.readFile(tlsConfig.getCertFile());
             File keyFile = FileUtils.readFile(tlsConfig.getKeyFile());
-            X509Certificate[] clientTrustedCaCerts = {CertUtils.loadX509Cert(tlsConfig.getCaFile())};
             SslContext sslContext = clientContextBuilder
                     .keyManager(certFile, keyFile)
-                    .trustManager(clientTrustedCaCerts)
+                    .trustManager(InsecureTrustManagerFactory.INSTANCE)
                     .build();
             String token = FileUtils.readFile2String(tokenFile);
 
@@ -108,7 +105,7 @@ public class EmbeddedNodeKusciaApiChannelFactory {
                     .maxInboundMessageSize(MAX_INBOUND_MESSAGE_SIZE)
                     .sslContext(sslContext)
                     .build();
-        } catch (CertificateException | IOException e) {
+        } catch (IOException e) {
             log.error("init kuscia grpc client error", e);
             return null;
         }

@@ -63,7 +63,7 @@ spec:
             - containerPort: 8888
       dnsPolicy: ClusterFirst
       enableServiceLinks: true
-      nodeName: {{.USER}}-kuscia-lite-tee
+      nodeName: {{.TEE_NODE_NAME}}
       nodeSelector:
         kuscia.secretflow/namespace: tee
       automountServiceAccountToken: false

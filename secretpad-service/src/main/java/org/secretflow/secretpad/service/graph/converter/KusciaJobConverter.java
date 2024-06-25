@@ -19,14 +19,18 @@ package org.secretflow.secretpad.service.graph.converter;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.ProtoUtils;
+import org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO;
 import org.secretflow.secretpad.persistence.entity.ProjectGraphNodeKusciaParamsDO;
 import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
 import org.secretflow.secretpad.persistence.repository.ProjectGraphNodeKusciaParamsRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectJobTaskRepository;
+import org.secretflow.secretpad.service.ProjectGraphDomainDatasourceService;
 import org.secretflow.secretpad.service.constant.JobConstants;
 import org.secretflow.secretpad.service.graph.GraphContext;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
+import org.secretflow.secretpad.service.model.model.export.ModelExportPackageRequest;
+import org.secretflow.secretpad.service.model.model.export.ModelPartyConfig;
 import org.secretflow.secretpad.service.util.JobUtils;
 
 import com.google.protobuf.util.JsonFormat;
@@ -75,6 +79,9 @@ public class KusciaJobConverter implements JobConverter {
     @Resource
     private ProjectJobTaskRepository taskRepository;
 
+    @Resource
+    private ProjectGraphDomainDatasourceService projectGraphDomainDatasourceService;
+
     @Value("${secretpad.node-id}")
     private String localNodeId;
 
@@ -118,7 +125,7 @@ public class KusciaJobConverter implements JobConverter {
 
                 ProjectGraphNodeKusciaParamsDO.UPK upk = new ProjectGraphNodeKusciaParamsDO.UPK(job.getProjectId(), job.getGraphId(), task.getNode().getGraphNodeId());
                 projectGraphNodeKusciaParamsDOThreadLocal.set(ProjectGraphNodeKusciaParamsDO.builder().upk(upk).jobId(job.getJobId()).build());
-                String taskInputConfig = renderTaskInputConfig(task);
+                String taskInputConfig = renderTaskInputConfig(task, job);
                 Job.Task.Builder jobTaskBuilder = Job.Task.newBuilder()
                         .setTaskId(taskId)
                         .setAlias(taskId)
@@ -146,7 +153,7 @@ public class KusciaJobConverter implements JobConverter {
      * @param task project job task
      * @return json string of task input config message
      */
-    private String renderTaskInputConfig(ProjectJob.JobTask task) {
+    private String renderTaskInputConfig(ProjectJob.JobTask task, ProjectJob job) {
         GraphNodeInfo graphNode = task.getNode();
         Object nodeDef = graphNode.getNodeDef();
         List<String> inputs = graphNode.getInputs();
@@ -179,7 +186,7 @@ public class KusciaJobConverter implements JobConverter {
         }
         Cluster.SFClusterDesc sfClusterDesc = buildSfClusterDesc(parties);
         TaskConfig.TaskInputConfig taskInputConfig = TaskConfig.TaskInputConfig.newBuilder()
-                .putAllSfDatasourceConfig(defaultDatasourceConfig(parties))
+                .putAllSfDatasourceConfig(buildDatasourceConfig(parties, job.getProjectId(), job.getGraphId()))
                 .addAllSfInputIds(inputs)
                 .addAllSfOutputIds(outputs)
                 .addAllSfOutputUris(outputs)
@@ -201,15 +208,42 @@ public class KusciaJobConverter implements JobConverter {
      * @param parties target parties
      * @return map of party and datasource config
      */
-    public Map<String, TaskConfig.DatasourceConfig> defaultDatasourceConfig(List<String> parties) {
+    public Map<String, TaskConfig.DatasourceConfig> buildDatasourceConfig(List<String> parties, String projectId, String graphId) {
         TaskConfig.DatasourceConfig datasourceConfig = TaskConfig.DatasourceConfig.newBuilder()
                 .setId(DEFAULTDS)
                 .build();
         Map<String, TaskConfig.DatasourceConfig> datasourceConfigMap = new HashMap<>();
+        ProjectGraphDomainDatasourceDO projectGraphDomainDatasourceDO = null;
         for (String party : parties) {
-            datasourceConfigMap.put(party, datasourceConfig);
+            if (StringUtils.isNotEmpty(projectId) && StringUtils.isNotEmpty(graphId)) {
+                projectGraphDomainDatasourceDO = projectGraphDomainDatasourceService.getById(projectId, graphId, party);
+            }
+            if (projectGraphDomainDatasourceDO == null || StringUtils.isEmpty(projectGraphDomainDatasourceDO.getDataSourceId())) {
+                datasourceConfigMap.put(party, datasourceConfig);
+            } else {
+                datasourceConfigMap.put(party, datasourceConfig.toBuilder().setId(projectGraphDomainDatasourceDO.getDataSourceId()).build());
+            }
         }
         return datasourceConfigMap;
+    }
+
+    /**
+     * Set default map of party and datasource config
+     *
+     * @param parties target parties
+     * @return map of party and datasource config
+     */
+    public Map<String, TaskConfig.DatasourceConfig> modelExportDatasourceConfig(List<String> parties, String projectId, String graphId, ModelExportPackageRequest request) {
+        Map<String, TaskConfig.DatasourceConfig> stringDatasourceConfigMap = buildDatasourceConfig(parties, projectId, graphId);
+        if (ObjectUtils.isEmpty(request) || ObjectUtils.isEmpty(request.getModelPartyConfig())) {
+            return buildDatasourceConfig(parties, null, graphId);
+        }
+        for (ModelPartyConfig modelPartyConfig : request.getModelPartyConfig()) {
+            if (stringDatasourceConfigMap.containsKey(modelPartyConfig.getModelParty())) {
+                stringDatasourceConfigMap.put(modelPartyConfig.getModelParty(), stringDatasourceConfigMap.get(modelPartyConfig.getModelParty()).toBuilder().setId(modelPartyConfig.getModelDataSource()).build());
+            }
+        }
+        return stringDatasourceConfigMap;
     }
 
     public Cluster.SFClusterDesc buildSfClusterDesc(List<String> parties) {

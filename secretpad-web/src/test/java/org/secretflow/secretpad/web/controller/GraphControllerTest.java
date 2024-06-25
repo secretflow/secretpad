@@ -16,8 +16,10 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.constant.KusciaDataSourceConstants;
 import org.secretflow.secretpad.common.constant.ProjectConstants;
 import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
+import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.*;
@@ -26,8 +28,12 @@ import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.model.graph.*;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.secretflow.v1alpha1.common.Common;
+import org.secretflow.v1alpha1.kusciaapi.DomainDataSourceServiceGrpc;
+import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
@@ -57,6 +63,12 @@ class GraphControllerTest extends ControllerTest {
 
     @MockBean
     private ProjectNodeRepository projectNodeRepository;
+
+    @MockBean
+    private DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub domainDataSourceServiceBlockingStub;
+
+    @Resource
+    private ProjectGraphDomainDatasourceRepository projectGraphDomainDatasourceRepository;
 
     private static final String NODE_DEF = """
             {
@@ -100,6 +112,7 @@ class GraphControllerTest extends ControllerTest {
             createGraphRequest.setProjectId(PROJECT_ID);
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_CREATE));
+            Mockito.when(projectNodeRepository.findByProjectId(Mockito.any())).thenReturn(buildFindByProjectId(createGraphRequest.getProjectId()));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "createGraph", CreateGraphRequest.class))
                     .content(JsonUtils.toJSONString(createGraphRequest));
@@ -157,9 +170,20 @@ class GraphControllerTest extends ControllerTest {
         assertResponseWithEmptyData(() -> {
             FullUpdateGraphRequest fullUpdateGraphRequest = FakerUtils.fake(FullUpdateGraphRequest.class);
             fullUpdateGraphRequest.setProjectId(PROJECT_ID);
+            fullUpdateGraphRequest.setDataSourceConfig(List.of(FullUpdateGraphRequest.GraphDataSourceConfig.builder().nodeId("alice")
+                    .dataSourceId(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                    .build()));
+            projectGraphDomainDatasourceRepository.save(ProjectGraphDomainDatasourceDO.builder()
+                    .upk(new ProjectGraphDomainDatasourceDO.UPK(fullUpdateGraphRequest.getProjectId(), fullUpdateGraphRequest.getGraphId(), "alice"))
+                    .dataSourceId(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                    .dataSourceName(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                    .editEnable(Boolean.TRUE)
+                    .build());
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_UPDATE));
+            Mockito.when(projectNodeRepository.findByProjectId(Mockito.any())).thenReturn(buildFindByProjectId(fullUpdateGraphRequest.getProjectId()));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
+            Mockito.when(domainDataSourceServiceBlockingStub.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
             ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
             projectGraphDO.setOwnerId(UserContext.getUser().getOwnerId());
             Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(fullUpdateGraphRequest.getProjectId(), fullUpdateGraphRequest.getGraphId())))
@@ -167,6 +191,43 @@ class GraphControllerTest extends ControllerTest {
             return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "fullUpdateGraph", FullUpdateGraphRequest.class))
                     .content(JsonUtils.toJSONString(fullUpdateGraphRequest));
         });
+    }
+
+    @Test
+    void fullUpdateGraphByNotControlNode() throws Exception {
+        assertErrorCode(() -> {
+            FullUpdateGraphRequest fullUpdateGraphRequest = FakerUtils.fake(FullUpdateGraphRequest.class);
+            fullUpdateGraphRequest.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_UPDATE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
+            Mockito.when(domainDataSourceServiceBlockingStub.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
+            ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
+            projectGraphDO.setOwnerId(UserContext.getUser().getOwnerId());
+            Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(fullUpdateGraphRequest.getProjectId(), fullUpdateGraphRequest.getGraphId())))
+                    .thenReturn(Optional.of(projectGraphDO));
+            return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "fullUpdateGraph", FullUpdateGraphRequest.class))
+                    .content(JsonUtils.toJSONString(fullUpdateGraphRequest));
+        }, SystemErrorCode.VALIDATION_ERROR);
+    }
+
+    @Test
+    void fullUpdateGraphByDataSourceIdNotSupport() throws Exception {
+        assertErrorCode(() -> {
+            FullUpdateGraphRequest fullUpdateGraphRequest = FakerUtils.fake(FullUpdateGraphRequest.class);
+            fullUpdateGraphRequest.setProjectId(PROJECT_ID);
+            fullUpdateGraphRequest.setDataSourceConfig(List.of(FullUpdateGraphRequest.GraphDataSourceConfig.builder().nodeId("alice1").dataSourceId("not-support").build()));
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_UPDATE));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
+            Mockito.when(domainDataSourceServiceBlockingStub.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
+            ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
+            projectGraphDO.setOwnerId(UserContext.getUser().getOwnerId());
+            Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(fullUpdateGraphRequest.getProjectId(), fullUpdateGraphRequest.getGraphId())))
+                    .thenReturn(Optional.of(projectGraphDO));
+            return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "fullUpdateGraph", FullUpdateGraphRequest.class))
+                    .content(JsonUtils.toJSONString(fullUpdateGraphRequest));
+        }, SystemErrorCode.VALIDATION_ERROR);
     }
 
     @Test
@@ -384,6 +445,7 @@ class GraphControllerTest extends ControllerTest {
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_DETAIL));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
+            Mockito.when(projectNodeRepository.findByProjectId(Mockito.any())).thenReturn(buildFindByProjectId(getGraphRequest.getProjectId()));
             ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
             Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(getGraphRequest.getProjectId(), getGraphRequest.getGraphId())))
                     .thenReturn(Optional.of(projectGraphDO));
@@ -441,5 +503,21 @@ class GraphControllerTest extends ControllerTest {
             return MockMvcRequestBuilders.post(getMappingUrl(GraphController.class, "graphNodeMaxIndexRefresh", GraphNodeMaxIndexRefreshRequest.class))
                     .content(JsonUtils.toJSONString(request));
         });
+    }
+
+    private Domaindatasource.ListDomainDataSourceResponse buildBatchQueryDomainResponse(Integer code) {
+        return Domaindatasource.ListDomainDataSourceResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(code).build())
+                .setData(Domaindatasource.DomainDataSourceList.newBuilder().addDatasourceList(Domaindatasource.DomainDataSource.newBuilder()
+                        .setName(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                        .setDatasourceId(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                        .setType("localfs")
+                        .build()))
+                .build();
+    }
+
+    private List<ProjectNodeDO> buildFindByProjectId(String projectId) {
+        return List.of(ProjectNodeDO.builder()
+                .upk(new ProjectNodeDO.UPK(projectId, "alice"))
+                .build());
     }
 }

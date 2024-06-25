@@ -195,6 +195,7 @@ data:
     - org.secretflow.secretpad.persistence.entity.ProjectModelPackDO
     - org.secretflow.secretpad.persistence.entity.FeatureTableDO
     - org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO
+    - org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO
 
 inner-port:
   path:

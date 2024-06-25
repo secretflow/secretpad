@@ -85,6 +85,9 @@ public class FeatureTableDO extends BaseAggregationRoot<FeatureTableDO> {
         @Column(name = "node_id", nullable = false, length = 64)
         private String nodeId;
 
+        @Column(name = "datasource_id", nullable = false, length = 64)
+        private String datasourceId;
+
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;

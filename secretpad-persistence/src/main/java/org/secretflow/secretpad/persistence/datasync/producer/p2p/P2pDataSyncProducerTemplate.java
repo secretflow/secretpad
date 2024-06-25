@@ -67,8 +67,19 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
             case "ProjectModelServingDO" -> filterProjectModelServingDO(event);
             case "ProjectModelPackDO" -> filterProjectModelPackDO(event);
             case "ProjectFeatureTableDO" -> filterProjectFeatureTableDO(event);
+            case "ProjectGraphDomainDatasourceDO" -> filterProjectGraphDomainDatasourceDO(event);
             default -> false;
         };
+    }
+
+    private boolean filterProjectGraphDomainDatasourceDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
+        ProjectGraphDomainDatasourceDO source = (ProjectGraphDomainDatasourceDO) event.getSource();
+        String nodeId = source.getUpk().getDomainId();
+        if (!StringUtils.equals(localNodeId, nodeId)) {
+            log.debug("ProjectGraphDomainDatasourceDO local node not initiator,stop sync {}", localNodeId);
+            return true;
+        }
+        return false;
     }
 
 
@@ -158,7 +169,8 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
     private boolean filterProjectJobDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         ProjectJobDO source = (ProjectJobDO) event.getSource();
         String ownerId = ownerId_cache.get(source.getUpk().getProjectId() + "_" + source.getGraphId());
-        if (source.isFinished() || StringUtils.equalsIgnoreCase(DbChangeAction.UPDATE.getVal(), event.getDType())) {
+        // Data synchronization occurs when a job is manually stopped, because the kuscia stop status is not updated
+        if (source.isFinishedNotIncludedStopped() || StringUtils.equalsIgnoreCase(DbChangeAction.UPDATE.getVal(), event.getDType())) {
             return true;
         }
         return !StringUtils.equals(localNodeId, ownerId);
@@ -168,13 +180,6 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
         ProjectDatatableDO source = (ProjectDatatableDO) event.getSource();
         String nodeId = source.getNodeId();
         return !StringUtils.equals(localNodeId, nodeId);
-    }
-
-    @Deprecated
-    private boolean filterProjectTaskDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
-        ProjectTaskDO source = (ProjectTaskDO) event.getSource();
-        String ownerId = ownerId_cache.get(source.getUpk().getProjectId() + "_" + source.getGraphNode().getUpk().getGraphId());
-        return !StringUtils.equals(localNodeId, ownerId) && StringUtils.equalsIgnoreCase(DbChangeAction.UPDATE.getVal(), event.getDType());
     }
 
     private boolean filterVoteRequestDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {

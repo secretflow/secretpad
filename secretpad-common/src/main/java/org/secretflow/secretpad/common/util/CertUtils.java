@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.common.util;
 
+import lombok.extern.slf4j.Slf4j;
+
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -30,6 +32,7 @@ import java.security.cert.X509Certificate;
  * @author yansi
  * @date 2023/5/8
  */
+@Slf4j
 public class CertUtils {
     /**
      * Loads an X.509 certificate from the classpath resources or filesystem
@@ -47,4 +50,5 @@ public class CertUtils {
             return (X509Certificate) cf.generateCertificate(in);
         }
     }
+
 }

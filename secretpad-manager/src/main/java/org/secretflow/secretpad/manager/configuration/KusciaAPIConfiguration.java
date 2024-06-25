@@ -133,4 +133,18 @@ public class KusciaAPIConfiguration {
                 .withMaxInboundMessageSize(Integer.MAX_VALUE)
                 .withMaxOutboundMessageSize(Integer.MAX_VALUE);
     }
+
+
+    /**
+     * Create a new domain datasource service blocking stub via apiLite channel factory
+     *
+     * @param channelFactory channelFactory
+     * @return a new domain datasource service blocking stub
+     */
+    @Bean("domainDataSourceServiceBlockingStub")
+    public DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub domainDataSourceServiceBlockingStub(KusciaAPIChannelFactory channelFactory) {
+        return DomainDataSourceServiceGrpc.newBlockingStub(channelFactory.newClientChannel())
+                .withMaxInboundMessageSize(Integer.MAX_VALUE)
+                .withMaxOutboundMessageSize(Integer.MAX_VALUE);
+    }
 }

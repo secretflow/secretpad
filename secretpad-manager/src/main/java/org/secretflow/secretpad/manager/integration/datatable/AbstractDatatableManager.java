@@ -82,4 +82,6 @@ public abstract class AbstractDatatableManager {
      */
     public abstract void deleteDataTable(NodeDatatableId nodeDatatableId);
 
+    public abstract List<DatatableDTO> findAllDatatableByNodeId(String nodeId);
+
 }

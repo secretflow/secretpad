@@ -76,6 +76,17 @@ public class DatatableVO {
      * The data source id which it belongs to
      */
     private String datasourceId;
+
+    /**
+     * The data source type which it belongs to
+     */
+    private String datasourceType;
+
+    /**
+     * The data source name which it belongs to
+     */
+    private String datasourceName;
+
     /**
      * Relative uri
      */
@@ -122,6 +133,8 @@ public class DatatableVO {
                 .relativeUri(dto.getRelativeUri())
                 .type(StringUtils.equalsIgnoreCase(dto.getType(), DATA_MESH_DATATABLE_TYPE) ? DATATABLE_TYPE : dto.getType())
                 .description(attributes.getOrDefault("description", ""))
+                .datasourceType(dto.getDatasourceType())
+                .datasourceName(dto.getDatasourceName())
                 .schema(dto.getSchema().stream().map(TableColumnVO::from).collect(Collectors.toList()))
                 .authProjects(authProjects)
                 .pushToTeeStatus(null == managementDO ? "" : managementDO.getStatus().name())

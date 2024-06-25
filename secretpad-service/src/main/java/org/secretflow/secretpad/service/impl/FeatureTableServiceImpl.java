@@ -16,11 +16,10 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.common.errorcode.FeatureTableErrorCode;
-import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.UUIDUtils;
-import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.FeatureTableDO;
 import org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO;
 import org.secretflow.secretpad.persistence.repository.FeatureTableRepository;
@@ -31,20 +30,17 @@ import org.secretflow.secretpad.service.model.datasource.feature.FeatureDataSour
 import org.secretflow.secretpad.service.model.datatable.TableColumnVO;
 import org.secretflow.secretpad.service.util.IpFilterUtil;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
-import com.google.common.util.concurrent.RateLimiter;
 import jakarta.annotation.Resource;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import static org.secretflow.secretpad.service.util.RateLimitUtil.verifyRate;
 
 /**
  * @author chenmingliang
@@ -53,9 +49,6 @@ import java.util.stream.Collectors;
 @Service
 public class FeatureTableServiceImpl implements FeatureTableService {
 
-    private final Cache<String, RateLimiter> rateLimiters = CacheBuilder.newBuilder()
-            .expireAfterAccess(1, TimeUnit.HOURS)
-            .build();
 
     @Resource
     private FeatureTableRepository featureTableRepository;
@@ -74,7 +67,7 @@ public class FeatureTableServiceImpl implements FeatureTableService {
         verifyRate();
         String status = "Unavailable";
         FeatureTableDO featureTableDO = FeatureTableDO.builder()
-                .upk(new FeatureTableDO.UPK(UUIDUtils.random(8), createFeatureDatasourceRequest.getNodeId()))
+                .upk(new FeatureTableDO.UPK(UUIDUtils.random(8), createFeatureDatasourceRequest.getNodeId(), StringUtils.isBlank(createFeatureDatasourceRequest.getDatasourceId()) ? DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID : createFeatureDatasourceRequest.getDatasourceId()))
                 .featureTableName(createFeatureDatasourceRequest.getFeatureTableName())
                 .type(createFeatureDatasourceRequest.getType())
                 .desc(createFeatureDatasourceRequest.getDesc())
@@ -115,9 +108,9 @@ public class FeatureTableServiceImpl implements FeatureTableService {
         return projectFeatureTableDOList.stream().map(e ->
                 FeatureDataSourceVO.builder()
                         .featureTableId(e.getUpk().getFeatureTableId())
-                        .featureTableName(featureTableDOMap.getOrDefault(new FeatureTableDO.UPK(e.getUpk().getFeatureTableId(), e.getNodeId()), new FeatureTableDO()).getFeatureTableName())
+                        .featureTableName(featureTableDOMap.getOrDefault(new FeatureTableDO.UPK(e.getUpk().getFeatureTableId(), e.getNodeId(), e.getUpk().getDatasourceId()), new FeatureTableDO()).getFeatureTableName())
                         .nodeId(e.getUpk().getNodeId())
-                        .columns(featureTableDOMap.getOrDefault(new FeatureTableDO.UPK(e.getUpk().getFeatureTableId(), e.getNodeId()), new FeatureTableDO()).getColumns().stream().map(
+                        .columns(featureTableDOMap.getOrDefault(new FeatureTableDO.UPK(e.getUpk().getFeatureTableId(), e.getNodeId(), e.getUpk().getDatasourceId()), new FeatureTableDO()).getColumns().stream().map(
                                 c -> TableColumnVO.builder()
                                         .colName(c.getColName())
                                         .colType(c.getColType())
@@ -127,19 +120,5 @@ public class FeatureTableServiceImpl implements FeatureTableService {
                         .build()).collect(Collectors.toList());
     }
 
-    private void verifyRate() {
-        try {
-            RateLimiter rateLimiter = getRateLimiter(UserContext.getUserName());
-            if (!rateLimiter.tryAcquire()) {
-                throw SecretpadException.of(SystemErrorCode.REQUEST_FREQUENCY_ERROR);
-            }
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private RateLimiter getRateLimiter(String userName) throws ExecutionException {
-        return rateLimiters.get(userName, () -> RateLimiter.create(5.0 / 60));
-    }
 
 }

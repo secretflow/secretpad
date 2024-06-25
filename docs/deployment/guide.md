@@ -54,7 +54,7 @@ Edge节点部署参考：[p2p 模式部署](./p2p.md)
 >
 > 上图中：The login name:'admin' ,The login password:'5owyT0U$' .
 >
-> 默认账号：admin，默认密码：5owyT0U$
+> 默认账号：admin，默认密码：5o*****
 >
 > 如果忘记默认密码，请参考[日志说明](./log.md#secretpad默认密码查看)，在日志中找到默认密码。
 

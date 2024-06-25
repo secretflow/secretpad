@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.constant.Constants;
+import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.common.constant.ServingConstants;
 import org.secretflow.secretpad.common.enums.ModelStatsEnum;
 import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
@@ -70,7 +72,6 @@ import secretflow.serving.kuscia.ServingConfig;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
-
 import static org.secretflow.secretpad.common.constant.ServingConstants.DEFAULT_MEMORY_UNIT;
 import static org.secretflow.secretpad.service.util.JobUtils.parseMemorySize;
 
@@ -274,7 +275,7 @@ public class ModelManagementServiceImpl implements ModelManagementService {
                 //featureSourceConfig
                 String endpoint = "mock";
                 if (!StringUtils.equalsIgnoreCase(party.getFeatureTableId(), "mock")) {
-                    Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(party.getFeatureTableId(), party.getNodeId()));
+                    Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(party.getFeatureTableId(), party.getNodeId(), DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID));
                     Assert.isTrue(featureTableDOOptional.isPresent(), party.getFeatureTableId() + "not exist");
                     endpoint = featureTableDOOptional.get().getUrl();
                 }
@@ -333,10 +334,18 @@ public class ModelManagementServiceImpl implements ModelManagementService {
                         Serving.ServingParty.Builder filteredServingPartyBuilder = originalParty.toBuilder();
                         filteredServingPartyBuilder.clearResources();
                         for (Serving.Resource resource : originalParty.getResourcesList()) {
-                            double minCPU = buildMinCpuValue(stringToDouble(resource.getMinCpu(), originalParty.getDomainId()));
-                            double minMemory = buildMinMemoryValue(parseMemorySize(resource.getMinMemory(), originalParty.getDomainId()));
-                            double maxCPU = buildMaxCpuValue(stringToDouble(resource.getMaxCpu(), originalParty.getDomainId()), minCPU);
-                            double maxMemory = buildMaxMemoryValue(parseMemorySize(resource.getMaxMemory(), originalParty.getDomainId()), minMemory);
+                            double minCPU = stringToDouble(resource.getMinCpu(), originalParty.getDomainId());
+                            double maxCPU = stringToDouble(resource.getMaxCpu(), originalParty.getDomainId());
+                            double minMemory = parseMemorySize(resource.getMinMemory(), originalParty.getDomainId());
+                            double maxMemory = parseMemorySize(resource.getMaxMemory(), originalParty.getDomainId());
+                            if (maxCPU == 0 && minCPU == maxCPU && maxMemory == 0 && minMemory == maxMemory) {
+                                log.warn("Invalid resource configuration for node: {}, skipping it", originalParty.getDomainId());
+                                continue;
+                            }
+                            minCPU = buildMinCpuValue(stringToDouble(resource.getMinCpu(), originalParty.getDomainId()));
+                            minMemory = buildMinMemoryValue(parseMemorySize(resource.getMinMemory(), originalParty.getDomainId()));
+                            maxCPU = buildMaxCpuValue(stringToDouble(resource.getMaxCpu(), originalParty.getDomainId()), minCPU);
+                            maxMemory = buildMaxMemoryValue(parseMemorySize(resource.getMaxMemory(), originalParty.getDomainId()), minMemory);
 
                             Serving.Resource.Builder resourceBuilder = Serving.Resource.newBuilder()
                                     .setMinCpu(String.valueOf(minCPU))
@@ -502,7 +511,7 @@ public class ModelManagementServiceImpl implements ModelManagementService {
                 String state = status.getState();
                 Optional<ProjectModelServingDO> projectModelServingDOOptional = projectModelServiceRepository.findById(servingId);
                 ProjectModelServingDO projectModelServingDO = projectModelServingDOOptional.get();
-                if ("Available".equals(state)) {
+                if (Constants.STATUS_AVAILABLE.equals(state)) {
                     modelStats = ModelStatsEnum.PUBLISHED.name();
                     stats = ModelStatsEnum.PUBLISHED.getCode();
                     List<Serving.PartyServingStatus> partyStatusesList = queryServingResponse.getData().getStatus().getPartyStatusesList();
@@ -573,13 +582,13 @@ public class ModelManagementServiceImpl implements ModelManagementService {
     private void validateResourceConfig(ResourceVO resource, String nodeId) {
         double minCPU = stringToDouble(resource.getMinCPU(), nodeId);
         double maxCPU = stringToDouble(resource.getMaxCPU(), nodeId);
-        if (minCPU > maxCPU || maxCPU <= 0) {
+        if (minCPU > maxCPU || maxCPU < 0) {
             throw SecretpadException.of(SystemErrorCode.VALIDATION_ERROR, "CPU value setting error for nodeId: " + nodeId);
         }
 
         double minMemory = parseMemorySize(resource.getMinMemory(), nodeId);
         double maxMemory = parseMemorySize(resource.getMaxMemory(), nodeId);
-        if (minMemory > maxMemory || maxMemory <= 0) {
+        if (minMemory > maxMemory || maxMemory < 0) {
             throw SecretpadException.of(SystemErrorCode.VALIDATION_ERROR, "Memory value setting error for nodeId: " + nodeId);
         }
     }

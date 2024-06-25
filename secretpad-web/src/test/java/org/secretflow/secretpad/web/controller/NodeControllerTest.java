@@ -1,23 +1,24 @@
 package org.secretflow.secretpad.web.controller;
 
 import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
+import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.errorcode.*;
 import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainDatasourceRpc;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.model.node.*;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
+import org.apache.commons.lang3.StringUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.common.Common;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
-import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
-import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
-import org.secretflow.v1alpha1.kusciaapi.Domaindata;
+import org.secretflow.v1alpha1.kusciaapi.*;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -61,6 +62,20 @@ class NodeControllerTest extends ControllerTest {
 
     @MockBean
     private DomainServiceGrpc.DomainServiceBlockingStub domainServiceStub;
+
+    @MockBean
+    private KusciaDomainDatasourceRpc kusciaDomainDatasourceRpc;
+
+    @BeforeEach
+    public void setUp() {
+        Domaindatasource.QueryDomainDataSourceResponse response = Domaindatasource.QueryDomainDataSourceResponse.newBuilder()
+                .setData(Domaindatasource.DomainDataSource.newBuilder()
+                        .setType(StringUtils.toRootLowerCase(DataSourceTypeEnum.OSS.name()))
+                        .setDatasourceId("datasource")
+                        .build())
+                .build();
+        Mockito.when(kusciaDomainDatasourceRpc.queryDomainDataSource(Mockito.any(Domaindatasource.QueryDomainDataSourceRequest.class))).thenReturn(response);
+    }
 
     private List<NodeDO> buildNodeDOList() {
         List<NodeDO> nodeDOList = new ArrayList<>();

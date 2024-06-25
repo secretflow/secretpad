@@ -34,6 +34,8 @@ import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -47,6 +49,7 @@ import java.util.List;
 @Slf4j
 @RequiredArgsConstructor
 @Service
+@Order(Ordered.LOWEST_PRECEDENCE)
 public class EdgeResourceInit implements CommandLineRunner {
 
     private final NodeRepository nodeRepository;

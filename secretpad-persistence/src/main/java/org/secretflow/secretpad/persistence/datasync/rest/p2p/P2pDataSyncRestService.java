@@ -34,5 +34,5 @@ import org.springframework.web.service.annotation.PostExchange;
 @HttpExchange
 public interface P2pDataSyncRestService {
     @PostExchange("/api/v1alpha1/data/sync")
-    SecretPadResponse<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> sync(@RequestHeader("host") String nodeId, @RequestBody String p);
+    SecretPadResponse<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> sync(@RequestHeader("kuscia-origin-source") String node, @RequestHeader("host") String nodeId, @RequestBody String p);
 }

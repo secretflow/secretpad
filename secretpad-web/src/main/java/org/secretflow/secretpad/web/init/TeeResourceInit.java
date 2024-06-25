@@ -34,6 +34,8 @@ import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +52,7 @@ import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_P2P;
 @RequiredArgsConstructor
 @Service
 @Profile(SKIP_P2P)
+@Order(Ordered.LOWEST_PRECEDENCE)
 public class TeeResourceInit implements CommandLineRunner {
     private final NodeRepository nodeRepository;
     private final NodeRouteRepository nodeRouteRepository;

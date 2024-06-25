@@ -17,7 +17,8 @@
 package org.secretflow.secretpad.service.model.datatable;
 
 import org.secretflow.secretpad.common.annotation.OneOfType;
-import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
+import org.secretflow.secretpad.common.constant.DomainDataConstants;
+import org.secretflow.secretpad.common.enums.DataTableTypeEnum;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
@@ -61,6 +62,6 @@ public class DeleteDatatableRequest {
     private String relativeUri;
 
     @Schema(description = "table type")
-    @OneOfType(types = {"HTTP", "CSV"})
-    private String type = DataSourceTypeEnum.CSV.name();
+    @OneOfType(types = {DomainDataConstants.HTTP_DATATABLE_TYPE, DomainDataConstants.DEFAULT_DATATABLE_TYPE})
+    private String type = DataTableTypeEnum.CSV.name();
 }

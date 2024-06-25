@@ -23,6 +23,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.servlet.mvc.method.RequestMappingInfo;
@@ -37,6 +39,7 @@ import java.util.List;
 @RequiredArgsConstructor
 @Component
 @Slf4j
+@Order(Ordered.LOWEST_PRECEDENCE)
 public class DynamicBeanRegisterInit implements ApplicationRunner {
 
     private final UnregisterMappingConfig unregisterMappingConfig;

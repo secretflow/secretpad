@@ -23,9 +23,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.cert.CertificateFactory;
 import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -96,27 +98,54 @@ public class EncryptUtils {
     }
 
     public static boolean validateCertChain(List<String> certChains) {
-        byte[] rootDecodeBase64 = Base64Utils.decode(certChains.get(certChains.size() - 1));
-        byte[] sub = Base64Utils.decode(certChains.get(0));
+        if (certChains == null || certChains.isEmpty()) {
+            LOGGER.error("Certificate chain is empty or null");
+            return false;
+        }
+        try {
+            X509Certificate rootCert = (X509Certificate) decodeCertificate(certChains.get(certChains.size() - 1));
+            X509Certificate subCert = (X509Certificate) decodeCertificate(certChains.get(0));
 
-        try (ByteArrayInputStream rootCertFile = new ByteArrayInputStream(rootDecodeBase64);
-             ByteArrayInputStream subCertFile = new ByteArrayInputStream(sub)
-        ) {
-            X509Certificate rootCert = (X509Certificate) CertificateFactory.getInstance("X.509")
-                    .generateCertificate(rootCertFile);
-            X509Certificate subCert = (X509Certificate) CertificateFactory.getInstance("X.509")
-                    .generateCertificate(subCertFile);
             Principal issuerDN = subCert.getIssuerDN();
             Principal subjectDN = rootCert.getSubjectDN();
             if (!issuerDN.equals(subjectDN)) {
                 return false;
             }
+
             PublicKey publicKey = rootCert.getPublicKey();
             subCert.verify(publicKey);
             return true;
         } catch (Exception e) {
-            LOGGER.error("cert_chain validate error", e);
+            LOGGER.error("Certificate chain validation error", e);
             return false;
+        }
+    }
+
+    public static boolean compareCertPubKey(String comparer, String comparee) {
+        if (comparer == null || comparee == null) {
+            LOGGER.error("Certificate comparison failed: one of the certificates is null");
+            return false;
+        }
+        try {
+            Certificate certificateComparer = decodeCertificate(comparer);
+            Certificate certificateComparee = decodeCertificate(comparee);
+
+            return certificateComparer.getPublicKey().equals(certificateComparee.getPublicKey());
+        } catch (Exception e) {
+            LOGGER.error("Certificate comparison error", e);
+            return false;
+        }
+    }
+
+    public static Certificate decodeCertificate(String base64EncodedCert) {
+        try {
+            byte[] decodedBytes = Base64Utils.decode(base64EncodedCert);
+            try (ByteArrayInputStream bis = new ByteArrayInputStream(decodedBytes)) {
+                return CertificateFactory.getInstance("X.509").generateCertificate(bis);
+            }
+        } catch (IOException | CertificateException e) {
+            LOGGER.error("Certificate decoding error", e);
+            throw new RuntimeException(e);
         }
     }
 

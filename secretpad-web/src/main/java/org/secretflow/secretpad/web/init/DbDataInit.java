@@ -23,9 +23,12 @@ import org.secretflow.secretpad.web.constant.AuthConstants;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +41,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 @Slf4j
 @Service
+@Order(Ordered.HIGHEST_PRECEDENCE)
 public class DbDataInit implements CommandLineRunner {
     @Autowired
     private Environment environment;
@@ -47,9 +51,11 @@ public class DbDataInit implements CommandLineRunner {
     private String nodeId;
 
     private final UserAccountsRepository userAccountsRepository;
+    private final Flyway flyway;
 
     @Override
     public void run(String... args) throws Exception {
+        flyway.migrate();
         initUserAndPwd();
     }
 

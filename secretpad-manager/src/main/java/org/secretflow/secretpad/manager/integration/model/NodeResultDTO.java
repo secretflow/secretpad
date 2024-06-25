@@ -37,6 +37,16 @@ public class NodeResultDTO {
     private String domainDataId;
 
     /**
+     * Data id in which datasource
+     */
+    private String datasourceId;
+
+    /**
+     * Data id in which datasourceType
+     */
+    private String datasourceType;
+
+    /**
      * Result name
      */
     private String resultName;

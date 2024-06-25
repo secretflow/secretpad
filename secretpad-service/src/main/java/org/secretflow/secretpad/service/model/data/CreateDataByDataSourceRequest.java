@@ -15,9 +15,11 @@
  */
 package org.secretflow.secretpad.service.model.data;
 
+import org.secretflow.secretpad.common.annotation.OneOfType;
 import org.secretflow.secretpad.manager.integration.model.DatatableSchema;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
 import lombok.*;
 
 import java.util.List;
@@ -56,6 +58,19 @@ public class CreateDataByDataSourceRequest {
      */
     @Schema(description = "datasourceId")
     private String datasourceId;
+    /**
+     * datasource name
+     */
+    @NotBlank
+    private String datasourceName;
+
+    /**
+     * datatable type
+     */
+    @NotBlank
+    @OneOfType(types = {"oss"})
+    private String datasourceType;
+
 
     /**
      * description

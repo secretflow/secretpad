@@ -49,7 +49,6 @@ public class ModelPartyConfig implements Serializable {
     @JsonProperty("modelDataSource")
     private String modelDataSource;
 
-    @Deprecated
     @JsonProperty("modelDataName")
     private String modelDataName;
 

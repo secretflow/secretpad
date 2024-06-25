@@ -27,7 +27,7 @@ import org.secretflow.secretpad.service.ApprovalService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.enums.VoteStatusEnum;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
-import org.secretflow.secretpad.service.handler.VoteTypeHandler;
+import org.secretflow.secretpad.service.handler.vote.VoteTypeHandler;
 import org.secretflow.secretpad.service.model.approval.AbstractVoteConfig;
 import org.secretflow.secretpad.service.model.approval.Participant;
 import org.secretflow.secretpad.service.model.approval.PullStatusVO;

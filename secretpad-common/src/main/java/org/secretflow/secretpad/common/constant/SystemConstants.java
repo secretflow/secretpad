@@ -34,4 +34,6 @@ public class SystemConstants {
     public static final String SKIP_TEST_P2P = "!test&&!p2p";
 
     public static final String SKIP_P2P = "!p2p";
+
+    public static final String USER_ADMIN = "admin";
 }

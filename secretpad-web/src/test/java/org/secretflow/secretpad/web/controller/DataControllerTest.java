@@ -17,8 +17,10 @@
 package org.secretflow.secretpad.web.controller;
 
 import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
+import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainDatasourceRpc;
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
 import org.secretflow.secretpad.persistence.entity.ProjectGraphDO;
 import org.secretflow.secretpad.persistence.entity.ProjectJobDO;
@@ -32,10 +34,13 @@ import org.secretflow.secretpad.service.model.data.DownloadDataRequest;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
 import jakarta.servlet.http.HttpServletResponse;
+import org.apache.commons.lang3.StringUtils;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
+import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -46,7 +51,6 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Set;
-
 import static org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager.DATA_TYPE_TABLE;
 import static org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager.DATA_VENDOR_MANUAL;
 
@@ -75,6 +79,19 @@ class DataControllerTest extends ControllerTest {
 
     @MockBean
     private ProjectRepository projectRepository;
+    @MockBean
+    private KusciaDomainDatasourceRpc kusciaDomainDatasourceRpc;
+
+    @BeforeEach
+    public void setUp() {
+        Domaindatasource.QueryDomainDataSourceResponse response = Domaindatasource.QueryDomainDataSourceResponse.newBuilder()
+                .setData(Domaindatasource.DomainDataSource.newBuilder()
+                        .setType(StringUtils.toRootLowerCase(DataSourceTypeEnum.OSS.name()))
+                        .setDatasourceId("datasource")
+                        .build())
+                .build();
+        Mockito.when(kusciaDomainDatasourceRpc.queryDomainDataSource(Mockito.any(Domaindatasource.QueryDomainDataSourceRequest.class))).thenReturn(response);
+    }
 
     @Test
     void upload() throws Exception {
@@ -91,7 +108,8 @@ class DataControllerTest extends ControllerTest {
         assertResponse(() -> {
             CreateDataRequest createDataRequest = FakerUtils.fake(CreateDataRequest.class);
             createDataRequest.setNodeId("alice");
-
+            createDataRequest.setDatasourceType("local");
+            createDataRequest.setDatasourceName("本地数据源");
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATA_CREATE));
 
             Domaindata.ListDomainDataResponse response = Domaindata.ListDomainDataResponse.newBuilder()

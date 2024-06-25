@@ -16,24 +16,37 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.constant.Constants;
+import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
+import org.secretflow.secretpad.common.enums.DataTableTypeEnum;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.FeatureTableErrorCode;
+import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UUIDUtils;
+import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.manager.integration.data.AbstractDataManager;
+import org.secretflow.secretpad.manager.integration.datasource.AbstractDatasourceManager;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.datatablegrant.AbstractDatatableGrantManager;
 import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
+import org.secretflow.secretpad.manager.integration.model.DatasourceDTO;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.model.DatatableListDTO;
+import org.secretflow.secretpad.manager.integration.model.DatatableSchema;
 import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.TeeJobKind;
 import org.secretflow.secretpad.persistence.model.TeeJobStatus;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.DatatableService;
+import org.secretflow.secretpad.service.EnvService;
+import org.secretflow.secretpad.service.OssService;
+import org.secretflow.secretpad.service.decorator.awsoss.AwsOssConfig;
+import org.secretflow.secretpad.service.embedded.EmbeddedChannelService;
 import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
 import org.secretflow.secretpad.service.graph.converter.KusciaTeeDataManagerConverter;
 import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
@@ -42,9 +55,14 @@ import org.secretflow.secretpad.service.model.datatable.*;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
 import org.secretflow.secretpad.service.util.HttpUtils;
 
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.RateLimiter;
 import org.apache.commons.lang3.StringUtils;
 import org.javatuples.Pair;
+import org.secretflow.v1alpha1.kusciaapi.DomainDataSourceServiceGrpc;
+import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.secretflow.v1alpha1.kusciaapi.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,13 +72,15 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
 
+import javax.annotation.Resource;
 import java.util.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
-
-import static org.secretflow.secretpad.manager.integration.model.Constants.PUSH_TO_TEE_JOB_ID;
+import static org.secretflow.secretpad.common.constant.Constants.PUSH_TO_TEE_JOB_ID;
+import static org.secretflow.secretpad.common.constant.DomainDatasourceConstants.DEFAULT_DATASOURCE;
 import static org.secretflow.secretpad.service.constant.TeeJobConstants.MOCK_VOTE_RESULT;
-import static org.secretflow.secretpad.service.impl.DataServiceImpl.DEFAULT_DATASOURCE;
 
 /**
  * Datatable service implementation class
@@ -77,6 +97,15 @@ public class DatatableServiceImpl implements DatatableService {
 
     @Autowired
     private AbstractDatatableManager datatableManager;
+
+    @Autowired
+    private AbstractDataManager dataManager;
+
+    @Autowired
+    private OssService ossService;
+
+    @Autowired
+    private AbstractDatasourceManager datasourceManager;
 
     @Autowired
     private AbstractDatatableGrantManager datatableGrantManager;
@@ -105,11 +134,21 @@ public class DatatableServiceImpl implements DatatableService {
     @Autowired
     private ProjectFeatureTableRepository projectFeatureTableRepository;
 
+    @Resource
+    private EmbeddedChannelService embeddedChannelService;
+
+    @Resource
+    private EnvService envService;
+
     @Value("${tee.domain-id:tee}")
     private String teeNodeId;
 
     @Value("${secretpad.platform-type}")
     private String plaformType;
+
+    private final Cache<String, RateLimiter> rateLimiters = CacheBuilder.newBuilder()
+            .expireAfterAccess(1, TimeUnit.HOURS)
+            .build();
 
     @Override
     public DatatableListVO listDatatablesByNodeId(ListDatatableRequest request) {
@@ -123,9 +162,9 @@ public class DatatableServiceImpl implements DatatableService {
         LOGGER.info("Try get auth project pairs with Map<DatatableID, List<Pair<ProjectDatatableDO, ProjectDO>>>");
         Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> datatableAuthPairs = getAuthProjectPairs(
                 request.getNodeId(),
-                Lists.newArrayList(datatables.values().stream().filter(e -> !StringUtils.equals(e.getType(), DataSourceTypeEnum.HTTP.name())).map(DatatableDTO::getDatatableId).collect(Collectors.toList()))
+                Lists.newArrayList(datatables.values().stream().filter(e -> !StringUtils.equals(e.getType(), DataTableTypeEnum.HTTP.name())).map(DatatableDTO::getDatatableId).collect(Collectors.toList()))
         );
-        Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> featureAuthProjectPairs = getHttpFeatureAuthProjectPairs(request.getNodeId(), Lists.newArrayList(datatables.values().stream().filter(e -> StringUtils.equals(e.getType(), DataSourceTypeEnum.HTTP.name())).map(DatatableDTO::getDatatableId).collect(Collectors.toList())));
+        Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> featureAuthProjectPairs = getHttpFeatureAuthProjectPairs(request.getNodeId(), Lists.newArrayList(datatables.values().stream().filter(e -> StringUtils.equals(e.getType(), DataTableTypeEnum.HTTP.name())).map(DatatableDTO::getDatatableId).collect(Collectors.toList())));
         //merge data table and feature table
         datatableAuthPairs.putAll(featureAuthProjectPairs);
         LOGGER.info("get datatable VO list from datatableListDTO and with datatable auth pairs.");
@@ -157,13 +196,12 @@ public class DatatableServiceImpl implements DatatableService {
                 .build();
     }
 
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public DatatableVO getDatatable(GetDatatableRequest request) {
         LOGGER.info("Get datatable detail with nodeID = {}, datatable id = {}", request.getNodeId(), request.getDatatableId());
-        if (DataSourceTypeEnum.HTTP.name().equals(request.getType())) {
-            Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(request.getDatatableId(), request.getNodeId()));
+        if (DataTableTypeEnum.HTTP.name().equals(request.getType())) {
+            Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(request.getDatatableId(), request.getNodeId(), DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID));
             if (!featureTableDOOptional.isPresent()) {
                 throw SecretpadException.of(FeatureTableErrorCode.FEATURE_TABLE_NOT_EXIST);
             }
@@ -171,7 +209,7 @@ public class DatatableServiceImpl implements DatatableService {
             Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> datatableAuthPairs =
                     getHttpFeatureAuthProjectPairs(request.getNodeId(), Lists.newArrayList(featureTableDO.getUpk().getFeatureTableId()));
             boolean success = HttpUtils.detection(featureTableDO.getUrl());
-            String status = success ? "Available" : "Unavailable";
+            String status = success ? Constants.STATUS_AVAILABLE : Constants.STATUS_UNAVAILABLE;
             featureTableDO.setStatus(status);
             featureTableRepository.save(featureTableDO);
             DatatableDTO datatableDTO = DatatableDTO.builder()
@@ -179,9 +217,10 @@ public class DatatableServiceImpl implements DatatableService {
                     .datatableName(featureTableDO.getFeatureTableName())
                     .nodeId(featureTableDO.getNodeId())
                     .relativeUri(featureTableDO.getUrl())
-                    .datasourceId("http-data-source")
+                    .datasourceId(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID)
                     .status(status)
-                    .type(DataSourceTypeEnum.HTTP.name())
+                    .datasourceType(DataSourceTypeEnum.HTTP.name())
+                    .type(DataTableTypeEnum.HTTP.name())
                     .schema(featureTableDO.getColumns().stream().map(it ->
                                     new DatatableDTO.TableColumnDTO(it.getColName(), it.getColType(), it.getColComment()))
                             .collect(Collectors.toList()))
@@ -193,6 +232,28 @@ public class DatatableServiceImpl implements DatatableService {
         if (datatableOpt.isEmpty()) {
             LOGGER.error("Datatable not exists when get datatable detail.");
             throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
+        }
+        if (DataSourceTypeEnum.OSS.name().equals(datatableOpt.get().getDatasourceType())) {
+            Optional<DatasourceDTO> datasourceOpt;
+            if (envService.isCenter() && envService.isEmbeddedNode(datatableOpt.get().getNodeId())) {
+                DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub datasourceServiceBlockingStub = embeddedChannelService.getDatasourceServiceBlockingStub(datatableOpt.get().getNodeId());
+                Domaindatasource.QueryDomainDataSourceResponse response = datasourceServiceBlockingStub.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
+                        .setDomainId(datatableOpt.get().getNodeId())
+                        .setDatasourceId(datatableOpt.get().getDatasourceId())
+                        .build());
+                datasourceOpt = Optional.of(DatasourceDTO.fromDomainDatasource(response.getData()));
+            } else {
+                datasourceOpt = datasourceManager.findById(DatasourceDTO.NodeDatasourceId.from(datatableOpt.get().getNodeId(), datatableOpt.get().getDatasourceId()));
+            }
+            DatasourceDTO.OssDataSourceInfoDTO ossDataSourceInfoDTO = datasourceOpt.get().getOssDataSourceInfoDTO();
+            AwsOssConfig awsOssConfig = AwsOssConfig.builder()
+                    .accessKeyId(ossDataSourceInfoDTO.getAccessKeyId())
+                    .secretAccessKey(ossDataSourceInfoDTO.getSecretAccessKey())
+                    .endpoint(ossDataSourceInfoDTO.getEndpoint())
+                    .build();
+            if (!ossService.checkObjectExists(awsOssConfig, ossDataSourceInfoDTO.getBucket(), datatableOpt.get().getRelativeUri())) {
+                datatableOpt.get().setStatus("Unavailable");
+            }
         }
         DatatableDTO dto = datatableOpt.get();
 
@@ -215,12 +276,12 @@ public class DatatableServiceImpl implements DatatableService {
     @Transactional(rollbackFor = Exception.class)
     public void deleteDatatable(DeleteDatatableRequest request) {
         LOGGER.info("Delete datatable with node id = {}, datatable id = {}", request.getNodeId(), request.getDatatableId());
-        if (DataSourceTypeEnum.HTTP.name().equals(request.getType())) {
+        if (DataTableTypeEnum.HTTP.name().equals(request.getType())) {
             Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> featureAuthProjectPairs = getHttpFeatureAuthProjectPairs(request.getNodeId(), Collections.singletonList(request.getDatatableId()));
             if (!CollectionUtils.isEmpty(featureAuthProjectPairs)) {
                 throw SecretpadException.of(DatatableErrorCode.DATATABLE_DUPLICATED_AUTHORIZED);
             }
-            featureTableRepository.deleteById(new FeatureTableDO.UPK(request.getDatatableId(), request.getNodeId()));
+            featureTableRepository.deleteById(new FeatureTableDO.UPK(request.getDatatableId(), request.getNodeId(), DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID));
             return;
         }
         // check if it has auth projects
@@ -367,6 +428,36 @@ public class DatatableServiceImpl implements DatatableService {
         jobManager.createJob(createJobRequest);
     }
 
+    @Override
+    public String createDataTable(CreateDatatableRequest createDatatableRequest) {
+        verifyRate();
+        return dataManager.createDataByDataSource(
+                createDatatableRequest.getNodeId(),
+                createDatatableRequest.getDatatableName(),
+                createDatatableRequest.getRelativeUri(),
+                createDatatableRequest.getDatasourceId(),
+                createDatatableRequest.getDesc(),
+                createDatatableRequest.getDatasourceType(),
+                createDatatableRequest.getDatasourceName(),
+                createDatatableRequest.getColumns().stream().map(column -> {
+                    DatatableSchema schema = new DatatableSchema();
+                    schema.setFeatureName(column.getColName());
+                    schema.setFeatureType(column.getColType());
+                    schema.setFeatureDescription(column.getColComment());
+                    return schema;
+                }).collect(Collectors.toList())
+        );
+    }
+
+    @Override
+    public List<DatatableVO> findDatatableByNodeId(String nodeId) {
+        List<DatatableDTO> datatableDTOS = datatableManager.findAllDatatableByNodeId(nodeId);
+        if (CollectionUtils.isEmpty(datatableDTOS)) {
+            return Collections.EMPTY_LIST;
+        }
+        return datatableDTOS.stream().map(e -> DatatableVO.builder().datatableId(e.getDatatableId()).datatableName(e.getDatatableName()).type(e.getType()).datasourceId(e.getDatasourceId()).build()).collect(Collectors.toList());
+    }
+
     /**
      * Query auth project pairs by nodeId and datatableIds then collect to Map
      *
@@ -430,6 +521,21 @@ public class DatatableServiceImpl implements DatatableService {
         } else {
             teeNodeDatatableManagementRepository.save(saveDO);
         }
+    }
+
+    private void verifyRate() {
+        try {
+            RateLimiter rateLimiter = getRateLimiter(UserContext.getUserName());
+            if (!rateLimiter.tryAcquire()) {
+                throw SecretpadException.of(SystemErrorCode.REQUEST_FREQUENCY_ERROR);
+            }
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private RateLimiter getRateLimiter(String userName) throws ExecutionException {
+        return rateLimiters.get(userName, () -> RateLimiter.create(5.0 / 60));
     }
 
 

@@ -96,6 +96,7 @@ public class JpaSyncDataService {
     private final ProjectFeatureTableRepository projectFeatureTableRepository;
 
     private final FeatureTableRepository featureTableRepository;
+    private final ProjectGraphDomainDatasourceRepository projectGraphDomainDatasourceRepository;
     @PersistenceContext
     private final EntityManager entityManager;
 
@@ -135,6 +136,7 @@ public class JpaSyncDataService {
         doAndRepository.put(ProjectModelPackDO.class.getTypeName(), projectModelPackRepository);
         doAndRepository.put(ProjectFeatureTableDO.class.getTypeName(), projectFeatureTableRepository);
         doAndRepository.put(FeatureTableDO.class.getTypeName(), featureTableRepository);
+        doAndRepository.put(ProjectGraphDomainDatasourceDO.class.getTypeName(), projectGraphDomainDatasourceRepository);
     }
 
     @SuppressWarnings(value = {"rawtypes"})
@@ -225,7 +227,7 @@ public class JpaSyncDataService {
                 resultList.forEach(r -> {
                     try {
                         if (r instanceof ProjectFeatureTableDO) {
-                            Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(((ProjectFeatureTableDO) r).getUpk().getFeatureTableId(), ((ProjectFeatureTableDO) r).getUpk().getNodeId()));
+                            Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(((ProjectFeatureTableDO) r).getUpk().getFeatureTableId(), ((ProjectFeatureTableDO) r).getUpk().getNodeId(), ((ProjectFeatureTableDO) r).getUpk().getDatasourceId()));
                             if (featureTableDOOptional.isEmpty()) {
                                 log.warn("featureTableDOOptional is empty");
                             }

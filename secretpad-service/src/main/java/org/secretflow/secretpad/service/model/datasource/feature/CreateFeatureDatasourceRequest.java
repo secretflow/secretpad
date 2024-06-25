@@ -56,4 +56,6 @@ public class CreateFeatureDatasourceRequest {
 
     @NotEmpty
     private List<TableColumnVO> columns;
+
+    private String datasourceId;
 }

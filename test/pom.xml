@@ -69,6 +69,8 @@
                         <exclude>org/secretflow/secretpad/common/dto/**</exclude>
                         <exclude>**/JpaQueryHelper.*</exclude>
                         <exclude>org/secretflow/secretpad/service/auth/impl/**</exclude>
+                        <exclude>org/secretflow/secretpad/common/enums/**</exclude>
+                        <exclude>org/secretflow/v1alpha1/factory/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>

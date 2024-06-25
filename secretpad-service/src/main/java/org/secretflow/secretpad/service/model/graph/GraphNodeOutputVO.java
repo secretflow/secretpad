@@ -147,5 +147,11 @@ public class GraphNodeOutputVO {
          * The data source id which it belongs to
          */
         private String dsId;
+
+        /**
+         * The data source type
+         * see {@link org.secretflow.secretpad.common.enums.DataSourceTypeEnum}
+         */
+        private String datasourceType;
     }
 }

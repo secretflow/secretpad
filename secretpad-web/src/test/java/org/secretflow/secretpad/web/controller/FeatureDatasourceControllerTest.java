@@ -32,7 +32,6 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.Collections;
-
 import static org.secretflow.secretpad.common.errorcode.FeatureTableErrorCode.FEATURE_TABLE_IP_NOT_KNOWN;
 
 /**
@@ -84,7 +83,7 @@ public class FeatureDatasourceControllerTest extends ControllerTest {
             ListProjectFeatureDatasourceRequest listProjectFeatureDatasourceRequest = FakerUtils.fake(ListProjectFeatureDatasourceRequest.class);
             ProjectFeatureTableDO projectFeatureTableDO = FakerUtils.fake(ProjectFeatureTableDO.class);
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
-            featureTableDO.setUpk(new FeatureTableDO.UPK(projectFeatureTableDO.getUpk().getFeatureTableId(), projectFeatureTableDO.getNodeId()));
+            featureTableDO.setUpk(new FeatureTableDO.UPK(projectFeatureTableDO.getUpk().getFeatureTableId(), projectFeatureTableDO.getUpk().getNodeId(), projectFeatureTableDO.getUpk().getDatasourceId()));
             Mockito.when(projectFeatureTableRepository.findByNodeIdAndProjectId(listProjectFeatureDatasourceRequest.getNodeId(), listProjectFeatureDatasourceRequest.getProjectId())).thenReturn(Collections.singletonList(projectFeatureTableDO));
             Mockito.when(featureTableRepository.findByFeatureTableIdIn(Lists.newArrayList(projectFeatureTableDO.getUpk().getFeatureTableId()))).thenReturn(Collections.singletonList(featureTableDO));
             return MockMvcRequestBuilders.post(getMappingUrl(FeatureDatasourceController.class, "projectFeatureTableList", ListProjectFeatureDatasourceRequest.class))

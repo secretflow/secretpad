@@ -37,6 +37,7 @@ data:
     - org.secretflow.secretpad.persistence.entity.ProjectModelServingDO
     - org.secretflow.secretpad.persistence.entity.ProjectModelPackDO
     - org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO
+    - org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO
 
 # path which do not use in this mode ,config this mvc return 404 to user
 # @see DynamicBeanRegisterInit

@@ -39,3 +39,4 @@ data:
     - org.secretflow.secretpad.persistence.entity.ProjectModelServingDO
     - org.secretflow.secretpad.persistence.entity.ProjectModelPackDO
     - org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO
+    - org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO

@@ -16,13 +16,15 @@
 
 package org.secretflow.secretpad.service.configuration;
 
+import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.service.ICloudLogService;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.factory.CloudLogServiceFactory;
 import org.secretflow.secretpad.service.factory.JsonProtobufSourceFactory;
 import org.secretflow.secretpad.service.graph.JobChain;
 import org.secretflow.secretpad.service.graph.chain.AbstractJobHandler;
-import org.secretflow.secretpad.service.handler.VoteTypeHandler;
+import org.secretflow.secretpad.service.handler.datasource.DatasourceHandler;
+import org.secretflow.secretpad.service.handler.vote.VoteTypeHandler;
 
 import com.secretflow.spec.v1.CompListDef;
 import org.springframework.beans.factory.annotation.Value;
@@ -85,4 +87,17 @@ public class ServiceConfiguration {
     public ICloudLogService iCloudLogService(CloudLogServiceFactory cloudLogServiceFactory) {
         return cloudLogServiceFactory.getLogServiceInstance();
     }
+
+    @Bean
+    public Map<DataSourceTypeEnum, DatasourceHandler> kusciaControlDatasourceHandlerMap(List<DatasourceHandler> datasourceHandlers) {
+        Map<DataSourceTypeEnum, DatasourceHandler> datasourceHandlerMap = new HashMap<>();
+        datasourceHandlers.forEach(handler -> {
+            List<DataSourceTypeEnum> supports = handler.supports();
+            if (!CollectionUtils.isEmpty(supports)) {
+                supports.forEach(enm -> datasourceHandlerMap.put(enm, handler));
+            }
+        });
+        return datasourceHandlerMap;
+    }
+
 }
