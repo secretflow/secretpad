@@ -622,5 +622,5 @@ create table if not exists `project_graph_domain_datasource`
 create unique index `upk_project_graph_domain` on project_graph_domain_datasource (`project_id`, `graph_id`, `domain_id`);
 
 -- todo mysql table column if not exists
-alter table project_feature_table add column `datasource_id` varchar(64) not null default "";
-alter table feature_table add column `datasource_id` varchar(64) not null default "";
+alter table project_feature_table add column `datasource_id` varchar(64) not null default "http-data-source";
+alter table feature_table add column `datasource_id` varchar(64) not null default "http-data-source";
