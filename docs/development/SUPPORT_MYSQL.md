@@ -28,7 +28,7 @@
 
 ## 在已经启动的集群中找到secretpad的pod,替换配置
 
-* 修改数据库驱动,在{user}-kuscia-master-secretpad pod中修改 application.yaml中奖注释掉的springjpa以及数据库配置打开,替换掉上面的数据库配置
+* 修改数据库驱动,在{user}-kuscia-master-secretpad pod中修改 application.yaml中将注释掉的springjpa以及数据库配置打开,替换掉上面的数据库配置
 
 ## 重启secretpad pod 迁移成功
 
