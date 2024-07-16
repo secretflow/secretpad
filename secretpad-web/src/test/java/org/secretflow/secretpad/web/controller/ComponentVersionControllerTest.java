@@ -17,11 +17,8 @@
 package org.secretflow.secretpad.web.controller;
 
 
-import org.secretflow.secretpad.service.configuration.SecretFlowVersionConfig;
-
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mock;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
@@ -33,9 +30,6 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
  */
 public class ComponentVersionControllerTest extends ControllerTest {
 
-
-    @Mock
-    private SecretFlowVersionConfig secretFlowVersionConfig;
 
     @Resource
     private ComponentVersionController componentVersionController;

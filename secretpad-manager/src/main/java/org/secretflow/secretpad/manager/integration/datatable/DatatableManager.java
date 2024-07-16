@@ -24,12 +24,12 @@ import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.JsonUtils;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.model.DatatableListDTO;
 import org.secretflow.secretpad.persistence.entity.FeatureTableDO;
 import org.secretflow.secretpad.persistence.repository.FeatureTableRepository;
 
-import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +43,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 import static org.secretflow.secretpad.common.constant.Constants.STATUS_AVAILABLE;
 import static org.secretflow.secretpad.common.constant.Constants.STATUS_UNAVAILABLE;
 
@@ -62,13 +63,13 @@ public class DatatableManager extends AbstractDatatableManager {
     /**
      * Domain data service blocking stub
      */
-    private final DomainDataServiceGrpc.DomainDataServiceBlockingStub dataStub;
+    private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     private final FeatureTableRepository featureTableRepository;
 
-    public DatatableManager(DomainDataServiceGrpc.DomainDataServiceBlockingStub dataStub, FeatureTableRepository featureTableRepository) {
+    public DatatableManager(KusciaGrpcClientAdapter kusciaGrpcClientAdapter, FeatureTableRepository featureTableRepository) {
         this.featureTableRepository = featureTableRepository;
-        this.dataStub = dataStub;
+        this.kusciaGrpcClientAdapter = kusciaGrpcClientAdapter;
     }
 
     @Override
@@ -89,7 +90,7 @@ public class DatatableManager extends AbstractDatatableManager {
                             .build())
                     .build();
         }
-        Domaindata.QueryDomainDataResponse response = dataStub.queryDomainData(queryDomainDataRequest);
+        Domaindata.QueryDomainDataResponse response = kusciaGrpcClientAdapter.queryDomainData(queryDomainDataRequest);
         if (response.getStatus().getCode() != 0) {
             LOGGER.error("lock up from kusciaapi failed: code={}, message={}, request={}",
                     response.getStatus().getCode(), response.getStatus().getMessage(), JsonUtils.toJSONString(nodeDatatableId));
@@ -116,7 +117,7 @@ public class DatatableManager extends AbstractDatatableManager {
                                     .setDomainId(it.getNodeId()).setDomaindataId(it.getDatatableId()).build()).collect(Collectors.toList()))
                     .build();
         }
-        Domaindata.BatchQueryDomainDataResponse responses = dataStub.batchQueryDomainData(batchQueryDomainDataRequest);
+        Domaindata.BatchQueryDomainDataResponse responses = kusciaGrpcClientAdapter.batchQueryDomainData(batchQueryDomainDataRequest);
         if (responses.getStatus().getCode() != 0) {
             LOGGER.error("findByIds lock up from kusciaapi failed: code={}, message={}, request={}",
                     responses.getStatus().getCode(), responses.getStatus().getMessage(), JsonUtils.toJSONString(nodeDatatableIds));
@@ -207,7 +208,7 @@ public class DatatableManager extends AbstractDatatableManager {
         if (vendor != null) {
             builder.setDomaindataVendor(vendor);
         }
-        Domaindata.ListDomainDataResponse responses = dataStub.listDomainData(
+        Domaindata.ListDomainDataResponse responses = kusciaGrpcClientAdapter.listDomainData(
                 Domaindata.ListDomainDataRequest.newBuilder()
                         .setData(builder.build()).build());
         if (responses.getStatus().getCode() != 0) {
@@ -223,7 +224,7 @@ public class DatatableManager extends AbstractDatatableManager {
         Domaindata.DeleteDomainDataRequest.Builder builder = Domaindata.DeleteDomainDataRequest.newBuilder()
                 .setDomainId(nodeDatatableId.getNodeId())
                 .setDomaindataId(nodeDatatableId.getDatatableId());
-        Domaindata.DeleteDomainDataResponse response = dataStub.deleteDomainData(builder.build());
+        Domaindata.DeleteDomainDataResponse response = kusciaGrpcClientAdapter.deleteDomainData(builder.build());
         if (response.getStatus().getCode() != 0) {
             LOGGER.error("delete datatable failed: code={}, message={}, nodeId={}, datatableId={}",
                     response.getStatus().getCode(), response.getStatus().getMessage(), nodeDatatableId.getNodeId(), nodeDatatableId.getDatatableId());

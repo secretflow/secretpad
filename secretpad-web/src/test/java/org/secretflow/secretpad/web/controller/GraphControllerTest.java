@@ -22,6 +22,7 @@ import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstant
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.GraphEdgeDO;
 import org.secretflow.secretpad.persistence.repository.*;
@@ -32,7 +33,6 @@ import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.common.Common;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataSourceServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
@@ -65,7 +65,7 @@ class GraphControllerTest extends ControllerTest {
     private ProjectNodeRepository projectNodeRepository;
 
     @MockBean
-    private DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub domainDataSourceServiceBlockingStub;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @Resource
     private ProjectGraphDomainDatasourceRepository projectGraphDomainDatasourceRepository;
@@ -183,7 +183,7 @@ class GraphControllerTest extends ControllerTest {
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_UPDATE));
             Mockito.when(projectNodeRepository.findByProjectId(Mockito.any())).thenReturn(buildFindByProjectId(fullUpdateGraphRequest.getProjectId()));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
-            Mockito.when(domainDataSourceServiceBlockingStub.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
             ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
             projectGraphDO.setOwnerId(UserContext.getUser().getOwnerId());
             Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(fullUpdateGraphRequest.getProjectId(), fullUpdateGraphRequest.getGraphId())))
@@ -201,7 +201,7 @@ class GraphControllerTest extends ControllerTest {
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_UPDATE));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
-            Mockito.when(domainDataSourceServiceBlockingStub.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
             ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
             projectGraphDO.setOwnerId(UserContext.getUser().getOwnerId());
             Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(fullUpdateGraphRequest.getProjectId(), fullUpdateGraphRequest.getGraphId())))
@@ -220,7 +220,7 @@ class GraphControllerTest extends ControllerTest {
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.GRAPH_UPDATE));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
-            Mockito.when(domainDataSourceServiceBlockingStub.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
             ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
             projectGraphDO.setOwnerId(UserContext.getUser().getOwnerId());
             Mockito.when(graphRepository.findById(new ProjectGraphDO.UPK(fullUpdateGraphRequest.getProjectId(), fullUpdateGraphRequest.getGraphId())))

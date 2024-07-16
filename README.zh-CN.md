@@ -8,7 +8,7 @@
 </p>
 
 [SecretPad](https://www.secretflow.org.cn/zh-CN/docs/secretpad/)
-是一个基于 [Kuscia](https://github.com/secretflow/kuscia) 的隐私计算的 web 框架，能够方便的使用基于保护隐私的数据智能和机器学习的能力。通过
+是一个基于 [Kuscia](https://www.secretflow.org.cn/zh-CN/docs/kuscia) 的隐私计算的 web 框架，能够方便的使用基于保护隐私的数据智能和机器学习的能力。通过
 SecretPad：
 
 * 你可以快速创建节点、注册数据、创建项目、进行合作节点间的授权
@@ -92,6 +92,7 @@ sh install.sh p2p -n domainId  -s 8099 -g 8092 -k 8091 -p 8090 -q 33801
 
 | secretpad Version | Kuscia Version | secretflow Version | trustedflow Version | serving Version |
 |-------------------|----------------|--------------------|---------------------|-----------------|
+| 0.9.0b0           | 0.10.0b0       | 1.8.0b0            | 0.1.1b0             | 0.5.0b0         |
 | 0.8.0b0/0.8.1b0   | 0.9.0b0        | 1.7.0b0            | 0.1.1b0             | 0.4.0b0         |
 | 0.7.1b0/0.7.2b0   | 0.8.0b0        | 1.6.1b0            | 0.1.1b0             | 0.3.1b0         |
 | 0.6.0b0           | 0.7.0b0        | 1.5.0b0            | 0.1.1b0             | 0.2.1b0         |

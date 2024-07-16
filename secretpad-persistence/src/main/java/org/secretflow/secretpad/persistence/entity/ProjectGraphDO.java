@@ -105,6 +105,7 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
     @Setter
     @AllArgsConstructor
     @NoArgsConstructor
+    @ToString
     public static class UPK implements Serializable {
         @Serial
         private static final long serialVersionUID = 5005877919773504643L;

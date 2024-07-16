@@ -72,6 +72,7 @@ public class ProjectNodeDO extends BaseAggregationRoot<ProjectNodeDO> {
     @Setter
     @AllArgsConstructor
     @NoArgsConstructor
+    @ToString
     public static class UPK implements Serializable {
         /**
          * Project id

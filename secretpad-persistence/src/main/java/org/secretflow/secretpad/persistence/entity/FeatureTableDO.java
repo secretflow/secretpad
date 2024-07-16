@@ -75,6 +75,7 @@ public class FeatureTableDO extends BaseAggregationRoot<FeatureTableDO> {
     @Setter
     @AllArgsConstructor
     @NoArgsConstructor
+    @ToString
     public static class UPK implements Serializable {
 
         @Serial

@@ -6,6 +6,7 @@ import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
 import org.secretflow.secretpad.common.errorcode.NodeRouteErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
 import org.secretflow.secretpad.persistence.entity.ProjectApprovalConfigDO;
@@ -20,22 +21,20 @@ import org.secretflow.secretpad.service.model.noderoute.UpdateNodeRouterRequest;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
 import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.common.Common;
 import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 import org.secretflow.v1alpha1.kusciaapi.DomainRoute;
-import org.secretflow.v1alpha1.kusciaapi.DomainRouteServiceGrpc;
-import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
 
 /**
  * NodeRoute controller test
@@ -51,10 +50,7 @@ class NodeRouteControllerTest extends ControllerTest {
     private NodeRouteRepository nodeRouteRepository;
 
     @MockBean
-    private DomainRouteServiceGrpc.DomainRouteServiceBlockingStub domainRouteServiceBlockingStub;
-
-    @MockBean
-    private DomainServiceGrpc.DomainServiceBlockingStub domainServiceStub;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @MockBean
     private ProjectResultRepository resultRepository;
@@ -73,9 +69,9 @@ class NodeRouteControllerTest extends ControllerTest {
             Mockito.when(nodeRouteRepository.findByRouteId(Mockito.anyString())).thenReturn(buildNodeRouteDO().get());
             Mockito.when(nodeRouteRepository.save(Mockito.any())).thenReturn(buildNodeRouteDO().get());
             Mockito.when(nodeRouteRepository.findBySrcNodeIdAndDstNodeId(Mockito.anyString(), Mockito.anyString())).thenReturn(buildNodeRouteDO());
-            Mockito.when(domainRouteServiceBlockingStub.createDomainRoute(Mockito.any())).thenReturn(buildCreateDomainRouteResponse(0));
-            Mockito.when(domainRouteServiceBlockingStub.queryDomainRoute(Mockito.any())).thenReturn(buildQueryDomainRouteResponse(0));
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.createDomainRoute(Mockito.any())).thenReturn(buildCreateDomainRouteResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainRoute(Mockito.any())).thenReturn(buildQueryDomainRouteResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
 
             pushToCenterUtilMockedStatic.when(() -> DbSyncUtil.dbDataSyncToCenter(Mockito.any(VoteSyncRequest.class))).thenReturn(SecretPadResponse.success());
             return MockMvcRequestBuilders.post(getMappingUrl(NodeRouteController.class, "update", UpdateNodeRouterRequest.class)).
@@ -110,9 +106,9 @@ class NodeRouteControllerTest extends ControllerTest {
             Mockito.when(nodeRouteRepository.findByRouteId(Mockito.anyString())).thenReturn(buildNodeRouteDO().get());
             Mockito.when(nodeRouteRepository.save(Mockito.any())).thenReturn(buildNodeRouteDO().get());
             Mockito.when(nodeRouteRepository.findBySrcNodeIdAndDstNodeId(Mockito.anyString(), Mockito.anyString())).thenReturn(buildNodeRouteDO());
-            Mockito.when(domainRouteServiceBlockingStub.createDomainRoute(Mockito.any())).thenReturn(buildCreateDomainRouteResponse(0));
-            Mockito.when(domainRouteServiceBlockingStub.queryDomainRoute(Mockito.any())).thenReturn(buildQueryDomainRouteResponse(0));
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.createDomainRoute(Mockito.any())).thenReturn(buildCreateDomainRouteResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainRoute(Mockito.any())).thenReturn(buildQueryDomainRouteResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
 
             pushToCenterUtilMockedStatic.when(() -> DbSyncUtil.dbDataSyncToCenter(Mockito.any(VoteSyncRequest.class))).thenReturn(SecretPadResponse.success());
             return MockMvcRequestBuilders.post(getMappingUrl(NodeRouteController.class, "update", UpdateNodeRouterRequest.class)).
@@ -131,9 +127,9 @@ class NodeRouteControllerTest extends ControllerTest {
             Mockito.when(nodeRouteRepository.findByRouteId(Mockito.anyString())).thenReturn(null);
             Mockito.when(nodeRouteRepository.save(Mockito.any())).thenReturn(buildNodeRouteDO().get());
             Mockito.when(nodeRouteRepository.findBySrcNodeIdAndDstNodeId(Mockito.anyString(), Mockito.anyString())).thenReturn(buildNodeRouteDO());
-            Mockito.when(domainRouteServiceBlockingStub.createDomainRoute(Mockito.any())).thenReturn(buildCreateDomainRouteResponse(0));
-            Mockito.when(domainRouteServiceBlockingStub.queryDomainRoute(Mockito.any())).thenReturn(buildQueryDomainRouteResponse(0));
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.createDomainRoute(Mockito.any())).thenReturn(buildCreateDomainRouteResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainRoute(Mockito.any())).thenReturn(buildQueryDomainRouteResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
 
             pushToCenterUtilMockedStatic.when(() -> DbSyncUtil.dbDataSyncToCenter(Mockito.any(VoteSyncRequest.class))).thenReturn(SecretPadResponse.success());
 
@@ -175,7 +171,7 @@ class NodeRouteControllerTest extends ControllerTest {
     void listNode() throws Exception {
         assertResponse(() -> {
             Mockito.when(resultRepository.countByNodeId(Mockito.anyString())).thenReturn(1L);
-            Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.batchQueryDomain(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
             return MockMvcRequestBuilders.post(getMappingUrl(NodeRouteController.class, "listNode"));
         });
     }
@@ -202,7 +198,7 @@ class NodeRouteControllerTest extends ControllerTest {
             NodeDO node = new NodeDO();
             Mockito.when(nodeRouteRepository.findByRouteId(Mockito.anyString())).thenReturn(info);
             Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(node);
-            Mockito.when(domainRouteServiceBlockingStub.deleteDomainRoute(Mockito.any())).thenReturn(buildDeleteDomainRouteResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.deleteDomainRoute(Mockito.any())).thenReturn(buildDeleteDomainRouteResponse(0));
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeRouteController.class, "delete", RouterIdRequest.class))
                     .content(JsonUtils.toJSONString(routerIdRequest));

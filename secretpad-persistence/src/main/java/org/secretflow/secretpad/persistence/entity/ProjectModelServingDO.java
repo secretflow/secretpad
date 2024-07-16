@@ -21,6 +21,8 @@ import org.secretflow.secretpad.persistence.converter.BaseObjectListJsonConverte
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.List;
 
 /**
@@ -33,6 +35,7 @@ import java.util.List;
 @NoArgsConstructor
 @Setter
 @Getter
+@ToString
 @Table(name = "project_model_serving")
 public class ProjectModelServingDO extends BaseAggregationRoot<ProjectModelServingDO> {
 
@@ -66,7 +69,10 @@ public class ProjectModelServingDO extends BaseAggregationRoot<ProjectModelServi
     @Getter
     @Setter
     @ToString
-    public static class PartyEndpoints {
+    public static class PartyEndpoints implements Serializable {
+
+        @Serial
+        private static final long serialVersionUID = 5005877919773504643L;
 
         private String nodeId;
 

@@ -15,10 +15,10 @@
 # limitations under the License.
 #
 
-export KUSCIA_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.9.0b0"
-export SECRETPAD_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.8.1b0"
-export SECRETFLOW_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.7.0b0"
-export SECRETFLOW_SERVING_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.4.0b0"
+export KUSCIA_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.10.0b0"
+export SECRETPAD_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.9.0b0"
+export SECRETFLOW_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.8.0b0"
+export SECRETFLOW_SERVING_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.5.0b0"
 export TEE_APP_IMAGE="secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"
 export TEE_DM_IMAGE="secretflow/sf-tee-dm-sim:0.1.0b0"
 export CAPSULE_MANAGER_SIM_IMAGE="secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"
@@ -44,8 +44,8 @@ lite OPTIONS:
     -n              [optional]  Domain id to be deployed.
     -s              [optional]  The port exposed by secretpad-web, default 8080
     -p              [optional]  The port exposed by kuscia-gateway, default 18080
-    -k              [optional]  The port exposed by kuscia-api-http, default 40802
-    -g              [optional]  The port exposed by kuscia-api-grpc, default 40803
+    -k              [optional]  The port exposed by kuscia-api-http, default 18082
+    -g              [optional]  The port exposed by kuscia-api-grpc, default 18083
     -t              [optional]  (Only used in lite mode)The deploy token, get this token from secretpad platform.
     -d              [optional]  The install directory. Default is ${INSTALL_DIR}.
     -P              [optional]  kuscia protocol. Default is ${KUSCIA_PROTOCOL}.
@@ -54,13 +54,18 @@ lite OPTIONS:
 
 example:
     install.sh master
-    install.sh lite -n alice -m 'https://root-kuscia-master:1080' -t xdeploy-tokenx -p 18080  -k 40802 -g 40803 -s 8080 -q 13081 -P notls
-    install.sh autonomy -n alice -s 8080 -g 40803 -k 40802 -p 18080 -q 13081 -P mtls
+    install.sh lite -n alice -m 'https://root-kuscia-master:1080' -t xdeploy-tokenx -p 18080  -k 18082 -g 18083 -s 8080 -q 13081 -P notls
+    install.sh autonomy -n alice -s 8080 -g 18083 -k 18082 -p 18080 -q 13081 -P mtls
     "
 }
 case "${1}" in
-master | lite | autonomy)
+master | lite)
 	export MODE=$1
+	shift
+	;;
+autonomy)
+	export MODE=$1
+	export DEPLOY_MODE="MPC"
 	shift
 	;;
 -h)

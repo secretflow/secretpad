@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.manager.configuration;
 
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.data.AbstractDataManager;
 import org.secretflow.secretpad.manager.integration.data.DataManager;
 import org.secretflow.secretpad.manager.integration.datasource.AbstractDatasourceManager;
@@ -25,9 +26,7 @@ import org.secretflow.secretpad.manager.integration.datatable.DatatableManager;
 import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 import org.secretflow.secretpad.manager.integration.job.JobManager;
 import org.secretflow.secretpad.persistence.repository.*;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataSourceServiceGrpc;
-import org.secretflow.v1alpha1.kusciaapi.JobServiceGrpc;
+
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -43,14 +42,14 @@ public class ManagerConfiguration {
     /**
      * Create a new abstract datatable manager via domain data service blocking stub
      *
-     * @param stub domain data service blocking stub
+     * @param kusciaGrpcClientAdapter domain data service blocking stub
      * @return abstract datatable manager
      */
     @Bean
     AbstractDatatableManager datatableManager(
-            DomainDataServiceGrpc.DomainDataServiceBlockingStub stub, FeatureTableRepository featureTableRepository
+            KusciaGrpcClientAdapter kusciaGrpcClientAdapter, FeatureTableRepository featureTableRepository
     ) {
-        return new DatatableManager(stub, featureTableRepository);
+        return new DatatableManager(kusciaGrpcClientAdapter, featureTableRepository);
     }
 
     /**
@@ -79,36 +78,36 @@ public class ManagerConfiguration {
             ProjectModelRepository modelRepository,
             ProjectReportRepository reportRepository,
             TeeNodeDatatableManagementRepository managementRepository,
-            JobServiceGrpc.JobServiceBlockingStub jobStub,
             ProjectReadDtaRepository readDtaRepository,
             ProjectJobTaskRepository taskRepository
     ) {
-        return new JobManager(projectJobRepository, datatableManager, resultRepository, fedTableRepository, datatableRepository, ruleRepository, modelRepository, reportRepository, managementRepository, jobStub, readDtaRepository, taskRepository);
+        return new JobManager(projectJobRepository, datatableManager, resultRepository, fedTableRepository, datatableRepository, ruleRepository, modelRepository, reportRepository, managementRepository, readDtaRepository, taskRepository);
     }
 
     /**
      * Create a new abstract data manager via domain data service blocking stub
      *
-     * @param dataStub
+     * @param kusciaGrpcClientAdapter
      * @return abstract data manager
      */
     @Bean
     AbstractDataManager dataManager(
-            DomainDataServiceGrpc.DomainDataServiceBlockingStub dataStub
+            KusciaGrpcClientAdapter kusciaGrpcClientAdapter
     ) {
-        return new DataManager(dataStub);
+        return new DataManager(kusciaGrpcClientAdapter);
     }
 
     /**
      * Create a new abstract datasource manager via domain data source service blocking stub
-     * @param datasourceStub
+     *
+     * @param kusciaGrpcClientAdapter
      * @return
      */
     @Bean
     AbstractDatasourceManager datasourceManager(
-            DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub datasourceStub
+            KusciaGrpcClientAdapter kusciaGrpcClientAdapter
     ) {
-        return new DatasourceManager(datasourceStub);
+        return new DatasourceManager(kusciaGrpcClientAdapter);
     }
 }
 

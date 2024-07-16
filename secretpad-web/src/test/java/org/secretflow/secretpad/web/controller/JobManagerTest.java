@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.manager.integration.datatablegrant.DatatableGrantManager;
 import org.secretflow.secretpad.manager.integration.job.JobManager;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.GraphJobStatus;
@@ -31,6 +32,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.Mockito;
 import org.secretflow.v1alpha1.kusciaapi.Job;
 import org.secretflow.v1alpha1.kusciaapi.JobServiceGrpc;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -67,6 +69,8 @@ public class JobManagerTest extends ControllerTest {
     private ManagedChannel inProcessChannel;
 
     private static int index = 1;
+    @MockBean
+    private DatatableGrantManager datatableGrantManager;
 
     public static class JobServiceStubService extends JobServiceGrpc.JobServiceImplBase {
         @Override
@@ -128,10 +132,12 @@ public class JobManagerTest extends ControllerTest {
     @Test
     void testJobAsyncStub() {
         jobServiceAsyncStub = JobServiceGrpc.newStub(inProcessChannel);
-        jobManager.setJobServiceAsyncStub(jobServiceAsyncStub);
         Assertions.assertDoesNotThrow(() -> jobManager.startSync());
         index++;
         Assertions.assertDoesNotThrow(() -> jobManager.startSync());
+        Mockito.when(datatableGrantManager.queryDomainGrant(Mockito.any(), Mockito.any())).thenThrow(new RuntimeException());
+        Mockito.when(datatableGrantManager.createDomainGrant(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any())).thenThrow(new RuntimeException());
+        Assertions.assertDoesNotThrow(() -> jobManager.checkOrCreateDomainDataGrant("alice", "bob", "test"));
     }
 
 

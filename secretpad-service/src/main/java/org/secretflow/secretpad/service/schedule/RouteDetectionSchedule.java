@@ -16,6 +16,9 @@
 
 package org.secretflow.secretpad.service.schedule;
 
+import org.secretflow.secretpad.common.dto.UserContextDTO;
+import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.persistence.datasync.route.RouteDetection;
 import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
 import org.secretflow.secretpad.persistence.repository.NodeRouteRepository;
@@ -24,7 +27,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.secretflow.v1alpha1.kusciaapi.DomainRoute;
-import org.secretflow.v1alpha1.kusciaapi.DomainRouteServiceGrpc;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -46,7 +48,7 @@ import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_TEST
 @Profile(SKIP_TEST)
 @RequiredArgsConstructor
 public class RouteDetectionSchedule {
-    private final DomainRouteServiceGrpc.DomainRouteServiceBlockingStub routeServiceBlockingStub;
+    private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
     private final NodeRouteRepository nodeRouteRepository;
     private final RouteDetection routeDetection;
     @Value("${secretpad.node-id}")
@@ -61,8 +63,9 @@ public class RouteDetectionSchedule {
         List<NodeRouteDO> nodeRouteDOList = nodeRouteRepository.findByDstNodeId(localNodeId);
         DomainRoute.BatchQueryDomainRouteStatusRequest batchQueryDomainRouteStatusRequest = DomainRoute.BatchQueryDomainRouteStatusRequest.newBuilder()
                 .addAllRouteKeys(nodeRouteDOList.stream().map(this::domainRouteKeyBuild).collect(Collectors.toList())).build();
+        UserContext.setBaseUser(UserContextDTO.builder().ownerId(localNodeId).build());
         DomainRoute.BatchQueryDomainRouteStatusResponse response =
-                routeServiceBlockingStub.batchQueryDomainRouteStatus(batchQueryDomainRouteStatusRequest);
+                kusciaGrpcClientAdapter.batchQueryDomainRouteStatus(batchQueryDomainRouteStatusRequest);
         log.debug("kuscia batchQueryDomainRouteStatus resp {}", response);
         routeDetection(response);
         log.debug("routeDetectionSchedule availableNodes {}", routeDetection.getAvailableNodes());

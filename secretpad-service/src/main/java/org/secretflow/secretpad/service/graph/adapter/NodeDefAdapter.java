@@ -16,10 +16,14 @@
 
 package org.secretflow.secretpad.service.graph.adapter;
 
+import org.secretflow.secretpad.common.constant.ComponentConstants;
+import org.secretflow.secretpad.service.ComponentService;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
 
+import com.secretflow.spec.v1.ComponentDef;
 import org.secretflow.proto.pipeline.Pipeline;
+import org.springframework.util.ObjectUtils;
 
 /**
  * NodeDefAdapter
@@ -36,4 +40,40 @@ public interface NodeDefAdapter {
      * @return JobTask
      */
     ProjectJob.JobTask adapter(Pipeline.NodeDef nodeDef, GraphNodeInfo graphNodeInfo, ProjectJob.JobTask task);
+
+    default ComponentDef buildIoReadData() {
+        ComponentDef componentDef = ComponentService.SF_HIDE_COMPONENTS.get(ComponentConstants.IO_READ_DATA);
+        if (ObjectUtils.isEmpty(componentDef)) {
+            ComponentService.SF_HIDE_COMPONENTS.put(ComponentConstants.IO_READ_DATA, ComponentDef.newBuilder()
+                    .setDomain("io")
+                    .setName("read_data")
+                    .setVersion("0.0.1").build());
+            componentDef = ComponentService.SF_HIDE_COMPONENTS.get(ComponentConstants.IO_READ_DATA);
+        }
+        return componentDef;
+    }
+
+    default ComponentDef buildIoWriteData() {
+        ComponentDef componentDef = ComponentService.SF_HIDE_COMPONENTS.get(ComponentConstants.IO_WRITE_DATA);
+        if (ObjectUtils.isEmpty(componentDef)) {
+            ComponentService.SF_HIDE_COMPONENTS.put(ComponentConstants.IO_WRITE_DATA, ComponentDef.newBuilder()
+                    .setDomain("io")
+                    .setName("write_data")
+                    .setVersion("0.0.1").build());
+            componentDef = ComponentService.SF_HIDE_COMPONENTS.get(ComponentConstants.IO_WRITE_DATA);
+        }
+        return componentDef;
+    }
+
+    default ComponentDef buildIoIdentity() {
+        ComponentDef componentDef = ComponentService.SF_HIDE_COMPONENTS.get(ComponentConstants.IO_IDENTITY);
+        if (ObjectUtils.isEmpty(componentDef)) {
+            ComponentService.SF_HIDE_COMPONENTS.put(ComponentConstants.IO_IDENTITY, ComponentDef.newBuilder()
+                    .setDomain("io")
+                    .setName("identity")
+                    .setVersion("0.0.1").build());
+            componentDef = ComponentService.SF_HIDE_COMPONENTS.get(ComponentConstants.IO_IDENTITY);
+        }
+        return componentDef;
+    }
 }

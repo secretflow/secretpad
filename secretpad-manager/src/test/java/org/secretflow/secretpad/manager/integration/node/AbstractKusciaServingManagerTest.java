@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.manager.integration.node;
 
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.serving.AbstractKusciaServingManager;
 
 import org.junit.jupiter.api.Assertions;
@@ -25,7 +26,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.secretflow.v1alpha1.common.Common;
 import org.secretflow.v1alpha1.kusciaapi.Serving;
-import org.secretflow.v1alpha1.kusciaapi.ServingServiceGrpc;
 import org.springframework.context.ApplicationEventPublisher;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,7 +40,7 @@ public class AbstractKusciaServingManagerTest {
 
 
     @Mock
-    private ServingServiceGrpc.ServingServiceBlockingStub servingServiceBlockingStub;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @Mock
     private ApplicationEventPublisher applicationEventPublisher;
@@ -53,7 +53,7 @@ public class AbstractKusciaServingManagerTest {
                 return super.create(request);
             }
         };
-        servingManager.setServingServiceBlockingStub(servingServiceBlockingStub);
+        servingManager.setKusciaGrpcClientAdapter(kusciaGrpcClientAdapter);
         servingManager.setApplicationEventPublisher(applicationEventPublisher);
         Serving.CreateServingRequest request = Serving.CreateServingRequest.newBuilder()
                 .setServingId("serving1")
@@ -61,7 +61,7 @@ public class AbstractKusciaServingManagerTest {
         Serving.CreateServingResponse response = Serving.CreateServingResponse.newBuilder()
                 .setStatus(Common.Status.newBuilder().setCode(0))
                 .build();
-        when(servingServiceBlockingStub.createServing(request)).thenReturn(response);
+        when(kusciaGrpcClientAdapter.createServing(request)).thenReturn(response);
         Serving.CreateServingResponse result = servingManager.create(request);
         assertEquals(response, result);
         verify(applicationEventPublisher).publishEvent(any(AbstractKusciaServingManager.KusciaServingEvent.class));
@@ -75,7 +75,7 @@ public class AbstractKusciaServingManagerTest {
                 return super.create(request);
             }
         };
-        servingManager.setServingServiceBlockingStub(servingServiceBlockingStub);
+        servingManager.setKusciaGrpcClientAdapter(kusciaGrpcClientAdapter);
         servingManager.setApplicationEventPublisher(applicationEventPublisher);
         Serving.DeleteServingRequest request = Serving.DeleteServingRequest.newBuilder()
                 .setServingId("serving123")
@@ -83,10 +83,10 @@ public class AbstractKusciaServingManagerTest {
         Serving.DeleteServingResponse response = Serving.DeleteServingResponse.newBuilder()
                 .setStatus(Common.Status.newBuilder().setCode(0))
                 .build();
-        when(servingServiceBlockingStub.deleteServing(request)).thenReturn(response);
+        when(kusciaGrpcClientAdapter.deleteServing(request)).thenReturn(response);
         Serving.DeleteServingResponse result = servingManager.delete(request);
         assertEquals(response, result);
-        verify(servingServiceBlockingStub).deleteServing(request);
+        verify(kusciaGrpcClientAdapter).deleteServing(request);
     }
 
     @Test
@@ -97,7 +97,7 @@ public class AbstractKusciaServingManagerTest {
                 return super.create(request);
             }
         };
-        servingManager.setServingServiceBlockingStub(servingServiceBlockingStub);
+        servingManager.setKusciaGrpcClientAdapter(kusciaGrpcClientAdapter);
         servingManager.setApplicationEventPublisher(applicationEventPublisher);
         Serving.DeleteServingRequest request = Serving.DeleteServingRequest.newBuilder()
                 .setServingId("")
@@ -105,10 +105,10 @@ public class AbstractKusciaServingManagerTest {
         Serving.DeleteServingResponse response = Serving.DeleteServingResponse.newBuilder()
                 .setStatus(Common.Status.newBuilder().setCode(1))
                 .build();
-        when(servingServiceBlockingStub.deleteServing(request)).thenReturn(response);
+        when(kusciaGrpcClientAdapter.deleteServing(request)).thenReturn(response);
         Serving.DeleteServingResponse result = servingManager.delete(request);
         assertEquals(response, result);
-        verify(servingServiceBlockingStub).deleteServing(request);
+        verify(kusciaGrpcClientAdapter).deleteServing(request);
     }
 
     @Test
@@ -119,11 +119,11 @@ public class AbstractKusciaServingManagerTest {
                 return super.create(request);
             }
         };
-        servingManager.setServingServiceBlockingStub(servingServiceBlockingStub);
+        servingManager.setKusciaGrpcClientAdapter(kusciaGrpcClientAdapter);
         servingManager.setApplicationEventPublisher(applicationEventPublisher);
         Serving.UpdateServingRequest request = Serving.UpdateServingRequest.newBuilder().build();
         Serving.UpdateServingResponse expectedResponse = Serving.UpdateServingResponse.newBuilder().build();
-        when(servingServiceBlockingStub.updateServing(request)).thenReturn(expectedResponse);
+        when(kusciaGrpcClientAdapter.updateServing(request)).thenReturn(expectedResponse);
         Serving.UpdateServingResponse actualResponse = servingManager.update(request);
         assertEquals(expectedResponse, actualResponse);
         verify(applicationEventPublisher, times(1)).publishEvent(any(AbstractKusciaServingManager.KusciaServingEvent.class));
@@ -137,7 +137,7 @@ public class AbstractKusciaServingManagerTest {
                 return super.create(request);
             }
         };
-        servingManager.setServingServiceBlockingStub(servingServiceBlockingStub);
+        servingManager.setKusciaGrpcClientAdapter(kusciaGrpcClientAdapter);
         servingManager.setApplicationEventPublisher(applicationEventPublisher);
         Serving.QueryServingRequest request = Serving.QueryServingRequest.newBuilder()
                 .setServingId("serving123")
@@ -145,7 +145,7 @@ public class AbstractKusciaServingManagerTest {
         Serving.QueryServingResponse response = Serving.QueryServingResponse.newBuilder()
                 .setStatus(Common.Status.newBuilder().setCode(0))
                 .build();
-        when(servingServiceBlockingStub.queryServing(request)).thenReturn(response);
+        when(kusciaGrpcClientAdapter.queryServing(request)).thenReturn(response);
         response = servingManager.query(request);
         Assertions.assertEquals(0, response.getStatus().getCode());
     }

@@ -64,6 +64,7 @@ public class SysUserPermissionRelDO extends SuperBaseAggregationRoot<SysUserPerm
     @AllArgsConstructor
     @NoArgsConstructor
     @Embeddable
+    @ToString
     public static class UPK implements Serializable {
         @Serial
         private static final long serialVersionUID = 291568296509217011L;

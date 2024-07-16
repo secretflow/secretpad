@@ -34,6 +34,7 @@ import org.hibernate.annotations.Where;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 @Entity
 @Table(name = "sys_role")
 @SQLDelete(sql = "update sys_role set is_deleted = 1 where id = ?")

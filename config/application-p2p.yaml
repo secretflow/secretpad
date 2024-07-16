@@ -22,6 +22,17 @@ secretpad:
     # retryPolicy      :   Keep trying until you succeed
     retry: fastFailedPolicy
 
+kuscia:
+  nodes:
+    - domainId: ${NODE_ID}
+      mode: p2p
+      host: ${KUSCIA_API_ADDRESS:root-kuscia-autonomy}
+      port: ${KUSCIA_API_PORT:8083}
+      protocol: ${KUSCIA_PROTOCOL:tls}
+      cert-file: config/certs/client.crt
+      key-file: config/certs/client.pem
+      token: config/certs/token
+
 data:
   sync:
     - org.secretflow.secretpad.persistence.entity.ProjectDO

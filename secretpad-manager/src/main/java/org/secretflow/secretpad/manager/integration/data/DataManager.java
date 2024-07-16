@@ -20,10 +20,10 @@ import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DataErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.UUIDUtils;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.model.DatatableSchema;
 
 import org.secretflow.v1alpha1.common.Common;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -45,10 +45,10 @@ public class DataManager extends AbstractDataManager {
     /**
      * Domain data service blocking stub
      */
-    private final DomainDataServiceGrpc.DomainDataServiceBlockingStub dataStub;
+    private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
-    public DataManager(DomainDataServiceGrpc.DomainDataServiceBlockingStub dataStub) {
-        this.dataStub = dataStub;
+    public DataManager(KusciaGrpcClientAdapter kusciaGrpcClientAdapter) {
+        this.kusciaGrpcClientAdapter = kusciaGrpcClientAdapter;
     }
 
     @Value("${secretpad.node-id}")
@@ -68,8 +68,8 @@ public class DataManager extends AbstractDataManager {
         Domaindata.CreateDomainDataRequest createDomainDataRequest =
                 Domaindata.CreateDomainDataRequest.newBuilder()
                         .setDomaindataId(domainDataId)
-                        .putAttributes("DatasourceType",datasourceType)
-                        .putAttributes("DatasourceName",datasourceName)
+                        .putAttributes("DatasourceType", datasourceType)
+                        .putAttributes("DatasourceName", datasourceName)
                         .setDomainId(domainId).setName(tableName).setType("table")
                         .setRelativeUri(realName).putAttributes("description", description)
                         .addAllColumns(datatableSchemaList
@@ -77,7 +77,7 @@ public class DataManager extends AbstractDataManager {
                                         .setType(it.getFeatureType()).setComment(it.getFeatureDescription()).build())
                                 .collect(Collectors.toList()))
                         .build();
-        Domaindata.CreateDomainDataResponse domainData = this.dataStub.createDomainData(createDomainDataRequest);
+        Domaindata.CreateDomainDataResponse domainData = this.kusciaGrpcClientAdapter.createDomainData(createDomainDataRequest);
         LOGGER.info("createData finish create domainData, description = {}",
                 createDomainDataRequest.getAttributesMap().get("description"));
         return domainData.getData().getDomaindataId();
@@ -85,7 +85,7 @@ public class DataManager extends AbstractDataManager {
 
     @Override
     public String createDataByDataSource(String domainId, String name, String tablePath, String datasourceId,
-                                         String description, String datasourceType,String datasourceName, List<DatatableSchema> datatableSchemaList) {
+                                         String description, String datasourceType, String datasourceName, List<DatatableSchema> datatableSchemaList) {
         String domainDataId = genDomainDataId();
         LOGGER.info("starter create domainData, description = {}", description);
         description = description == null ? "" : description;
@@ -93,15 +93,15 @@ public class DataManager extends AbstractDataManager {
                 Domaindata.CreateDomainDataRequest.newBuilder()
                         .setDomaindataId(domainDataId)
                         .setDomainId(domainId).setName(name).setType("table")
-                        .putAttributes("DatasourceType",datasourceType)
-                        .putAttributes("DatasourceName",datasourceName)
+                        .putAttributes("DatasourceType", datasourceType)
+                        .putAttributes("DatasourceName", datasourceName)
                         .setDatasourceId(datasourceId).setRelativeUri(tablePath).putAttributes("description", description)
                         .addAllColumns(datatableSchemaList
                                 .stream().map(it -> Common.DataColumn.newBuilder().setName(it.getFeatureName())
                                         .setType(it.getFeatureType()).setComment(it.getFeatureDescription()).build())
                                 .collect(Collectors.toList()))
                         .build();
-        Domaindata.CreateDomainDataResponse domainData = this.dataStub.createDomainData(createDomainDataRequest);
+        Domaindata.CreateDomainDataResponse domainData = this.kusciaGrpcClientAdapter.createDomainData(createDomainDataRequest);
         if (domainData.getStatus().getCode() != 0) {
             LOGGER.error("createDataByDataSource error {}", domainData.getStatus().getMessage());
             throw SecretpadException.of(DataErrorCode.ILLEGAL_PARAMS_ERROR);
@@ -116,7 +116,7 @@ public class DataManager extends AbstractDataManager {
         if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))) {
             domainId = localNodeId;
         }
-        Domaindata.QueryDomainDataResponse queryDomainDataResponse = dataStub.queryDomainData(Domaindata.QueryDomainDataRequest
+        Domaindata.QueryDomainDataResponse queryDomainDataResponse = kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest
                 .newBuilder()
                 .setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(domainId).setDomaindataId(domainDataId))
                 .build());

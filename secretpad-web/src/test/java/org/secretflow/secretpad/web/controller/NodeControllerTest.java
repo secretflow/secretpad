@@ -6,7 +6,7 @@ import org.secretflow.secretpad.common.errorcode.*;
 import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
-import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainDatasourceRpc;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.persistence.repository.*;
@@ -18,7 +18,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.common.Common;
-import org.secretflow.v1alpha1.kusciaapi.*;
+import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
+import org.secretflow.v1alpha1.kusciaapi.Domaindata;
+import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -27,6 +29,8 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.*;
+
+import static org.secretflow.secretpad.common.errorcode.NodeErrorCode.NODE_TOKEN_IS_EMPTY_ERROR;
 
 /**
  * Node controller test
@@ -58,13 +62,7 @@ class NodeControllerTest extends ControllerTest {
     private NodeRepository nodeRepository;
 
     @MockBean
-    private DomainDataServiceGrpc.DomainDataServiceBlockingStub dataStub;
-
-    @MockBean
-    private DomainServiceGrpc.DomainServiceBlockingStub domainServiceStub;
-
-    @MockBean
-    private KusciaDomainDatasourceRpc kusciaDomainDatasourceRpc;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @BeforeEach
     public void setUp() {
@@ -74,7 +72,7 @@ class NodeControllerTest extends ControllerTest {
                         .setDatasourceId("datasource")
                         .build())
                 .build();
-        Mockito.when(kusciaDomainDatasourceRpc.queryDomainDataSource(Mockito.any(Domaindatasource.QueryDomainDataSourceRequest.class))).thenReturn(response);
+        Mockito.when(kusciaGrpcClientAdapter.queryDomainDataSource(Mockito.any(Domaindatasource.QueryDomainDataSourceRequest.class))).thenReturn(response);
     }
 
     private List<NodeDO> buildNodeDOList() {
@@ -188,10 +186,10 @@ class NodeControllerTest extends ControllerTest {
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_LIST));
 
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             Mockito.when(nodeRepository.findAll()).thenReturn(buildNodeDOList());
             Domaindata.ListDomainDataResponse response = buildListDomainDataResponse(0);
-            Mockito.when(dataStub.listDomainData(Mockito.any())).thenReturn(response);
+            Mockito.when(kusciaGrpcClientAdapter.listDomainData(Mockito.any())).thenReturn(response);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "listNode"));
         });
     }
@@ -202,10 +200,10 @@ class NodeControllerTest extends ControllerTest {
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_LIST));
 
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             Mockito.when(nodeRepository.findAll()).thenReturn(buildNodeDOList());
             Domaindata.ListDomainDataResponse response = buildListDomainDataResponse(1);
-            Mockito.when(dataStub.listDomainData(Mockito.any())).thenReturn(response);
+            Mockito.when(kusciaGrpcClientAdapter.listDomainData(Mockito.any())).thenReturn(response);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "listNode"));
         }, DatatableErrorCode.QUERY_DATATABLE_FAILED);
     }
@@ -219,10 +217,10 @@ class NodeControllerTest extends ControllerTest {
 
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(1);
             request.setMode(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(FakerUtils.fake(NodeDO.class));
             DomainOuterClass.CreateDomainResponse createDomainResponse = buildCreateDomainResponse(0);
-            Mockito.when(domainServiceStub.createDomain(Mockito.any())).thenReturn(createDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.createDomain(Mockito.any())).thenReturn(createDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "createNode", CreateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });
@@ -236,28 +234,29 @@ class NodeControllerTest extends ControllerTest {
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_CREATE));
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
             request.setMode(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "createNode", CreateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
-        }, NodeErrorCode.NODE_CREATE_ERROR);
+        }, SystemErrorCode.VALIDATION_ERROR);
     }
 
     @Test
     void createNodeByNodeCreateFailedException() throws Exception {
-        assertErrorCode(() -> {
+        assertResponse(() -> {
             CreateNodeRequest request = FakerUtils.fake(CreateNodeRequest.class);
             request.setMode(0);
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_CREATE));
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(1);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(FakerUtils.fake(NodeDO.class));
 
             DomainOuterClass.CreateDomainResponse createDomainResponse = buildCreateDomainResponse(1);
-            Mockito.when(domainServiceStub.createDomain(Mockito.any())).thenReturn(createDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.createDomain(Mockito.any())).thenReturn(createDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "createNode", CreateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
-        }, NodeErrorCode.NODE_CREATE_ERROR);
+        });
     }
 
     @Test
@@ -269,10 +268,10 @@ class NodeControllerTest extends ControllerTest {
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_DELETE));
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
             DomainOuterClass.DeleteDomainResponse deleteDomainResponse = buildDeleteDomainResponse(0);
-            Mockito.when(domainServiceStub.deleteDomain(Mockito.any())).thenReturn(deleteDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.deleteDomain(Mockito.any())).thenReturn(deleteDomainResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "deleteNode", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -288,7 +287,7 @@ class NodeControllerTest extends ControllerTest {
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_DELETE));
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(1);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "deleteNode", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -297,21 +296,21 @@ class NodeControllerTest extends ControllerTest {
 
     @Test
     void deleteNodeByNodeDeleteFailedException() throws Exception {
-        assertErrorCode(() -> {
+        assertResponseWithEmptyData(() -> {
             String nodeId = FakerUtils.fake(String.class);
             NodeIdRequest request = new NodeIdRequest(nodeId);
             request.setNodeId("alice");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_DELETE));
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
             DomainOuterClass.DeleteDomainResponse deleteDomainResponse = buildDeleteDomainResponse(1);
-            Mockito.when(domainServiceStub.deleteDomain(Mockito.any())).thenReturn(deleteDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.deleteDomain(Mockito.any())).thenReturn(deleteDomainResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "deleteNode", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
-        }, NodeErrorCode.NODE_DELETE_ERROR);
+        });
     }
 
     @Test
@@ -330,7 +329,7 @@ class NodeControllerTest extends ControllerTest {
             Mockito.when(resultRepository.findByNodeId(Mockito.anyString())).thenReturn(projectResultDOS);
 
             Domaindata.BatchQueryDomainDataResponse batchQueryDomainDataResponse = buildBatchQueryDomainDataResponse(0);
-            Mockito.when(dataStub.batchQueryDomainData(Mockito.any())).thenReturn(batchQueryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.batchQueryDomainData(Mockito.any())).thenReturn(batchQueryDomainDataResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "listResults", ListNodeResultRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -353,7 +352,7 @@ class NodeControllerTest extends ControllerTest {
             Mockito.when(resultRepository.findByNodeId(Mockito.anyString())).thenReturn(projectResultDOS);
 
             Domaindata.BatchQueryDomainDataResponse batchQueryDomainDataResponse = buildBatchQueryDomainDataResponse(1);
-            Mockito.when(dataStub.batchQueryDomainData(Mockito.any())).thenReturn(batchQueryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.batchQueryDomainData(Mockito.any())).thenReturn(batchQueryDomainDataResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "listResults", ListNodeResultRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -376,7 +375,7 @@ class NodeControllerTest extends ControllerTest {
             Mockito.when(resultRepository.findByNodeId(Mockito.anyString())).thenReturn(projectResultDOS);
 
             Domaindata.BatchQueryDomainDataResponse batchQueryDomainDataResponse = buildBatchQueryDomainDataResponse(0);
-            Mockito.when(dataStub.batchQueryDomainData(Mockito.any())).thenReturn(batchQueryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.batchQueryDomainData(Mockito.any())).thenReturn(batchQueryDomainDataResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "listResults", ListNodeResultRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -393,7 +392,7 @@ class NodeControllerTest extends ControllerTest {
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_DETAIL));
 
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);
-            Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
 
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(ProjectDO.builder().projectId(PROJECT_ID).build()));
             Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(buildNodeDOList().get(0));
@@ -425,7 +424,7 @@ class NodeControllerTest extends ControllerTest {
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_DETAIL));
 
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);
-            Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "getNodeResultDetail", GetNodeResultDetailRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -442,7 +441,7 @@ class NodeControllerTest extends ControllerTest {
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_DETAIL));
 
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);
-            Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
 
             List<ProjectResultDO> projectResultDOS = buildProjectResultDOList();
             Mockito.when(resultRepository.findByNodeIdAndRefId(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(projectResultDOS.get(0)));
@@ -462,7 +461,7 @@ class NodeControllerTest extends ControllerTest {
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_RESULT_DETAIL));
 
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);
-            Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
 
             List<ProjectResultDO> projectResultDOS = buildProjectResultDOList();
             Mockito.when(resultRepository.findByNodeIdAndRefId(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(projectResultDOS.get(0)));
@@ -491,7 +490,7 @@ class NodeControllerTest extends ControllerTest {
             Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
 
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(1);
-            Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "getNodeResultDetail", GetNodeResultDetailRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -515,7 +514,7 @@ class NodeControllerTest extends ControllerTest {
             Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
 
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildEmptyQueryDomainDataResponse(0);
-            Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "getNodeResultDetail", GetNodeResultDetailRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -540,7 +539,7 @@ class NodeControllerTest extends ControllerTest {
             Mockito.when(projectJobRepository.findByJobId(Mockito.anyString())).thenReturn(Optional.of(buildProjectJobDO(true)));
 
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildEmptyQueryDomainDataResponse(0);
-            Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "getNodeResultDetail", GetNodeResultDetailRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -565,7 +564,7 @@ class NodeControllerTest extends ControllerTest {
             Mockito.when(projectJobRepository.findByJobId(Mockito.anyString())).thenReturn(Optional.of(buildProjectJobDO(false)));
 
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildEmptyQueryDomainDataResponse(0);
-            Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "getNodeResultDetail", GetNodeResultDetailRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -617,7 +616,7 @@ class NodeControllerTest extends ControllerTest {
             Mockito.when(nodeRepository.findAll(Specification.anyOf(), request.of())).thenReturn(page);
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "page", PageNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });
@@ -637,7 +636,7 @@ class NodeControllerTest extends ControllerTest {
             Mockito.when(nodeRepository.findAll(Mockito.any(Specification.class), Mockito.any(Pageable.class))).thenReturn(page);
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "page", PageNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });
@@ -657,7 +656,7 @@ class NodeControllerTest extends ControllerTest {
             Mockito.when(nodeRepository.findAll(Mockito.any(Specification.class), Mockito.any(Pageable.class))).thenReturn(page);
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(null);
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "page", PageNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, NodeErrorCode.NODE_NOT_EXIST_ERROR);
@@ -673,7 +672,7 @@ class NodeControllerTest extends ControllerTest {
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "get", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });
@@ -688,7 +687,7 @@ class NodeControllerTest extends ControllerTest {
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.NODE_GET));
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(null);
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "get", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, NodeErrorCode.NODE_NOT_EXIST_ERROR);
@@ -704,7 +703,7 @@ class NodeControllerTest extends ControllerTest {
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "get", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });
@@ -723,7 +722,7 @@ class NodeControllerTest extends ControllerTest {
             queryDomainResponse = queryDomainResponse.toBuilder().setData(
                     DomainOuterClass.QueryDomainResponseData.newBuilder().addDeployTokenStatuses(
                             DomainOuterClass.DeployTokenStatus.newBuilder().setToken("123").setState("used").buildPartial()).build()).build();
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "token", NodeTokenRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });
@@ -739,10 +738,10 @@ class NodeControllerTest extends ControllerTest {
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "token", NodeTokenRequest.class)).
                     content(JsonUtils.toJSONString(request));
-        }, KusciaGrpcErrorCode.RPC_ERROR);
+        }, NODE_TOKEN_IS_EMPTY_ERROR);
     }
 
     @Test
@@ -755,7 +754,7 @@ class NodeControllerTest extends ControllerTest {
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "refresh", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });
@@ -771,7 +770,7 @@ class NodeControllerTest extends ControllerTest {
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(alice);
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(-1);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(NodeController.class, "refresh", NodeIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });

@@ -16,9 +16,12 @@
 
 package org.secretflow.secretpad.service.test;
 
+import org.secretflow.secretpad.persistence.entity.NodeDO;
+import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
 import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectJobTaskRepository;
 import org.secretflow.secretpad.service.impl.SLSCloudLogServiceImpl;
+import org.secretflow.secretpad.service.model.graph.GraphNodeCloudLogsRequest;
 import org.secretflow.secretpad.service.properties.LogConfigProperties;
 
 import com.aliyun.openservices.log.Client;
@@ -33,6 +36,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.util.ReflectionUtils;
 
 import java.lang.reflect.Method;
+import java.util.List;
+import java.util.Optional;
 
 /**
  * @author chenmingliang
@@ -114,5 +119,20 @@ public class SLSCloudLogServiceImplTest {
                 throw new RuntimeException(e);
             }
         }
+    }
+
+    @Test
+    void testFetchLog() {
+        LogConfigProperties.SLSConfig slsConfig = new LogConfigProperties.SLSConfig();
+        slsConfig.setProject("projectName");
+        SLSCloudLogServiceImpl slsCouldLogService = new SLSCloudLogServiceImpl(taskRepository, nodeRepository, client, slsConfig, "TEST");
+        GraphNodeCloudLogsRequest graphNodeCloudLogsRequest = new GraphNodeCloudLogsRequest();
+        graphNodeCloudLogsRequest.setQueryParties(true);
+        graphNodeCloudLogsRequest.setGraphNodeId("graphNodeId");
+
+        Optional<ProjectTaskDO> projectTaskDO = Optional.of(new ProjectTaskDO());
+        Mockito.when(taskRepository.findLatestTasks(Mockito.any(), Mockito.any())).thenReturn(projectTaskDO);
+        Mockito.when(nodeRepository.findByNodeIdIn(Mockito.any())).thenReturn(List.of(new NodeDO()));
+        slsCouldLogService.fetchLog(graphNodeCloudLogsRequest);
     }
 }

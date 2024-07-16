@@ -78,6 +78,7 @@ public class ProjectReadDataDO extends BaseAggregationRoot {
     @AllArgsConstructor
     @NoArgsConstructor
     @EqualsAndHashCode
+    @ToString
     public static class UPK implements Serializable {
         @Serial
         private static final long serialVersionUID = 291568296509217011L;

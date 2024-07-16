@@ -18,6 +18,8 @@ package org.secretflow.secretpad.web.init;
 import org.secretflow.secretpad.common.constant.SystemConstants;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
+import org.secretflow.secretpad.persistence.entity.ProjectGraphDO;
+import org.secretflow.secretpad.persistence.repository.ProjectGraphRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectRepository;
 import org.secretflow.secretpad.service.NodeService;
 
@@ -47,6 +49,7 @@ public class P2pDataInit implements CommandLineRunner {
 
     private final NodeService nodeService;
     private final ProjectRepository projectRepository;
+    private final ProjectGraphRepository projectGraphRepository;
 
     @Value("${secretpad.platform-type}")
     private String platformType;
@@ -68,6 +71,9 @@ public class P2pDataInit implements CommandLineRunner {
     public void init_ownerId_cache() {
         for (ProjectDO project : projectRepository.findAll()) {
             ownerId_cache.put(project.getProjectId(), project.getOwnerId());
+        }
+        for (ProjectGraphDO projectGraphDO : projectGraphRepository.findAll()) {
+            ownerId_cache.put(projectGraphDO.getProjectId() + "_" + projectGraphDO.getUpk().getGraphId(), projectGraphDO.getOwnerId());
         }
         log.info("ownerId_cache init {}", ownerId_cache);
     }

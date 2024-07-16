@@ -16,15 +16,13 @@
 
 package org.secretflow.secretpad.manager.integration.node;
 
-import org.secretflow.secretpad.manager.kuscia.grpc.impl.KusciaDomainDatasourceRpcImpl;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.secretflow.v1alpha1.common.Common;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataSourceServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -39,14 +37,7 @@ import static org.mockito.Mockito.when;
 public class KusciaDomainDatasourceRpcImplTest {
 
     @Mock
-    private DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub domainDataSourceServiceBlockingStub;
-
-    private KusciaDomainDatasourceRpcImpl kusciaDomainDatasourceRpc;
-
-    @BeforeEach
-    void setUp() {
-        kusciaDomainDatasourceRpc = new KusciaDomainDatasourceRpcImpl(domainDataSourceServiceBlockingStub);
-    }
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @Test
     void createDomainDataSourceSuccess() {
@@ -60,9 +51,9 @@ public class KusciaDomainDatasourceRpcImplTest {
                         .build())
                 .build();
 
-        when(domainDataSourceServiceBlockingStub.createDomainDataSource(request)).thenReturn(response);
+        when(kusciaGrpcClientAdapter.createDomainDataSource(request)).thenReturn(response);
 
-        Domaindatasource.CreateDomainDataSourceResponse actualResponse = kusciaDomainDatasourceRpc.createDomainDataSource(request);
+        Domaindatasource.CreateDomainDataSourceResponse actualResponse = kusciaGrpcClientAdapter.createDomainDataSource(request);
 
         assertNotNull(actualResponse);
         assertEquals(response.getStatus(), actualResponse.getStatus());
@@ -79,9 +70,9 @@ public class KusciaDomainDatasourceRpcImplTest {
                         .build())
                 .build();
 
-        when(domainDataSourceServiceBlockingStub.queryDomainDataSource(request)).thenReturn(response);
+        when(kusciaGrpcClientAdapter.queryDomainDataSource(request)).thenReturn(response);
 
-        Domaindatasource.QueryDomainDataSourceResponse actualResponse = kusciaDomainDatasourceRpc.queryDomainDataSource(request);
+        Domaindatasource.QueryDomainDataSourceResponse actualResponse = kusciaGrpcClientAdapter.queryDomainDataSource(request);
 
         assertNotNull(actualResponse);
         assertEquals(response.getStatus(), actualResponse.getStatus());
@@ -98,9 +89,9 @@ public class KusciaDomainDatasourceRpcImplTest {
                         .build())
                 .build();
 
-        when(domainDataSourceServiceBlockingStub.deleteDomainDataSource(request)).thenReturn(response);
+        when(kusciaGrpcClientAdapter.deleteDomainDataSource(request)).thenReturn(response);
 
-        Domaindatasource.DeleteDomainDataSourceResponse actualResponse = kusciaDomainDatasourceRpc.deleteDomainDataSource(request);
+        Domaindatasource.DeleteDomainDataSourceResponse actualResponse = kusciaGrpcClientAdapter.deleteDomainDataSource(request);
 
         assertNotNull(actualResponse);
         assertEquals(response.getStatus(), actualResponse.getStatus());
@@ -117,9 +108,9 @@ public class KusciaDomainDatasourceRpcImplTest {
                         .build())
                 .build();
 
-        when(domainDataSourceServiceBlockingStub.updateDomainDataSource(request)).thenReturn(response);
+        when(kusciaGrpcClientAdapter.updateDomainDataSource(request)).thenReturn(response);
 
-        Domaindatasource.UpdateDomainDataSourceResponse actualResponse = kusciaDomainDatasourceRpc.updateDomainDataSource(request);
+        Domaindatasource.UpdateDomainDataSourceResponse actualResponse = kusciaGrpcClientAdapter.updateDomainDataSource(request);
 
         assertNotNull(actualResponse);
         assertEquals(response.getStatus(), actualResponse.getStatus());
@@ -136,9 +127,9 @@ public class KusciaDomainDatasourceRpcImplTest {
                         .build())
                 .build();
 
-        when(domainDataSourceServiceBlockingStub.listDomainDataSource(request)).thenReturn(response);
+        when(kusciaGrpcClientAdapter.listDomainDataSource(request)).thenReturn(response);
 
-        Domaindatasource.ListDomainDataSourceResponse actualResponse = kusciaDomainDatasourceRpc.listDomainDataSource(request);
+        Domaindatasource.ListDomainDataSourceResponse actualResponse = kusciaGrpcClientAdapter.listDomainDataSource(request);
         assertNotNull(actualResponse);
         assertEquals(response.getStatus(), actualResponse.getStatus());
     }
@@ -154,9 +145,9 @@ public class KusciaDomainDatasourceRpcImplTest {
                         .build())
                 .build();
 
-        when(domainDataSourceServiceBlockingStub.batchQueryDomainDataSource(request)).thenReturn(response);
+        when(kusciaGrpcClientAdapter.batchQueryDomainDataSource(request)).thenReturn(response);
 
-        Domaindatasource.BatchQueryDomainDataSourceResponse actualResponse = kusciaDomainDatasourceRpc.batchQueryDomainDataSource(request);
+        Domaindatasource.BatchQueryDomainDataSourceResponse actualResponse = kusciaGrpcClientAdapter.batchQueryDomainDataSource(request);
 
         assertNotNull(actualResponse);
         assertEquals(response.getStatus(), actualResponse.getStatus());

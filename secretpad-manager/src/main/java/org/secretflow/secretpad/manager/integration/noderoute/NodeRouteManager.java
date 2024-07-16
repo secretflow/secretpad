@@ -21,6 +21,7 @@ import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.NodeRouteErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.model.CreateNodeRouteParam;
 import org.secretflow.secretpad.manager.integration.model.NodeRouteDTO;
 import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
@@ -33,7 +34,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.secretflow.v1alpha1.kusciaapi.DomainRoute;
-import org.secretflow.v1alpha1.kusciaapi.DomainRouteServiceGrpc;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,7 +57,7 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
     private final NodeRepository nodeRepository;
 
     private final AbstractNodeManager nodeManager;
-    private final DomainRouteServiceGrpc.DomainRouteServiceBlockingStub routeServiceBlockingStub;
+    private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @Value("${secretpad.platform-type}")
     private String platformType;
@@ -87,7 +87,7 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
                         .setDestination(dstNode.getNodeId()).setEndpoint(routeEndpoint).setSource(srcNode.getNodeId()).build();
         log.info("start create domain route!");
         DomainRoute.CreateDomainRouteResponse createDomainRouteResponse =
-                routeServiceBlockingStub.createDomainRoute(createDomainRouteRequest);
+                kusciaGrpcClientAdapter.createDomainRoute(createDomainRouteRequest);
         log.info("end create domain route!");
         if (createDomainRouteResponse.getStatus().getCode() != 0) {
             log.error("Create node router failed, code = {}, msg = {}", createDomainRouteResponse.getStatus().getCode(),
@@ -199,7 +199,7 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
     private DomainRoute.QueryDomainRouteResponse queryDomainRouter(String srcNodeId, String dstNodeId) {
         DomainRoute.QueryDomainRouteRequest queryDomainRouteRequest =
                 DomainRoute.QueryDomainRouteRequest.newBuilder().setSource(srcNodeId).setDestination(dstNodeId).build();
-        return routeServiceBlockingStub.queryDomainRoute(queryDomainRouteRequest);
+        return kusciaGrpcClientAdapter.queryDomainRoute(queryDomainRouteRequest);
     }
 
     private boolean checkDomainRouterExists(String srcNodeId, String dstNodeId) {
@@ -210,7 +210,7 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
     private void deleteDomainRouter(String srcNodeId, String dstNodeId) {
         DomainRoute.DeleteDomainRouteRequest request =
                 DomainRoute.DeleteDomainRouteRequest.newBuilder().setSource(srcNodeId).setDestination(dstNodeId).build();
-        routeServiceBlockingStub.deleteDomainRoute(request);
+        kusciaGrpcClientAdapter.deleteDomainRoute(request);
     }
 
     private void deleteDomainRouter(NodeRouteDO nodeRouteDO) {
@@ -219,7 +219,7 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
         String dstNodeId = getPlatformType().equals(PlatformTypeEnum.AUTONOMY) ? nodeRouteDO.getSrcNodeId() : nodeRouteDO.getDstNodeId();
         DomainRoute.DeleteDomainRouteRequest request =
                 DomainRoute.DeleteDomainRouteRequest.newBuilder().setSource(srcNodeId).setDestination(dstNodeId).build();
-        DomainRoute.DeleteDomainRouteResponse response = routeServiceBlockingStub.deleteDomainRoute(request);
+        DomainRoute.DeleteDomainRouteResponse response = kusciaGrpcClientAdapter.deleteDomainRoute(request);
         if (response.getStatus().getCode() == 11404) {
             nodeRouteRepository.deleteById(nodeRouteDO.getRouteId());
             nodeRouteRepository.flush();

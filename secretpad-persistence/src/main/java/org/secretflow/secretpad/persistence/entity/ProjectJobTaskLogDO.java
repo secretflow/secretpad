@@ -40,6 +40,7 @@ import java.util.Objects;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 public class ProjectJobTaskLogDO implements Serializable {
     @Serial
     private static final long serialVersionUID = 291568296509217011L;

@@ -18,6 +18,9 @@ package org.secretflow.secretpad.persistence.model;
 
 import lombok.*;
 
+import java.io.Serial;
+import java.io.Serializable;
+
 /**
  * @author chenmingliang
  * @date 2024/05/13
@@ -28,7 +31,10 @@ import lombok.*;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class PartyDataSource {
+public class PartyDataSource implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 5005877919773504643L;
 
     private String partyId;
 

@@ -21,6 +21,7 @@ import org.secretflow.secretpad.common.enums.ModelStatsEnum;
 import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.persistence.entity.FeatureTableDO;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.ProjectModelPackDO;
@@ -37,10 +38,8 @@ import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.common.Common;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.secretflow.v1alpha1.kusciaapi.Serving;
-import org.secretflow.v1alpha1.kusciaapi.ServingServiceGrpc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
@@ -61,13 +60,10 @@ public class ModelManagementControllerTest extends ControllerTest {
     private ProjectModelPackRepository projectModelPackRepository;
 
     @MockBean
-    private DomainDataServiceGrpc.DomainDataServiceBlockingStub dataStub;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @MockBean
     private FeatureTableRepository featureTableRepository;
-
-    @MockBean
-    private ServingServiceGrpc.ServingServiceBlockingStub servingServiceBlockingStub;
 
     @MockBean
     private ProjectModelServiceRepository projectModelServiceRepository;
@@ -91,7 +87,7 @@ public class ModelManagementControllerTest extends ControllerTest {
 
 
             Serving.QueryServingResponse queryServingResponse = Serving.QueryServingResponse.newBuilder().setData(Serving.QueryServingResponseData.newBuilder().setStatus(Serving.ServingStatusDetail.newBuilder().setState("Available")).build()).setStatus(Common.Status.newBuilder().setCode(0).build()).build();
-            Mockito.when(servingServiceBlockingStub.queryServing(Serving.QueryServingRequest.newBuilder().setServingId(projectModelPackDO.getServingId()).build())).thenReturn(queryServingResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryServing(Serving.QueryServingRequest.newBuilder().setServingId(projectModelPackDO.getServingId()).build())).thenReturn(queryServingResponse);
 
             ProjectModelServingDO projectModelServingDO = FakerUtils.fake(ProjectModelServingDO.class);
             Mockito.when(projectModelServiceRepository.findById(projectModelPackDO.getServingId())).thenReturn(Optional.of(projectModelServingDO));
@@ -118,7 +114,7 @@ public class ModelManagementControllerTest extends ControllerTest {
 
 
             Serving.QueryServingResponse queryServingResponse = Serving.QueryServingResponse.newBuilder().setData(Serving.QueryServingResponseData.newBuilder().setStatus(Serving.ServingStatusDetail.newBuilder().setState("Failed")).build()).setStatus(Common.Status.newBuilder().setCode(0).build()).build();
-            Mockito.when(servingServiceBlockingStub.queryServing(Serving.QueryServingRequest.newBuilder().setServingId(projectModelPackDO.getServingId()).build())).thenReturn(queryServingResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryServing(Serving.QueryServingRequest.newBuilder().setServingId(projectModelPackDO.getServingId()).build())).thenReturn(queryServingResponse);
 
             ProjectModelServingDO projectModelServingDO = FakerUtils.fake(ProjectModelServingDO.class);
             Mockito.when(projectModelServiceRepository.findById(projectModelPackDO.getServingId())).thenReturn(Optional.of(projectModelServingDO));
@@ -168,7 +164,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             Mockito.when(projectModelPackRepository.findById(queryModelDetailRequest.getModelId())).thenReturn(Optional.of(projectModelPackDO));
 
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(0).build()).setData(domainData).build();
-            Mockito.when(dataStub.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "modelPackDetail", QueryModelDetailRequest.class))
                     .content(JsonUtils.toJSONString(queryModelDetailRequest));
@@ -237,7 +233,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
             Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
-            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
@@ -246,7 +242,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
 
-            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            Mockito.when(kusciaGrpcClientAdapter.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
             return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
                     .content(JsonUtils.toJSONString(createModelServingRequest));
         });
@@ -270,7 +266,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
             Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
-            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
@@ -279,7 +275,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
 
-            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            Mockito.when(kusciaGrpcClientAdapter.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
             return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
                     .content(JsonUtils.toJSONString(createModelServingRequest));
         });
@@ -303,7 +299,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
             Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
-            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
@@ -312,7 +308,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
 
-            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            Mockito.when(kusciaGrpcClientAdapter.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
             return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
                     .content(JsonUtils.toJSONString(createModelServingRequest));
         }, SystemErrorCode.VALIDATION_ERROR);
@@ -336,7 +332,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
             Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
-            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
@@ -345,7 +341,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
 
-            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            Mockito.when(kusciaGrpcClientAdapter.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
             return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
                     .content(JsonUtils.toJSONString(createModelServingRequest));
         }, SystemErrorCode.VALIDATION_ERROR);
@@ -369,7 +365,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
             Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
-            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
@@ -378,7 +374,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
 
-            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            Mockito.when(kusciaGrpcClientAdapter.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
             return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
                     .content(JsonUtils.toJSONString(createModelServingRequest));
         });
@@ -402,7 +398,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
             Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
-            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
@@ -411,7 +407,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
 
-            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            Mockito.when(kusciaGrpcClientAdapter.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
             return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
                     .content(JsonUtils.toJSONString(createModelServingRequest));
         }, SystemErrorCode.VALIDATION_ERROR);
@@ -435,7 +431,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             String nodeId = createModelServingRequest.getPartyConfigs().get(0).getNodeId();
             Domaindata.DomainData domainData = Domaindata.DomainData.newBuilder().setRelativeUri("s").build();
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder().setData(domainData).build();
-            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder().setData(Domaindata.QueryDomainDataRequestData.newBuilder().setDomainId(nodeId).setDomaindataId(createModelServingRequest.getModelId()).build()).build())).thenReturn(queryDomainDataResponse);
             String featureTableId = createModelServingRequest.getPartyConfigs().get(0).getFeatureTableId();
 
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
@@ -444,7 +440,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             featureTableDO.setUpk(upk);
             Mockito.when(featureTableRepository.findById(upk)).thenReturn(Optional.of(featureTableDO));
 
-            Mockito.when(servingServiceBlockingStub.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
+            Mockito.when(kusciaGrpcClientAdapter.createServing(Mockito.any())).thenReturn(Serving.CreateServingResponse.newBuilder().build());
             return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "createServing", CreateModelServingRequest.class))
                     .content(JsonUtils.toJSONString(createModelServingRequest));
         }, SystemErrorCode.VALIDATION_ERROR);
@@ -626,7 +622,7 @@ public class ModelManagementControllerTest extends ControllerTest {
             projectModelPackDO.setModelStats(ModelStatsEnum.PUBLISHED.getCode());
             Mockito.when(projectModelServiceRepository.findById(deleteModelServingRequest.getServingId())).thenReturn(Optional.of(projectModelServingDO));
 
-            Mockito.when(servingServiceBlockingStub.deleteServing(Mockito.any())).thenReturn(Serving.DeleteServingResponse.newBuilder().build());
+            Mockito.when(kusciaGrpcClientAdapter.deleteServing(Mockito.any())).thenReturn(Serving.DeleteServingResponse.newBuilder().build());
 
             return MockMvcRequestBuilders.post(getMappingUrl(ModelManagementController.class, "deleteModelServing", DeleteModelServingRequest.class))
                     .content(JsonUtils.toJSONString(deleteModelServingRequest));

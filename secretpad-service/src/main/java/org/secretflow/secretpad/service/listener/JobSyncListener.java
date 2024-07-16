@@ -16,12 +16,15 @@
 
 package org.secretflow.secretpad.service.listener;
 
+import org.secretflow.secretpad.common.dto.UserContextDTO;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
@@ -41,6 +44,9 @@ public class JobSyncListener implements ApplicationListener<ApplicationReadyEven
     @Qualifier("jobManager")
     private AbstractJobManager jobManager;
 
+    @Value("${secretpad.node-id}")
+    private String nodeId;
+
     /**
      * Start to synchronize the job in ApiLite to secretPad
      *
@@ -48,6 +54,7 @@ public class JobSyncListener implements ApplicationListener<ApplicationReadyEven
      */
     @Override
     public void onApplicationEvent(@NotNull ApplicationReadyEvent event) {
+        UserContext.setBaseUser(UserContextDTO.builder().ownerId(nodeId).build());
         jobManager.startSync();
         log.info("jobManager startSync....");
     }

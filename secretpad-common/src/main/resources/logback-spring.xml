@@ -91,7 +91,7 @@
     </appender>
 
     <root>
-        <level value="DEBUG"/>
+        <level value="INFO"/>
         <appender-ref ref="rootFile"/>
         <appender-ref ref="errorFile"/>
     </root>
@@ -135,6 +135,10 @@
             <appender-ref ref="CONSOLE"/>
             <level value="WARN"/>
         </logger>
+        <logger name="org.secretflow.v1alpha1">
+            <appender-ref ref="CONSOLE"/>
+            <level value="INFO"/>
+        </logger>
     </springProfile>
 
     <springProfile name="test">
@@ -165,6 +169,10 @@
         <logger name="org.apache.tomcat.util.net.NioSelectorPool">
             <appender-ref ref="CONSOLE"/>
             <level value="WARN"/>
+        </logger>
+        <logger name="org.secretflow.v1alpha1">
+            <appender-ref ref="CONSOLE"/>
+            <level value="INFO"/>
         </logger>
     </springProfile>
 

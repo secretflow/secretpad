@@ -71,6 +71,8 @@
                         <exclude>org/secretflow/secretpad/service/auth/impl/**</exclude>
                         <exclude>org/secretflow/secretpad/common/enums/**</exclude>
                         <exclude>org/secretflow/v1alpha1/factory/**</exclude>
+                        <exclude>org/secretflow/secretpad/kuscia/v1alpha1/constant/**</exclude>
+                        <exclude>org/secretflow/secretpad/kuscia/v1alpha1/mock/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>

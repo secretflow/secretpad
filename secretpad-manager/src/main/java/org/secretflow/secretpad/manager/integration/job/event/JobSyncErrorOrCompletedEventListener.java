@@ -17,12 +17,15 @@
 package org.secretflow.secretpad.manager.integration.job.event;
 
 import org.secretflow.secretpad.common.constant.SystemConstants;
+import org.secretflow.secretpad.common.dto.UserContextDTO;
+import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
@@ -41,12 +44,15 @@ public class JobSyncErrorOrCompletedEventListener {
     @Qualifier("jobManager")
     private AbstractJobManager jobManager;
 
+    @Value("${secretpad.node-id}")
+    private String nodeId;
 
     @Resource
     private Environment env;
 
     @EventListener
     public void onJobSyncEvent(JobSyncErrorOrCompletedEvent event) {
+        UserContext.setBaseUser(UserContextDTO.builder().ownerId(nodeId).build());
         String[] activeProfiles = env.getActiveProfiles();
         if (!Arrays.asList(activeProfiles).contains(SystemConstants.TEST)) {
             jobManager.startSync();

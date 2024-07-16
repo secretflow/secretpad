@@ -28,6 +28,7 @@ import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.data.AbstractDataManager;
 import org.secretflow.secretpad.manager.integration.datasource.AbstractDatasourceManager;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
@@ -46,7 +47,6 @@ import org.secretflow.secretpad.service.DatatableService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.OssService;
 import org.secretflow.secretpad.service.decorator.awsoss.AwsOssConfig;
-import org.secretflow.secretpad.service.embedded.EmbeddedChannelService;
 import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
 import org.secretflow.secretpad.service.graph.converter.KusciaTeeDataManagerConverter;
 import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
@@ -61,7 +61,6 @@ import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.RateLimiter;
 import org.apache.commons.lang3.StringUtils;
 import org.javatuples.Pair;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataSourceServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.secretflow.v1alpha1.kusciaapi.Job;
 import org.slf4j.Logger;
@@ -78,6 +77,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 import static org.secretflow.secretpad.common.constant.Constants.PUSH_TO_TEE_JOB_ID;
 import static org.secretflow.secretpad.common.constant.DomainDatasourceConstants.DEFAULT_DATASOURCE;
 import static org.secretflow.secretpad.service.constant.TeeJobConstants.MOCK_VOTE_RESULT;
@@ -135,7 +135,7 @@ public class DatatableServiceImpl implements DatatableService {
     private ProjectFeatureTableRepository projectFeatureTableRepository;
 
     @Resource
-    private EmbeddedChannelService embeddedChannelService;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @Resource
     private EnvService envService;
@@ -236,11 +236,10 @@ public class DatatableServiceImpl implements DatatableService {
         if (DataSourceTypeEnum.OSS.name().equals(datatableOpt.get().getDatasourceType())) {
             Optional<DatasourceDTO> datasourceOpt;
             if (envService.isCenter() && envService.isEmbeddedNode(datatableOpt.get().getNodeId())) {
-                DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub datasourceServiceBlockingStub = embeddedChannelService.getDatasourceServiceBlockingStub(datatableOpt.get().getNodeId());
-                Domaindatasource.QueryDomainDataSourceResponse response = datasourceServiceBlockingStub.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
+                Domaindatasource.QueryDomainDataSourceResponse response = kusciaGrpcClientAdapter.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
                         .setDomainId(datatableOpt.get().getNodeId())
                         .setDatasourceId(datatableOpt.get().getDatasourceId())
-                        .build());
+                        .build(), datatableOpt.get().getNodeId());
                 datasourceOpt = Optional.of(DatasourceDTO.fromDomainDatasource(response.getData()));
             } else {
                 datasourceOpt = datasourceManager.findById(DatasourceDTO.NodeDatasourceId.from(datatableOpt.get().getNodeId(), datatableOpt.get().getDatasourceId()));

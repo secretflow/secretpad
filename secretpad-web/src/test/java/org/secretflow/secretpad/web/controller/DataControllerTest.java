@@ -20,7 +20,7 @@ import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstant
 import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
-import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainDatasourceRpc;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
 import org.secretflow.secretpad.persistence.entity.ProjectGraphDO;
 import org.secretflow.secretpad.persistence.entity.ProjectJobDO;
@@ -38,7 +38,6 @@ import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -51,6 +50,7 @@ import org.springframework.web.multipart.MultipartFile;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.Set;
+
 import static org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager.DATA_TYPE_TABLE;
 import static org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager.DATA_VENDOR_MANUAL;
 
@@ -66,9 +66,6 @@ import static org.secretflow.secretpad.manager.integration.datatable.AbstractDat
 class DataControllerTest extends ControllerTest {
 
     @MockBean
-    private DomainDataServiceGrpc.DomainDataServiceBlockingStub dataStub;
-
-    @MockBean
     private ProjectResultRepository projectResultRepository;
 
     @MockBean
@@ -80,7 +77,7 @@ class DataControllerTest extends ControllerTest {
     @MockBean
     private ProjectRepository projectRepository;
     @MockBean
-    private KusciaDomainDatasourceRpc kusciaDomainDatasourceRpc;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @BeforeEach
     public void setUp() {
@@ -90,7 +87,7 @@ class DataControllerTest extends ControllerTest {
                         .setDatasourceId("datasource")
                         .build())
                 .build();
-        Mockito.when(kusciaDomainDatasourceRpc.queryDomainDataSource(Mockito.any(Domaindatasource.QueryDomainDataSourceRequest.class))).thenReturn(response);
+        Mockito.when(kusciaGrpcClientAdapter.queryDomainDataSource(Mockito.any(Domaindatasource.QueryDomainDataSourceRequest.class))).thenReturn(response);
     }
 
     @Test
@@ -117,7 +114,7 @@ class DataControllerTest extends ControllerTest {
                             Domaindata.DomainDataList.newBuilder().build()
                     )
                     .build();
-            Mockito.when(dataStub.listDomainData(Domaindata.ListDomainDataRequest.newBuilder()
+            Mockito.when(kusciaGrpcClientAdapter.listDomainData(Domaindata.ListDomainDataRequest.newBuilder()
                             .setData(
                                     Domaindata.ListDomainDataRequestData.newBuilder()
                                             .setDomaindataType(DATA_TYPE_TABLE)
@@ -135,7 +132,7 @@ class DataControllerTest extends ControllerTest {
                                     .build()
                     )
                     .build();
-            Mockito.when(dataStub.createDomainData(Mockito.any()))
+            Mockito.when(kusciaGrpcClientAdapter.createDomainData(Mockito.any()))
                     .thenReturn(domainData);
 
             return MockMvcRequestBuilders.post(getMappingUrl(DataController.class, "createData", CreateDataRequest.class))
@@ -174,7 +171,7 @@ class DataControllerTest extends ControllerTest {
                                     .build()
                     )
                     .build();
-            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder()
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder()
                             .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
                                     .setDomainId(request.getNodeId())
                                     .setDomaindataId(request.getDomainDataId())
@@ -218,7 +215,7 @@ class DataControllerTest extends ControllerTest {
                                     .build()
                     )
                     .build();
-            Mockito.when(dataStub.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder()
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder()
                             .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
                                     .setDomainId(request.getNodeId())
                                     .setDomaindataId(request.getDomainDataId())

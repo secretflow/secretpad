@@ -23,6 +23,7 @@ import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
 import org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO;
@@ -42,7 +43,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.compress.utils.Sets;
 import org.apache.commons.lang3.ObjectUtils;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataSourceServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,7 +68,7 @@ public class ProjectGraphDomainDatasourceServiceImpl implements ProjectGraphDoma
 
     private final ProjectGraphDomainDatasourceRepository repository;
     private final NodeRepository nodeRepository;
-    private final DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub domainDataSourceServiceBlockingStub;
+    private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
     private final EnvServiceImpl envServiceImpl;
     private final ProjectNodeRepository projectNodeRepository;
     private final ProjectRepository projectRepository;
@@ -110,7 +110,7 @@ public class ProjectGraphDomainDatasourceServiceImpl implements ProjectGraphDoma
     }
 
     public Domaindatasource.ListDomainDataSourceResponse findDomainDataSourceByNodeId(String nodeId) {
-        return domainDataSourceServiceBlockingStub.listDomainDataSource(
+        return kusciaGrpcClientAdapter.listDomainDataSource(
                 Domaindatasource.ListDomainDataSourceRequest.newBuilder().setDomainId(nodeId).build()
         );
     }

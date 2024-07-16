@@ -46,7 +46,7 @@ import java.net.UnknownHostException;
  * @date 2023/3/23
  */
 @Slf4j
-@ComponentScan(basePackages = "org.secretflow.secretpad.*")
+@ComponentScan(basePackages = {"org.secretflow.secretpad.*"})
 @SpringBootApplication
 @EnableAsync
 @EnableCaching

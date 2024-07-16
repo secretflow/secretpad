@@ -93,6 +93,7 @@ function render_secretpad_config() {
 	export KUSCIA_API_ADDRESS=${KUSCIA_CTR}:8083
 	export KUSCIA_API_LITE_ALICE_ADDRESS=${KUSCIA_CTR_PREFIX}-lite-alice:8083
 	export KUSCIA_API_LITE_BOB_ADDRESS=${KUSCIA_CTR_PREFIX}-lite-bob:8083
+	export KUSCIA_API_LITE_TEE_ADDRESS=${KUSCIA_CTR_PREFIX}-lite-tee:8083
 	log "Render webserver config done"
 }
 

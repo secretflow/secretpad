@@ -18,11 +18,11 @@ package org.secretflow.secretpad.manager.integration.datatablegrant;
 
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.model.DatatableGrantDTO;
 
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataGrantServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindatagrant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,14 +46,11 @@ public class DatatableGrantManager extends AbstractDatatableGrantManager {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(DatatableGrantManager.class);
 
-    /**
-     * Domain data grant service blocking stub
-     */
-    private final DomainDataGrantServiceGrpc.DomainDataGrantServiceBlockingStub dataGrantStub;
+    private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @Override
     public DatatableGrantDTO queryDomainGrant(String nodeId, String domainDataGrantId) {
-        Domaindatagrant.QueryDomainDataGrantResponse response = dataGrantStub.queryDomainDataGrant(
+        Domaindatagrant.QueryDomainDataGrantResponse response = kusciaGrpcClientAdapter.queryDomainDataGrant(
                 Domaindatagrant.QueryDomainDataGrantRequest.newBuilder().setDomainId(nodeId).setDomaindatagrantId(domainDataGrantId).build());
         if (response.getStatus().getCode() != 0) {
             LOGGER.error("query domain grant from kusciaapi failed: code={}, message={}, nodeId={}, domainDataGrantId={}",
@@ -74,7 +71,7 @@ public class DatatableGrantManager extends AbstractDatatableGrantManager {
                     .setDomainId(nodeId).setDomaindatagrantId(domainDataGrantId);
             batchQueryDataList.add(builder.build());
         });
-        Domaindatagrant.BatchQueryDomainDataGrantResponse response = dataGrantStub.batchQueryDomainDataGrant(
+        Domaindatagrant.BatchQueryDomainDataGrantResponse response = kusciaGrpcClientAdapter.batchQueryDomainDataGrant(
                 Domaindatagrant.BatchQueryDomainDataGrantRequest.newBuilder().addAllData(batchQueryDataList).build());
         if (response.getStatus().getCode() != 0) {
             LOGGER.error("batch query domain grant from kusciaapi failed: code={}, message={}, nodeId={}, domainDataGrantIds={}",
@@ -91,7 +88,7 @@ public class DatatableGrantManager extends AbstractDatatableGrantManager {
         if (StringUtils.isNotBlank(domainDataGrantId)) {
             builder.setDomaindatagrantId(domainDataGrantId);
         }
-        Domaindatagrant.CreateDomainDataGrantResponse response = dataGrantStub.createDomainDataGrant(
+        Domaindatagrant.CreateDomainDataGrantResponse response = kusciaGrpcClientAdapter.createDomainDataGrant(
                 builder.build());
         if (response.getStatus().getCode() != 0) {
             LOGGER.error("create domain grant from kusciaapi failed: code={}, message={}, nodeId={}, grantNodeId={}, domainDataId={}",

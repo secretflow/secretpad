@@ -187,7 +187,7 @@ public abstract class AbstractAutonomyVoteTypeHandler extends AbstractVoteTypeHa
     private void verifyCert(String initiator, List<String> certChain) {
         String cert = nodeManager.getCert(initiator);
         String rootCert = certChain.get(1);
-        if (!rootCert.equals(cert)) {
+        if (!EncryptUtils.compareCertPubKey(cert, rootCert)) {
             LOGGER.info("cert does not match,verify fail");
             throw SecretpadException.of(SystemErrorCode.VERIFY_SIGNATURE_ERROR);
         }

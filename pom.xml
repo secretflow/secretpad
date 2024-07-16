@@ -62,7 +62,6 @@
         <springdoc-openapi-ui.version>2.1.0</springdoc-openapi-ui.version>
         <plugin.os.version>1.7.1</plugin.os.version>
         <plugin.protobuf.version>0.6.1</plugin.protobuf.version>
-        <plugin.maven.resources>3.3.1</plugin.maven.resources>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <logback.version>1.4.14</logback.version>
         <jacoco.version>0.8.11</jacoco.version>
@@ -71,6 +70,8 @@
         <sls-version>0.6.104</sls-version>
         <aws-sdk-java.version>1.12.725</aws-sdk-java.version>
         <client-version>4.5.13</client-version>
+        <maven-clean-plugin.version>3.2.0</maven-clean-plugin.version>
+        <build-helper-maven-plugin.version>3.0.0</build-helper-maven-plugin.version>
     </properties>
 
     <dependencyManagement>
@@ -298,7 +299,7 @@
                     <version>${plugin.protobuf.version}</version>
                     <configuration>
                         <clearOutputDirectory>false</clearOutputDirectory>
-                        <outputDirectory>src/main/java</outputDirectory>
+                        <outputDirectory>${project.build.directory}/generated-sources/protobuf/java</outputDirectory>
                         <protocArtifact>com.google.protobuf:protoc:${protobuf.version}:exe:${os.detected.classifier}
                         </protocArtifact>
                         <pluginId>grpc-java</pluginId>
@@ -324,6 +325,78 @@
                     <artifactId>maven-surefire-plugin</artifactId>
                     <version>${surefire.version}</version>
                 </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-clean-plugin</artifactId>
+                    <version>${maven-clean-plugin.version}</version>
+                    <configuration>
+                        <filesets>
+                            <fileset>
+                                <directory>${project.build.directory}/generated-sources/protobuf/java
+                                </directory>
+                                <includes>
+                                    <include>**/*</include>
+                                </includes>
+                                <followSymlinks>false</followSymlinks>
+                            </fileset>
+                            <fileset>
+                                <directory>${basedir}/db</directory>
+                                <excludes>
+                                    <exclude>.gitkeep</exclude>
+                                </excludes>
+                            </fileset>
+                            <fileset>
+                                <directory>${basedir}/config</directory>
+                                <excludes>
+                                    <exclude>components/</exclude>
+                                    <exclude>i18n/</exclude>
+                                    <exclude>schema/</exclude>
+                                    <exclude>schemamysql/</exclude>
+                                    <exclude>*.yaml</exclude>
+                                </excludes>
+                            </fileset>
+                            <fileset>
+                                <directory>${basedir}</directory>
+                                <includes>
+                                    <include>secretpad-service/**/com/</include>
+                                    <include>secretpad-service/**/org/secretflow/proto/</include>
+                                    <include>secretpad-api/client-java-kusciaapi/src/main/java/secretflow/</include>
+                                    <include>
+                                        secretpad-api/client-java-kusciaapi/src/main/java/org/secretflow/v1alpha1/common/
+                                    </include>
+                                    <include>
+                                        secretpad-api/client-java-kusciaapi/src/main/java/org/secretflow/v1alpha1/kusciaapi/
+                                    </include>
+                                    <include>secretpad-web/config/</include>
+                                    <include>secretpad-web/db/</include>
+                                    <include>**/*.crt</include>
+                                    <include>**/*.key</include>
+                                    <include>**/*.srl</include>
+                                    <include>**/*.csr</include>
+                                </includes>
+                            </fileset>
+                        </filesets>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>build-helper-maven-plugin</artifactId>
+                    <version>${build-helper-maven-plugin.version}</version>
+                    <executions>
+                        <execution>
+                            <id>add-source</id>
+                            <phase>generate-sources</phase>
+                            <goals>
+                                <goal>add-source</goal>
+                            </goals>
+                            <configuration>
+                                <sources>
+                                    <source>${project.build.directory}/generated-sources/protobuf/java</source>
+                                </sources>
+                            </configuration>
+                        </execution>
+                    </executions>
+                </plugin>
             </plugins>
         </pluginManagement>
         <plugins>
@@ -338,6 +411,10 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-clean-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

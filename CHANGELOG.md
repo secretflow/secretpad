@@ -14,12 +14,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `Fixed` for any bug fixes.
 `Security` in case of vulnerabilities.
 
+## [0.9.0b0] - 2024-07-15
+
+### Added
+
+- [Feature] Added support for tweedie training in SGD component.
+- [Feature] Multi-node architecture restructured with gRPC and logging/monitoring enhancements.
+
+### Changed
+
+- [Optimization] Single-sided operator support & proto protocol upgrade (dependent on Kuscia).
+
 ## [0.8.1b0] - 2024-06-28
+
 ### Fixed
 
--  [Fixed] Fix incompatible sql issue
-
-
+- [Fixed] Fix incompatible sql issue
 
 ## [0.8.0b0] - 2024-06-15
 
@@ -39,8 +49,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
--  [Fixed] Fix the version prompt on the edge node in center deploy mode.
--  [Fixed] Fix the official website documentation has some blank sections.
+- [Fixed] Fix the version prompt on the edge node in center deploy mode.
+- [Fixed] Fix the official website documentation has some blank sections.
 
 ## [0.7.0b0] - 2024-05-15
 
@@ -116,7 +126,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix graph edge del error
 - Fix tee result download error
 
-## [v0.4.1b0] - 2024-1-26
+## [v0.4.1b0] - 2024-01-26
 
 ### Added
 
@@ -130,7 +140,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Fix the missing SGD prediction tag column
 
-## [v0.4.0b0] - 2024-1-12
+## [v0.4.0b0] - 2024-01-12
 
 ### Added
 
@@ -165,7 +175,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Overall UI interface display optimization.
 
-## [0.2.0b0] - 2023-9-6
+## [0.2.0b0] - 2023-09-06
 
 ### Added
 

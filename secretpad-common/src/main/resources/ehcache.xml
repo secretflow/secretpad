@@ -6,6 +6,8 @@
         <jsr107:defaults enable-statistics="true"/>
     </service>
 
+    <persistence directory="config/ehcache-data"/>
+
     <cache alias="user_lock">
         <key-type>java.lang.String</key-type>
         <value-type>java.util.HashMap</value-type>

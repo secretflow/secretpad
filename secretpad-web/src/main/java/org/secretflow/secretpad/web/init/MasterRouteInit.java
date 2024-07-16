@@ -48,7 +48,7 @@ import static org.secretflow.secretpad.common.constant.Constants.KUSCIA_PROTOCOL
 @Order(Ordered.LOWEST_PRECEDENCE)
 public class MasterRouteInit implements CommandLineRunner {
 
-    @Value("${kusciaapi.protocol:mtls}")
+    @Value("${kusciaapi.protocol:tls}")
     private String protocol;
 
     @Autowired

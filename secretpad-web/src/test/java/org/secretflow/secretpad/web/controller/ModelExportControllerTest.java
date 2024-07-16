@@ -23,6 +23,7 @@ import org.secretflow.secretpad.common.errorcode.ModelExportErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UUIDUtils;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 import org.secretflow.secretpad.manager.integration.model.ModelExportDTO;
 import org.secretflow.secretpad.persistence.entity.*;
@@ -43,7 +44,6 @@ import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.common.Common;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataSourceServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.cache.Cache;
@@ -76,7 +76,7 @@ public class ModelExportControllerTest extends ControllerTest {
     @MockBean
     private ProjectGraphRepository graphRepository;
     @MockBean
-    private DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub domainDataSourceServiceBlockingStub;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     private static final String NODE_DEF = """
             {
@@ -243,7 +243,7 @@ public class ModelExportControllerTest extends ControllerTest {
     public void modelPartyPath() throws Exception {
         assertResponse(() -> {
             ModelPartyPathRequest request = FakerUtils.fake(ModelPartyPathRequest.class);
-            Mockito.when(domainDataSourceServiceBlockingStub.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
+            Mockito.when(kusciaGrpcClientAdapter.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
             Mockito.when(taskRepository.findLatestTasks(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(buildProjectTaskDO()));
             Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(buildNodeDO());
             return MockMvcRequestBuilders.post(getMappingUrl(ModelExportController.class, "modelPartyPath", ModelPartyPathRequest.class)).

@@ -140,6 +140,7 @@ public class VoteRequestDO extends BaseAggregationRoot<VoteRequestDO> {
     @Builder
     @AllArgsConstructor
     @NoArgsConstructor
+    @ToString
     public static class PartyVoteInfo implements Serializable {
         @Serial
         private static final long serialVersionUID = 291568296509217011L;
