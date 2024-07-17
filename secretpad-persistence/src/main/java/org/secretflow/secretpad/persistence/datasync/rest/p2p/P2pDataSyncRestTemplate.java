@@ -26,6 +26,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.ObjectUtils;
 
+import java.time.Duration;
+
 /**
  * @author yutu
  * @date 2023/12/10
@@ -47,7 +49,7 @@ public class P2pDataSyncRestTemplate extends DataSyncRestTemplate {
                             .tableName(event.getDType())
                             .action(event.getAction())
                             .data(event.getSource()).build();
-                    syncResp = p2pDataSyncRestService.sync(node, "secretpad." + node + ".svc", syncDataDTO.toJson());
+                    syncResp = p2pDataSyncRestService.sync(node, "secretpad." + node + ".svc", syncDataDTO.toJson()).block(Duration.ofSeconds(5));
                     if (0 == syncResp.getStatus().getCode()) {
                         onSuccess(node, event);
                     } else {

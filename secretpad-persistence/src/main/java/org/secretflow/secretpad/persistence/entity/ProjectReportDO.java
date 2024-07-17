@@ -39,6 +39,7 @@ import java.io.Serializable;
 @NoArgsConstructor
 @Setter
 @Getter
+@ToString
 @Table(name = "project_report")
 @SQLDelete(sql = "update project_report set is_deleted = 1 where project_id = ? and report_id = ?")
 @Where(clause = "is_deleted = 0")
@@ -62,6 +63,7 @@ public class ProjectReportDO extends BaseAggregationRoot {
     @AllArgsConstructor
     @NoArgsConstructor
     @EqualsAndHashCode
+    @ToString
     public static class UPK implements Serializable {
         @Serial
         private static final long serialVersionUID = 291568296509217011L;

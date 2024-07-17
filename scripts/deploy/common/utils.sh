@@ -390,7 +390,7 @@ function init_tee() {
 
 	log "create tee capsule deploy"
 	docker cp tee-capsule-manager-0.yaml "${KUSCIA_MASTER_CTR}":/home/kuscia
-	docker exec -it "${KUSCIA_MASTER_CTR}" kubectl delete -f tee-capsule-manager-0.yaml || true
+	docker exec -it "${KUSCIA_MASTER_CTR}" kubectl delete -f tee-capsule-manager-0.yaml >/dev/null 2>&1 || true
 	docker exec -it "${KUSCIA_MASTER_CTR}" kubectl apply -f tee-capsule-manager-0.yaml
 	local alice=${KUSCIA_CTR_PREFIX}-${PAD_LITE}-alice
 	local bob=${KUSCIA_CTR_PREFIX}-${PAD_LITE}-bob

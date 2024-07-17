@@ -147,7 +147,7 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
         String approvedAction = approvedActionStr.substring(VoteTypeEnum.PROJECT_CREATE.name().length() + 1);
         ProjectCallBackAction projectCallBackAction = JsonUtils.toJavaObject(approvedAction, ProjectCallBackAction.class);
         ProjectDO projectApprovalDO = projectCallBackAction.getProjectDO();
-        //创建project_node
+        //create project_node
         List<ProjectNodeDO> projectNodeDOS = projectCallBackAction.getProjectNodeDOS();
         Map<String, String> projectNodeMap = projectNodeDOS.stream().collect(Collectors.toMap(ProjectNodeDO::getNodeId, ProjectNodeDO::getProjectId));
         String platformNodeId = envService.getPlatformNodeId();

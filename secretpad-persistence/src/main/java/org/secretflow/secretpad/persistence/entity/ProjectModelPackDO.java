@@ -36,6 +36,7 @@ import java.util.List;
 @NoArgsConstructor
 @Setter
 @Getter
+@ToString
 @Table(name = "project_model_pack")
 @Where(clause = "is_deleted = 0")
 public class ProjectModelPackDO extends BaseAggregationRoot<ProjectModelPackDO> {

@@ -18,8 +18,10 @@ package org.secretflow.secretpad.web.init;
 
 import org.secretflow.secretpad.common.constant.DeployModeConstants;
 import org.secretflow.secretpad.common.constant.DomainConstants;
+import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
-import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainRpc;
+import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
 import org.secretflow.secretpad.persistence.repository.NodeRepository;
@@ -56,7 +58,7 @@ import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_P2P;
 public class TeeResourceInit implements CommandLineRunner {
     private final NodeRepository nodeRepository;
     private final NodeRouteRepository nodeRouteRepository;
-    private final KusciaDomainRpc kusciaDomainRpc;
+    private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
     private final DatatableService datatableService;
 
     @Value("${secretpad.deploy-mode}")
@@ -65,6 +67,8 @@ public class TeeResourceInit implements CommandLineRunner {
     private String platformType;
     @Value("${secretpad.tee:true}")
     private boolean teeEnabled;
+    @Value("${secretpad.node-id}")
+    private String nodeId;
 
     @Override
     public void run(String... args) throws Exception {
@@ -97,14 +101,15 @@ public class TeeResourceInit implements CommandLineRunner {
      */
     private void initTeeNodeInKuscia(NodeDO tee) {
         // Call the query domain name operation of Kuscia to query whether a TEE node exists
-        DomainOuterClass.QueryDomainResponse response = kusciaDomainRpc.queryDomainNoCheck(DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(tee.getNodeId()).build());
+        UserContext.setBaseUser(UserContextDTO.builder().ownerId(nodeId).build());
+        DomainOuterClass.QueryDomainResponse response = kusciaGrpcClientAdapter.queryDomain(DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(tee.getNodeId()).build());
         // If the TEE node does not exist, create ith the following parameters
         if (ObjectUtils.isNotEmpty(response) && response.getStatus().getCode() != 0) {
             DomainOuterClass.CreateDomainRequest request = DomainOuterClass.CreateDomainRequest.newBuilder().setDomainId(tee.getNodeId())
                     .setAuthCenter(DomainOuterClass.AuthCenter.newBuilder().setAuthenticationType("Token").setTokenGenMethod("UID-RSA-GEN").build())
                     .build();
             try {
-                kusciaDomainRpc.createDomain(request);
+                kusciaGrpcClientAdapter.createDomain(request);
             } catch (Exception e) {
                 log.warn("tee init error ", e);
             }

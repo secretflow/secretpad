@@ -80,12 +80,11 @@ public class SLSCloudLogServiceImpl implements ICloudLogService {
             //query latest job parties to fronted
             if (Objects.nonNull(request.getQueryParties()) && request.getQueryParties() && StringUtils.isNotBlank(request.getGraphNodeId())) {
                 taskDOOptional = taskRepository.findLatestTasks(request.getProjectId(), request.getGraphNodeId());
-                List<String> parties = taskDOOptional.get().getParties();
-                List<NodeSimpleInfo> simpleInfos = nodeRepository.findByNodeIdIn(parties).stream().map(e -> {
-                    NodeSimpleInfo build = NodeSimpleInfo.builder().nodeName(e.getName()).nodeId(e.getNodeId()).build();
-                    return build;
-                }).collect(Collectors.toList());
-                return CloudGraphNodeTaskLogsVO.buildQueryNodePartiesResult(simpleInfos);
+                if (taskDOOptional.isPresent()) {
+                    List<String> parties = taskDOOptional.get().getParties();
+                    List<NodeSimpleInfo> simpleInfos = nodeRepository.findByNodeIdIn(parties).stream().map(e -> NodeSimpleInfo.builder().nodeName(e.getName()).nodeId(e.getNodeId()).build()).collect(Collectors.toList());
+                    return CloudGraphNodeTaskLogsVO.buildQueryNodePartiesResult(simpleInfos);
+                }
             } else if (StringUtils.isBlank(request.getGraphNodeId()) && StringUtils.isBlank(request.getJobId()) && StringUtils.isBlank(request.getTaskId())) {
                 //query SLS service ready status
                 return CloudGraphNodeTaskLogsVO.buildReadyResult();

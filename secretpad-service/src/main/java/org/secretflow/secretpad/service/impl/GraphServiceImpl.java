@@ -24,12 +24,12 @@ import org.secretflow.secretpad.common.errorcode.JobErrorCode;
 import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.*;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.data.DataManager;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
 import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
-import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainDatasourceRpc;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.GraphEdgeDO;
 import org.secretflow.secretpad.persistence.model.GraphJobStatus;
@@ -72,6 +72,7 @@ import org.springframework.util.CollectionUtils;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+
 import static org.secretflow.secretpad.common.constant.ComponentConstants.BINNING_MODIFICATIONS_CODENAME;
 import static org.secretflow.secretpad.common.constant.ComponentConstants.MODEL_PARAM_MODIFICATIONS_CODENAME;
 import static org.secretflow.secretpad.service.constant.ComponentConstants.READ_DATA_DATATABLE;
@@ -149,7 +150,7 @@ public class GraphServiceImpl implements GraphService {
     private DataManager dataManager;
 
     @Resource
-    private KusciaDomainDatasourceRpc kusciaDomainDatasourceRpc;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
 
     @Value("${tee.domain-id:tee}")
@@ -404,7 +405,7 @@ public class GraphServiceImpl implements GraphService {
                         String content;
                         Domaindata.DomainData domainData = dataManager.queryDomainData(nodeId, refId);
                         String datasourceId = domainData.getDatasourceId();
-                        Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaDomainDatasourceRpc.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
+                        Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaGrpcClientAdapter.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
                                 .setDomainId(nodeId).setDatasourceId(datasourceId).build());
                         String datasourceType = DataSourceTypeEnum.kuscia2platform(queryDomainDataSourceResponse.getData().getType());
                         switch (resultKind) {
@@ -781,9 +782,10 @@ public class GraphServiceImpl implements GraphService {
     public void verifyNodeAndRouteHealthy(Set<String> parties) {
         log.info("before graph run healthy check: {}", parties);
         if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))) {
-            if (!parties.contains(localNodeId)) {
+            // now allow The Initiator Not parties
+            /*if (!parties.contains(localNodeId)) {
                 throw SecretpadException.of(GraphErrorCode.GRAPH_JOB_INVALID, "parties must contains " + localNodeId);
-            }
+            }*/
             for (String party : parties) {
                 if (StringUtils.equals(party, localNodeId)) {
                     continue;

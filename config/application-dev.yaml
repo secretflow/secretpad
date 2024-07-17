@@ -19,12 +19,31 @@ secretpad:
   logs:
     path: ../log
 
-kusciaapi:
-  protocol: ${KUSCIA_PROTOCOL:notls} # notls tls mtls  install.sh -P
-  address: 127.0.0.1:18083 # install.sh -g kuscia-api-grpc (kuscia-master) (used in autonomy or master or edge mode)
+kuscia:
+  nodes:
+    - domainId: ${NODE_ID:kuscia-system}
+      mode: master
+      host: ${KUSCIA_API_ADDRESS:root-kuscia-master}
+      port: ${KUSCIA_API_PORT:8083}
+      protocol: ${KUSCIA_PROTOCOL:tls}
+      cert-file: config/certs/client.crt
+      key-file: config/certs/client.pem
+      token: config/certs/token
 
-kusciaapi-lite-alice:
-  address: 127.0.0.1:28083 # install.sh -g kuscia-api-grpc (kuscia-lite-alice) (Only used in master mode default node alice)
+    - domainId: alice
+      mode: lite
+      host: ${KUSCIA_API_LITE_ALICE_ADDRESS:root-kuscia-lite-alice}
+      port: ${KUSCIA_API_PORT:8083}
+      protocol: ${KUSCIA_PROTOCOL:tls}
+      cert-file: config/certs/alice/client.crt
+      key-file: config/certs/alice/client.pem
+      token: config/certs/alice/token
 
-kusciaapi-lite-bob:
-  address: 127.0.0.1:38083 # install.sh -g kuscia-api-grpc (kuscia-lite-bob) (Only used in master mode default node bob)
+    - domainId: bob
+      mode: lite
+      host: ${KUSCIA_API_LITE_BOB_ADDRESS:root-kuscia-lite-bob}
+      port: ${KUSCIA_API_PORT:8083}
+      protocol: ${KUSCIA_PROTOCOL:tls}
+      cert-file: config/certs/bob/client.crt
+      key-file: config/certs/bob/client.pem
+      token: config/certs/bob/token

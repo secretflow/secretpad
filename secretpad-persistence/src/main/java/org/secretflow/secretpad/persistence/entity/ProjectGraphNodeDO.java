@@ -39,6 +39,7 @@ import java.util.Objects;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 @Entity
 @Table(name = "project_graph_node")
 public class ProjectGraphNodeDO extends BaseAggregationRoot<ProjectGraphNodeDO> {
@@ -100,6 +101,7 @@ public class ProjectGraphNodeDO extends BaseAggregationRoot<ProjectGraphNodeDO> 
     @Setter
     @AllArgsConstructor
     @NoArgsConstructor
+    @ToString
     public static class UPK implements Serializable {
         @Serial
         private static final long serialVersionUID = 291568296509217011L;

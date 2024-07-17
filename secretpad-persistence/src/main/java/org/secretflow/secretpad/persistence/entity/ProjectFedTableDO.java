@@ -40,6 +40,7 @@ import java.util.List;
 @NoArgsConstructor
 @Setter
 @Getter
+@ToString
 @Table(name = "project_fed_table")
 @SQLDelete(sql = "update project_fed_table set is_deleted = 1 where fed_table_id = ? and project_id = ?")
 @Where(clause = "is_deleted = 0")
@@ -68,6 +69,7 @@ public class ProjectFedTableDO implements Serializable {
     @AllArgsConstructor
     @NoArgsConstructor
     @EqualsAndHashCode
+    @ToString
     public static class UPK implements Serializable {
         @Serial
         private static final long serialVersionUID = 291568296509217011L;

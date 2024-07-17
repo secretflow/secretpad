@@ -25,9 +25,9 @@ import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.*;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.data.DataManager;
 import org.secretflow.secretpad.manager.integration.model.PartyDTO;
-import org.secretflow.secretpad.manager.kuscia.grpc.KusciaServingRpc;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.PartyDataSource;
 import org.secretflow.secretpad.persistence.repository.*;
@@ -72,6 +72,7 @@ import secretflow.serving.kuscia.ServingConfig;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
+
 import static org.secretflow.secretpad.common.constant.ServingConstants.DEFAULT_MEMORY_UNIT;
 import static org.secretflow.secretpad.service.util.JobUtils.parseMemorySize;
 
@@ -96,7 +97,7 @@ public class ModelManagementServiceImpl implements ModelManagementService {
     private NodeRepository nodeRepository;
 
     @Resource
-    private KusciaServingRpc kusciaServingRpc;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @Resource
     private ProjectModelServiceRepository projectModelServiceRepository;
@@ -363,7 +364,7 @@ public class ModelManagementServiceImpl implements ModelManagementService {
                     .setServingInputConfig(servingInputConfig)
                     .addAllParties(filteredServingParties)
                     .build();
-            kusciaServingRpc.createServing(createServingRequest);
+            kusciaGrpcClientAdapter.createServing(createServingRequest);
             ProjectModelServingDO projectModelServingDO = ProjectModelServingDO.builder()
                     .servingId(servingId)
                     .projectId(projectId)
@@ -459,7 +460,7 @@ public class ModelManagementServiceImpl implements ModelManagementService {
         }
         ProjectModelPackDO projectModelPackDO = optionalProjectModelPackDO.get();
 
-        kusciaServingRpc.deleteServing(Serving.DeleteServingRequest.newBuilder().setServingId(servingId).build());
+        kusciaGrpcClientAdapter.deleteServing(Serving.DeleteServingRequest.newBuilder().setServingId(servingId).build());
         projectModelPackDO.setModelStats(ModelStatsEnum.OFFLINE.getCode());
         projectModelPackRepository.save(projectModelPackDO);
     }
@@ -502,7 +503,7 @@ public class ModelManagementServiceImpl implements ModelManagementService {
         if (StringUtils.isNotBlank(servingId) && ModelStatsEnum.PUBLISHING.name().equals(modelStats)) {
             Serving.QueryServingResponse queryServingResponse = null;
             try {
-                queryServingResponse = kusciaServingRpc.queryServing(Serving.QueryServingRequest.newBuilder().setServingId(servingId).build());
+                queryServingResponse = kusciaGrpcClientAdapter.queryServing(Serving.QueryServingRequest.newBuilder().setServingId(servingId).build());
             } catch (Exception e) {
                 log.error("queryServing error!", e);
             }

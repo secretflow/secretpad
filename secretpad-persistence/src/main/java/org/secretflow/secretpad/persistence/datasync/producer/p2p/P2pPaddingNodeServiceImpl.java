@@ -96,6 +96,7 @@ public class P2pPaddingNodeServiceImpl implements PaddingNodeService {
                     if (voteInviteDO.getUpk().getVotePartitionID().equals(partyVoteInfo.getNodeId())) {
                         log.debug("node -> {} compensate action {}", partyVoteInfo.getNodeId(), voteInviteDO.getAction());
                         partyVoteInfo.setAction(voteInviteDO.getAction());
+                        partyVoteInfo.setReason(voteInviteDO.getReason());
                         voteRequestDO.setGmtModified(LocalDateTime.now());
                         voteRequestRepository.save(voteRequestDO);
                         break;

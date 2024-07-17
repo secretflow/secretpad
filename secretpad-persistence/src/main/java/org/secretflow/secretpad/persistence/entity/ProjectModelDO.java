@@ -40,6 +40,7 @@ import java.util.Objects;
 @NoArgsConstructor
 @Setter
 @Getter
+@ToString
 @Table(name = "project_model")
 @SQLDelete(sql = "update project_model set is_deleted = 1 where model_id = ? and project_id = ?")
 @Where(clause = "is_deleted = 0")
@@ -57,6 +58,7 @@ public class ProjectModelDO extends BaseAggregationRoot {
     @Setter
     @AllArgsConstructor
     @NoArgsConstructor
+    @ToString
     public static class UPK implements Serializable {
         @Serial
         private static final long serialVersionUID = 6840537796122754350L;

@@ -21,7 +21,6 @@ package org.secretflow.secretpad.service.graph.adapter.impl;
 import org.secretflow.secretpad.common.constant.ComponentConstants;
 import org.secretflow.secretpad.persistence.entity.ProjectReadDataDO;
 import org.secretflow.secretpad.persistence.repository.ProjectReadDtaRepository;
-import org.secretflow.secretpad.service.ComponentService;
 import org.secretflow.secretpad.service.graph.adapter.NodeDefAdapter;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
@@ -77,7 +76,7 @@ public class ModelParamModificationsAdapter implements NodeDefAdapter {
     }
 
     private Pipeline.NodeDef convertToRead(Pipeline.NodeDef nodeDef, GraphNodeInfo graphNodeInfo, List<String> outputs, ProjectJob.JobTask task) {
-        ComponentDef componentDef = ComponentService.SF_HIDE_COMPONENTS.get(ComponentConstants.IO_READ_DATA);
+        ComponentDef componentDef = buildIoReadData();
         Pipeline.NodeDef build = Pipeline.NodeDef.newBuilder()
                 .setDomain(componentDef.getDomain())
                 .setName(componentDef.getName())
@@ -97,7 +96,7 @@ public class ModelParamModificationsAdapter implements NodeDefAdapter {
             ProjectJob.JobTask task,
             List<String> outputs
     ) {
-        ComponentDef componentDef = ComponentService.SF_HIDE_COMPONENTS.get(ComponentConstants.IO_WRITE_DATA);
+        ComponentDef componentDef = buildIoWriteData();
         Pipeline.NodeDef build = Pipeline.NodeDef.newBuilder()
                 .mergeFrom(nodeDef)
                 .setDomain(componentDef.getDomain())
@@ -159,7 +158,7 @@ public class ModelParamModificationsAdapter implements NodeDefAdapter {
             ProjectJob.JobTask task,
             List<String> outputs
     ) {
-        ComponentDef componentDef = ComponentService.SF_HIDE_COMPONENTS.get(ComponentConstants.IO_IDENTITY);
+        ComponentDef componentDef = buildIoIdentity();
         Pipeline.NodeDef build = Pipeline.NodeDef.newBuilder()
                 .setDomain(componentDef.getDomain())
                 .setName(componentDef.getName())

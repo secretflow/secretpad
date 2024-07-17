@@ -20,6 +20,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.MappedSuperclass;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.ToString;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.domain.AbstractAggregateRoot;
@@ -33,6 +34,7 @@ import java.time.LocalDateTime;
 @Getter
 @Setter
 @MappedSuperclass
+@ToString
 public class SuperBaseAggregationRoot<A extends AbstractAggregateRoot<A>> extends AbstractAggregateRoot<A> {
     /**
      * The id of the database is automatically added

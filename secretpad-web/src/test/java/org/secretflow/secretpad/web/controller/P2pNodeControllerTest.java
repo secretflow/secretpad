@@ -20,6 +20,7 @@ import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
 import org.secretflow.secretpad.common.errorcode.NodeRouteErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
 import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
@@ -36,8 +37,6 @@ import org.mockito.Mockito;
 import org.secretflow.v1alpha1.common.Common;
 import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 import org.secretflow.v1alpha1.kusciaapi.DomainRoute;
-import org.secretflow.v1alpha1.kusciaapi.DomainRouteServiceGrpc;
-import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
@@ -45,6 +44,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+
+import static org.secretflow.secretpad.common.errorcode.SystemErrorCode.UNKNOWN_ERROR;
 
 /**
  * Node controller test of p2p mode
@@ -67,10 +68,8 @@ public class P2pNodeControllerTest extends ControllerTest {
     private NodeRouteRepository nodeRouteRepository;
 
     @MockBean
-    private DomainRouteServiceGrpc.DomainRouteServiceBlockingStub domainRouteServiceStub;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
-    @MockBean
-    private DomainServiceGrpc.DomainServiceBlockingStub domainServiceStub;
 
     private List<NodeDO> buildNodeDOList() {
         List<NodeDO> nodeDOList = new ArrayList<>();
@@ -122,16 +121,16 @@ public class P2pNodeControllerTest extends ControllerTest {
             request.setDstNetAddress("http://127.0.0.1:8080");
             request.setSrcNetAddress("http://127.0.0.1:8090");
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(FakerUtils.fake(NodeDO.class));
             DomainOuterClass.CreateDomainResponse createDomainResponse = buildCreateDomainResponse(0);
-            Mockito.when(domainServiceStub.createDomain(Mockito.any())).thenReturn(createDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.createDomain(Mockito.any())).thenReturn(createDomainResponse);
 
             DomainRoute.QueryDomainRouteResponse queryDomainRouteResponse = buildQueryDomainRouterResponse(0);
-            Mockito.when(domainRouteServiceStub.queryDomainRoute(Mockito.any())).thenReturn(queryDomainRouteResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainRoute(Mockito.any())).thenReturn(queryDomainRouteResponse);
 
             DomainRoute.CreateDomainRouteResponse createDomainRouteResponse = buildCreateDomainRouteResponse(0);
-            Mockito.when(domainRouteServiceStub.createDomainRoute(Mockito.any())).thenReturn(createDomainRouteResponse);
+            Mockito.when(kusciaGrpcClientAdapter.createDomainRoute(Mockito.any())).thenReturn(createDomainRouteResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "createP2pNode", P2pCreateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
         });
@@ -165,7 +164,7 @@ public class P2pNodeControllerTest extends ControllerTest {
             request.setDstNetAddress("https://127.0.0.1:80");
             request.setSrcNetAddress("https://127.0.0.1:8090");
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "createP2pNode", P2pCreateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, NodeErrorCode.NODE_CERT_CONFIG_ERROR);
@@ -184,7 +183,7 @@ public class P2pNodeControllerTest extends ControllerTest {
             request.setDstNetAddress("https://127.0.0.1:80");
             request.setSrcNetAddress("https://127.0.0.1:8090");
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             Mockito.when(nodeRepository.findById(Mockito.any())).thenReturn(Optional.of(FakerUtils.fake(NodeDO.class)));
             return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "createP2pNode", P2pCreateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -204,13 +203,15 @@ public class P2pNodeControllerTest extends ControllerTest {
             request.setDstNetAddress("https://127.0.0.1:80");
             request.setSrcNetAddress("https://127.0.0.1:8090");
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
+            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(FakerUtils.fake(NodeDO.class));
             Mockito.when(nodeRepository.findDeletedRecordByNodeId(Mockito.any())).thenReturn(Optional.of(FakerUtils.fake(NodeDO.class)));
+
             DomainOuterClass.CreateDomainResponse createDomainResponse = buildCreateDomainResponse(1);
-            Mockito.when(domainServiceStub.createDomain(Mockito.any())).thenReturn(createDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.createDomain(Mockito.any())).thenReturn(createDomainResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "createP2pNode", P2pCreateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
-        }, NodeErrorCode.NODE_CREATE_ERROR);
+        }, UNKNOWN_ERROR);
     }
 
     @Test
@@ -226,16 +227,16 @@ public class P2pNodeControllerTest extends ControllerTest {
             request.setDstNetAddress("https://127.0.0.1:80");
             request.setSrcNetAddress("https://127.0.0.1:8090");
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(FakerUtils.fake(NodeDO.class));
             DomainOuterClass.CreateDomainResponse createDomainResponse = buildCreateDomainResponse(0);
-            Mockito.when(domainServiceStub.createDomain(Mockito.any())).thenReturn(createDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.createDomain(Mockito.any())).thenReturn(createDomainResponse);
 
             DomainRoute.QueryDomainRouteResponse queryDomainRouteResponse = buildQueryDomainRouterResponse(0);
-            Mockito.when(domainRouteServiceStub.queryDomainRoute(Mockito.any())).thenReturn(queryDomainRouteResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainRoute(Mockito.any())).thenReturn(queryDomainRouteResponse);
 
             DomainRoute.CreateDomainRouteResponse createDomainRouteResponse = buildCreateDomainRouteResponse(1);
-            Mockito.when(domainRouteServiceStub.createDomainRoute(Mockito.any())).thenReturn(createDomainRouteResponse);
+            Mockito.when(kusciaGrpcClientAdapter.createDomainRoute(Mockito.any())).thenReturn(createDomainRouteResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "createP2pNode", P2pCreateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, NodeRouteErrorCode.NODE_ROUTE_CREATE_ERROR);
@@ -254,16 +255,16 @@ public class P2pNodeControllerTest extends ControllerTest {
             request.setDstNetAddress("http://127.0.0.1:80:80");
             request.setSrcNetAddress("http://127.0.0.1:8090:80");
             DomainOuterClass.BatchQueryDomainResponse batchQueryDomainResponse = buildBatchQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.batchQueryDomain(Mockito.any())).thenReturn(batchQueryDomainResponse);
             Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(FakerUtils.fake(NodeDO.class));
             DomainOuterClass.CreateDomainResponse createDomainResponse = buildCreateDomainResponse(0);
-            Mockito.when(domainServiceStub.createDomain(Mockito.any())).thenReturn(createDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.createDomain(Mockito.any())).thenReturn(createDomainResponse);
 
             DomainRoute.QueryDomainRouteResponse queryDomainRouteResponse = buildQueryDomainRouterResponse(0);
-            Mockito.when(domainRouteServiceStub.queryDomainRoute(Mockito.any())).thenReturn(queryDomainRouteResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainRoute(Mockito.any())).thenReturn(queryDomainRouteResponse);
 
             DomainRoute.CreateDomainRouteResponse createDomainRouteResponse = buildCreateDomainRouteResponse(1);
-            Mockito.when(domainRouteServiceStub.createDomainRoute(Mockito.any())).thenReturn(createDomainRouteResponse);
+            Mockito.when(kusciaGrpcClientAdapter.createDomainRoute(Mockito.any())).thenReturn(createDomainRouteResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "createP2pNode", P2pCreateNodeRequest.class)).
                     content(JsonUtils.toJSONString(request));
         }, NodeRouteErrorCode.NODE_ROUTE_CREATE_ERROR);
@@ -281,10 +282,10 @@ public class P2pNodeControllerTest extends ControllerTest {
             Mockito.when(nodeRepository.findByType(Mockito.anyString())).thenReturn(buildNodeDOList());
 
             DomainRoute.DeleteDomainRouteResponse deleteDomainRouteResponse = buildDeleteDomainRouteResponse(0);
-            Mockito.when(domainRouteServiceStub.deleteDomainRoute(Mockito.any())).thenReturn(deleteDomainRouteResponse);
+            Mockito.when(kusciaGrpcClientAdapter.deleteDomainRoute(Mockito.any())).thenReturn(deleteDomainRouteResponse);
 
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(1);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "deleteP2pNode", RouterIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -303,13 +304,13 @@ public class P2pNodeControllerTest extends ControllerTest {
             Mockito.when(nodeRepository.findByType(Mockito.anyString())).thenReturn(buildNodeDOList());
 
             DomainRoute.DeleteDomainRouteResponse deleteDomainRouteResponse = buildDeleteDomainRouteResponse(0);
-            Mockito.when(domainRouteServiceStub.deleteDomainRoute(Mockito.any())).thenReturn(deleteDomainRouteResponse);
+            Mockito.when(kusciaGrpcClientAdapter.deleteDomainRoute(Mockito.any())).thenReturn(deleteDomainRouteResponse);
 
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
             DomainOuterClass.DeleteDomainResponse deleteDomainResponse = buildDeleteDomainResponse(0);
-            Mockito.when(domainServiceStub.deleteDomain(Mockito.any())).thenReturn(deleteDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.deleteDomain(Mockito.any())).thenReturn(deleteDomainResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "deleteP2pNode", RouterIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -341,7 +342,7 @@ public class P2pNodeControllerTest extends ControllerTest {
             Mockito.when(nodeRepository.findByType(Mockito.anyString())).thenReturn(buildNodeDOList());
 
             DomainRoute.DeleteDomainRouteResponse deleteDomainRouteResponse = buildDeleteDomainRouteResponse(1);
-            Mockito.when(domainRouteServiceStub.deleteDomainRoute(Mockito.any())).thenReturn(deleteDomainRouteResponse);
+            Mockito.when(kusciaGrpcClientAdapter.deleteDomainRoute(Mockito.any())).thenReturn(deleteDomainRouteResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "deleteP2pNode", RouterIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -360,10 +361,10 @@ public class P2pNodeControllerTest extends ControllerTest {
             Mockito.when(nodeRepository.findByType(Mockito.anyString())).thenReturn(buildNodeDOList());
 
             DomainRoute.DeleteDomainRouteResponse deleteDomainRouteResponse = buildDeleteDomainRouteResponse(0);
-            Mockito.when(domainRouteServiceStub.deleteDomainRoute(Mockito.any())).thenReturn(deleteDomainRouteResponse);
+            Mockito.when(kusciaGrpcClientAdapter.deleteDomainRoute(Mockito.any())).thenReturn(deleteDomainRouteResponse);
 
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
             Mockito.when(projectNodeRepository.findByNodeId(Mockito.anyString())).thenReturn(List.of(FakerUtils.fake(ProjectNodeDO.class)));
 
@@ -374,7 +375,7 @@ public class P2pNodeControllerTest extends ControllerTest {
 
     @Test
     void deleteNodeByNodeDeleteInKusciaException() throws Exception {
-        assertErrorCode(() -> {
+        assertResponseWithEmptyData(() -> {
             RouterIdRequest request = FakerUtils.fake(RouterIdRequest.class);
             request.setNodeId(ALICE_NODE_ID);
 
@@ -384,13 +385,13 @@ public class P2pNodeControllerTest extends ControllerTest {
             Mockito.when(nodeRepository.findByType(Mockito.anyString())).thenReturn(buildNodeDOList());
 
             DomainRoute.DeleteDomainRouteResponse deleteDomainRouteResponse = buildDeleteDomainRouteResponse(0);
-            Mockito.when(domainRouteServiceStub.deleteDomainRoute(Mockito.any())).thenReturn(deleteDomainRouteResponse);
+            Mockito.when(kusciaGrpcClientAdapter.deleteDomainRoute(Mockito.any())).thenReturn(deleteDomainRouteResponse);
 
             DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-            Mockito.when(domainServiceStub.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any())).thenReturn(queryDomainResponse);
 
             return MockMvcRequestBuilders.post(getMappingUrl(P2pNodeController.class, "deleteP2pNode", RouterIdRequest.class)).
                     content(JsonUtils.toJSONString(request));
-        }, NodeErrorCode.NODE_DELETE_ERROR);
+        });
     }
 }

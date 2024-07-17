@@ -29,6 +29,7 @@ import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.datatablegrant.AbstractDatatableGrantManager;
 import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
@@ -75,7 +76,6 @@ import org.apache.commons.compress.utils.Sets;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.sql.Update;
 import org.secretflow.v1alpha1.kusciaapi.Job;
-import org.secretflow.v1alpha1.kusciaapi.JobServiceGrpc;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -91,6 +91,7 @@ import org.springframework.util.ObjectUtils;
 import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
+
 import static org.secretflow.secretpad.common.constant.DomainDatasourceConstants.DEFAULT_DATASOURCE;
 import static org.secretflow.secretpad.service.constant.Constants.TEE_PROJECT_MODE;
 import static org.secretflow.secretpad.service.constant.DomainDataConstants.SYSTEM_DOMAIN_ID;
@@ -162,7 +163,7 @@ public class ProjectServiceImpl implements ProjectService {
     private TeeNodeDatatableManagementRepository teeNodeDatatableManagementRepository;
 
     @Autowired
-    private JobServiceGrpc.JobServiceBlockingStub jobStub;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @Autowired
     private DatatableService datatableService;
@@ -592,7 +593,7 @@ public class ProjectServiceImpl implements ProjectService {
         }
         job.stop();
         // TODO: we don't check the status, because of we can't know error reason. For job not found, should be treat as success now.
-        jobStub.stopJob(Job.StopJobRequest.newBuilder().setJobId(job.getUpk().getJobId()).build());
+        kusciaGrpcClientAdapter.stopJob(Job.StopJobRequest.newBuilder().setJobId(job.getUpk().getJobId()).build());
         projectJobRepository.save(job);
     }
 

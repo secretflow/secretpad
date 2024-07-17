@@ -26,9 +26,8 @@ import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.model.*;
-import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainDatasourceRpc;
-import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainRpc;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.repository.*;
 
@@ -37,7 +36,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
-import org.secretflow.v1alpha1.kusciaapi.*;
+import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
+import org.secretflow.v1alpha1.kusciaapi.Domaindata;
+import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -71,12 +72,9 @@ public class NodeManager extends AbstractNodeManager {
     private final ProjectJobRepository projectJobRepository;
     private final ProjectNodeRepository projectNodeRepository;
     private final ProjectApprovalConfigRepository projectApprovalConfigRepository;
-    private final DomainDataServiceGrpc.DomainDataServiceBlockingStub domainDataStub;
 
-    private final DomainServiceGrpc.DomainServiceBlockingStub domainServiceBlockingStub;
-    private final KusciaDomainRpc kusciaDomainRpc;
+    private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
-    private final KusciaDomainDatasourceRpc kusciaDomainDatasourceRpc;
     private final SysUserPermissionRelRepository permissionRelRepository;
 
     @Value("${secretpad.master-node-id:master}")
@@ -150,7 +148,7 @@ public class NodeManager extends AbstractNodeManager {
                         DomainOuterClass.AuthCenter.newBuilder().setAuthenticationType("Token").setTokenGenMethod("UID-RSA-GEN").build())
                 .build();
         try {
-            kusciaDomainRpc.createDomain(request);
+            kusciaGrpcClientAdapter.createDomain(request);
         } catch (Exception e) {
             throw SecretpadException.of(NodeErrorCode.NODE_CREATE_ERROR, e);
         }
@@ -206,7 +204,7 @@ public class NodeManager extends AbstractNodeManager {
                 .build();
         DomainOuterClass.CreateDomainResponse domain = DomainOuterClass.CreateDomainResponse.newBuilder().build();
         try {
-            kusciaDomainRpc.createDomain(request);
+            kusciaGrpcClientAdapter.createDomain(request);
         } catch (Exception e) {
             throw SecretpadException.of(NodeErrorCode.NODE_CREATE_ERROR, e, nodeId + " node create fail in kuscia :" + domain.getStatus().getMessage());
         }
@@ -254,7 +252,7 @@ public class NodeManager extends AbstractNodeManager {
         nodeRouteRepository.deleteBySrcNodeId(nodeId);
         nodeRouteRepository.deleteByDstNodeId(nodeId);
         try {
-            kusciaDomainRpc.deleteDomain(request);
+            kusciaGrpcClientAdapter.deleteDomain(request);
         } catch (Exception e) {
             throw SecretpadException.of(NodeErrorCode.NODE_DELETE_ERROR, e);
         }
@@ -315,7 +313,7 @@ public class NodeManager extends AbstractNodeManager {
                                 .build()
                 )
                 .build();
-        Domaindata.QueryDomainDataResponse queryDomainDataResponse = domainDataStub.queryDomainData(request);
+        Domaindata.QueryDomainDataResponse queryDomainDataResponse = kusciaGrpcClientAdapter.queryDomainData(request);
         if (queryDomainDataResponse.getStatus().getCode() != 0) {
             LOGGER.error("query domain data from kusciaapi failed: code={}, message={}, nodeId={}, domainDataId={}",
                     queryDomainDataResponse.getStatus().getCode(), queryDomainDataResponse.getStatus().getMessage(), nodeId, domainDataId);
@@ -344,7 +342,7 @@ public class NodeManager extends AbstractNodeManager {
         }
         DomainOuterClass.QueryDomainRequest queryDomainRequest =
                 DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(nodeId).build();
-        DomainOuterClass.QueryDomainResponse response = kusciaDomainRpc.queryDomain(queryDomainRequest);
+        DomainOuterClass.QueryDomainResponse response = kusciaGrpcClientAdapter.queryDomain(queryDomainRequest);
         List<DomainOuterClass.DeployTokenStatus> deployTokenStatusesList = response.getData().getDeployTokenStatusesList();
         if (CollectionUtils.isEmpty(deployTokenStatusesList)) {
             throw SecretpadException.of(NodeErrorCode.NODE_TOKEN_IS_EMPTY_ERROR, "kuscia return empty token");
@@ -381,7 +379,7 @@ public class NodeManager extends AbstractNodeManager {
     public String getCert(String nodeId) {
         DomainOuterClass.BatchQueryDomainRequest queryDomainRequest =
                 DomainOuterClass.BatchQueryDomainRequest.newBuilder().addAllDomainIds(Lists.newArrayList(nodeId)).build();
-        DomainOuterClass.BatchQueryDomainResponse response = kusciaDomainRpc.batchQueryDomain(queryDomainRequest);
+        DomainOuterClass.BatchQueryDomainResponse response = kusciaGrpcClientAdapter.batchQueryDomain(queryDomainRequest);
         if (response.getStatus().getCode() != 0) {
             return "";
         }
@@ -396,7 +394,7 @@ public class NodeManager extends AbstractNodeManager {
         nodeDTO.setProtocol(protocol);
         DomainOuterClass.QueryDomainRequest queryDomainRequest =
                 DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(nodeDO.getNodeId()).build();
-        DomainOuterClass.QueryDomainResponse response = kusciaDomainRpc.queryDomainNoCheck(queryDomainRequest);
+        DomainOuterClass.QueryDomainResponse response = kusciaGrpcClientAdapter.queryDomain(queryDomainRequest);
         if (response.getStatus().getCode() == 0) {
             nodeDTO.setNodeStatus(DomainConstants.DomainStatusEnum.NotReady.name());
             if (ObjectUtils.isNotEmpty(response.getData())) {
@@ -445,7 +443,7 @@ public class NodeManager extends AbstractNodeManager {
         Set<String> nodeIdSet = nodeList.stream().map(NodeDTO::getNodeId).collect(Collectors.toSet());
         DomainOuterClass.BatchQueryDomainRequest domainIds =
                 DomainOuterClass.BatchQueryDomainRequest.newBuilder().addAllDomainIds(nodeIdSet).build();
-        DomainOuterClass.BatchQueryDomainResponse domainStatusResponse = kusciaDomainRpc.batchQueryDomainNoCheck(domainIds);
+        DomainOuterClass.BatchQueryDomainResponse domainStatusResponse = kusciaGrpcClientAdapter.batchQueryDomain(domainIds);
 
         if (domainStatusResponse.getStatus().getCode() == 0) {
 
@@ -478,7 +476,7 @@ public class NodeManager extends AbstractNodeManager {
         DomainOuterClass.QueryDomainRequest request = DomainOuterClass.QueryDomainRequest.newBuilder()
                 .setDomainId(nodeId)
                 .build();
-        DomainOuterClass.QueryDomainResponse response = domainServiceBlockingStub.queryDomain(request);
+        DomainOuterClass.QueryDomainResponse response = kusciaGrpcClientAdapter.queryDomain(request);
         return response.getStatus().getCode() == 0;
     }
 
@@ -487,7 +485,7 @@ public class NodeManager extends AbstractNodeManager {
         DomainOuterClass.QueryDomainRequest request = DomainOuterClass.QueryDomainRequest.newBuilder()
                 .setDomainId(nodeId)
                 .build();
-        DomainOuterClass.QueryDomainResponse response = domainServiceBlockingStub.queryDomain(request);
+        DomainOuterClass.QueryDomainResponse response = kusciaGrpcClientAdapter.queryDomain(request);
         log.info("checkNodeReady response  {} {} ", nodeId, response);
         if (response.getStatus().getCode() != 0) {
             return false;
@@ -613,7 +611,7 @@ public class NodeManager extends AbstractNodeManager {
                         ).collect(Collectors.toList())
                 )
                 .build();
-        Domaindata.BatchQueryDomainDataResponse response = domainDataStub.batchQueryDomainData(batchQueryDomainDataRequest);
+        Domaindata.BatchQueryDomainDataResponse response = kusciaGrpcClientAdapter.batchQueryDomainData(batchQueryDomainDataRequest);
         if (response.getStatus().getCode() != 0) {
             LOGGER.error("lock up from apilite failed: code={}, message={}, request={}",
                     response.getStatus().getCode(), response.getStatus().getMessage(), JsonUtils.toJSONString(allProjectResults));
@@ -640,7 +638,7 @@ public class NodeManager extends AbstractNodeManager {
     private NodeResultDTO findNodeResult(Domaindata.DomainData domainData, ProjectResultDO projectResultDO) {
         // query projectDO from project table
         Optional<ProjectDO> projectDO = projectRepository.findById(projectResultDO.getUpk().getProjectId());
-        Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaDomainDatasourceRpc.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
+        Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaGrpcClientAdapter.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
                 .setDatasourceId(domainData.getDatasourceId())
                 .setDomainId(domainData.getDomainId())
                 .build());

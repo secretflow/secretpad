@@ -58,3 +58,10 @@ docs/_build
 /db/secretpad.sqlite
 /db/secretpad.sqlite-shm
 /db/secretpad.sqlite-wal
+/secretpad-common/intermediate.crt
+/secretpad-common/intermediate.csr
+/secretpad-common/intermediate.key
+/secretpad-common/root.crt
+/secretpad-common/root.key
+/secretpad-common/root.srl
+/config/ehcache-data/

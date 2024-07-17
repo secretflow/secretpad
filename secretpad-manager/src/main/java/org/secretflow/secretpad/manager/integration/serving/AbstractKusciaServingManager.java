@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.manager.integration.serving;
 
 import org.secretflow.secretpad.common.constant.ServingConstants;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 
 import jakarta.annotation.Resource;
 import lombok.Getter;
@@ -24,7 +25,6 @@ import lombok.Setter;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
 import org.secretflow.v1alpha1.kusciaapi.Serving;
-import org.secretflow.v1alpha1.kusciaapi.ServingServiceGrpc;
 import org.springframework.context.ApplicationEvent;
 import org.springframework.context.ApplicationEventPublisher;
 
@@ -38,13 +38,13 @@ import org.springframework.context.ApplicationEventPublisher;
 @Setter
 public abstract class AbstractKusciaServingManager {
     @Resource
-    private ServingServiceGrpc.ServingServiceBlockingStub servingServiceBlockingStub;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
     @Resource
     private ApplicationEventPublisher applicationEventPublisher;
 
     public Serving.CreateServingResponse create(Serving.CreateServingRequest request) {
         log.debug("kuscia serving create request: {}", request);
-        Serving.CreateServingResponse response = servingServiceBlockingStub.createServing(request);
+        Serving.CreateServingResponse response = kusciaGrpcClientAdapter.createServing(request);
         if (response.getStatus().getCode() == 0) {
             publishEvent(request.getServingId(), ServingConstants.CREATE);
         }
@@ -54,7 +54,7 @@ public abstract class AbstractKusciaServingManager {
 
     public Serving.DeleteServingResponse delete(Serving.DeleteServingRequest request) {
         log.debug("kuscia serving delete request: {}", request);
-        Serving.DeleteServingResponse response = servingServiceBlockingStub.deleteServing(request);
+        Serving.DeleteServingResponse response = kusciaGrpcClientAdapter.deleteServing(request);
         if (response.getStatus().getCode() == 0) {
             publishEvent(request.getServingId(), ServingConstants.DELETE);
         }
@@ -64,7 +64,7 @@ public abstract class AbstractKusciaServingManager {
 
     public Serving.UpdateServingResponse update(Serving.UpdateServingRequest request) {
         log.debug("kuscia serving update request: {}", request);
-        Serving.UpdateServingResponse response = servingServiceBlockingStub.updateServing(request);
+        Serving.UpdateServingResponse response = kusciaGrpcClientAdapter.updateServing(request);
         if (response.getStatus().getCode() == 0) {
             publishEvent(request.getServingId(), ServingConstants.UPDATE);
         }
@@ -74,14 +74,14 @@ public abstract class AbstractKusciaServingManager {
 
     public Serving.QueryServingResponse query(Serving.QueryServingRequest request) {
         log.debug("kuscia serving query request: {}", request);
-        Serving.QueryServingResponse response = servingServiceBlockingStub.queryServing(request);
+        Serving.QueryServingResponse response = kusciaGrpcClientAdapter.queryServing(request);
         log.debug("kuscia serving query response: {}", response);
         return response;
     }
 
     public Serving.BatchQueryServingStatusResponse batchQueryServingStatus(Serving.BatchQueryServingStatusRequest request) {
         log.debug("kuscia serving batchQueryServingStatus request: {}", request);
-        Serving.BatchQueryServingStatusResponse response = servingServiceBlockingStub.batchQueryServingStatus(request);
+        Serving.BatchQueryServingStatusResponse response = kusciaGrpcClientAdapter.batchQueryServingStatus(request);
         log.debug("kuscia serving batchQueryServingStatus response: {}", response);
         return response;
     }

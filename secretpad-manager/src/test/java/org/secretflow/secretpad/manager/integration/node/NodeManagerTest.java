@@ -30,7 +30,7 @@ class NodeManagerTest {
         NodeManager nodeManager = new NodeManager(null, null,
                 null, null, null,
                 null, null, null,
-                null, null, null, null);
+                null);
         String s = nodeManager.genDomainId();
         Assertions.assertThat(s).hasSize(8);
     }

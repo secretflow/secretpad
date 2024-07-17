@@ -33,6 +33,7 @@ import org.hibernate.annotations.Where;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 @Entity
 @Table(name = "sys_resource")
 @SQLDelete(sql = "update sys_resource set is_deleted = 1 where id = ?")

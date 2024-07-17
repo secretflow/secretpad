@@ -180,6 +180,7 @@ public class ProjectJobDO extends BaseAggregationRoot<ProjectJobDO> {
     @Setter
     @AllArgsConstructor
     @NoArgsConstructor
+    @ToString
     public static class UPK implements Serializable {
         @Serial
         private static final long serialVersionUID = 291568296509217011L;

@@ -23,6 +23,7 @@ import org.secretflow.secretpad.common.exception.SecretpadException;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.ToString;
+import org.springframework.util.ObjectUtils;
 
 /**
  * @author yutu
@@ -50,6 +51,9 @@ public final class UserContext {
     }
 
     public static void setBaseUser(UserContextDTO userContextDTO) {
+        if (!ObjectUtils.isEmpty(userContextDTO) && userContextDTO.getVirtualUserForNode() == null) {
+            userContextDTO.setVirtualUserForNode(false);
+        }
         USER.set(userContextDTO);
     }
 

@@ -31,6 +31,7 @@ import java.io.Serializable;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 @Entity
 @Table(name = "sys_role_resource_rel")
 public class SysRoleResourceRelDO extends SuperBaseAggregationRoot<SysRoleResourceRelDO> {
@@ -48,6 +49,7 @@ public class SysRoleResourceRelDO extends SuperBaseAggregationRoot<SysRoleResour
     @AllArgsConstructor
     @NoArgsConstructor
     @Embeddable
+    @ToString
     public static class UPK implements Serializable {
         @Serial
         private static final long serialVersionUID = 291568296509217011L;

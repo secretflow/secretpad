@@ -24,6 +24,7 @@ import org.secretflow.secretpad.persistence.datasync.producer.PaddingNodeService
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.DataSyncConfig;
 import org.secretflow.secretpad.persistence.model.DbChangeAction;
+import org.secretflow.secretpad.persistence.model.GraphJobStatus;
 
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -169,8 +170,11 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
     private boolean filterProjectJobDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         ProjectJobDO source = (ProjectJobDO) event.getSource();
         String ownerId = ownerId_cache.get(source.getUpk().getProjectId() + "_" + source.getGraphId());
-        // Data synchronization occurs when a job is manually stopped, because the kuscia stop status is not updated
-        if (source.isFinishedNotIncludedStopped() || StringUtils.equalsIgnoreCase(DbChangeAction.UPDATE.getVal(), event.getDType())) {
+        log.debug("filterProjectJobDO ownerId:{} localNodeId:{} event:{}", ownerId, localNodeId, event);
+        if (StringUtils.equalsIgnoreCase(DbChangeAction.UPDATE.getVal(), event.getAction())) {
+            if (source.getStatus() == GraphJobStatus.STOPPED) {
+                return !StringUtils.equals(localNodeId, ownerId);
+            }
             return true;
         }
         return !StringUtils.equals(localNodeId, ownerId);

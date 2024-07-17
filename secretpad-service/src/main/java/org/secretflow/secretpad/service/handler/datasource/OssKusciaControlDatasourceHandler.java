@@ -20,12 +20,11 @@ import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatasourceErrorCode;
 import org.secretflow.secretpad.common.errorcode.KusciaGrpcErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
-import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainDatasourceRpc;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.service.DatatableService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.OssService;
 import org.secretflow.secretpad.service.decorator.awsoss.AwsOssConfig;
-import org.secretflow.secretpad.service.embedded.EmbeddedChannelService;
 import org.secretflow.secretpad.service.model.datasource.*;
 import org.secretflow.secretpad.service.model.datatable.DatatableVO;
 import org.secretflow.secretpad.service.util.HttpUtils;
@@ -53,9 +52,7 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class OssKusciaControlDatasourceHandler extends AbstractDatasourceHandler {
 
-    private final KusciaDomainDatasourceRpc kusciaDomainDatasourceRpc;
-
-    private final EmbeddedChannelService embeddedChannelService;
+    private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     private final EnvService envService;
 
@@ -74,12 +71,12 @@ public class OssKusciaControlDatasourceHandler extends AbstractDatasourceHandler
         List<Domaindatasource.DomainDataSource> datasourceListInKuscia = new ArrayList<>();
         Domaindatasource.ListDomainDataSourceRequest listDomainDataSourceRequest = Domaindatasource.ListDomainDataSourceRequest.newBuilder().setDomainId(datasourceListRequest.getNodeId()).build();
         if (envService.isCenter() && envService.isEmbeddedNode(datasourceListRequest.getNodeId())) {
-            Domaindatasource.ListDomainDataSourceResponse listDomainDataSourceResponse = embeddedChannelService.getDatasourceServiceBlockingStub(datasourceListRequest.getNodeId()).listDomainDataSource(listDomainDataSourceRequest);
+            Domaindatasource.ListDomainDataSourceResponse listDomainDataSourceResponse = kusciaGrpcClientAdapter.listDomainDataSource(listDomainDataSourceRequest, datasourceListRequest.getNodeId());
             Domaindatasource.DomainDataSourceList data = listDomainDataSourceResponse.getData();
             List<Domaindatasource.DomainDataSource> datasourceListList = data.getDatasourceListList();
             datasourceListInKuscia.addAll(datasourceListList);
         } else {
-            Domaindatasource.ListDomainDataSourceResponse listDomainDataSourceResponse = kusciaDomainDatasourceRpc.listDomainDataSource(listDomainDataSourceRequest);
+            Domaindatasource.ListDomainDataSourceResponse listDomainDataSourceResponse = kusciaGrpcClientAdapter.listDomainDataSource(listDomainDataSourceRequest);
             Domaindatasource.DomainDataSourceList data = listDomainDataSourceResponse.getData();
             List<Domaindatasource.DomainDataSource> datasourceListList = data.getDatasourceListList();
             datasourceListInKuscia.addAll(datasourceListList);
@@ -119,10 +116,10 @@ public class OssKusciaControlDatasourceHandler extends AbstractDatasourceHandler
                 .setDomainId(deleteDatasourceRequest.getNodeId())
                 .build();
         if (envService.isCenter() && envService.isEmbeddedNode(deleteDatasourceRequest.getNodeId())) {
-            embeddedChannelService.getDatasourceServiceBlockingStub(deleteDatasourceRequest.getNodeId())
-                    .deleteDomainDataSource(deleteDomainDataSourceRequest);
+            kusciaGrpcClientAdapter
+                    .deleteDomainDataSource(deleteDomainDataSourceRequest, deleteDatasourceRequest.getNodeId());
         } else {
-            kusciaDomainDatasourceRpc.deleteDomainDataSource(deleteDomainDataSourceRequest);
+            kusciaGrpcClientAdapter.deleteDomainDataSource(deleteDomainDataSourceRequest);
         }
     }
 
@@ -153,13 +150,13 @@ public class OssKusciaControlDatasourceHandler extends AbstractDatasourceHandler
                 .setInfo(Domaindatasource.DataSourceInfo.newBuilder()
                         .setOss(builder.build())).build();
         if (envService.isCenter() && envService.isEmbeddedNode(createDatasourceRequest.getNodeId())) {
-            Domaindatasource.CreateDomainDataSourceResponse domainDataSource = embeddedChannelService.getDatasourceServiceBlockingStub(createDatasourceRequest.getNodeId()).createDomainDataSource(createDomainDataSourceRequest);
+            Domaindatasource.CreateDomainDataSourceResponse domainDataSource = kusciaGrpcClientAdapter.createDomainDataSource(createDomainDataSourceRequest, createDatasourceRequest.getNodeId());
             if (domainDataSource.getStatus().getCode() != 0) {
                 throw SecretpadException.of(KusciaGrpcErrorCode.RPC_ERROR, domainDataSource.getStatus().getMessage());
             }
             return domainDataSource.getData().getDatasourceId();
         }
-        Domaindatasource.CreateDomainDataSourceResponse domainDataSource = kusciaDomainDatasourceRpc.createDomainDataSource(createDomainDataSourceRequest);
+        Domaindatasource.CreateDomainDataSourceResponse domainDataSource = kusciaGrpcClientAdapter.createDomainDataSource(createDomainDataSourceRequest);
         return domainDataSource.getData().getDatasourceId();
     }
 
@@ -169,13 +166,13 @@ public class OssKusciaControlDatasourceHandler extends AbstractDatasourceHandler
                 .setDomainId(datasourceDetailRequest.getNodeId())
                 .build();
         if (envService.isCenter() && envService.isEmbeddedNode(datasourceDetailRequest.getNodeId())) {
-            Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = embeddedChannelService.getDatasourceServiceBlockingStub(datasourceDetailRequest.getNodeId()).queryDomainDataSource(queryDomainDataSourceRequest);
+            Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaGrpcClientAdapter.queryDomainDataSource(queryDomainDataSourceRequest, datasourceDetailRequest.getNodeId());
             if (queryDomainDataSourceResponse.getStatus().getCode() != 0) {
                 throw SecretpadException.of(KusciaGrpcErrorCode.RPC_ERROR, queryDomainDataSourceResponse.getStatus().getMessage());
             }
             return DatasourceDetailVO.from(queryDomainDataSourceResponse);
         }
-        Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaDomainDatasourceRpc.queryDomainDataSource(queryDomainDataSourceRequest);
+        Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaGrpcClientAdapter.queryDomainDataSource(queryDomainDataSourceRequest);
         return DatasourceDetailVO.from(queryDomainDataSourceResponse);
     }
 }

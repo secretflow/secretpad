@@ -21,7 +21,7 @@ import org.secretflow.secretpad.common.constant.SystemConstants;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.util.UserContext;
-import org.secretflow.secretpad.manager.kuscia.grpc.KusciaDomainRpc;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.persistence.entity.AccountsDO;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.repository.NodeRepository;
@@ -53,7 +53,7 @@ import java.util.List;
 public class EdgeResourceInit implements CommandLineRunner {
 
     private final NodeRepository nodeRepository;
-    private final KusciaDomainRpc kusciaDomainRpc;
+    private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     private final UserAccountsRepository userAccountsRepository;
     @Value("${secretpad.platform-type}")
@@ -70,7 +70,7 @@ public class EdgeResourceInit implements CommandLineRunner {
         String ownerId = accountsDO.getOwnerId();
         NodeDO nodeDO = nodeRepository.findByNodeId(accountsDO.getOwnerId());
         DomainOuterClass.QueryDomainResponseData domainData;
-        DomainOuterClass.QueryDomainResponse response = kusciaDomainRpc.queryDomainNoCheck(DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(ownerId).build());
+        DomainOuterClass.QueryDomainResponse response = kusciaGrpcClientAdapter.queryDomain(DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(ownerId).build());
         if (ObjectUtils.isNotEmpty(response) && response.getStatus().getCode() == 0) {
             domainData = response.getData();
             if (ObjectUtils.isEmpty(nodeDO)) {

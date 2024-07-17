@@ -35,6 +35,7 @@ import org.secretflow.secretpad.service.model.approval.VoteRequestMessage;
 
 import com.google.common.collect.Lists;
 import jakarta.annotation.Resource;
+import lombok.Setter;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +45,7 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
  * VoteInviteStatusMonitor.
@@ -51,6 +53,7 @@ import java.util.List;
  * @author cml
  * @date 2023/10/24
  */
+@Setter
 @Component
 public class VoteInviteStatusMonitor {
 
@@ -123,15 +126,24 @@ public class VoteInviteStatusMonitor {
                 String msg = String.format("in voteID-> %s,voteInvite participant %s verify fail", voteInviteDO.getUpk().getVoteID(), voteInviteDO.getUpk().getVotePartitionID());
                 voteRequestDO.setMsg(msg);
                 voteRequestDO.setStatus(VoteStatusEnum.REJECTED.getCode());
-                voteRequestRepository.save(voteRequestDO);
+
+                voteInviteDO.setReason(String.format("verify fail-> %s", voteInviteDO.getUpk().getVotePartitionID()));
                 voteInviteDO.setAction(VoteStatusEnum.REJECTED.name());
+
+                // update voteRequestDO partyVoteInfos same as voteInviteDO
+                Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = voteRequestDO.getPartyVoteInfos();
+                VoteRequestDO.PartyVoteInfo partyVoteInfo = VoteRequestDO.PartyVoteInfo.builder().action(voteInviteDO.getAction()).nodeId(voteInviteDO.getUpk().getVotePartitionID()).reason(voteInviteDO.getReason()).build();
+                partyVoteInfos.remove(partyVoteInfo);
+                partyVoteInfos.add(partyVoteInfo);
+
+                voteRequestRepository.save(voteRequestDO);
                 voteInviteRepository.save(voteInviteDO);
                 break;
             }
         }
     }
 
-    private boolean verify(VoteInviteDO voteInviteDO, VoteRequestDO voteRequestDO) {
+    public boolean verify(VoteInviteDO voteInviteDO, VoteRequestDO voteRequestDO) {
         LOGGER.info("start verify!");
         boolean result;
         String voteMsg = voteInviteDO.getVoteMsg();

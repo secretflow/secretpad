@@ -16,15 +16,16 @@
 
 package org.secretflow.secretpad.manager.integration.node;
 
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.datasource.DatasourceManager;
 import org.secretflow.secretpad.manager.integration.model.DatasourceDTO;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.secretflow.v1alpha1.common.Common;
-import org.secretflow.v1alpha1.kusciaapi.DomainDataSourceServiceGrpc;
 import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 
 /**
@@ -35,20 +36,22 @@ import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 public class DatasourceManagerTest {
 
     @Mock
-    private DomainDataSourceServiceGrpc.DomainDataSourceServiceBlockingStub datasourceStub;
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
+
     @Test
     void findByIdSuccess() {
 
-        DatasourceManager datasourceManager = new DatasourceManager(datasourceStub);
+        DatasourceManager datasourceManager = new DatasourceManager(kusciaGrpcClientAdapter);
         DatasourceDTO.NodeDatasourceId nodeDatasourceId = DatasourceDTO.NodeDatasourceId.from("nodeId", "datasourceId");
         Domaindatasource.QueryDomainDataSourceRequest queryDomainDataSourceRequest;
         queryDomainDataSourceRequest = Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
                 .setDomainId(nodeDatasourceId.getNodeId())
                 .setDatasourceId(nodeDatasourceId.getDatasourceId())
                 .build();
-        Mockito.when(datasourceStub.queryDomainDataSource(queryDomainDataSourceRequest)).thenReturn(buildQueryDomainDatasourceResponse(0));
+        Mockito.when(kusciaGrpcClientAdapter.queryDomainDataSource(queryDomainDataSourceRequest)).thenReturn(buildQueryDomainDatasourceResponse(0));
         datasourceManager.findById(nodeDatasourceId);
     }
+
     private Domaindatasource.QueryDomainDataSourceResponse buildQueryDomainDatasourceResponse(Integer code) {
         return Domaindatasource.QueryDomainDataSourceResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(code).build()).setData(
                 Domaindatasource.DomainDataSource.newBuilder().setDomainId("domainId").setDatasourceId("datasourceId")

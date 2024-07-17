@@ -24,6 +24,8 @@ import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.ProtoUtils;
+import org.secretflow.secretpad.kuscia.v1alpha1.DynamicKusciaChannelProvider;
+import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.datatablegrant.DatatableGrantManager;
 import org.secretflow.secretpad.manager.integration.job.event.JobSyncErrorOrCompletedEvent;
@@ -57,6 +59,7 @@ import org.springframework.util.CollectionUtils;
 import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.stream.Collectors;
+
 import static org.secretflow.secretpad.common.constant.ComponentConstants.DATA_PREP_UNION;
 import static org.secretflow.secretpad.common.constant.Constants.*;
 
@@ -83,8 +86,6 @@ public class JobManager extends AbstractJobManager {
     private final static Logger LOGGER = LoggerFactory.getLogger(JobManager.class);
     private final ProjectJobRepository projectJobRepository;
 
-    private final JobServiceGrpc.JobServiceBlockingStub jobStub;
-
     private final AbstractDatatableManager datatableManager;
     private final ProjectResultRepository resultRepository;
     private final ProjectFedTableRepository fedTableRepository;
@@ -98,13 +99,15 @@ public class JobManager extends AbstractJobManager {
     @Resource
     private CacheManager cacheManager;
     @Resource
-    private JobServiceGrpc.JobServiceStub jobServiceAsyncStub;
-    @Resource
     private ApplicationEventPublisher applicationEventPublisher;
     @Resource
     private DatatableGrantManager datatableGrantManager;
     @Resource
     private ProjectNodeRepository projectNodeRepository;
+    @Resource
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
+    @Resource
+    private DynamicKusciaChannelProvider dynamicKusciaChannelProvider;
 
 
     public JobManager(ProjectJobRepository projectJobRepository,
@@ -116,7 +119,6 @@ public class JobManager extends AbstractJobManager {
                       ProjectModelRepository modelRepository,
                       ProjectReportRepository reportRepository,
                       TeeNodeDatatableManagementRepository managementRepository,
-                      JobServiceGrpc.JobServiceBlockingStub jobStub,
                       ProjectReadDtaRepository readDtaRepository,
                       ProjectJobTaskRepository taskRepository) {
         this.projectJobRepository = projectJobRepository;
@@ -128,7 +130,6 @@ public class JobManager extends AbstractJobManager {
         this.modelRepository = modelRepository;
         this.reportRepository = reportRepository;
         this.managementRepository = managementRepository;
-        this.jobStub = jobStub;
         this.readDtaRepository = readDtaRepository;
         this.taskRepository = taskRepository;
     }
@@ -145,6 +146,7 @@ public class JobManager extends AbstractJobManager {
     @Override
     public void startSync() {
         try {
+            JobServiceGrpc.JobServiceStub jobServiceAsyncStub = dynamicKusciaChannelProvider.currentStub(JobServiceGrpc.JobServiceStub.class);
             jobServiceAsyncStub.watchJob(Job.WatchJobRequest.newBuilder().build(), new StreamObserver<>() {
                         @Override
                         public void onNext(Job.WatchJobEventResponse responses) {
@@ -554,7 +556,7 @@ public class JobManager extends AbstractJobManager {
 
     @Override
     public void createJob(Job.CreateJobRequest request) {
-        Job.CreateJobResponse response = jobStub.createJob(request);
+        Job.CreateJobResponse response = kusciaGrpcClientAdapter.createJob(request);
         if (!response.hasStatus()) {
             throw SecretpadException.of(JobErrorCode.PROJECT_JOB_CREATE_ERROR);
         }
@@ -663,14 +665,18 @@ public class JobManager extends AbstractJobManager {
         }
     }
 
-    private void checkOrCreateDomainDataGrant(String nodeId, String grantNodeId, String domainDataId) {
+    public void checkOrCreateDomainDataGrant(String nodeId, String grantNodeId, String domainDataId) {
+        // kuscia Each namespace needs to ensure that domainDataId and domainDataGrantId are unique.
         String domainDataGrantId = domainDataId + "-" + grantNodeId;
         try {
-            datatableGrantManager.queryDomainGrant(nodeId, domainDataGrantId);
-            return;
+            datatableGrantManager.queryDomainGrant(grantNodeId, domainDataGrantId);
         } catch (Exception e) {
-            LOGGER.warn("domain data grant not exists, nodeId = {}, domainDataGrantId = {}", nodeId, domainDataGrantId, e);
+            LOGGER.error("domain data grant not exists, nodeId = {}, domainDataGrantId = {}", grantNodeId, domainDataId, e);
+            try {
+                datatableGrantManager.createDomainGrant(nodeId, grantNodeId, domainDataId, domainDataGrantId);
+            } catch (Exception ex) {
+                LOGGER.error("create domain data grant failed, nodeId = {}, domainDataGrantId = {}", nodeId, domainDataId, ex);
+            }
         }
-        datatableGrantManager.createDomainGrant(nodeId, grantNodeId, domainDataId, domainDataGrantId);
     }
 }

@@ -42,9 +42,6 @@ import org.secretflow.secretpad.service.model.noderoute.PageNodeRouteRequest;
 import org.secretflow.secretpad.service.model.noderoute.UpdateNodeRouterRequest;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
 
-import java.util.*;
-import java.util.stream.Collectors;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -55,6 +52,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
+
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * @author yutu
@@ -262,7 +262,12 @@ public class NodeRouterServiceImpl implements NodeRouterService {
         List<ProjectApprovalConfigDO> projectApprovalConfigDOList = projectApprovalConfigRepository
                 .findByInitiator(srcNode.getNodeId(), dstNode.getNodeId());
         projectApprovalConfigDOList = projectApprovalConfigDOList.stream()
-                .filter(pac -> pac.getParties().contains(srcNode.getNodeId()) && pac.getParties().contains(dstNode.getNodeId()))
+                .filter(pac -> {
+                    if (CollectionUtils.isEmpty(pac.getParties())) {
+                        return false;
+                    }
+                    return pac.getParties().contains(srcNode.getNodeId()) && pac.getParties().contains(dstNode.getNodeId());
+                })
                 .toList();
         if (projectApprovalConfigDOList.isEmpty()) {
             return;
