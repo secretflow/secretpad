@@ -24,6 +24,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -45,6 +46,8 @@ public interface NodeRouteRepository extends BaseRepository<NodeRouteDO, String>
     @Query("from NodeRouteDO d where d.dstNodeId=:nodeId")
     List<NodeRouteDO> findByDstNodeId(@Param("nodeId") String nodeId);
 
+    List<NodeRouteDO> findByDstNodeIdIn(Collection<String> nodeIds);
+
     /**
      * Query node route results by nodeId of source
      *
@@ -55,7 +58,7 @@ public interface NodeRouteRepository extends BaseRepository<NodeRouteDO, String>
     List<NodeRouteDO> findBySrcNodeId(@Param("nodeId") String nodeId);
 
     @Query("from NodeRouteDO d where d.srcNodeId=:nodeId or d.dstNodeId=:nodeId")
-    Set<NodeRouteDO> findBySrcNodeIdAndDstNodeId(@Param("nodeId") String nodeId);
+    Set<NodeRouteDO> findBySrcNodeIdOrDstNodeId(@Param("nodeId") String nodeId);
 
     /**
      * findByRouteId
@@ -85,6 +88,6 @@ public interface NodeRouteRepository extends BaseRepository<NodeRouteDO, String>
     void deleteByDstNodeId(@Param("dstNodeId") String dstNodeId);
 
     @Query(value = "from NodeRouteDO a join NodeDO b on a.srcNodeId=b.nodeId " +
-            "where a.dstNodeId=:nodeId and (a.srcNodeId like :search or a.dstNetAddress like :search or b.name like :search)")
-    Page<NodeRouteDO> pageQuery(@Param("nodeId") String nodeId, @Param("search") String search, Pageable pageable);
+            "where a.dstNodeId IN (:nodeIds)  and (a.srcNodeId like :search or a.dstNetAddress like :search or b.name like :search)")
+    Page<NodeRouteDO> pageQuery(@Param("nodeIds") Collection<String> nodeIds, @Param("search") String search, Pageable pageable);
 }

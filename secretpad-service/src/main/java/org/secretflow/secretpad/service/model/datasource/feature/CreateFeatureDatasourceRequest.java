@@ -19,6 +19,7 @@ package org.secretflow.secretpad.service.model.datasource.feature;
 import org.secretflow.secretpad.common.annotation.OneOfType;
 import org.secretflow.secretpad.service.model.datatable.TableColumnVO;
 
+import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
@@ -37,7 +38,11 @@ import java.util.List;
 public class CreateFeatureDatasourceRequest {
 
     @NotBlank
-    private String nodeId;
+    private String ownerId;
+
+    @NotEmpty
+    @Schema(description = "The node ID to which the data belongs. In p2p mode, there may be more than one node ID.")
+    private List<@NotBlank String> nodeIds;
 
     @NotBlank
     @Size(max = 32, message = "feature table must less then 32 characters")

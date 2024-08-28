@@ -64,24 +64,6 @@ public class CloudLogReadyControllerTest extends ControllerTest {
     @MockBean
     private NodeRepository nodeRepository;
 
-    @TestConfiguration
-    public static class TestConfig {
-        @MockBean
-        private Client client;
-
-        @Bean
-        public SLSCloudLogServiceImpl slsCouldLogService(ProjectJobTaskRepository taskRepository, NodeRepository nodeRepository) throws LogException {
-            LogConfigProperties.SLSConfig slsConfig = new LogConfigProperties.SLSConfig();
-            slsConfig.setHost("host");
-            slsConfig.setAk("ak");
-            slsConfig.setSk("sk");
-            slsConfig.setProject("project");
-            return new SLSCloudLogServiceImpl(taskRepository, nodeRepository, client, slsConfig, "TEST");
-        }
-
-    }
-
-
     @Test
     public void testSLSUnReadyErr1() throws Exception {
         assertErrorCode(() -> {
@@ -122,6 +104,23 @@ public class CloudLogReadyControllerTest extends ControllerTest {
             return MockMvcRequestBuilders.post(getMappingUrl(CloudLogController.class, "getCloudLog", GraphNodeCloudLogsRequest.class))
                     .content(JsonUtils.toJSONString(request));
         });
+    }
+
+    @TestConfiguration
+    public static class TestConfig {
+        @MockBean
+        private Client client;
+
+        @Bean
+        public SLSCloudLogServiceImpl slsCouldLogService(ProjectJobTaskRepository taskRepository, NodeRepository nodeRepository) throws LogException {
+            LogConfigProperties.SLSConfig slsConfig = new LogConfigProperties.SLSConfig();
+            slsConfig.setHost("host");
+            slsConfig.setAk("ak");
+            slsConfig.setSk("sk");
+            slsConfig.setProject("project");
+            return new SLSCloudLogServiceImpl(taskRepository, nodeRepository, client, slsConfig, "TEST");
+        }
+
     }
 
 }

@@ -38,11 +38,6 @@ import java.util.Map;
 public class RestTemplateUtil {
     private static RestTemplate REST_TEMPLATE;
 
-    @Autowired
-    public void setRestTemplate(RestTemplate restTemplate) {
-        RestTemplateUtil.REST_TEMPLATE = restTemplate;
-    }
-
     public static <T> T sendPostJson(String url, Object objReq, Map<String, String> headMap, Class<T> clazz) {
         ResponseEntity<String> stringResponseEntity = sendPostJson(url, objReq, headMap);
         return JsonUtils.toJavaObject(stringResponseEntity.getBody(), clazz);
@@ -62,6 +57,11 @@ public class RestTemplateUtil {
         ResponseEntity<String> tResponseEntity = REST_TEMPLATE.postForEntity(url, httpEntity, String.class);
         log.info("RestTemplateUtils.sendPostJson result: {}", tResponseEntity);
         return tResponseEntity;
+    }
+
+    @Autowired
+    public void setRestTemplate(RestTemplate restTemplate) {
+        RestTemplateUtil.REST_TEMPLATE = restTemplate;
     }
 
 

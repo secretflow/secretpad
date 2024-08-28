@@ -16,7 +16,6 @@
 
 package org.secretflow.secretpad.kuscia.v1alpha1;
 
-import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.kuscia.v1alpha1.constant.KusciaProtocolEnum;
 import org.secretflow.secretpad.kuscia.v1alpha1.event.RegisterKusciaEvent;
 import org.secretflow.secretpad.kuscia.v1alpha1.event.UnRegisterKusciaEvent;
@@ -31,6 +30,7 @@ import jakarta.annotation.PreDestroy;
 import jakarta.annotation.Resource;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 import org.secretflow.v1alpha1.kusciaapi.*;
@@ -40,9 +40,17 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
+import org.springframework.util.ResourceUtils;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.nio.file.Files;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 
@@ -59,10 +67,8 @@ public class DynamicKusciaChannelProvider {
     private final static int BLOCKING_TIMEOUT_MILLISECOND = 5000;
     private final static int FUTURE_TIMEOUT_MILLISECOND = 5000;
     private final static int StubSCRIPTION_TIMEOUT_DAY = 365;
-    private volatile boolean isInitialized = false;
-
     private final Object lock = new Object();
-
+    private volatile boolean isInitialized = false;
     @Resource
     @Setter
     private DynamicKusciaGrpcConfig dynamicKusciaGrpcConfig;
@@ -71,7 +77,22 @@ public class DynamicKusciaChannelProvider {
     private ApplicationEventPublisher publisher;
 
     @Value("${secretpad.node-id}")
+    @Setter
     private String nodeId;
+
+    @Value("${secretpad.kuscia-path:./config/kuscia/}")
+    private String kusciaPath;
+
+    private static <T> @NotNull String getServiceName(Class<T> clazz) {
+        String serviceName;
+        try {
+            serviceName = String.valueOf(clazz.getDeclaredField("SERVICE_NAME").get(null));
+            Assert.notNull(serviceName, "SERVICE_NAME must not be null");
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Unsupported class type: " + clazz.getName(), e);
+        }
+        return serviceName;
+    }
 
     @PostConstruct
     public void init() {
@@ -84,6 +105,11 @@ public class DynamicKusciaChannelProvider {
             }
         }
         isInitialized = false;
+        try {
+            serializableKusciaConfigFileInit();
+        } catch (Exception e) {
+            log.error("Load kuscia config by config file error", e);
+        }
     }
 
     @PreDestroy
@@ -91,19 +117,9 @@ public class DynamicKusciaChannelProvider {
         CHANNEL_FACTORIES.forEach((key, value) -> value.shutdown());
     }
 
-
     public <T extends AbstractStub<T>> T currentStub(Class<T> clazz) {
-        String ownerId = null;
-        try {
-            log.info("session {}", UserContext.getUser());
-            ownerId = UserContext.getUser().getOwnerId();
-        } catch (Exception e) {
-            log.warn("can not find ownerId in session", e);
-        }
-        if (StringUtils.isEmpty(ownerId) || UserContext.getUser().getVirtualUserForNode()) {
-            ownerId = nodeId;
-        }
-        return createStub(ownerId, clazz);
+        log.info("The nodeId received by kuscia is: {}", nodeId);
+        return createStub(nodeId, clazz);
     }
 
     public void registerKuscia(KusciaGrpcConfig config) {
@@ -135,6 +151,18 @@ public class DynamicKusciaChannelProvider {
         }
     }
 
+    /**
+     * equals may be wrong
+     **/
+    public void unRegisterKuscia(String domainId) {
+        List<KusciaGrpcConfig> configs = dynamicKusciaGrpcConfig.getNodes().stream()
+                .filter(node -> StringUtils.equals(node.getDomainId(), domainId))
+                .toList();
+        if (!CollectionUtils.isEmpty(configs)) {
+            configs.forEach(this::unRegisterKuscia);
+        }
+
+    }
 
     private void registerChannelFactory(String name, KusciaApiChannelFactory channelFactory) {
         KusciaApiChannelFactory factory = CHANNEL_FACTORIES.put(name, channelFactory);
@@ -289,16 +317,13 @@ public class DynamicKusciaChannelProvider {
         return (T) t;
     }
 
-    private static <T> @NotNull String getServiceName(Class<T> clazz) {
-        String serviceName;
-        try {
-            serviceName = String.valueOf(clazz.getDeclaredField("SERVICE_NAME").get(null));
-            Assert.notNull(serviceName, "SERVICE_NAME must not be null");
-        } catch (Exception e) {
-            throw new IllegalArgumentException("Unsupported class type: " + clazz.getName(), e);
-        }
-        return serviceName;
+    /**
+     * check before invoke or exception appear
+     */
+    public boolean isChannelExist(String domainId) {
+        return CHANNEL_FACTORIES.containsKey(domainId);
     }
+
 
     private void checkChannelFactoryExist(String domainId) {
         if (!CHANNEL_FACTORIES.containsKey(domainId)) {
@@ -317,6 +342,21 @@ public class DynamicKusciaChannelProvider {
             }
         }
         return protocol;
+    }
+
+    public void serializableKusciaConfigFileInit() throws IOException, ClassNotFoundException {
+        ObjectInputStream in = null;
+        KusciaGrpcConfig config;
+        File file = ResourceUtils.getFile(kusciaPath);
+        if (Files.exists(file.toPath())) {
+            for (File f : Objects.requireNonNull(file.listFiles())) {
+                in = new ObjectInputStream(new FileInputStream(f));
+                config = (KusciaGrpcConfig) in.readObject();
+                log.info("Load kuscia config by config file, config={}", config);
+                registerKuscia(config);
+            }
+        }
+        IOUtils.closeQuietly(in);
     }
 
 }

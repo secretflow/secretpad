@@ -22,13 +22,16 @@ import org.secretflow.secretpad.common.util.Base64Utils;
 import org.secretflow.secretpad.common.util.EncryptUtils;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.manager.integration.node.NodeManager;
+import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.VoteInviteDO;
 import org.secretflow.secretpad.persistence.entity.VoteRequestDO;
+import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.VoteInviteRepository;
 import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.enums.VoteStatusEnum;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
+import org.secretflow.secretpad.service.impl.InstServiceImpl;
 import org.secretflow.secretpad.service.model.approval.VoteReplyBody;
 import org.secretflow.secretpad.service.model.approval.VoteReplyMessage;
 import org.secretflow.secretpad.service.model.approval.VoteRequestMessage;
@@ -58,22 +61,18 @@ import java.util.Set;
 public class VoteInviteStatusMonitor {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(VoteInviteStatusMonitor.class);
+    private static final List<String> AUTONOMY_VOTE = Lists.newArrayList(VoteTypeEnum.PROJECT_CREATE.name(), VoteTypeEnum.PROJECT_ARCHIVE.name());
+    private static final List<String> CENTER_VOTE = Lists.newArrayList(VoteTypeEnum.TEE_DOWNLOAD.name(), VoteTypeEnum.NODE_ROUTE.name());
     @Resource
     private VoteInviteRepository voteInviteRepository;
-
     @Resource
     private VoteRequestRepository voteRequestRepository;
-
     @Resource
     private NodeManager nodeManager;
-
+    @Resource
+    private NodeRepository nodeRepository;
     @Resource
     private EnvService envService;
-
-    private static final List<String> AUTONOMY_VOTE = Lists.newArrayList(VoteTypeEnum.PROJECT_CREATE.name(), VoteTypeEnum.PROJECT_ARCHIVE.name());
-
-    private static final List<String> CENTER_VOTE = Lists.newArrayList(VoteTypeEnum.TEE_DOWNLOAD.name(), VoteTypeEnum.NODE_ROUTE.name());
-
 
     @Scheduled(initialDelay = 6000, fixedDelay = 1000)
     public void sync() {
@@ -96,9 +95,10 @@ public class VoteInviteStatusMonitor {
                 } else if (AUTONOMY_VOTE.contains(type)) {
                     String initiator = voteRequestDO.getInitiator();
                     //only initiator can calculate the vote in project create vote
-                    if (envService.isCurrentNodeEnvironment(initiator)) {
+                    List<String> nodeIds = nodeRepository.findByInstId(initiator).stream().map(NodeDO::getNodeId).toList();
+                    if (InstServiceImpl.INST_ID.equals(initiator)) {
                         for (String executor : executors) {
-                            if (StringUtils.equals(executor, initiator)) {
+                            if (nodeIds.contains(executor)) {
                                 verify(voteRequestDO, voteInviteDOS);
                             }
                         }
@@ -110,7 +110,7 @@ public class VoteInviteStatusMonitor {
                     voteRequestDO.setStatus(VoteStatusEnum.APPROVED.getCode());
                 }
                 voteRequestRepository.save(voteRequestDO);
-                LOGGER.debug("{} monitor------,voteID = {}", type, voteRequestDO.getVoteID());
+                LOGGER.debug("{} monitor,voteID = {}", type, voteRequestDO.getVoteID());
             });
         }
 
@@ -132,7 +132,7 @@ public class VoteInviteStatusMonitor {
 
                 // update voteRequestDO partyVoteInfos same as voteInviteDO
                 Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = voteRequestDO.getPartyVoteInfos();
-                VoteRequestDO.PartyVoteInfo partyVoteInfo = VoteRequestDO.PartyVoteInfo.builder().action(voteInviteDO.getAction()).nodeId(voteInviteDO.getUpk().getVotePartitionID()).reason(voteInviteDO.getReason()).build();
+                VoteRequestDO.PartyVoteInfo partyVoteInfo = VoteRequestDO.PartyVoteInfo.builder().action(voteInviteDO.getAction()).partyId(voteInviteDO.getUpk().getVotePartitionID()).reason(voteInviteDO.getReason()).build();
                 partyVoteInfos.remove(partyVoteInfo);
                 partyVoteInfos.add(partyVoteInfo);
 

@@ -18,6 +18,7 @@ package org.secretflow.secretpad.service.model.datasource;
 
 import org.secretflow.secretpad.common.constant.Constants;
 import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
+import org.secretflow.secretpad.common.util.DesensitizationUtils;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -30,7 +31,7 @@ import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
  */
 @Getter
 @Setter
-public class DatasourceDetailVO {
+public class DatasourceDetailUnAggregateDTO {
 
     private String nodeId;
 
@@ -42,28 +43,32 @@ public class DatasourceDetailVO {
 
     private String status = Constants.STATUS_AVAILABLE;
 
-    private OssDatasourceInfo info;
+    private DataSourceInfo info;
 
-    public static DatasourceDetailVO from(Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse) {
-        DatasourceDetailVO datasourceDetailVO = new DatasourceDetailVO();
+    public static DatasourceDetailUnAggregateDTO from(Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse) {
+        DatasourceDetailUnAggregateDTO datasourceDetailUnAggregateDTO = new DatasourceDetailUnAggregateDTO();
         Domaindatasource.DomainDataSource data = queryDomainDataSourceResponse.getData();
-        datasourceDetailVO.setDatasourceId(data.getDatasourceId());
-        datasourceDetailVO.setType(StringUtils.toRootUpperCase(data.getType()));
+        datasourceDetailUnAggregateDTO.setDatasourceId(data.getDatasourceId());
+        datasourceDetailUnAggregateDTO.setType(StringUtils.toRootUpperCase(data.getType()));
         if (StringUtils.isNotBlank(data.getStatus())) {
-            datasourceDetailVO.setStatus(data.getStatus());
+            datasourceDetailUnAggregateDTO.setStatus(data.getStatus());
         }
-        datasourceDetailVO.setName(data.getName());
-        datasourceDetailVO.setNodeId(data.getDomainId());
+        datasourceDetailUnAggregateDTO.setName(data.getName());
+        datasourceDetailUnAggregateDTO.setNodeId(data.getDomainId());
 
         Domaindatasource.DataSourceInfo info = data.getInfo();
         switch (StringUtils.toRootUpperCase(data.getType())) {
             case DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE:
                 Domaindatasource.OssDataSourceInfo oss = info.getOss();
-                datasourceDetailVO.setInfo(OssDatasourceInfo.create(oss.getEndpoint(), oss.getBucket(), oss.getPrefix(), oss.getAccessKeyId(), oss.getAccessKeyId(), oss.getStorageType(), oss.getVirtualhost()));
+                datasourceDetailUnAggregateDTO.setInfo(OssDatasourceInfo.create(oss.getEndpoint(), oss.getBucket(), oss.getPrefix(), DesensitizationUtils.akSkDesensitize(oss.getAccessKeyId()), DesensitizationUtils.akSkDesensitize(oss.getAccessKeySecret()), oss.getStorageType(), oss.getVirtualhost()));
+                break;
+            case DomainDatasourceConstants.DEFAULT_ODPS_DATASOURCE_TYPE:
+                Domaindatasource.OdpsDataSourceInfo odps = info.getOdps();
+                datasourceDetailUnAggregateDTO.setInfo(OdpsDatasourceInfo.builder().accessId(DesensitizationUtils.akSkDesensitize(odps.getAccessKeyId())).accessKey(DesensitizationUtils.akSkDesensitize(odps.getAccessKeySecret())).endpoint(odps.getEndpoint()).project(odps.getProject()).build());
                 break;
             default:
                 break;
         }
-        return datasourceDetailVO;
+        return datasourceDetailUnAggregateDTO;
     }
 }

@@ -77,5 +77,10 @@ public class ComponentVersion {
     @Schema(description = "secretflowImage")
     private String secretflowImage;
 
+    /**
+     * dataProxyImage
+     */
+    @Schema(description = "dataProxyImage")
+    private String dataProxyImage;
 
 }

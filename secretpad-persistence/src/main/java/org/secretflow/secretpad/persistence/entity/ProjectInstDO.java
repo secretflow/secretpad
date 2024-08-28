@@ -54,6 +54,24 @@ public class ProjectInstDO extends BaseAggregationRoot<ProjectInstDO> {
     @EmbeddedId
     private UPK upk;
 
+    @Override
+    @JsonIgnore
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
+
+    @Override
+    @JsonIgnore
+    public String getNodeId() {
+        return this.upk.instId;
+    }
+
+    @Override
+    @JsonIgnore
+    public List<String> getNodeIds() {
+        return super.getNodeIds();
+    }
+
     public static class Factory {
         /**
          * Create a new project institution DO via projectId and instId
@@ -106,11 +124,5 @@ public class ProjectInstDO extends BaseAggregationRoot<ProjectInstDO> {
          */
         @Column(name = "inst_id", nullable = false, length = 64)
         public String instId;
-    }
-
-    @Override
-    @JsonIgnore
-    public String getProjectId() {
-        return this.upk.projectId;
     }
 }

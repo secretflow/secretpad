@@ -41,27 +41,40 @@ public class DataSourceController {
     private final DatasourceService datasourceService;
 
     @PostMapping("/create")
-    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     public SecretPadResponse<CreateDatasourceVO> create(@RequestBody @Valid CreateDatasourceRequest createDatasourceRequest) {
         return SecretPadResponse.success(datasourceService.createDatasource(createDatasourceRequest));
     }
 
     @PostMapping("/delete")
-    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     public SecretPadResponse delete(@RequestBody @Valid DeleteDatasourceRequest deleteDatasourceRequest) {
         datasourceService.deleteDatasource(deleteDatasourceRequest);
         return SecretPadResponse.success();
     }
 
     @PostMapping("/list")
-    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     public SecretPadResponse<DatasourceListVO> list(@RequestBody @Valid DatasourceListRequest datasourceListRequest) {
         return SecretPadResponse.success(datasourceService.listDatasource(datasourceListRequest));
     }
 
     @PostMapping("/detail")
-    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
-    public SecretPadResponse<DatasourceDetailVO> detail(@RequestBody @Valid DatasourceDetailRequest datasourceListRequest) {
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
+    public SecretPadResponse<DatasourceDetailAggregateVO> detail(@RequestBody @Valid DatasourceDetailRequest datasourceListRequest) {
         return SecretPadResponse.success(datasourceService.datasourceDetail(datasourceListRequest));
     }
+
+    /**
+     * query the datasource belongs to which nodes
+     *
+     * @param datasourceNodesRequest
+     * @return DatasourceNodesVO
+     */
+    @PostMapping("/nodes")
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
+    public SecretPadResponse<DatasourceNodesVO> nodes(@RequestBody @Valid DatasourceNodesRequest datasourceNodesRequest) {
+        return SecretPadResponse.success(datasourceService.datasourceNodes(datasourceNodesRequest));
+    }
+
 }

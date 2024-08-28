@@ -30,6 +30,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 import java.util.Objects;
+
 import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_TEST;
 
 /**
@@ -56,6 +57,12 @@ public class CloudLogServiceFactory {
     private String nodeId;
 
 
+    public CloudLogServiceFactory(LogConfigProperties logConfigProperties, ProjectJobTaskRepository taskRepository, NodeRepository nodeRepository) {
+        this.logConfigProperties = logConfigProperties;
+        this.taskRepository = taskRepository;
+        this.nodeRepository = nodeRepository;
+    }
+
     public ICloudLogService getLogServiceInstance() {
         try {
             if (Objects.nonNull(logConfigProperties.getSls()) && ValidationUtil.allFieldsNotNull(logConfigProperties.getSls())) {
@@ -77,12 +84,5 @@ public class CloudLogServiceFactory {
         }
 
         return null;
-    }
-
-
-    public CloudLogServiceFactory(LogConfigProperties logConfigProperties, ProjectJobTaskRepository taskRepository, NodeRepository nodeRepository) {
-        this.logConfigProperties = logConfigProperties;
-        this.taskRepository = taskRepository;
-        this.nodeRepository = nodeRepository;
     }
 }

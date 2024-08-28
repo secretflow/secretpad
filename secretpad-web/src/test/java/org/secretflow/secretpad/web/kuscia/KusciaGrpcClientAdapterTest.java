@@ -24,6 +24,7 @@ import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.secretflow.v1alpha1.kusciaapi.*;
+import org.springframework.test.context.TestPropertySource;
 
 import java.io.IOException;
 import java.security.cert.CertificateException;
@@ -32,6 +33,10 @@ import java.security.cert.CertificateException;
  * @author yutu
  * @date 2024/06/18
  */
+@TestPropertySource(properties = {
+        "secretpad.node-id=alice",
+        "kuscia.nodes="
+})
 public class KusciaGrpcClientAdapterTest extends BaseKusciaTest {
 
     @Resource
@@ -44,14 +49,19 @@ public class KusciaGrpcClientAdapterTest extends BaseKusciaTest {
     public void testKusciaApiService() {
         String xx = dynamicKusciaChannelProvider.getProtocolByDomainId("xx");
         Assertions.assertEquals(xx, "tls");
-        xx = dynamicKusciaChannelProvider.getProtocolByDomainId("alice");
+        xx = dynamicKusciaChannelProvider.getProtocolByDomainId("alice1");
         Assertions.assertEquals(xx, "tls");
         String domainId = "xx";
         Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.queryDomain(null));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.queryDomain(null, domainId));
         Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.createDomain(null));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.createDomain(null, domainId));
         Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.updateDomain(null));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.updateDomain(null, domainId));
         Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.deleteDomain(null));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.deleteDomain(null, domainId));
         Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.batchQueryDomain(null));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.batchQueryDomain(null, domainId));
 
         Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.queryDomain(null, domainId));
         Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.createDomain(null, domainId));
@@ -153,10 +163,6 @@ public class KusciaGrpcClientAdapterTest extends BaseKusciaTest {
         Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.generateKeyCerts(null));
 
         Assertions.assertThrows(IllegalArgumentException.class, () -> kusciaGrpcClientAdapter.generateKeyCerts(null, domainId));
-
-
-        DomainOuterClass.QueryDomainRequest request = DomainOuterClass.QueryDomainRequest.newBuilder().build();
-        Assertions.assertEquals(14, kusciaGrpcClientAdapter.queryDomain(request).getStatus().getCode());
     }
 
     @Test
@@ -277,6 +283,11 @@ public class KusciaGrpcClientAdapterTest extends BaseKusciaTest {
         MockKusciaGrpcServer mockKusciaGrpcServer = new MockKusciaGrpcServer();
         mockKusciaGrpcServer.start();
         dynamicKusciaChannelProvider.registerKuscia(mockKusciaGrpcServer.buildKusciaGrpcConfig("alice"));
+        dynamicKusciaChannelProvider.registerKuscia(mockKusciaGrpcServer.buildKusciaGrpcConfig("alice"));
+
+        dynamicKusciaChannelProvider.registerKuscia(mockKusciaGrpcServer.buildKusciaGrpcConfig("bob"));
+        dynamicKusciaChannelProvider.setNodeId("alice");
+
 
         kusciaGrpcClientAdapter.queryDomain(DomainOuterClass.QueryDomainRequest.newBuilder().build());
         kusciaGrpcClientAdapter.createDomain(DomainOuterClass.CreateDomainRequest.newBuilder().build());
@@ -372,6 +383,7 @@ public class KusciaGrpcClientAdapterTest extends BaseKusciaTest {
         kusciaGrpcClientAdapter.updateServing(Serving.UpdateServingRequest.newBuilder().build(), "alice");
         kusciaGrpcClientAdapter.batchQueryServingStatus(Serving.BatchQueryServingStatusRequest.newBuilder().build(), "alice");
 
+
         kusciaGrpcClientAdapter.healthZ(Health.HealthRequest.newBuilder().build());
 
         kusciaGrpcClientAdapter.healthZ(Health.HealthRequest.newBuilder().build(), "alice");
@@ -380,7 +392,8 @@ public class KusciaGrpcClientAdapterTest extends BaseKusciaTest {
 
         kusciaGrpcClientAdapter.generateKeyCerts(Certificate.GenerateKeyCertsRequest.newBuilder().build(), "alice");
 
-
+        dynamicKusciaChannelProvider.unRegisterKuscia("bob");
+        dynamicKusciaChannelProvider.unRegisterKuscia(mockKusciaGrpcServer.buildKusciaGrpcConfig("bob"));
         mockKusciaGrpcServer.shutdown();
         dynamicKusciaChannelProvider.destroy();
     }

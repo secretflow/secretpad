@@ -13,8 +13,8 @@ COPY config /app/config
 COPY scripts /app/scripts
 COPY demo/data /app/data
 COPY target/secretpad.jar secretpad.jar
-ENV JAVA_OPTS="-server -Xmx3100m -Xms3100m -XX:+UseZGC" SPRING_PROFILES_ACTIVE="default"
+ENV JAVA_OPTS="-server -Xms2048m -Xmx2300m -XX:MetaspaceSize=256m -XX:MaxMetaspaceSize=512m" SPRING_PROFILES_ACTIVE="default"
 EXPOSE 80
 EXPOSE 8080
 EXPOSE 9001
-ENTRYPOINT java ${JAVA_OPTS} -Dsun.net.http.allowRestrictedHeaders=true -jar -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE} /app/secretpad.jar
+ENTRYPOINT java ${JAVA_OPTS} -Dsun.net.http.allowRestrictedHeaders=true  -jar -Dspring.profiles.active=${SPRING_PROFILES_ACTIVE} /app/secretpad.jar

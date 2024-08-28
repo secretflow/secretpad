@@ -17,9 +17,12 @@
 package org.secretflow.secretpad.service.auth.impl;
 
 import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
+import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.service.InstService;
 import org.secretflow.secretpad.service.auth.ApiResourceAuth;
 
+import jakarta.annotation.Resource;
 import org.springframework.stereotype.Service;
 
 /**
@@ -34,10 +37,15 @@ public class DefaultApiResourceAuth implements ApiResourceAuth {
      * @param resourceCode from InterfaceResourceCode
      * @return boolean
      */
+    @Resource
+    private InstService instService;
+
     @Override
     public boolean check(String resourceCode) {
         // Ignore for current platform manager
-        if (UserContext.getUser().getOwnerId().equals(UserContext.getUser().getPlatformNodeId())) {
+        if (UserContext.getUser().getOwnerId().equals(UserContext.getUser().getPlatformNodeId())
+                || (UserOwnerTypeEnum.P2P.equals(UserContext.getUser().getOwnerType())
+                && instService.checkNodeInInst(UserContext.getUser().getOwnerId(), UserContext.getUser().getPlatformNodeId()))) {
             return true;
         }
         if (UserContext.getUser().containInterfaceResource(ApiResourceCodeConstants.ALL_INTERFACE_RESOURCE)) {

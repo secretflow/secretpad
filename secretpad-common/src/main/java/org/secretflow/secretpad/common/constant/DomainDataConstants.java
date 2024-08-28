@@ -29,4 +29,6 @@ public class DomainDataConstants {
     public final static String DEFAULT_DATATABLE_TYPE = "CSV";
 
     public static final String HTTP_DATATABLE_TYPE = DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_TYPE;
+
+    public static final String NULL_STRS = "NullStrs";
 }

@@ -18,9 +18,8 @@ package org.secretflow.secretpad.service.model.datasource;
 
 import org.secretflow.secretpad.common.constant.Constants;
 
-import lombok.*;
-import org.apache.commons.lang3.StringUtils;
-import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
+import lombok.Getter;
+import lombok.Setter;
 
 import java.util.List;
 
@@ -30,12 +29,9 @@ import java.util.List;
  */
 @Getter
 @Setter
-@Builder
-@AllArgsConstructor
-@NoArgsConstructor
-public class DatasourceListInfo {
+public class DatasourceDetailAggregateVO {
 
-    private String nodeId;
+    private List<DataSourceRelatedNode> nodes;
 
     private String datasourceId;
 
@@ -43,18 +39,9 @@ public class DatasourceListInfo {
 
     private String type;
 
-    private String status;
+    private String status = Constants.STATUS_AVAILABLE;
 
-    private List<String> relatedDatas;
+    private DataSourceInfo info;
 
-    public static DatasourceListInfo from(Domaindatasource.DomainDataSource datasourceInfo) {
-        return DatasourceListInfo.builder()
-                .nodeId(datasourceInfo.getDomainId())
-                .datasourceId(datasourceInfo.getDatasourceId())
-                .name(datasourceInfo.getName())
-                .type(StringUtils.toRootUpperCase(datasourceInfo.getType()))
-                .status(StringUtils.isBlank(datasourceInfo.getStatus()) ? Constants.STATUS_AVAILABLE : datasourceInfo.getStatus())
-                .build();
-    }
 
 }

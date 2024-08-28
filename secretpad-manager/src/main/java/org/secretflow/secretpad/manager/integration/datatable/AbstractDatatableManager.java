@@ -19,6 +19,8 @@ package org.secretflow.secretpad.manager.integration.datatable;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO.NodeDatatableId;
 import org.secretflow.secretpad.manager.integration.model.DatatableListDTO;
+import org.secretflow.secretpad.manager.integration.node.SearchTargetNodeManager;
+import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 
 import java.util.List;
 import java.util.Map;
@@ -44,20 +46,31 @@ public abstract class AbstractDatatableManager {
      */
     public abstract Optional<DatatableDTO> findById(NodeDatatableId nodeDatatableId);
 
+
     /**
      * Find Map of NodeDatatableId and DatatableDTO by nodeDatatableIds
      *
      * @param nodeDatatableIds datatable id list
      * @return Map of NodeDatatableId and DatatableDTO
      */
-    public abstract Map<NodeDatatableId, DatatableDTO> findByIds(List<NodeDatatableId> nodeDatatableIds);
+    public abstract Map<NodeDatatableId, DatatableDTO> findByIds(List<NodeDatatableId> nodeDatatableIds , SearchTargetNodeManager searchTargetNodeManager);
+
+
+    public abstract List<Domaindata.DomainData> findByIdsBase(List<NodeDatatableId> nodeDatatableIds , SearchTargetNodeManager searchTargetNodeManager);
+
+    /** group targetNode*/
+    public abstract List<Domaindata.DomainData> findByIdGroup(List<NodeDatatableId> nodeDatatableIds , SearchTargetNodeManager searchTargetNodeManager);
+
+
+    public abstract Map<NodeDatatableId, DatatableDTO> findByIdsFromProjectConfig(List<NodeDatatableId> nodeDatatableIds , SearchTargetNodeManager searchTargetNodeManager);
+
 
     /**
      * Find DatatableDTO list and number by params
      *
      * @param nodeId              nodeId
      * @param pageSize
-     * @param pageNumber
+     * @param pageNumberfindByIds
      * @param statusFilter
      * @param datatableNameFilter
      * @param types

@@ -26,8 +26,6 @@ pushd "$CERT_DIR" || exit
 
 DAYS=360
 CLIENT=client
-SERVER=server
-IP=127.0.0.1
 
 #create a PKCS#8 key for client(JAVA native supported)
 openssl genpkey -out ${CLIENT}.pem -algorithm RSA -pkeyopt rsa_keygen_bits:2048

@@ -87,6 +87,11 @@ sh install.sh lite -n domainId -t token -p 30002 -m master endpoint -s 8089 -k 4
 sh install.sh p2p -n domainId  -s 8099 -g 8092 -k 8091 -p 8090 -q 33801
 ```
 
+```sh
+# deploy autonomy-node for multi-node in p2p mode
+sh install.sh autonomy-node -n domainId -g 8096 -k 8087 -p 8088 -P notls -q 13805 -m 'http://secretpad:port' -t "token for node register on pad"  -x 13086
+```
+
 For more details, see [Development](./docs/deployment_experience/v0.6.0b0/deploy_secretpad.md)
 
 ## Versions
@@ -100,15 +105,16 @@ For more details, see [Development](./docs/deployment_experience/v0.6.0b0/deploy
 > > secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8<br>
 > > secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8<br>
 
-| secretpad Version | Kuscia Version | secretflow Version | trustedflow Version | serving Version |
-|-------------------|----------------|--------------------|---------------------|-----------------|
-| 0.9.0b0           | 0.10.0b0       | 1.8.0b0            | 0.1.1b0             | 0.5.0b0         |
-| 0.8.0b0/0.8.1b0   | 0.9.0b0        | 1.7.0b0            | 0.1.1b0             | 0.4.0b0         |
-| 0.7.1b0/0.7.2b0   | 0.8.0b0        | 1.6.1b0            | 0.1.1b0             | 0.3.1b0         |
-| 0.6.0b0           | 0.7.0b0        | 1.5.0b0            | 0.1.1b0             | 0.2.1b0         |
-| 0.5.0b0           | 0.6.0b0        | 1.4.0b0            | 0.1.1b0             | 0.2.0b0         |
-| 0.4.1b0           | 0.5.0b0        | 1.4.0.dev24011601  | 0.1.1b0             |                 |
-| 0.3.0b0           | 0.4.0b0        | 1.3.0.dev20231109  | 0.1.1b0             |                 |
+| secretpad Version | Kuscia Version | secretflow Version | trustedflow Version | serving Version | dataproxy Version |
+|-------------------|----------------|--------------------|---------------------|-----------------|-------------------|
+| 0.10.0b0          | 0.11.0b0       | 1.9.0b0            | 0.1.1b0             | 0.6.0b0         | 0.1.0b1           |
+| 0.9.0b0           | 0.10.0b0       | 1.8.0b0            | 0.1.1b0             | 0.5.0b0         |                   |
+| 0.8.0b0/0.8.1b0   | 0.9.0b0        | 1.7.0b0            | 0.1.1b0             | 0.4.0b0         |                   |
+| 0.7.1b0/0.7.2b0   | 0.8.0b0        | 1.6.1b0            | 0.1.1b0             | 0.3.1b0         |                   |
+| 0.6.0b0           | 0.7.0b0        | 1.5.0b0            | 0.1.1b0             | 0.2.1b0         |                   |
+| 0.5.0b0           | 0.6.0b0        | 1.4.0b0            | 0.1.1b0             | 0.2.0b0         |                   |
+| 0.4.1b0           | 0.5.0b0        | 1.4.0.dev24011601  | 0.1.1b0             |                 |                   |
+| 0.3.0b0           | 0.4.0b0        | 1.3.0.dev20231109  | 0.1.1b0             |                 |                   |
 
 ## Contact
 

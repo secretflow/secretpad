@@ -26,7 +26,8 @@ public class AuthConstants {
     public static final String TOKEN_NAME = "User-Token";
     public static final String USER_NAME = "admin";
     public static final String PASSWORD = "12#$qwER";
-
+    public static final String CSRF_SAME_SITE = "SameSite";
+    public static final String CSRF_SAME_SITE_VALUE = "Strict";
 
     /**
      * get tokenName
@@ -40,8 +41,4 @@ public class AuthConstants {
     public static String getTokenName(String platformType, String platformNodeId) {
         return TOKEN_NAME + "_" + platformType + "_" + platformNodeId;
     }
-
-    public static final String CSRF_SAME_SITE = "SameSite";
-
-    public static final String CSRF_SAME_SITE_VALUE = "Strict";
 }

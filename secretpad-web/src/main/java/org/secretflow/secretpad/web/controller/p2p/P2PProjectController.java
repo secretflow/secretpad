@@ -102,4 +102,14 @@ public class P2PProjectController {
         projectService.archiveProject(archiveProjectRequest);
         return SecretPadResponse.success();
     }
+
+    @ResponseBody
+    @PostMapping(value = "/participants", consumes = "application/json")
+    @Operation(summary = "project participants", description = "project participants")
+    @ApiResource(code = ApiResourceCodeConstants.PRJ_PARTICIPANTS)
+    public SecretPadResponse<ProjectParticipantsDetailVO> projectParticipants(@Valid @RequestBody ProjectParticipantsRequest request) {
+        return SecretPadResponse.success(projectService.getProjectParticipants(request));
+    }
+
+
 }

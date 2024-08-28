@@ -4,6 +4,10 @@ server:
       enabled: true
       directory: /var/log/secretpad
   servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
     session:
       timeout: 30m
   http-port: 8080
@@ -18,10 +22,9 @@ server:
     key-store-type: JKS
   compression:
     enabled: true
-    mime-types:
-      - application/javascript
-      - text/css
+    mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json
     min-response-size: 1024
+
 spring:
   task:
     scheduling:
@@ -88,11 +91,21 @@ springdoc:
   api-docs:
     enabled: false
 management:
+  endpoint:
+    shutdown:
+      enabled: false
+    health:
+      show-details: always
   endpoints:
     web:
       exposure:
-        include: health,info,readiness,prometheus
-    enabled-by-default: false
+        include:
+          - prometheus
+          - health
+  metrics:
+    tags:
+      application: ${spring.application.name}
+
 kusciaapi:
   protocol: ${KUSCIA_PROTOCOL:tls}
 
@@ -160,6 +173,7 @@ secretpad:
     tee-app-image: ${TEE_APP_IMAGE:0.1.0b0}
     tee-dm-image: ${TEE_DM_IMAGE:0.1.0b0}
     capsule-manager-sim-image: ${CAPSULE_MANAGER_SIM_IMAGE:0.1.2b0}
+    data-proxy-image: ${DATA_PROXY_IMAGE:0.1.0b0}
 
   component:
     hide:
@@ -169,6 +183,8 @@ secretpad:
       - secretflow/model/model_export:0.0.1
       - secretflow/ml.train/slnn_train:0.0.1
       - secretflow/ml.predict/slnn_predict:0.0.2
+  data-proxy:
+    enabled: ${DATAPROXY_ENABLE:true}
 
 sfclusterDesc:
   deviceConfig:

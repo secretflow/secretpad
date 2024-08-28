@@ -24,6 +24,7 @@ import org.secretflow.secretpad.common.enums.DataResourceTypeEnum;
 import org.secretflow.secretpad.service.DatatableService;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
 import org.secretflow.secretpad.service.model.datatable.*;
+
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -44,13 +45,14 @@ public class DatatableController {
 
     /**
      * Create datatable api
+     *
      * @param request create datatable request
      * @return
      */
-    @PostMapping(value = "/create", consumes = "application/json")
-    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @PostMapping(value = "/create")
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     @ApiResource(code = ApiResourceCodeConstants.DATATABLE_CREATE)
-    public SecretPadResponse<String> createDataTable(@RequestBody @Valid CreateDatatableRequest request) {
+    public SecretPadResponse<OssDatatableVO> createDataTable(@RequestBody @Valid CreateDatatableRequest request) {
         return SecretPadResponse.success(datatableService.createDataTable(request));
     }
 
@@ -62,10 +64,10 @@ public class DatatableController {
      */
     @ResponseBody
     @PostMapping(value = "/list", consumes = "application/json")
-    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     @ApiResource(code = ApiResourceCodeConstants.DATATABLE_LIST)
-    public SecretPadResponse<DatatableListVO> listDatatables(@RequestBody @Valid ListDatatableRequest request) {
-        return SecretPadResponse.success(datatableService.listDatatablesByNodeId(request));
+    public SecretPadResponse<AllDatatableListVO> listDatatables(@RequestBody @Valid ListDatatableRequest request) {
+        return SecretPadResponse.success(datatableService.listDatatablesByOwnerId(request));
     }
 
     /**
@@ -78,7 +80,7 @@ public class DatatableController {
     @PostMapping(value = "/get", consumes = "application/json")
     @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
     @ApiResource(code = ApiResourceCodeConstants.DATATABLE_GET)
-    public SecretPadResponse<DatatableVO> getDatatable(@RequestBody @Valid GetDatatableRequest request) {
+    public SecretPadResponse<DatatableNodeVO> getDatatable(@RequestBody @Valid GetDatatableRequest request) {
         return SecretPadResponse.success(datatableService.getDatatable(request));
     }
 

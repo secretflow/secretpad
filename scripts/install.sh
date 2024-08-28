@@ -15,13 +15,14 @@
 # limitations under the License.
 #
 
-export KUSCIA_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.10.0b0"
-export SECRETPAD_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.9.0b0"
-export SECRETFLOW_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.8.0b0"
-export SECRETFLOW_SERVING_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.5.0b0"
-export TEE_APP_IMAGE="secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"
-export TEE_DM_IMAGE="secretflow/sf-tee-dm-sim:0.1.0b0"
-export CAPSULE_MANAGER_SIM_IMAGE="secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"
+export KUSCIA_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.11.0b0"
+export SECRETPAD_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.10.0b0"
+export SECRETFLOW_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.9.0b0"
+export SECRETFLOW_SERVING_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.6.0b0"
+export TEE_APP_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"
+export TEE_DM_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/sf-tee-dm-sim:0.1.0b0"
+export CAPSULE_MANAGER_SIM_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"
+export DATAPROXY_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/dataproxy:0.1.0b1"
 
 # MPC TEE ALL-IN-ONE
 export DEPLOY_MODE="ALL-IN-ONE"
@@ -37,7 +38,8 @@ usage() {
 NETWORK_MODE:
     master            deploy master (default)
     lite              deploy lite node
-    autonomy          deploy autonomy  node
+    autonomy          deploy autonomy  node include secretpad,kuscia
+    autonomy-node     deploy autonomy-node  only kuscia autonomy
 
 lite OPTIONS:
     -m              [optional]  (Only used in lite mode)The master endpoint.
@@ -50,12 +52,15 @@ lite OPTIONS:
     -d              [optional]  The install directory. Default is ${INSTALL_DIR}.
     -P              [optional]  kuscia protocol. Default is ${KUSCIA_PROTOCOL}.
     -q              [optional]  (Only used in autonomy or lite mode)The port exposed for internal use by domain. You can set Env 'DOMAIN_HOST_INTERNAL_PORT' instead default 13081.
+    -b              [optional]  The port used to debug,default 5005
+    -x              [optional]  kuscia METRICS_PORT default 13084
     -h              [optional]  Show this help text.
 
 example:
     install.sh master
-    install.sh lite -n alice -m 'https://root-kuscia-master:1080' -t xdeploy-tokenx -p 18080  -k 18082 -g 18083 -s 8080 -q 13081 -P notls
+    install.sh lite -n alice -m 'https://root-kuscia-master:1080' -t xdeploy-tokenx -p 18080  -k 18082 -g 18083 -s 8080 -q 13081 -x 13084 -P notls
     install.sh autonomy -n alice -s 8080 -g 18083 -k 18082 -p 18080 -q 13081 -P mtls
+    install.sh autonomy-node -n alice -g 18083 -k 18082 -p 18080 -q 13081 -P mtls  -m 'https://secretpad:8080' -t xdeploy-tokenx
     "
 }
 case "${1}" in
@@ -64,6 +69,11 @@ master | lite)
 	shift
 	;;
 autonomy)
+	export MODE=$1
+	export DEPLOY_MODE="MPC"
+	shift
+	;;
+autonomy-node)
 	export MODE=$1
 	export DEPLOY_MODE="MPC"
 	shift
@@ -79,10 +89,11 @@ autonomy)
 	;;
 esac
 
-while getopts 'm:n:s:p:k:g:t:d:P:q:h' option; do
+while getopts 'm:n:s:p:k:g:t:d:P:q:b:x:h' option; do
 	case "$option" in
 	m)
 		export KUSCIA_MASTER_ENDPOINT=$OPTARG
+		export SECRETPAD_MASTER_ENDPOINT=$OPTARG
 		;;
 	n)
 		export NODE_ID=$OPTARG
@@ -110,6 +121,12 @@ while getopts 'm:n:s:p:k:g:t:d:P:q:h' option; do
 		;;
 	q)
 		export DOMAIN_HOST_INTERNAL_PORT=$OPTARG
+		;;
+	b)
+		export PAD_DEBUG_PORT=$OPTARG
+		;;
+	x)
+		export METRICS_PORT=$OPTARG
 		;;
 	h)
 		usage
@@ -201,6 +218,7 @@ function show_all_images() {
 	echo "TEE_APP_IMAGE             ${TEE_APP_IMAGE}"
 	echo "TEE_DM_IMAGE              ${TEE_DM_IMAGE}"
 	echo "CAPSULE_MANAGER_SIM_IMAGE ${CAPSULE_MANAGER_SIM_IMAGE}"
+	echo "DATAPROXY_IMAGE           ${DATAPROXY_IMAGE}"
 }
 
 function show_mpc_images() {
@@ -208,6 +226,7 @@ function show_mpc_images() {
 	echo "KUSCIA_IMAGE              ${KUSCIA_IMAGE}"
 	echo "SECRETFLOW_IMAGE          ${SECRETFLOW_IMAGE}"
 	echo "SECRETFLOW_SERVING_IMAGE  ${SECRETFLOW_SERVING_IMAGE}"
+	echo "DATAPROXY_IMAGE           ${DATAPROXY_IMAGE}"
 }
 
 function show_tee_images() {
@@ -226,6 +245,7 @@ function empty_image_env() {
 	export TEE_APP_IMAGE=""
 	export TEE_DM_IMAGE=""
 	export CAPSULE_MANAGER_SIM_IMAGE=""
+	export DATAPROXY_IMAGE=""
 }
 
 function init_images_from_files() {
@@ -252,6 +272,8 @@ function init_images_from_files() {
 				export TEE_APP_IMAGE=$image
 			elif [[ $image == *serving-anolis8* ]]; then
 				export SECRETFLOW_SERVING_IMAGE=$image
+			elif [[ $image == *dataproxy* ]]; then
+				export DATAPROXY_IMAGE=$image
 			fi
 		fi
 	done
@@ -292,12 +314,14 @@ function load_docker_images() {
 			docker pull "${TEE_APP_IMAGE}"
 			docker pull "${TEE_DM_IMAGE}"
 			docker pull "${CAPSULE_MANAGER_SIM_IMAGE}"
+			docker pull "${DATAPROXY_IMAGE}"
 		fi
 		if [ "${DEPLOY_MODE}" = 'MPC' ]; then
 			docker pull "${SECRETPAD_IMAGE}"
 			docker pull "${KUSCIA_IMAGE}"
 			docker pull "${SECRETFLOW_IMAGE}"
 			docker pull "${SECRETFLOW_SERVING_IMAGE}"
+			docker pull "${DATAPROXY_IMAGE}"
 		fi
 		if [ "${DEPLOY_MODE}" = 'TEE' ]; then
 			docker pull "${SECRETPAD_IMAGE}"
@@ -310,11 +334,13 @@ function load_docker_images() {
 }
 
 function init_deploy_shell() {
+	CTR_ROOT=${CTR_ROOT:-"/home/kuscia"}
 	rm -rf "$I_PATH/deploy"
 	TEMP_CONTAINER=$(docker create "$SECRETPAD_IMAGE")
 	docker cp "$TEMP_CONTAINER:/app/scripts/deploy" "$I_PATH/deploy"
 	docker rm "$TEMP_CONTAINER"
-	docker run --rm "$KUSCIA_IMAGE" cat /home/kuscia/scripts/deploy/kuscia.sh >kuscia.sh && chmod u+x "$I_PATH"/kuscia.sh
+	docker run --rm "$KUSCIA_IMAGE" cat "${CTR_ROOT}"/scripts/deploy/kuscia.sh >kuscia.sh && chmod u+x "$I_PATH"/kuscia.sh
+	docker run --rm "$KUSCIA_IMAGE" cat "${CTR_ROOT}"/scripts/deploy/register_app_image.sh >register_app_image_0.sh && chmod u+x register_app_image_0.sh
 }
 
 function check_image_ok() {
@@ -365,7 +391,12 @@ function delete_dp_datasource() {
 }
 
 function deploy_secretpad() {
-	bash "$I_PATH"/deploy/secretpad.sh
+	if ! is_p2p_node; then
+		bash "$I_PATH"/deploy/secretpad.sh -b "${PAD_DEBUG_PORT}"
+	fi
+	if is_p2p_node; then
+		post_kuscia_node
+	fi
 }
 
 function build_kuscia_master_endpoint() {
@@ -383,27 +414,42 @@ function build_kuscia_master_endpoint() {
 	fi
 }
 
+function dp_enabled() {
+	if [ "${DATAPROXY_ENABLE}" = 'true' ]; then
+		return 0
+	fi
+	return 1
+}
+
 function deploy_kuscia() {
 	build_kuscia_master_endpoint
 	init_kuscia_config
-	log "bash $I_PATH/kuscia.sh start  -p ${KUSCIA_GATEWAY_PORT} -k ${KUSCIA_API_HTTP_PORT} -g ${KUSCIA_API_GRPC_PORT} -d ${KUSCIA_INSTALL_DIR}  -c ${KUSCIA_CTR}/kuscia.yaml -l ${KUSCIA_LOG_PATH} -q ${DOMAIN_HOST_INTERNAL_PORT}"
-	bash "$I_PATH"/kuscia.sh start -p "${KUSCIA_GATEWAY_PORT}" -k "${KUSCIA_API_HTTP_PORT}" -g "${KUSCIA_API_GRPC_PORT}" -d "${KUSCIA_INSTALL_DIR}" -c "${KUSCIA_CTR}"/kuscia.yaml -l "${KUSCIA_LOG_PATH}" -q "${DOMAIN_HOST_INTERNAL_PORT}" probe_kuscia "${KUSCIA_CTR}"
+	# shellcheck disable=SC2016
+	kuscia_cmd="bash $I_PATH/kuscia.sh start  -p ${KUSCIA_GATEWAY_PORT} -k ${KUSCIA_API_HTTP_PORT} -g ${KUSCIA_API_GRPC_PORT} -s ${KUSCIA_K3S_INSTALL_DIR} -d ${KUSCIA_INSTALL_DIR}  -c ${KUSCIA_CONFIG_INSTALL_DIR}/kuscia.yaml -l ${KUSCIA_LOG_PATH} -q ${DOMAIN_HOST_INTERNAL_PORT} -x ${METRICS_PORT} probe_kuscia ${KUSCIA_CTR}"
+	if dp_enabled; then
+		kuscia_cmd="bash $I_PATH/kuscia.sh start  -p ${KUSCIA_GATEWAY_PORT} -k ${KUSCIA_API_HTTP_PORT} -g ${KUSCIA_API_GRPC_PORT} -s ${KUSCIA_K3S_INSTALL_DIR} -d ${KUSCIA_INSTALL_DIR}  -c ${KUSCIA_CONFIG_INSTALL_DIR}/kuscia.yaml -l ${KUSCIA_LOG_PATH} -q ${DOMAIN_HOST_INTERNAL_PORT} -x ${METRICS_PORT} probe_kuscia ${KUSCIA_CTR} --data-proxy"
+	fi
+	log "${kuscia_cmd}"
+	eval "${kuscia_cmd}"
 	if is_lite; then
 		if need_tee; then
-			saveAndLoad2Container "$TEE_DM_IMAGE" "$KUSCIA_CTR"
+			bash register_app_image_0.sh -c "$KUSCIA_CTR" -i "$TEE_DM_IMAGE" --import
 		fi
 		if need_mpc; then
-			saveAndLoad2Container "$SECRETFLOW_SERVING_IMAGE" "$KUSCIA_CTR"
+			bash register_app_image_0.sh -c "$KUSCIA_CTR" -i "$SECRETFLOW_SERVING_IMAGE" --import
 		fi
 		delete_dp_datasource
 	fi
 	if is_p2p; then
 		if need_mpc; then
 			applySfServingAppImage
-			saveAndLoad2Container "$SECRETFLOW_SERVING_IMAGE" "$KUSCIA_CTR"
+			bash register_app_image_0.sh -c "$KUSCIA_CTR" -i "$SECRETFLOW_SERVING_IMAGE" --import
 		fi
 		delete_dp_datasource
 	fi
+	if is_p2p_node; then
+	delete_dp_datasource
+  fi
 	if is_master; then
 		applySfServingAppImage
 	fi
@@ -437,6 +483,7 @@ function deploy_kuscia_lite_alice_bob_tee() {
 			export MODE='lite'
 			export NODE_ID='alice'
 			export DOMAIN_HOST_INTERNAL_PORT="23081"
+			export METRICS_PORT="23084"
 			add_kuscia_domain_lite
 			prepare_environment
 			deploy_kuscia
@@ -445,6 +492,7 @@ function deploy_kuscia_lite_alice_bob_tee() {
 			export MODE='lite'
 			export NODE_ID='bob'
 			export DOMAIN_HOST_INTERNAL_PORT="33081"
+			export METRICS_PORT="33084"
 			add_kuscia_domain_lite
 			prepare_environment
 			deploy_kuscia
@@ -458,11 +506,12 @@ function deploy_kuscia_lite_alice_bob_tee() {
 			export MODE='lite'
 			export NODE_ID='tee'
 			export DOMAIN_HOST_INTERNAL_PORT="43081"
+			export METRICS_PORT="43084"
 			add_kuscia_domain_lite
 			prepare_environment
 			deploy_kuscia
-			saveAndLoad2Container "$TEE_APP_IMAGE" "$KUSCIA_CTR"
-			saveAndLoad2Container "$CAPSULE_MANAGER_SIM_IMAGE" "$KUSCIA_CTR"
+			bash register_app_image_0.sh -c "$KUSCIA_CTR" -i "$TEE_APP_IMAGE" --import
+			bash register_app_image_0.sh -c "$KUSCIA_CTR" -i "$CAPSULE_MANAGER_SIM_IMAGE" --import
 			init_tee
 		fi
 

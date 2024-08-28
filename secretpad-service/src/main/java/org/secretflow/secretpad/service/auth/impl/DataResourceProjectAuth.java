@@ -36,7 +36,7 @@ public class DataResourceProjectAuth {
     private ProjectService projectService;
 
     public boolean check(String resourceId) {
-        boolean exist = projectService.checkNodeInProject(resourceId, UserContext.getUser().getOwnerId());
+        boolean exist = projectService.checkOwnerInProject(resourceId, UserContext.getUser().getOwnerId());
         if (!exist) {
             ProjectDO project = projectService.openProject(resourceId);
             if (ProjectStatusEnum.ARCHIVED.getCode().equals(project.getStatus())) {

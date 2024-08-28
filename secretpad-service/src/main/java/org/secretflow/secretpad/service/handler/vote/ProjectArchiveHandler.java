@@ -24,14 +24,15 @@ import org.secretflow.secretpad.common.util.Base64Utils;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.manager.integration.node.NodeManager;
 import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.ParticipantNodeInstVO;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.CertificateService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.enums.VoteStatusEnum;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
+import org.secretflow.secretpad.service.impl.InstServiceImpl;
 import org.secretflow.secretpad.service.model.approval.*;
 import org.secretflow.secretpad.service.model.message.ProjectArchivePartyVoteStatus;
-
 import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,11 +54,13 @@ public class ProjectArchiveHandler extends AbstractAutonomyVoteTypeHandler {
 
 
     private final ProjectNodeRepository projectNodeRepository;
+    private final ProjectInstRepository projectInstRepository;
 
 
-    public ProjectArchiveHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, EnvService envService, ProjectRepository projectRepository, ProjectApprovalConfigRepository projectApprovalConfigRepository, ProjectNodeRepository projectNodeRepository, CertificateService certificateService, NodeManager nodeManager) {
-        super(voteInviteRepository, voteRequestRepository, nodeRepository, envService, projectRepository, projectApprovalConfigRepository, nodeManager, certificateService);
+    public ProjectArchiveHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, InstRepository instRepository, EnvService envService, ProjectRepository projectRepository, ProjectApprovalConfigRepository projectApprovalConfigRepository, ProjectNodeRepository projectNodeRepository, CertificateService certificateService, NodeManager nodeManager, ProjectInstRepository projectInstRepository) {
+        super(voteInviteRepository, voteRequestRepository, nodeRepository, instRepository, envService, projectRepository, projectApprovalConfigRepository, nodeManager, certificateService);
         this.projectNodeRepository = projectNodeRepository;
+        this.projectInstRepository = projectInstRepository;
     }
 
 
@@ -93,31 +96,53 @@ public class ProjectArchiveHandler extends AbstractAutonomyVoteTypeHandler {
     }
 
     @Override
-    protected void createVoteConfig(String voteID, String nodeID, AbstractVoteConfig voteConfig) {
+    protected void createVoteConfig(String voteID, String initiatorId, AbstractVoteConfig voteConfig) {
         ProjectArchiveConfig projectArchiveConfig = (ProjectArchiveConfig) voteConfig;
         String projectId = projectArchiveConfig.getProjectId();
+        Optional<ProjectApprovalConfigDO> approvalConfigDO = projectApprovalConfigRepository.findByProjectId(projectId);
+        List<ParticipantNodeInstVO> participantNodeInstVOS = approvalConfigDO.get().getParticipantNodeInfo();
+        Map<String, NodeDO> nodeInfoMap = nodeRepository.findAll()
+                .stream()
+                .collect(Collectors.toMap(NodeDO::getNodeId, node -> node));
+        for (ParticipantNodeInstVO participantNodeInstVO : participantNodeInstVOS) {
+            String initiatorNodeId = participantNodeInstVO.getInitiatorNodeId();
+            NodeDO initiatorNode = nodeInfoMap.get(initiatorNodeId);
+            if (initiatorNode.getNodeId().equals(initiatorId)) {
+                break;
+            }
+            for (ParticipantNodeInstVO.NodeInstVO inviteeVO : participantNodeInstVO.getInvitees()) {
+                String inviteeInstId = nodeInfoMap.get(inviteeVO.getInviteeId()).getInstId();
+                if (inviteeInstId.equals(initiatorId)) {
+                    String inviteeId = inviteeVO.getInviteeId();
+                    inviteeVO.setInviteeId(initiatorNodeId);
+                    participantNodeInstVO.setInitiatorNodeId(inviteeId);
+                }
+            }
+        }
         ProjectApprovalConfigDO projectApprovalConfigDO = ProjectApprovalConfigDO.builder()
                 .projectId(projectId)
+                .participantNodeInfo(participantNodeInstVOS)
                 .type(getVoteType())
                 .voteID(voteID)
-                .initiator(nodeID)
+                .initiator(initiatorId)
                 .build();
         projectApprovalConfigRepository.saveAndFlush(projectApprovalConfigDO);
     }
 
+
     @Override
-    protected List<String> getVoters(String nodeID, AbstractVoteConfig voteConfig) {
+    protected List<String> getVoters(String initiatorId, AbstractVoteConfig voteConfig) {
         ProjectArchiveConfig projectArchiveConfig = (ProjectArchiveConfig) voteConfig;
         String projectId = projectArchiveConfig.getProjectId();
         Optional<ProjectApprovalConfigDO> projectCreateApprovalConfigDOOptional = projectApprovalConfigRepository.findByProjectIdAndType(projectId, VoteTypeEnum.PROJECT_CREATE.name());
         List<String> parties = projectCreateApprovalConfigDOOptional.get().getParties();
         List<String> voters = JsonUtils.deepCopyList(parties, String.class);
-        voters.remove(nodeID);
+        voters.remove(initiatorId);
         return voters;
     }
 
     @Override
-    protected String getApprovedAction(String nodeID, AbstractVoteConfig voteConfig) {
+    protected String getApprovedAction(String initiatorId, AbstractVoteConfig voteConfig) {
         ProjectArchiveConfig projectArchiveConfig = (ProjectArchiveConfig) voteConfig;
         String projectId = projectArchiveConfig.getProjectId();
         ProjectDO projectDO = openProject(projectId);
@@ -127,12 +152,14 @@ public class ProjectArchiveHandler extends AbstractAutonomyVoteTypeHandler {
         projectArchiveCallBackAction.setProjectDO(approvedProjectDO);
         //here may be empty,as the project may not agree to create success
         List<ProjectNodeDO> projectNodeDOS = projectNodeRepository.findByProjectId(projectId);
+        List<ProjectInstDO> projectInstDOS = projectInstRepository.findByProjectId(projectId);
+        projectArchiveCallBackAction.setProjectInstDOS(projectInstDOS);
         projectArchiveCallBackAction.setProjectNodeDOS(projectNodeDOS);
         return VoteTypeEnum.PROJECT_CREATE.name() + "," + JsonUtils.toJSONString(projectArchiveCallBackAction);
     }
 
     @Override
-    protected String getRejectAction(String nodeID, AbstractVoteConfig voteConfig) {
+    protected String getRejectAction(String initiatorId, AbstractVoteConfig voteConfig) {
         return "NONE";
     }
 
@@ -143,7 +170,7 @@ public class ProjectArchiveHandler extends AbstractAutonomyVoteTypeHandler {
 
     @Override
     public void doCallBackApproved(VoteRequestDO voteRequestDO) {
-        if (!envService.isCurrentNodeEnvironment(voteRequestDO.getInitiator())) {
+        if (!envService.isCurrentInstEnvironment(voteRequestDO.getInitiator())) {
             LOGGER.info("not initiator return");
             return;
         }
@@ -152,8 +179,9 @@ public class ProjectArchiveHandler extends AbstractAutonomyVoteTypeHandler {
         String approvedAction = approvedActionStr.substring(VoteTypeEnum.PROJECT_CREATE.name().length() + 1);
         ProjectCallBackAction projectCallBackAction = JsonUtils.toJavaObject(approvedAction, ProjectCallBackAction.class);
         ProjectDO projectArchiveDO = projectCallBackAction.getProjectDO();
-        List<ProjectNodeDO> nodeDOS = projectCallBackAction.getProjectNodeDOS();
-        Map<String, String> projectNodeMap = nodeDOS.stream().collect(Collectors.toMap(ProjectNodeDO::getNodeId, ProjectNodeDO::getProjectId));
+        List<ProjectNodeDO> projectNodeDOS = projectCallBackAction.getProjectNodeDOS();
+        List<ProjectInstDO> projectInstDOS = projectCallBackAction.getProjectInstDOS();
+        Map<String, String> projectInstMap = projectInstDOS.stream().collect(Collectors.toMap(ProjectInstDO::getNodeId, ProjectInstDO::getProjectId));
         Optional<ProjectDO> currentDBProjectDO = projectRepository.findById(projectArchiveDO.getProjectId());
         if (!currentDBProjectDO.isPresent()) {
             String err = String.format("doCallBack archive project Approved error,project [%s] does not exist ", projectArchiveDO.getName());
@@ -162,19 +190,20 @@ public class ProjectArchiveHandler extends AbstractAutonomyVoteTypeHandler {
             failed(voteRequestDO);
             return;
         }
-        String platformNodeId = envService.getPlatformNodeId();
-        if (projectNodeMap.containsKey(platformNodeId)) {
+        String inst_id = InstServiceImpl.INST_ID;
+        if (projectInstMap.containsKey(inst_id)) {
             ProjectDO dbProjectDO = currentDBProjectDO.get();
             if (ProjectStatusEnum.APPROVED.getCode().equals(dbProjectDO.getStatus())) {
-                projectNodeRepository.deleteAll(nodeDOS);
-                LOGGER.info("archive project,delete project node success");
+                projectInstRepository.deleteAll(projectInstDOS);
+                projectNodeRepository.deleteAll(projectNodeDOS);
+                LOGGER.info("archive project,delete project inst success");
             }
             projectRepository.save(projectArchiveDO);
             LOGGER.info("archive project,update project status success");
             success(voteRequestDO);
         } else {
-            String err = String.format("doCallBackApproved error,voters does not has party : %s", platformNodeId);
-            LOGGER.error("doCallBackApproved error,voters does not has party : {}", platformNodeId);
+            String err = String.format("doCallBackApproved error,voters does not has party : %s", inst_id);
+            LOGGER.error("doCallBackApproved error,voters does not has party : {}", inst_id);
             voteRequestDO.setMsg(err);
             failed(voteRequestDO);
         }
@@ -206,24 +235,22 @@ public class ProjectArchiveHandler extends AbstractAutonomyVoteTypeHandler {
         VoteRequestDO projectCreateVoteRequestDO = requestDOOptional.get();
         Set<VoteRequestDO.PartyVoteInfo> projectCreateVoteRequestDOPartyVoteInfos = projectCreateVoteRequestDO.getPartyVoteInfos();
         //find project create party vote info,it decides we can step into project or not
-        Map<String, VoteRequestDO.PartyVoteInfo> projectCreateStagePartyInfoMap = projectCreateVoteRequestDOPartyVoteInfos.stream().collect(Collectors.toMap(e -> e.getNodeId(), Function.identity()));
-
+        Map<String, VoteRequestDO.PartyVoteInfo> projectCreateStagePartyInfoMap = projectCreateVoteRequestDOPartyVoteInfos.stream().collect(Collectors.toMap(e -> e.getPartyId(), Function.identity()));
         //now we start find project archive party info
         Optional<VoteRequestDO> voteRequestDOOptional = voteRequestRepository.findById(voteID);
         VoteRequestDO projectArchiveVoteRequestDO = voteRequestDOOptional.get();
         Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = projectArchiveVoteRequestDO.getPartyVoteInfos();
         List<ProjectArchivePartyVoteStatus> partyVoteStatusList = new ArrayList<>();
-        List<NodeDO> nodeDOS = nodeRepository.findByNodeIdIn(partyVoteInfos.stream().map(e -> e.getNodeId()).collect(Collectors.toList()));
-        Map<String, String> nodeMap = nodeDOS.stream().collect(Collectors.toMap(e -> e.getNodeId(), e -> e.getName()));
-
+        List<InstDO> instDOS = instRepository.findByInstIdIn(partyVoteInfos.stream().map(e -> e.getPartyId()).collect(Collectors.toList()));
+        Map<String, String> instMap = instDOS.stream().collect(Collectors.toMap(e -> e.getInstId(), e -> e.getName()));
         for (VoteRequestDO.PartyVoteInfo partyVoteInfo : partyVoteInfos) {
             ProjectArchivePartyVoteStatus partyVoteStatus = new ProjectArchivePartyVoteStatus();
             partyVoteStatus.setReason(partyVoteInfo.getReason());
             partyVoteStatus.setAction(partyVoteInfo.getAction());
-            partyVoteStatus.setNodeID(partyVoteInfo.getNodeId());
-            partyVoteStatus.setNodeName(nodeMap.get(partyVoteInfo.getNodeId()));
+            partyVoteStatus.setParticipantID(partyVoteInfo.getPartyId());
+            partyVoteStatus.setParticipantName(instMap.get(partyVoteInfo.getPartyId()));
             //this is original project create stage's voter's vote action info
-            partyVoteStatus.setProjectCreateVoteAction(projectCreateStagePartyInfoMap.get(partyVoteInfo.getNodeId()).getAction());
+            partyVoteStatus.setProjectCreateVoteAction(projectCreateStagePartyInfoMap.get(partyVoteInfo.getPartyId()).getAction());
             partyVoteStatusList.add(partyVoteStatus);
         }
         return partyVoteStatusList;

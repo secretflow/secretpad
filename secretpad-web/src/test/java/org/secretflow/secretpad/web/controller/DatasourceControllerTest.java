@@ -19,22 +19,23 @@ package org.secretflow.secretpad.web.controller;
 import org.secretflow.secretpad.common.constant.Constants;
 import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
+import org.secretflow.secretpad.common.errorcode.DatasourceErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.persistence.entity.FeatureTableDO;
+import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.repository.FeatureTableRepository;
-import org.secretflow.secretpad.service.decorator.awsoss.AwsOssConfig;
-import org.secretflow.secretpad.service.decorator.awsoss.OssAutoCloseableClient;
+import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.service.factory.OssClientFactory;
-import org.secretflow.secretpad.service.model.datasource.*;
-import org.secretflow.secretpad.service.util.HttpUtils;
-import org.secretflow.secretpad.service.util.RateLimitUtil;
+import org.secretflow.secretpad.service.model.datasource.DatasourceDetailRequest;
+import org.secretflow.secretpad.service.model.datasource.DatasourceListRequest;
+import org.secretflow.secretpad.service.model.datasource.DatasourceNodesRequest;
+import org.secretflow.secretpad.service.model.datasource.DeleteDatasourceRequest;
 
 import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.boot.test.mock.mockito.MockBean;
@@ -60,41 +61,8 @@ public class DatasourceControllerTest extends ControllerTest {
     @MockBean
     private FeatureTableRepository featureTableRepository;
 
-    @Test
-    public void create() throws Exception {
-        assertResponse(() -> {
-            CreateDatasourceRequest request = new CreateDatasourceRequest();
-            request.setType("OSS");
-            request.setName("myOss");
-            request.setNodeId("nodeId");
-
-            OssDatasourceInfo info = new OssDatasourceInfo();
-            info.setAk("ak");
-            info.setSk("sk");
-            info.setEndpoint("https://127.0.0.1:8080");
-            info.setPrefix("/prefix");
-            info.setBucket("my-bucket");
-            info.setVirtualhost(true);
-
-            request.setDataSourceInfo(info);
-
-            OssAutoCloseableClient ossAutoCloseableClient = Mockito.mock(OssAutoCloseableClient.class);
-            Mockito.when(ossClientFactory.getOssClient(Mockito.any(AwsOssConfig.class))).thenReturn(ossAutoCloseableClient);
-            Mockito.when(ossAutoCloseableClient.doesBucketExistV2(Mockito.anyString())).thenReturn(true);
-
-            Mockito.when(kusciaGrpcClientAdapter.createDomainDataSource(Mockito.any())).thenReturn(Domaindatasource.CreateDomainDataSourceResponse.newBuilder()
-                    .setData(Domaindatasource.CreateDomainDataSourceResponseData.newBuilder()
-                            .setDatasourceId("datasourceId")
-                            .build())
-                    .build());
-            MockedStatic<HttpUtils> httpUtilsMockedStatic = Mockito.mockStatic(HttpUtils.class);
-            httpUtilsMockedStatic.when(() -> HttpUtils.detection(Mockito.anyString())).thenReturn(true);
-            MockedStatic<RateLimitUtil> rateLimitUtilMockedStatic = Mockito.mockStatic(RateLimitUtil.class);
-            rateLimitUtilMockedStatic.when(RateLimitUtil::verifyRate).then(invocationOnMock -> true);
-            return MockMvcRequestBuilders.post(getMappingUrl(DataSourceController.class, "create", CreateDatasourceRequest.class))
-                    .content(JsonUtils.toJSONString(request));
-        });
-    }
+    @MockBean
+    private NodeRepository nodeRepository;
 
 
     @Test
@@ -102,7 +70,7 @@ public class DatasourceControllerTest extends ControllerTest {
         assertResponseWithEmptyData(() -> {
             DeleteDatasourceRequest deleteDatasourceRequest = new DeleteDatasourceRequest();
             deleteDatasourceRequest.setDatasourceId("datasourceId");
-            deleteDatasourceRequest.setNodeId("nodeId");
+            deleteDatasourceRequest.setOwnerId("nodeId");
             deleteDatasourceRequest.setType("OSS");
 
             FeatureTableDO featureTableDO = new FeatureTableDO();
@@ -110,8 +78,18 @@ public class DatasourceControllerTest extends ControllerTest {
             featureTableDO.setFeatureTableName("featureTableName");
             featureTableDO.setDesc("desc");
             featureTableDO.setType(DataSourceTypeEnum.HTTP.name());
-
+            Mockito.when(kusciaGrpcClientAdapter.listDomainDataSource(Mockito.any(), Mockito.any())).thenReturn(Domaindatasource.ListDomainDataSourceResponse.newBuilder()
+                    .setData(Domaindatasource.DomainDataSourceList.newBuilder().
+                            addAllDatasourceList(Lists.newArrayList(Domaindatasource.DomainDataSource.newBuilder()
+                                    .setDatasourceId("datasourceId")
+                                    .setDomainId("nodeId")
+                                    .setType("oss")
+                                    .setName("oss")
+                                    .build()))
+                            .build())
+                    .build());
             Mockito.when(featureTableRepository.findByNodeId(Mockito.anyString())).thenReturn(Lists.newArrayList(featureTableDO));
+            Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(NodeDO.builder().nodeId("nodeId").build());
             DatatableDTO datatableDTO = DatatableDTO.builder().datasourceId("id").datatableName("name").type("oss").datatableId("od").build();
             Mockito.when(datatableManager.findByNodeId(Mockito.anyString(), Mockito.anyString())).thenReturn(Lists.newArrayList(datatableDTO));
             return MockMvcRequestBuilders.post(getMappingUrl(DataSourceController.class, "delete", DeleteDatasourceRequest.class))
@@ -124,9 +102,10 @@ public class DatasourceControllerTest extends ControllerTest {
         assertResponse(() -> {
             DatasourceListRequest listRequest = new DatasourceListRequest();
             listRequest.setName("name");
-            listRequest.setNodeId("nodeId");
+            listRequest.setOwnerId("nodeId");
             listRequest.setStatus(Constants.STATUS_AVAILABLE);
             listRequest.setTypes(List.of(DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE));
+            Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(NodeDO.builder().nodeId("nodeId").build());
 
             Mockito.when(kusciaGrpcClientAdapter.listDomainDataSource(Mockito.any()))
                     .thenReturn(Domaindatasource.ListDomainDataSourceResponse.newBuilder()
@@ -142,7 +121,7 @@ public class DatasourceControllerTest extends ControllerTest {
         assertResponse(() -> {
             DatasourceListRequest listRequest = new DatasourceListRequest();
             listRequest.setName("name");
-            listRequest.setNodeId("nodeId");
+            listRequest.setOwnerId("nodeId");
             listRequest.setStatus(Constants.STATUS_AVAILABLE);
             listRequest.setTypes(List.of(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_TYPE));
 
@@ -150,6 +129,7 @@ public class DatasourceControllerTest extends ControllerTest {
                     .thenReturn(Domaindatasource.ListDomainDataSourceResponse.newBuilder()
                             .setData(Domaindatasource.DomainDataSourceList.newBuilder().addAllDatasourceList(List.of())
                                     .build()).build());
+            Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(NodeDO.builder().nodeId("nodeId").build());
             return MockMvcRequestBuilders.post(getMappingUrl(DataSourceController.class, "list", DatasourceListRequest.class))
                     .content(JsonUtils.toJSONString(listRequest));
         });
@@ -160,13 +140,58 @@ public class DatasourceControllerTest extends ControllerTest {
         assertResponse(() -> {
             DatasourceDetailRequest datasourceDetailRequest = new DatasourceDetailRequest();
             datasourceDetailRequest.setDatasourceId("datasourceId");
-            datasourceDetailRequest.setNodeId("nodeId");
+            datasourceDetailRequest.setOwnerId("nodeId");
             datasourceDetailRequest.setType(DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE);
+            Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(NodeDO.builder().nodeId("nodeId").build());
+
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainDataSource(Mockito.any(), Mockito.eq("nodeId")))
+                    .thenReturn(Domaindatasource.QueryDomainDataSourceResponse.newBuilder()
+                            .setData(Domaindatasource.DomainDataSource.newBuilder()
+                                    .setDatasourceId("datasourceId")
+                                    .setName("name")
+                                    .setType("type")
+                                    .setInfo(Domaindatasource.DataSourceInfo.newBuilder()
+                                            .setOss(Domaindatasource.OssDataSourceInfo.newBuilder()
+                                                    .setAccessKeyId("ak")
+                                                    .setAccessKeySecret("sk")
+                                                    .setEndpoint("endpoint")
+                                                    .setPrefix("prefix")
+                                                    .setBucket("bucket")
+                                                    .build())
+                                            .build())
+                                    .build())
+                            .build());
+
+            Mockito.when(kusciaGrpcClientAdapter.listDomainDataSource(Mockito.any(), Mockito.anyString())).thenReturn(Domaindatasource.ListDomainDataSourceResponse.newBuilder()
+                    .setData(Domaindatasource.DomainDataSourceList.newBuilder().
+                            addAllDatasourceList(Lists.newArrayList(Domaindatasource.DomainDataSource.newBuilder()
+                                    .setDatasourceId("datasourceId")
+                                    .setDomainId("nodeId")
+                                    .setType("oss")
+                                    .setName("oss")
+                                    .build()))
+                            .build())
+                    .build());
+            return MockMvcRequestBuilders.post(getMappingUrl(DataSourceController.class, "detail", DatasourceDetailRequest.class))
+                    .content(JsonUtils.toJSONString(datasourceDetailRequest));
+        });
+    }
+
+
+    @Test
+    public void detailHttp() throws Exception {
+        assertResponse(() -> {
+            DatasourceDetailRequest datasourceDetailRequest = new DatasourceDetailRequest();
+            datasourceDetailRequest.setDatasourceId("http-data-source");
+            datasourceDetailRequest.setOwnerId("nodeId");
+            datasourceDetailRequest.setType(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_TYPE);
+
+            Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(NodeDO.builder().nodeId("nodeId").build());
 
             Mockito.when(kusciaGrpcClientAdapter.queryDomainDataSource(Mockito.any()))
                     .thenReturn(Domaindatasource.QueryDomainDataSourceResponse.newBuilder()
                             .setData(Domaindatasource.DomainDataSource.newBuilder()
-                                    .setDatasourceId("datasourceId")
+                                    .setDatasourceId("http-data-source")
                                     .setName("name")
                                     .setType("type")
                                     .setInfo(Domaindatasource.DataSourceInfo.newBuilder()
@@ -185,35 +210,66 @@ public class DatasourceControllerTest extends ControllerTest {
         });
     }
 
-
+    /**
+     * center datasource nodes
+     *
+     * @throws Exception
+     */
     @Test
-    public void detailHttp() throws Exception {
+    public void nodes() throws Exception {
         assertResponse(() -> {
-            DatasourceDetailRequest datasourceDetailRequest = new DatasourceDetailRequest();
-            datasourceDetailRequest.setDatasourceId("datasourceId");
-            datasourceDetailRequest.setNodeId("nodeId");
-            datasourceDetailRequest.setType(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_TYPE);
-
-            Mockito.when(kusciaGrpcClientAdapter.queryDomainDataSource(Mockito.any()))
-                    .thenReturn(Domaindatasource.QueryDomainDataSourceResponse.newBuilder()
-                            .setData(Domaindatasource.DomainDataSource.newBuilder()
-                                    .setDatasourceId("datasourceId")
-                                    .setName("name")
-                                    .setType("type")
-                                    .setInfo(Domaindatasource.DataSourceInfo.newBuilder()
-                                            .setOss(Domaindatasource.OssDataSourceInfo.newBuilder()
-                                                    .setAccessKeyId("ak")
-                                                    .setAccessKeySecret("sk")
-                                                    .setEndpoint("endpoint")
-                                                    .setPrefix("prefix")
-                                                    .setBucket("bucket")
-                                                    .build())
-                                            .build())
+            DatasourceNodesRequest datasourceNodesRequest = new DatasourceNodesRequest();
+            datasourceNodesRequest.setOwnerId("nodeId");
+            datasourceNodesRequest.setDatasourceId("datasourceId");
+            NodeDO nodeDO = new NodeDO();
+            nodeDO.setNodeId("nodeId");
+            nodeDO.setName("alice");
+            Mockito.when(nodeRepository.findByNodeId("nodeId")).thenReturn(nodeDO);
+            Mockito.when(kusciaGrpcClientAdapter.listDomainDataSource(Mockito.any(), Mockito.anyString()))
+                    .thenReturn(Domaindatasource.ListDomainDataSourceResponse.newBuilder()
+                            .setData(Domaindatasource.DomainDataSourceList.newBuilder().
+                                    addAllDatasourceList(Lists.newArrayList(Domaindatasource.DomainDataSource.newBuilder()
+                                            .setDatasourceId("datasourceId")
+                                            .setDomainId("nodeId")
+                                            .setType("oss")
+                                            .setName("oss")
+                                            .build()))
                                     .build())
                             .build());
-            return MockMvcRequestBuilders.post(getMappingUrl(DataSourceController.class, "detail", DatasourceDetailRequest.class))
-                    .content(JsonUtils.toJSONString(datasourceDetailRequest));
+            return MockMvcRequestBuilders.post(getMappingUrl(DataSourceController.class, "nodes", DatasourceNodesRequest.class))
+                    .content(JsonUtils.toJSONString(datasourceNodesRequest));
         });
+    }
+
+    /**
+     * center datasource nodes DATA_SOURCE_NOT_FOUND
+     *
+     * @throws Exception
+     */
+    @Test
+    void nodes_DATA_SOURCE_NOT_FOUND() throws Exception {
+        assertErrorCode(() -> {
+            DatasourceNodesRequest datasourceNodesRequest = new DatasourceNodesRequest();
+            datasourceNodesRequest.setOwnerId("nodeId");
+            datasourceNodesRequest.setDatasourceId("datasourceId");
+            NodeDO nodeDO = new NodeDO();
+            nodeDO.setNodeId("nodeId");
+            nodeDO.setName("alice");
+            Mockito.when(nodeRepository.findByNodeId("nodeId")).thenReturn(nodeDO);
+            Mockito.when(kusciaGrpcClientAdapter.listDomainDataSource(Mockito.any()))
+                    .thenReturn(Domaindatasource.ListDomainDataSourceResponse.newBuilder()
+                            .setData(Domaindatasource.DomainDataSourceList.newBuilder().
+                                    addAllDatasourceList(Lists.newArrayList(Domaindatasource.DomainDataSource.newBuilder()
+                                            .setDatasourceId("datasourceId")
+                                            .setDomainId("nodeId")
+                                            .setType("oss")
+                                            .setName("oss")
+                                            .build()))
+                                    .build())
+                            .build());
+            return MockMvcRequestBuilders.post(getMappingUrl(DataSourceController.class, "nodes", DatasourceNodesRequest.class))
+                    .content(JsonUtils.toJSONString(datasourceNodesRequest));
+        }, DatasourceErrorCode.DATA_SOURCE_NOT_FOUND);
     }
 
 }

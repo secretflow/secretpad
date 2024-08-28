@@ -39,8 +39,6 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.File;
-import java.io.FileInputStream;
 import java.io.InputStream;
 
 /**
@@ -109,10 +107,10 @@ public class DataController {
         DownloadInfo downloadInfo = dataService.download(request);
         response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
         response.setHeader("Content-Disposition", "attachment;filename*=UTF-8''" + downloadInfo.getFileName());
-        response.setContentLength((int) new File(downloadInfo.getFilePath()).length());
+        response.setContentLength(downloadInfo.getFileLength());
         try {
             ServletOutputStream outputStream = response.getOutputStream();
-            InputStream inputStream = new FileInputStream(downloadInfo.getFilePath());
+            InputStream inputStream = downloadInfo.getInputStream();
             byte[] buf = new byte[1024];
             int len;
             while ((len = inputStream.read(buf)) > 0) {

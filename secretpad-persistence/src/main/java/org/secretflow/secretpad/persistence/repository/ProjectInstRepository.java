@@ -17,7 +17,11 @@
 package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectInstDO;
+import org.secretflow.secretpad.persistence.projection.ProjectInstProjection;
 
+import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -31,5 +35,32 @@ import java.util.List;
 @Repository
 public interface ProjectInstRepository extends BaseRepository<ProjectInstDO, ProjectInstDO.UPK> {
 
+    /**
+     * Query project inst results by projectId
+     *
+     * @param projectId target projectId
+     * @return project inst results
+     */
+    @Query("from ProjectInstDO pi where pi.upk.projectId= :projectId")
+    List<ProjectInstDO> findByProjectId(@Param("projectId") String projectId);
+
     List<ProjectInstDO> findByUpkProjectId(String projectId);
+
+    @Query("select new org.secretflow.secretpad.persistence.projection.ProjectInstProjection(pi, i.name) from ProjectInstDO pi join InstDO i "
+            + "on pi.upk.instId=i.instId and pi.upk.projectId= :projectId")
+    List<ProjectInstProjection> findProjectionByProjectId(String projectId);
+
+    /**
+     * Query project results by instId
+     *
+     * @param instId
+     * @return
+     */
+    @Query("from ProjectInstDO pi where pi.upk.instId=:instId")
+    List<ProjectInstDO> findByInstId(String instId);
+
+    @Modifying
+    @Query(value = "update ProjectInstDO pi set pi.isDeleted = true where pi.upk.projectId=:projectId")
+    void deleteByProjectId(@Param("projectId") String projectId);
+
 }

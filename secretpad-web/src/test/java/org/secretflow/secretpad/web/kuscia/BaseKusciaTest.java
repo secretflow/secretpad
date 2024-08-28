@@ -20,14 +20,18 @@ import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.service.dataproxy.DataProxyService;
 import org.secretflow.secretpad.web.SecretPadApplication;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.mockito.Mockito;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.Set;
 
@@ -40,6 +44,8 @@ import java.util.Set;
 @SpringBootTest(classes = SecretPadApplication.class)
 public class BaseKusciaTest {
     public static final String PROJECT_ID = "projectagdasvacaghyhbvscvyjnba";
+    @MockBean
+    protected DataProxyService dataProxyService;
 
     @BeforeAll
     public static void setup() throws IOException, InterruptedException {
@@ -57,5 +63,16 @@ public class BaseKusciaTest {
                 .platformNodeId("alice")
                 .ownerType(UserOwnerTypeEnum.CENTER)
                 .projectIds(Set.of(PROJECT_ID)).build());
+        Mockito.doNothing().when(dataProxyService).updateDataSourceUseDataProxyInMaster();
+        Mockito.doNothing().when(dataProxyService).updateDataSourceUseDataProxyInP2p(Mockito.anyString());
+        File file = new File("./config/kuscia");
+        if (file.isDirectory()) {
+            File[] files = file.listFiles();
+            if (files != null) {
+                for (File f : files) {
+                    f.deleteOnExit();
+                }
+            }
+        }
     }
 }

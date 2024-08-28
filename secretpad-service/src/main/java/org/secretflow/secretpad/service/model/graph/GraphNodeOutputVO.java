@@ -125,7 +125,10 @@ public class GraphNodeOutputVO {
          * Project result nodeId
          */
         private String nodeId;
-
+        /**
+         * Project result nameName
+         */
+        private String nodeName;
         /**
          * node type
          */

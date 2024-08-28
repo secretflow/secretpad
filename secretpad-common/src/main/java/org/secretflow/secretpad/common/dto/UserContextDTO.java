@@ -43,6 +43,7 @@ public class UserContextDTO {
     private String platformNodeId;
     private UserOwnerTypeEnum ownerType;
     private String ownerId;
+
     private Set<String> projectIds;
     private Set<String> apiResources;
 
@@ -58,6 +59,9 @@ public class UserContextDTO {
      */
     private String deployMode;
 
+    public static UserContextDTO fromJson(String jsonStr) {
+        return JsonUtils.toJavaObject(jsonStr, UserContextDTO.class);
+    }
 
     public boolean containProjectId(String projectId) {
         if (StringUtils.isBlank(projectId)) {
@@ -81,9 +85,5 @@ public class UserContextDTO {
 
     public String toJsonStr() {
         return JsonUtils.toJSONString(this);
-    }
-
-    public static UserContextDTO fromJson(String jsonStr) {
-        return JsonUtils.toJavaObject(jsonStr, UserContextDTO.class);
     }
 }

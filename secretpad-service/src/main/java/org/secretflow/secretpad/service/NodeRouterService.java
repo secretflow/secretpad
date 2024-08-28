@@ -24,8 +24,6 @@ import org.secretflow.secretpad.service.model.noderoute.UpdateNodeRouterRequest;
 
 import org.springframework.data.domain.Pageable;
 
-import java.util.Set;
-
 /**
  * @author yutu
  * @date 2023/08/04
@@ -40,8 +38,6 @@ public interface NodeRouterService {
     NodeRouterVO getNodeRouter(String nodeId);
 
     NodeRouterVO refreshRouter(String routerId);
-
-    void refreshRouters(Set<String> routerIds);
 
     void deleteNodeRouter(String routerId);
 }

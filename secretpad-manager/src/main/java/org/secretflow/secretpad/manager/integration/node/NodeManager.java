@@ -18,27 +18,27 @@ package org.secretflow.secretpad.manager.integration.node;
 
 import org.secretflow.secretpad.common.constant.DomainConstants;
 import org.secretflow.secretpad.common.constant.role.RoleCodeConstants;
-import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.*;
 import org.secretflow.secretpad.common.errorcode.*;
 import org.secretflow.secretpad.common.exception.SecretpadException;
-import org.secretflow.secretpad.common.util.DateTimes;
-import org.secretflow.secretpad.common.util.JsonUtils;
-import org.secretflow.secretpad.common.util.UUIDUtils;
-import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.common.util.*;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
+import org.secretflow.secretpad.manager.integration.datasource.AbstractDatasourceManager;
+import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.model.*;
+import org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pDataSyncProducerTemplate;
 import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.ParticipantNodeInstVO;
 import org.secretflow.secretpad.persistence.repository.*;
 
 import com.google.common.collect.Lists;
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
-import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -48,7 +48,6 @@ import org.springframework.util.CollectionUtils;
 
 import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 /**
@@ -77,10 +76,20 @@ public class NodeManager extends AbstractNodeManager {
 
     private final SysUserPermissionRelRepository permissionRelRepository;
 
-    @Value("${secretpad.master-node-id:master}")
-    private String masterNodeId;
+    private final InstRepository instRepository;
+
     @Value("${kusciaapi.protocol:tls}")
     private String protocol;
+    @Value("${secretpad.node-id}")
+    private String localNodeId;
+
+    @Value("${secretpad.platform-type}")
+    private String platformType;
+
+    @Resource
+    private AbstractDatatableManager datatableManager;
+    @Resource
+    private AbstractDatasourceManager datasourceManager;
 
     private void check(String nodeId) {
         List<NodeDO> byType = nodeRepository.findByType(DomainConstants.DomainTypeEnum.embedded.name());
@@ -100,7 +109,74 @@ public class NodeManager extends AbstractNodeManager {
     public List<NodeDTO> listNode() {
         List<NodeDTO> nodeDTOS = nodeRepository.findAll().stream().map(NodeDTO::fromDo).toList();
         return this.addNodeStatusByGrpcBatchQuery(nodeDTOS);
-//        return nodeRepository.findAll().stream().map(this::fillByGrpcDomainQuery).collect(Collectors.toList());
+    }
+
+    private NodeDTO getNodeDto(NodeDO nodeDO) {
+        if (PlatformTypeEnum.AUTONOMY.name().equals(platformType)) {
+            return getNodeDTOP2P(nodeDO);
+        }
+        return fillByGrpcDomainQuery(nodeDO);
+    }
+
+    /**
+     * query inst too many times
+     */
+    private NodeDTO getNodeDTOP2P(NodeDO nodeDO) {
+        NodeDTO nodeDTO = NodeDTO.fromDo(nodeDO);
+        Optional<InstDO> optionalInstDO = instRepository.findById(nodeDO.getInstId());
+        if (optionalInstDO.isEmpty()) {
+            throw SecretpadException.of(InstErrorCode.INST_NOT_EXISTS);
+        }
+        InstDO instDO = optionalInstDO.get();
+        nodeDTO.setInstId(instDO.getInstId());
+        nodeDTO.setInstName(instDO.getName());
+        nodeDTO.setNodeStatus(DomainConstants.DomainStatusEnum.NotReady.name());
+        boolean isMainNode = StringUtils.equals(nodeDTO.getNodeId(), localNodeId);
+        nodeDTO.setIsMainNode(isMainNode);
+        if (isMainNode) {
+            nodeDTO.setAllowDeletion(false);
+        } else {
+            Set<NodeRouteDO> routes = nodeRouteRepository.findBySrcNodeIdOrDstNodeId(nodeDTO.getNodeId());
+            nodeDTO.setAllowDeletion(CollectionUtils.isEmpty(routes));
+        }
+        fillByGrpcDomainQueryP2p(nodeDTO);
+        return nodeDTO;
+    }
+
+
+    @Override
+    public List<NodeDTO> listNode(String instId) {
+        List<NodeDO> nodeDOs = nodeRepository.findByInstId(instId);
+        if (CollectionUtils.isEmpty(nodeDOs)) {
+            return new ArrayList<>();
+
+        }
+        //TODO: cpu later to thread pool
+        return nodeDOs.parallelStream().map(this::getNodeDTOP2P).toList();
+    }
+
+    @Override
+    public List<NodeDTO> listReadyNode(String instId) {
+        return listNode(instId).stream().filter(nodeDTO -> DomainConstants.DomainStatusEnum.Ready.name().equals(nodeDTO.getNodeStatus())).toList();
+    }
+
+    @Override
+    public List<NodeDTO> listReadyNodeByNames(String instId, List<String> nodeNames) {
+        List<NodeDTO> nodeDTOS = listReadyNode(instId);
+        if (CollectionUtils.isEmpty(nodeDTOS) || CollectionUtils.isEmpty(nodeNames)) {
+            return nodeDTOS;
+        }
+        return nodeDTOS.stream().filter(nodeDTO -> nodeNames.contains(nodeDTO.getNodeName())).collect(Collectors.toList());
+    }
+
+    @Override
+    public List<String> listReadyNodeByIds(String instId, List<String> nodeIds) {
+        List<NodeDTO> nodeDTOS = listReadyNode(instId);
+        if (CollectionUtils.isEmpty(nodeDTOS) || CollectionUtils.isEmpty(nodeIds)) {
+            return nodeDTOS.stream().map(NodeDTO::getNodeId).toList();
+        }
+        return nodeDTOS.stream().filter(nodeDTO -> nodeIds.contains(nodeDTO.getNodeId())).map(NodeDTO::getNodeId).collect(Collectors.toList());
+
     }
 
     @Override
@@ -130,7 +206,7 @@ public class NodeManager extends AbstractNodeManager {
     public String createNode(CreateNodeParam param) {
         String nodeId = genDomainId();
         // the creation is successful. insert into the database
-        NodeDO nodeDO = NodeDO.builder().controlNodeId(nodeId).nodeId(nodeId).netAddress(nodeId + ":1080")
+        NodeDO nodeDO = NodeDO.builder().controlNodeId(nodeId).nodeId(nodeId).netAddress(nodeId + ":1080").instId("")
                 .type(DomainConstants.DomainTypeEnum.normal.name()).mode(param.getMode()).name(param.getName()).build();
         nodeRepository.save(nodeDO);
 
@@ -158,12 +234,7 @@ public class NodeManager extends AbstractNodeManager {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public String createP2pNode(CreateNodeParam param) {
-        String nodeId = param.getNodeId();
-        // p2p mode nodeId maybe repeated, must valid
-        Optional<NodeDO> nodeOptional = nodeRepository.findById(nodeId);
-        if (nodeOptional.isPresent()) {
-            throw SecretpadException.of(NodeErrorCode.NODE_ALREADY_EXIST_ERROR, nodeId + " already exists in db, cannot create!");
-        }
+        String nodeId = param.getDstNodeId();
         NodeDO nodeDO;
         // query if exists deleted record, avoid insert
         Optional<NodeDO> deletednodeOptional = nodeRepository.findDeletedRecordByNodeId(nodeId);
@@ -175,11 +246,12 @@ public class NodeManager extends AbstractNodeManager {
             nodeDO.setMasterNodeId(param.getMasterNodeId());
             nodeDO.setNetAddress(param.getNetAddress());
             nodeDO.setIsDeleted(Boolean.FALSE);
+            nodeDO.setInstId(param.getInstId());
         } else {
             LOGGER.info("create new record, nodeId = {}", nodeId);
             nodeDO = NodeDO.builder().controlNodeId(nodeId).nodeId(nodeId).netAddress(param.getNetAddress())
                     .masterNodeId(param.getMasterNodeId()).type(DomainConstants.DomainTypeEnum.normal.name())
-                    .mode(param.getMode()).name(param.getName()).build();
+                    .mode(param.getMode()).name(param.getName()).instId(param.getInstId()).build();
         }
         try {
             nodeRepository.save(nodeDO);
@@ -196,20 +268,63 @@ public class NodeManager extends AbstractNodeManager {
         sysUserPermission.setUpk(upk);
         permissionRelRepository.save(sysUserPermission);
 
+        createInst(param.getInstId(), param.getInstName());
         DomainOuterClass.CreateDomainRequest request = DomainOuterClass.CreateDomainRequest.newBuilder().setDomainId(nodeId)
                 .setAuthCenter(
                         DomainOuterClass.AuthCenter.newBuilder().setAuthenticationType("Token").setTokenGenMethod("RSA-GEN").build())
                 .setRole("partner")
                 .setCert(param.getCertText())
                 .build();
-        DomainOuterClass.CreateDomainResponse domain = DomainOuterClass.CreateDomainResponse.newBuilder().build();
-        try {
-            kusciaGrpcClientAdapter.createDomain(request);
-        } catch (Exception e) {
-            throw SecretpadException.of(NodeErrorCode.NODE_CREATE_ERROR, e, nodeId + " node create fail in kuscia :" + domain.getStatus().getMessage());
+        DomainOuterClass.CreateDomainResponse domain = kusciaGrpcClientAdapter.createDomain(request, param.getSrcNodeId());
+        if (domain.getStatus().getCode() != 0) {
+            throw SecretpadException.of(NodeErrorCode.NODE_CREATE_ERROR, nodeId + " node create fail in kuscia :" + domain.getStatus().getMessage());
         }
         return nodeId;
     }
+
+    @Override
+    @Transactional
+    public NodeDTO createP2PNodeForInst(CreateNodeParam param) {
+        String nodeId = genDomainId();
+        NodeDO nodeDO = NodeDO.builder()
+                .instId(param.getInstId())
+                .controlNodeId(nodeId)
+                .nodeId(nodeId)
+                .netAddress(nodeId + ":1080")
+                .type(DomainConstants.DomainTypeEnum.normal.name())
+                .mode(param.getMode()) //mpc only
+                .name(param.getName())
+                .masterNodeId(localNodeId)
+                .build();
+        nodeDO.setInstToken(generateInstToken(nodeDO));
+        nodeRepository.save(nodeDO);
+        //remove code about SysUserPermissionRelDO
+        return NodeDTO.fromDo(nodeDO);
+    }
+
+    /**
+     * need  then add
+     */
+    private String generateInstToken(NodeDO nodeDO) {
+        return TokenUtil.sign(nodeDO.getInstId(), nodeDO.getNodeId());
+    }
+
+
+    @Override
+    public String generateInstToken(String instId, String nodeId) {
+
+        NodeDO nodeDO = nodeRepository.findOneByInstId(instId, nodeId);
+        if (ObjectUtils.isEmpty(nodeDO)) {
+            LOGGER.error("node not find by nodeId={}", nodeId);
+            throw SecretpadException.of(NodeErrorCode.NODE_NOT_EXIST_ERROR);
+        }
+
+        nodeDO.setInstToken(generateInstToken(nodeDO));
+        nodeRepository.saveAndFlush(nodeDO);
+
+        return nodeDO.getInstToken();
+    }
+
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -258,6 +373,93 @@ public class NodeManager extends AbstractNodeManager {
         }
     }
 
+    /**
+     * only p2p
+     * invoke idempotent
+     */
+    @Override
+    public void deleteNode(String inst, String nodeId) {
+        LOGGER.info("delete inst={},nodeId={}", inst, nodeId);
+        checkBeforeDelete(inst, nodeId);
+        deleteKusciaDomain(nodeId);
+        nodeRepository.deleteAuthentic(nodeId);
+        LOGGER.info("delete finish inst={},nodeId={}", inst, nodeId);
+    }
+
+
+    private void checkBeforeDelete(String instId, String nodeId) {
+        /* local node check */
+        if (StringUtils.equalsIgnoreCase(localNodeId, nodeId)) {
+            LOGGER.error("localNode forbid delete,node={}", nodeId);
+            throw SecretpadException.of(NodeErrorCode.NODE_DELETE_ERROR, "localNode forbid delete");
+        }
+
+        NodeDO nodeDO = nodeRepository.findOneByInstId(instId, nodeId);
+        if (ObjectUtils.isEmpty(nodeDO)) {
+            LOGGER.error("node not find by instId={} ,nodeId={}", instId, nodeId);
+            throw SecretpadException.of(NodeErrorCode.NODE_NOT_EXIST_ERROR);
+        }
+
+        /* route check */
+        Set<NodeRouteDO> routes = nodeRouteRepository.findBySrcNodeIdOrDstNodeId(nodeId);
+        if (!CollectionUtils.isEmpty(routes)) {
+            LOGGER.error("node route is not empty ,node={} ", nodeId);
+            throw SecretpadException.of(NodeErrorCode.NODE_DELETE_ERROR, "node route is not empty");
+        }
+        /* project check */
+        List<ProjectNodeDO> projectNodeList = projectNodeRepository.findByNodeId(nodeId);
+        if (!CollectionUtils.isEmpty(projectNodeList)) {
+            LOGGER.error("node  has job running! node={}", nodeId);
+            throw SecretpadException.of(NodeErrorCode.NODE_DELETE_ERROR, "node have job running");
+        }
+
+        /* reuse approval check */
+        List<ProjectDO> projectList = projectRepository.findByStatus(ProjectStatusEnum.REVIEWING.getCode());
+        if (!CollectionUtils.isEmpty(projectList)) {
+            List<ProjectApprovalConfigDO> approvalList = projectApprovalConfigRepository
+                    .findByProjectIdsAndType(projectList.stream().map(ProjectDO::getProjectId).toList(), "PROJECT_CREATE");
+            if (!CollectionUtils.isEmpty(approvalList) &&
+                    approvalList.stream().anyMatch(t -> t.getParties().contains(nodeId))) {
+                throw SecretpadException.of(NodeErrorCode.NODE_DELETE_ERROR, "node have project reviewing");
+            }
+        }
+    }
+
+
+    /**
+     * kuscia delete
+     * unregister
+     */
+    private void deleteKusciaDomain(String nodeId) {
+
+        boolean domainRegistered = kusciaGrpcClientAdapter.isDomainRegistered(nodeId);
+        if (!domainRegistered) {
+            LOGGER.info("no registered delete success, nodeId={}", nodeId);
+            return;
+        }
+
+        DomainOuterClass.QueryDomainRequest query = DomainOuterClass.QueryDomainRequest.
+                newBuilder().setDomainId(nodeId).build();
+        DomainOuterClass.QueryDomainResponse queryDomainResponse = kusciaGrpcClientAdapter.queryDomain(query, nodeId);
+        boolean isDomainExist = queryDomainResponse.getStatus().getCode() == 0;
+        if (!isDomainExist) {
+            LOGGER.info("domain not exist, nodeId={}", nodeId);
+            return;
+        }
+
+        DomainOuterClass.DeleteDomainRequest request = DomainOuterClass.DeleteDomainRequest.newBuilder().setDomainId(nodeId).build();
+        DomainOuterClass.DeleteDomainResponse deleteResponse = kusciaGrpcClientAdapter.deleteDomain(request, nodeId);
+        LOGGER.warn("deleteDomain result={}", deleteResponse);
+        if (deleteResponse.getStatus().getCode() != 0) {
+            throw SecretpadException.of(NodeErrorCode.NODE_DELETE_ERROR, "kuscia delete domain failed");
+        }
+
+        // unregister
+        kusciaGrpcClientAdapter.unregisterDomain(nodeId);
+        LOGGER.info("unregisterDomain finish, nodeId={}", nodeId);
+    }
+
+
     @Override
     public List<NodeRouteDTO> findBySrcNodeId(String nodeId) {
         return nodeRouteRepository.findBySrcNodeId(nodeId).stream().map(NodeRouteDTO::fromDo).collect(Collectors.toList());
@@ -271,33 +473,18 @@ public class NodeManager extends AbstractNodeManager {
         LOGGER.info("Filter project result with kind filter = {}", param.getKindFilters());
         allProjectResults = filterByKind(allProjectResults, param.getKindFilters());
         LOGGER.info("Querying the domain data map with every ref_id in all project results.");
-        Map<String, Domaindata.DomainData> domainDataMap = queryDomainDataMap(allProjectResults);
-        List<NodeResultDTO> nodeResultDTOList = new ArrayList<>(allProjectResults.size());
-        for (ProjectResultDO projectResultDO : allProjectResults) {
-            Domaindata.DomainData domainData = domainDataMap.get(projectResultDO.getUpk().getRefId());
-            if (domainData == null) {
-                LOGGER.warn("Ref_id {} in project_result table does not exits in kuscia api.", projectResultDO.getUpk().getRefId());
-            } else {
-                nodeResultDTOList.add(
-                        findNodeResult(domainData, projectResultDO)
-                );
-            }
-        }
+        //merge db like join
+        List<NodeResultDTO> nodeResultDTOS = allProjectResults.stream().map(projectResultDO -> mergeNodeResult(projectResultDO)).toList();
+
         LOGGER.info("Filter node results with name filter = {}", param.getNameFilter());
-        nodeResultDTOList = filterByName(nodeResultDTOList, param.getNameFilter());
-        int totalNodeResultNums = nodeResultDTOList.size();
+        nodeResultDTOS = filterByName(nodeResultDTOS, param.getNameFilter());
+        int totalNodeResultNums = nodeResultDTOS.size();
         LOGGER.info("After filter, total node result nums = {}, now try to sort with the time sorting rule = {}", totalNodeResultNums, param.getTimeSortingRule());
-        sortNodeResults(nodeResultDTOList, param.getTimeSortingRule());
-        LOGGER.info("After sort node results, total nod result nums = {}, now paging.", nodeResultDTOList.size());
-        int startIndex = param.getPageSize() * (param.getPageNumber() - 1);
-        if (startIndex > nodeResultDTOList.size()) {
-            throw SecretpadException.of(SystemErrorCode.OUT_OF_RANGE_ERROR, "page start index > results length.");
-        }
-        int endIndex = Math.min(startIndex + param.getPageSize(), nodeResultDTOList.size());
-        nodeResultDTOList = nodeResultDTOList.subList(startIndex, endIndex);
-        LOGGER.info("After page the, there are {} showing node results, from {}, to {}.", nodeResultDTOList.size(), startIndex, endIndex);
+        nodeResultDTOS = new ArrayList<>(nodeResultDTOS);
+        sortNodeResults(nodeResultDTOS, param.getTimeSortingRule());
+
         return NodeResultListDTO.builder()
-                .nodeResultDTOList(nodeResultDTOList)
+                .nodeResultDTOList(nodeResultDTOS)
                 .totalResultNums(totalNodeResultNums)
                 .build();
     }
@@ -313,7 +500,9 @@ public class NodeManager extends AbstractNodeManager {
                                 .build()
                 )
                 .build();
-        Domaindata.QueryDomainDataResponse queryDomainDataResponse = kusciaGrpcClientAdapter.queryDomainData(request);
+        Domaindata.QueryDomainDataResponse queryDomainDataResponse = PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(platformType))
+                ? kusciaGrpcClientAdapter.queryDomainData(request, nodeId)
+                : kusciaGrpcClientAdapter.queryDomainData(request);
         if (queryDomainDataResponse.getStatus().getCode() != 0) {
             LOGGER.error("query domain data from kusciaapi failed: code={}, message={}, nodeId={}, domainDataId={}",
                     queryDomainDataResponse.getStatus().getCode(), queryDomainDataResponse.getStatus().getMessage(), nodeId, domainDataId);
@@ -372,8 +561,9 @@ public class NodeManager extends AbstractNodeManager {
             LOGGER.error("Cannot find node by nodeId {}.", nodeId);
             throw SecretpadException.of(NodeErrorCode.NODE_NOT_EXIST_ERROR);
         }
-        return fillByGrpcDomainQuery(nodeDO);
+        return getNodeDto(nodeDO);
     }
+
 
     @Override
     public String getCert(String nodeId) {
@@ -389,13 +579,68 @@ public class NodeManager extends AbstractNodeManager {
         return response.getData().getDomainsList().get(0).getCert();
     }
 
+    public String getCerts(String nodeId, String channelNodeId) {
+        DomainOuterClass.BatchQueryDomainRequest queryDomainRequest =
+                DomainOuterClass.BatchQueryDomainRequest.newBuilder().addAllDomainIds(Lists.newArrayList(nodeId)).build();
+        DomainOuterClass.BatchQueryDomainResponse response = kusciaGrpcClientAdapter.batchQueryDomain(queryDomainRequest, channelNodeId);
+        if (response.getStatus().getCode() != 0) {
+            return "";
+        }
+        if (ObjectUtils.isEmpty(response.getData())) {
+            return "";
+        }
+        return response.getData().getDomainsList().get(0).getCert();
+    }
+
+    /**
+     * p2p no need token write back
+     */
+    private void fillByGrpcDomainQueryP2p(NodeDTO nodeDTO) {
+        boolean registered = kusciaGrpcClientAdapter.isDomainRegistered(nodeDTO.getNodeId());
+        DomainOuterClass.QueryDomainRequest queryDomainRequest =
+                DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(nodeDTO.getNodeId()).build();
+        if (!registered) {
+            LOGGER.warn("node domain not registered, nodeId={}", nodeDTO.getNodeId());
+            DomainOuterClass.QueryDomainResponse response = kusciaGrpcClientAdapter.queryDomain(queryDomainRequest);
+            if (response.getStatus().getCode() == 0) {
+                nodeDTO.setCertText(response.getData().getCert());
+            }
+            return;
+        }
+
+
+        DomainOuterClass.QueryDomainResponse response = kusciaGrpcClientAdapter.queryDomain(queryDomainRequest, nodeDTO.getNodeId());
+        fillNodeDTOByKResp(nodeDTO, response);
+    }
+
+
+    /**
+     * compatible
+     */
     private NodeDTO fillByGrpcDomainQuery(NodeDO nodeDO) {
         NodeDTO nodeDTO = NodeDTO.fromDo(nodeDO);
+        fillByGrpcDomainQuery(nodeDTO);
+        /* token write back */
+        if (StringUtils.isEmpty(nodeDO.getToken()) && !StringUtils.isEmpty(nodeDTO.getToken())) {
+            nodeDO.setToken(nodeDTO.getToken());
+            nodeRepository.save(nodeDO);
+        }
+        return nodeDTO;
+    }
+
+
+    private NodeDTO fillByGrpcDomainQuery(NodeDTO nodeDTO) {
         nodeDTO.setProtocol(protocol);
         DomainOuterClass.QueryDomainRequest queryDomainRequest =
-                DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(nodeDO.getNodeId()).build();
+                DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(nodeDTO.getNodeId()).build();
         DomainOuterClass.QueryDomainResponse response = kusciaGrpcClientAdapter.queryDomain(queryDomainRequest);
-        if (response.getStatus().getCode() == 0) {
+        fillNodeDTOByKResp(nodeDTO, response);
+        return nodeDTO;
+    }
+
+
+    private void fillNodeDTOByKResp(NodeDTO nodeDTO, DomainOuterClass.QueryDomainResponse response) {
+        if (ObjectUtils.isNotEmpty(response) && response.getStatus().getCode() == 0) {
             nodeDTO.setNodeStatus(DomainConstants.DomainStatusEnum.NotReady.name());
             if (ObjectUtils.isNotEmpty(response.getData())) {
                 String cert = response.getData().getCert();
@@ -420,8 +665,6 @@ public class NodeManager extends AbstractNodeManager {
                     if (StringUtils.isEmpty(token)) {
                         deployTokenStatusesList.forEach(t -> {
                             if (t.getState().equals(DomainConstants.TokenStatusEnum.unused.name())) {
-                                nodeDO.setToken(t.getToken());
-                                nodeRepository.save(nodeDO);
                                 nodeDTO.setToken(t.getToken());
                                 nodeDTO.setTokenStatus(t.getState());
                             }
@@ -436,31 +679,34 @@ public class NodeManager extends AbstractNodeManager {
                 }
             }
         }
-        return nodeDTO;
     }
 
     private List<NodeDTO> addNodeStatusByGrpcBatchQuery(List<NodeDTO> nodeList) {
         Set<String> nodeIdSet = nodeList.stream().map(NodeDTO::getNodeId).collect(Collectors.toSet());
-        DomainOuterClass.BatchQueryDomainRequest domainIds =
-                DomainOuterClass.BatchQueryDomainRequest.newBuilder().addAllDomainIds(nodeIdSet).build();
-        DomainOuterClass.BatchQueryDomainResponse domainStatusResponse = kusciaGrpcClientAdapter.batchQueryDomain(domainIds);
+        nodeIdSet.forEach(nodeId -> {
 
-        if (domainStatusResponse.getStatus().getCode() == 0) {
+            DomainOuterClass.BatchQueryDomainRequest domainIds =
+                    DomainOuterClass.BatchQueryDomainRequest.newBuilder().addDomainIds(nodeId).build();
+            DomainOuterClass.BatchQueryDomainResponse domainStatusResponse = kusciaGrpcClientAdapter.batchQueryDomain(domainIds);
 
-            List<DomainOuterClass.Domain> domainsList = domainStatusResponse.getData().getDomainsList();
-            Map<String, List<DomainOuterClass.NodeStatus>> domainId2StatusListMap = domainsList.stream().collect(Collectors.toMap(DomainOuterClass.Domain::getDomainId, DomainOuterClass.Domain::getNodeStatusesList));
+            if (domainStatusResponse.getStatus().getCode() == 0) {
 
-            nodeList.forEach(node -> {
-                List<DomainOuterClass.NodeStatus> nodeStatusList = domainId2StatusListMap.getOrDefault(node.getNodeId(), Collections.emptyList());
-                List<NodeInstanceDTO> nodeInstanceDTOList = nodeStatusList.stream().map(NodeInstanceDTO::formDomainNodeStatus).collect(Collectors.toList());
-                nodeInstanceDTOList.forEach(s -> {
-                    if (Objects.equals(s.getStatus(), DomainConstants.DomainStatusEnum.Ready.name())) {
-                        node.setNodeStatus(s.getStatus());
-                    }
+                List<DomainOuterClass.Domain> domainsList = domainStatusResponse.getData().getDomainsList();
+                Map<String, List<DomainOuterClass.NodeStatus>> domainId2StatusListMap = domainsList.stream().collect(Collectors.toMap(DomainOuterClass.Domain::getDomainId, DomainOuterClass.Domain::getNodeStatusesList));
+
+                nodeList.forEach(node -> {
+                    List<DomainOuterClass.NodeStatus> nodeStatusList = domainId2StatusListMap.getOrDefault(node.getNodeId(), Collections.emptyList());
+                    List<NodeInstanceDTO> nodeInstanceDTOList = nodeStatusList.stream().map(NodeInstanceDTO::formDomainNodeStatus).toList();
+
+                    nodeInstanceDTOList.forEach(s -> {
+                        if (Objects.equals(s.getStatus(), DomainConstants.DomainStatusEnum.Ready.name())) {
+                            node.setNodeStatus(s.getStatus());
+                        }
+                    });
                 });
-            });
-        }
+            }
 
+        });
         return nodeList;
 
     }
@@ -473,10 +719,22 @@ public class NodeManager extends AbstractNodeManager {
      */
     @Override
     public boolean checkNodeExists(String nodeId) {
+        return checkNodeExists(nodeId, null);
+    }
+
+    @Override
+    public boolean checkNodeExists(String nodeId, String channelNodeId) {
         DomainOuterClass.QueryDomainRequest request = DomainOuterClass.QueryDomainRequest.newBuilder()
                 .setDomainId(nodeId)
                 .build();
-        DomainOuterClass.QueryDomainResponse response = kusciaGrpcClientAdapter.queryDomain(request);
+        DomainOuterClass.QueryDomainResponse response;
+        if (StringUtils.isBlank(channelNodeId)) {
+            response = kusciaGrpcClientAdapter.queryDomain(request);
+
+        } else {
+            response = kusciaGrpcClientAdapter.queryDomain(request, channelNodeId);
+
+        }
         return response.getStatus().getCode() == 0;
     }
 
@@ -523,24 +781,48 @@ public class NodeManager extends AbstractNodeManager {
 
     @Override
     public void checkNodeCert(String nodeId, CreateNodeParam request) {
-        if (StringUtils.isBlank(request.getCertText()) || getCert(nodeId).equals(request.getCertText()) || nodeId.equals(request.getNodeId())) {
+        if (StringUtils.isBlank(request.getCertText()) || getCerts(nodeId, nodeId).equals(request.getCertText()) || nodeId.equals(request.getDstNodeId())) {
             throw SecretpadException.of(NodeErrorCode.NODE_CERT_CONFIG_ERROR, "");
         }
     }
 
     @Override
-    public void initialNode(String nodeId) {
+    public void initialNode(String nodeId, String instName) {
+        String instId;
         if (nodeRepository.existsById(nodeId)) {
+            log.info("node {} exists", nodeId);
+            NodeDO nodeDO = nodeRepository.findByNodeId(nodeId);
+            if (Objects.nonNull(nodeDO) && StringUtils.isNotBlank(nodeDO.getInstId())) {
+                log.info("instId replace");
+                //new version,reinstall
+                instId = nodeDO.getInstId();
+            } else {
+                //old version, reinstall,should create new inst
+                instId = createInst(instName);
+            }
             nodeRepository.deleteAuthentic(nodeId);
+        } else {
+            //new version,install a new node,create inst
+            log.info("instId create,instName={}",instName);
+            instId = createInst(instName);
         }
-        NodeDO nodeBuild = NodeDO.builder().nodeId(nodeId)
-                .description(nodeId).type(DomainConstants.DomainTypeEnum.normal.name())
+        NodeDO nodeBuild = NodeDO.builder().nodeId(nodeId).instId(instId)
+                .description(nodeId).type(DomainConstants.DomainTypeEnum.primary.name())
                 .mode(1).name(nodeId).netAddress("127.0.0.1:28080").controlNodeId(nodeId)
-                .masterNodeId(masterNodeId).build();
-        UserContextDTO userContextDTO = new UserContextDTO();
-        userContextDTO.setName("admin");
-        UserContext.setBaseUser(userContextDTO);
+                .instId(instId).protocol(protocol)
+                .masterNodeId(localNodeId).build();
         nodeRepository.saveAndFlush(nodeBuild);
+    }
+
+    private String createInst(String instName) {
+        String instId = UUIDUtils.random(8);
+        return createInst(instId, instName);
+    }
+
+    private String createInst(String instId, String instName) {
+        InstDO instDO = InstDO.builder().instId(instId).name(instName).build();
+        instRepository.saveAndFlush(instDO);
+        return instId;
     }
 
     /**
@@ -576,7 +858,7 @@ public class NodeManager extends AbstractNodeManager {
             List<NodeResultDTO> nodeResultDTOList,
             String nameFilter
     ) {
-        if (nameFilter == null || "".equals(nameFilter)) {
+        if (nameFilter == null || nameFilter.isEmpty()) {
             return nodeResultDTOList;
         }
         LOGGER.info("afy got name filter (actual id) {}", nameFilter);
@@ -589,67 +871,76 @@ public class NodeManager extends AbstractNodeManager {
     }
 
     /**
-     * Query all domain data by nodeId and RefId then collect to Map
-     *
-     * @param allProjectResults all project results
-     * @return Map of domain data id and domain data
+     * do not query domain data at beginning ,do it at last
+     * @param projectResultDO
+     * @return
      */
-    private Map<String, Domaindata.DomainData> queryDomainDataMap(List<ProjectResultDO> allProjectResults) {
-        if (CollectionUtils.isEmpty(allProjectResults)) {
-            return Collections.emptyMap();
+    private   NodeResultDTO mergeNodeResult(ProjectResultDO projectResultDO) {
+        Optional<ProjectDO> projectDO = projectRepository.findById(projectResultDO.getUpk().getProjectId());
+        if (projectDO.isEmpty()) {
+            // the results are displayed normally even after the item has been deleted
+            LOGGER.warn("The project is deleted, and the result will not show any project info and train flow info.");
+            return NodeResultDTO.builder()
+                    .domainDataId(projectResultDO.getUpk().getRefId())
+                    .sourceProjectId(null)
+                    .sourceProjectName(null)
+                    .trainFlow(null)
+                    .gmtCreate(DateTimes.toRfc3339(projectResultDO.getGmtCreate()))
+                    .jobId(projectResultDO.getJobId())
+                    .build();
         }
-        // query all node domain data from apiLite
-        LOGGER.info("afy len of all projectResult = {}", allProjectResults.size());
-        LOGGER.info("afy try to batch query node id = {}, refid = {}", allProjectResults.get(0).getUpk().getNodeId(), allProjectResults.get(0).getUpk().getRefId());
-        Domaindata.BatchQueryDomainDataRequest batchQueryDomainDataRequest = Domaindata.BatchQueryDomainDataRequest.newBuilder()
-                .addAllData(
-                        allProjectResults.stream().map(
-                                it -> Domaindata.QueryDomainDataRequestData.newBuilder()
-                                        .setDomainId(it.getUpk().getNodeId())
-                                        .setDomaindataId(it.getUpk().getRefId())
-                                        .build()
-                        ).collect(Collectors.toList())
-                )
+        // query project graph list from project graph table
+        Optional<ProjectJobDO> projectJobDO = projectJobRepository.findByJobId(projectResultDO.getJobId());
+        if (projectJobDO.isPresent()) {
+            // Use graph name saved in project_job.name
+            return NodeResultDTO.builder()
+                    .domainDataId(projectResultDO.getUpk().getRefId())
+                    .sourceProjectId(projectDO.get().getProjectId())
+                    .sourceProjectName(projectDO.get().getName())
+                    .trainFlow(projectJobDO.get().getName())
+                    .gmtCreate(DateTimes.toRfc3339(projectResultDO.getGmtCreate()))
+                    .jobId(projectResultDO.getJobId())
+                    .computeMode(projectDO.get().getComputeMode())
+                    .build();
+        } else {
+            LOGGER.warn("Cannot find project job when list node results.");
+        }
+        return NodeResultDTO.builder()
+                .domainDataId(projectResultDO.getUpk().getRefId())
+                .sourceProjectId(projectDO.get().getProjectId())
+                .sourceProjectName(projectDO.get().getName())
+                .trainFlow(null)
+                .gmtCreate(DateTimes.toRfc3339(projectResultDO.getGmtCreate()))
+                .jobId(projectResultDO.getJobId())
+                .computeMode(projectDO.get().getComputeMode())
                 .build();
-        Domaindata.BatchQueryDomainDataResponse response = kusciaGrpcClientAdapter.batchQueryDomainData(batchQueryDomainDataRequest);
-        if (response.getStatus().getCode() != 0) {
-            LOGGER.error("lock up from apilite failed: code={}, message={}, request={}",
-                    response.getStatus().getCode(), response.getStatus().getMessage(), JsonUtils.toJSONString(allProjectResults));
-            throw SecretpadException.of(NodeErrorCode.DOMAIN_DATA_NOT_EXISTS);
-        }
-        List<Domaindata.DomainData> dataList = response.getData().getDomaindataListList().stream().filter(
-                it -> !"".equals(it.getDomaindataId())
-        ).collect(Collectors.toList());
-        return dataList.stream().collect(
-                Collectors.toMap(
-                        Domaindata.DomainData::getDomaindataId,
-                        Function.identity()
-                )
-        );
     }
 
-    /**
-     * Find NodeResultDTO by domainData and projectResultDO
-     *
-     * @param domainData
-     * @param projectResultDO
-     * @return NodeResultDTO
-     */
+
+        /**
+         * Find NodeResultDTO by domainData and projectResultDO
+         *
+         * @param domainData
+         * @param projectResultDO
+         * @return NodeResultDTO
+         */
     private NodeResultDTO findNodeResult(Domaindata.DomainData domainData, ProjectResultDO projectResultDO) {
+
+        DatasourceDTO.NodeDatasourceId from = DatasourceDTO.NodeDatasourceId.from(domainData.getDomainId(), domainData.getDatasourceId());
+        Optional<DatasourceDTO> datasourceDTO = datasourceManager.findById(from);
+        if (!datasourceDTO.isPresent()) {
+            LOGGER.warn("findNodeResult find datasource fail, from={}", JsonUtils.toJSONString(from));
+        }
+
         // query projectDO from project table
         Optional<ProjectDO> projectDO = projectRepository.findById(projectResultDO.getUpk().getProjectId());
-        Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaGrpcClientAdapter.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
-                .setDatasourceId(domainData.getDatasourceId())
-                .setDomainId(domainData.getDomainId())
-                .build());
-        Domaindatasource.DomainDataSource dataSourceResponseData = queryDomainDataSourceResponse.getData();
-        if (!projectDO.isPresent()) {
+        if (projectDO.isEmpty()) {
             // the results are displayed normally even after the item has been deleted
             LOGGER.warn("The project is deleted, and the result will not show any project info and train flow info.");
             return NodeResultDTO.builder()
                     .domainDataId(domainData.getDomaindataId())
-                    .datasourceId(dataSourceResponseData.getDatasourceId())
-                    .datasourceType(DataSourceTypeEnum.kuscia2platform(dataSourceResponseData.getType()))
+                    .datasourceId(datasourceDTO.get().getDatasourceId())
+                    .datasourceType(DataSourceTypeEnum.kuscia2platform(datasourceDTO.get().getType()))
                     .resultName(domainData.getDomaindataId())
                     .resultKind(domainData.getType())
                     .sourceProjectId(null)
@@ -666,8 +957,8 @@ public class NodeManager extends AbstractNodeManager {
             // Use graph name saved in project_job.name
             return NodeResultDTO.builder()
                     .domainDataId(domainData.getDomaindataId())
-                    .datasourceId(dataSourceResponseData.getDatasourceId())
-                    .datasourceType(DataSourceTypeEnum.kuscia2platform(dataSourceResponseData.getType()))
+                    .datasourceId(datasourceDTO.get().getDatasourceId())
+                    .datasourceType(DataSourceTypeEnum.kuscia2platform(datasourceDTO.get().getType()))
                     .resultName(domainData.getDomaindataId())
                     .resultKind(domainData.getType())
                     .sourceProjectId(projectDO.get().getProjectId())
@@ -683,8 +974,8 @@ public class NodeManager extends AbstractNodeManager {
         }
         return NodeResultDTO.builder()
                 .domainDataId(domainData.getDomaindataId())
-                .datasourceId(dataSourceResponseData.getDatasourceId())
-                .datasourceType(DataSourceTypeEnum.kuscia2platform(dataSourceResponseData.getType()))
+                .datasourceId(datasourceDTO.get().getDatasourceId())
+                .datasourceType(DataSourceTypeEnum.kuscia2platform(datasourceDTO.get().getType()))
                 .resultName(domainData.getDomaindataId())
                 .resultKind(domainData.getType())
                 .sourceProjectId(projectDO.get().getProjectId())
@@ -720,4 +1011,77 @@ public class NodeManager extends AbstractNodeManager {
         return UUIDUtils.random(8);
     }
 
+
+    /***/
+    private boolean isLocalInstNode(String nodeId) {
+        if (StringUtils.equalsIgnoreCase(nodeId, this.localNodeId)) {
+            return true;
+        }
+        return P2pDataSyncProducerTemplate.nodeIds.contains(nodeId);
+    }
+
+    /**
+     * not found , return null
+     * nodeId:input node
+     * vo:relationship
+     * match one
+     */
+    private static String  searchTargetNode(String nodeId, ParticipantNodeInstVO bo) {
+        /** search from initiator*/
+        if (StringUtils.equals(nodeId, bo.getInitiatorNodeId())) {
+            return bo.getInvitees().get(0).getInviteeId();
+        }
+        /** search from invitee*/
+        Optional<ParticipantNodeInstVO.NodeInstVO> first = bo.getInvitees().stream()
+                .filter(invitee -> StringUtils.equals(invitee.getInviteeId(), nodeId))
+                .findFirst();
+        if (first.isPresent()) {
+            return bo.getInitiatorNodeId();
+        }
+        return null;
+    }
+
+    /** match all */
+    private static List<String> searchAllTargetNode(String nodeId, ParticipantNodeInstVO bo) {
+        /** search from initiator*/
+        if (StringUtils.equals(nodeId, bo.getInitiatorNodeId())) {
+            return bo.getInvitees().stream().map(in -> in.getInviteeId()).collect(Collectors.toList());
+        }
+        List<String> nodeIds = new ArrayList<>();
+        /** search from invitee*/
+        Optional<ParticipantNodeInstVO.NodeInstVO> first = bo.getInvitees().stream()
+                .filter(invitee -> StringUtils.equals(invitee.getInviteeId(), nodeId))
+                .findFirst();
+        if (first.isPresent()) {
+            nodeIds.add(bo.getInitiatorNodeId());
+        }
+        return nodeIds;
+    }
+
+    /**
+     * search targetNode in project
+     * [{"initiatorNodeId":"b1","invitees":[{"inviteeId":"a1"}]}]
+     */
+    @Override
+    public String getTargetNodeId(String nodeId, String projectId) {
+        if (PlatformTypeEnum.AUTONOMY.name().equals(this.platformType) && !isLocalInstNode(nodeId)) {
+            Optional<ProjectApprovalConfigDO> projectConDO = projectApprovalConfigRepository.findByProjectId(projectId);
+            List<ParticipantNodeInstVO> participantNodeInstVOS = projectConDO.get().getParticipantNodeInfo();
+            Optional<String> targetNodeOpt = participantNodeInstVOS.stream().map(vo -> searchTargetNode(nodeId, vo)).filter(node -> node != null).findFirst();
+            if (targetNodeOpt.isPresent()) {
+                return targetNodeOpt.get();
+            }
+        }
+        return nodeId;
+    }
+
+    @Override
+    public Set<String> getTargetNodeIds(String nodeId, String projectId) {
+        if (PlatformTypeEnum.AUTONOMY.name().equals(this.platformType) && !isLocalInstNode(nodeId)) {
+            Optional<ProjectApprovalConfigDO> projectConDO = projectApprovalConfigRepository.findByProjectId(projectId);
+            List<ParticipantNodeInstVO> participantNodeInstVOS = projectConDO.get().getParticipantNodeInfo();
+            return participantNodeInstVOS.stream().flatMap(vo -> searchAllTargetNode(nodeId, vo).stream()).filter(node -> node != null).collect(Collectors.toSet());
+        }
+        return new HashSet<>();
+    }
 }

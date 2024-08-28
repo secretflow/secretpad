@@ -19,7 +19,6 @@ package org.secretflow.secretpad.service.impl;
 import org.secretflow.secretpad.common.constant.CacheConstants;
 import org.secretflow.secretpad.common.constant.ComponentConstants;
 import org.secretflow.secretpad.common.constant.KusciaDataSourceConstants;
-import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
 import org.secretflow.secretpad.common.errorcode.ModelExportErrorCode;
@@ -84,7 +83,6 @@ public class ModelExportServiceImpl implements ModelExportService {
     @Autowired
     @Qualifier("jobManager")
     private AbstractJobManager jobManager;
-
     @Resource
     private CacheManager cacheManager;
     @Resource
@@ -101,26 +99,26 @@ public class ModelExportServiceImpl implements ModelExportService {
     private ProjectDatatableRepository projectDatatableRepository;
     @Resource
     private GraphService graphService;
-
     @Resource
     private ProjectGraphRepository graphRepository;
-
     @Resource
     private ProjectDatatableRepository datatableRepository;
     @Resource
     private ProjectGraphDomainDatasourceServiceImpl projectGraphDomainDatasourceService;
+    @Resource
+    private ProjectJobRepository projectJobRepository;
 
     @Override
     public ModelExportPackageResponse exportModel(ModelExportPackageRequest request) throws InvalidProtocolBufferException {
         log.debug("export model {}", request);
-        String ownerId = UserContext.getUser().getOwnerId();
+        UserContext.getUser().getOwnerId();
         Set<String> partyIds = new HashSet<>();
         request.getModelPartyConfig().forEach(m -> partyIds.add(m.getModelParty()));
         String modelDataName = UUIDUtils.random(2) + "_" + Instant.now().toEpochMilli();
         request.getModelPartyConfig().forEach(m -> {
             m.setModelDataName(modelDataName);
         });
-        if (envService.isAutonomy() && !partyIds.contains(ownerId)) {
+        if (envService.isAutonomy() && StringUtils.isEmpty(getInitiator(partyIds))) {
             throw SecretpadException.of(ModelExportErrorCode.MODEL_EXPORT_FAILED, "initiator must be one of party");
         }
         List<String> cList = new LinkedList<>();
@@ -185,11 +183,23 @@ public class ModelExportServiceImpl implements ModelExportService {
         if (CollectionUtils.isEmpty(parties)) {
             throw SecretpadException.of(ModelExportErrorCode.MODEL_EXPORT_FAILED, "modelPartyPath result not found");
         }
+        Optional<ProjectJobDO> byJobId = projectJobRepository.findByJobId(taskOptional.get().getUpk().getJobId());
+        if (byJobId.isEmpty()) {
+            throw SecretpadException.of(ModelExportErrorCode.MODEL_EXPORT_FAILED, "job not found");
+        }
+        String graphId = byJobId.get().getGraphId();
         List<ModelPartyPathResponse> responses = new LinkedList<>();
         parties.forEach(p -> {
             NodeDO node = nodeRepository.findByNodeId(p);
             if (ObjectUtils.isEmpty(node)) {
                 throw SecretpadException.of(ModelExportErrorCode.MODEL_EXPORT_FAILED, "node not found");
+            }
+            ProjectGraphDomainDatasourceDO projectGraphDomainDatasourceDO = projectGraphDomainDatasourceService.getById(request.getProjectId(), graphId, p);
+            String dataSourceId = KusciaDataSourceConstants.DEFAULT_DATA_SOURCE;
+            String dataSourceName = KusciaDataSourceConstants.DEFAULT_DATA_SOURCE;
+            if (!ObjectUtils.isEmpty(projectGraphDomainDatasourceDO)) {
+                dataSourceId = projectGraphDomainDatasourceDO.getDataSourceId();
+                dataSourceName = projectGraphDomainDatasourceDO.getDataSourceName();
             }
             responses.add(ModelPartyPathResponse.builder()
                     .nodeId(p)
@@ -197,10 +207,10 @@ public class ModelExportServiceImpl implements ModelExportService {
                     // serving not only support local data source
                     // However, when serving, you need to know the data source information of the project participants, and the node can only see its own in the current P2P mode, so a data synchronization may be required here
                     .dataSources(Set.of(ProjectGraphDomainDataSourceVO.DataSource.builder()
-                            .dataSourceName(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                            .dataSourceName(dataSourceName)
                             .nodeId(p)
                             .type(DataSourceTypeEnum.LOCAL.name())
-                            .dataSourceId(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE)
+                            .dataSourceId(dataSourceId)
                             .build()
                     ))
                     .build()
@@ -219,7 +229,6 @@ public class ModelExportServiceImpl implements ModelExportService {
     private Job.CreateJobRequest buildKusciaParams(ModelExportPackageRequest request, ModelExportDTO modelExportDTO) throws InvalidProtocolBufferException {
         String taskId = UUIDUtils.random(4).concat("-").concat("model-export");
         String jobId = UUIDUtils.random(4);
-        UserContextDTO user = UserContext.getUser();
         List<Job.Party> taskParties = request.getModelPartyConfig().stream().map(config -> Job.Party.newBuilder().setDomainId(config.getModelParty()).build()).toList();
         List<String> parties = request.getModelPartyConfig().stream().map(ModelPartyConfig::getModelParty).toList();
         JsonFormat.TypeRegistry typeRegistry = JsonFormat.TypeRegistry.newBuilder().add(IndividualTable.getDescriptor()).build();
@@ -289,7 +298,7 @@ public class ModelExportServiceImpl implements ModelExportService {
         modelExportDTO.setModelReportId(getModelExportReport(modelExportDTO));
         return Job.CreateJobRequest.newBuilder()
                 .setJobId(jobId)
-                .setInitiator(envService.isCenter() ? parties.get(0) : user.getOwnerId())
+                .setInitiator(envService.isCenter() ? parties.get(0) : getInitiator(parties))
                 .setMaxParallelism(kusciaJobConverter.getMaxParallelism())
                 .addAllTasks(List.of(task))
                 .build();
@@ -310,6 +319,13 @@ public class ModelExportServiceImpl implements ModelExportService {
             }
         }
         return partySet;
+    }
+
+    /**
+     * check parites in local inst
+     **/
+    private String getInitiator(Collection<String> parties) {
+        return parties.stream().filter(party -> envService.isNodeInCurrentInst(party)).findFirst().get();
     }
 
     private String getModelExportReport(ModelExportDTO modelExportDTO) {

@@ -26,7 +26,43 @@ public enum InstErrorCode implements ErrorCode {
     /**
      * Institution does not exist
      */
-    INST_NOT_EXISTS(202011200);
+    INST_NOT_EXISTS(202011200),
+
+
+    INST_NOT_MATCH_NODE(202011201),
+
+
+    /**
+     * beyond the max node limitation
+     */
+    INST_NODE_COUNT_LIMITED(202011202),
+
+    /**
+     * not login inst
+     */
+    INST_MISMATCH_LOGIN(202011203),
+
+    /**
+     * check fail
+     */
+    INST_REGISTER_CHECK_FAILED(202011204),
+
+    /**
+     * token not same in db
+     */
+    INST_TOKEN_MISMATCH(202011205),
+
+    /**
+     * more than one Institution
+     */
+    INST_DUPLICATED(202011206),
+
+    /**
+     * file operation fail
+     */
+    INST_FILE_OPERATION_FAILED(202011207);
+
+
     private final int code;
 
     InstErrorCode(int code) {

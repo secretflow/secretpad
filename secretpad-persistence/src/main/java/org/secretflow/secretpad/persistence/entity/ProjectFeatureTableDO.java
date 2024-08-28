@@ -68,6 +68,27 @@ public class ProjectFeatureTableDO extends BaseAggregationRoot<ProjectFeatureTab
     })
     private FeatureTableDO featureTable;
 
+    @Override
+    @JsonIgnore
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
+
+    @Override
+    @JsonIgnore
+    public String getNodeId() {
+        if (StringUtils.equals(DomainConstants.DomainEmbeddedNodeEnum.tee.name(), this.upk.nodeId)) {
+            return null;
+        }
+        return this.upk.nodeId;
+    }
+
+    @Override
+    @JsonIgnore
+    public List<String> getNodeIds() {
+        return super.getNodeIds();
+    }
+
     @Getter
     @Setter
     @AllArgsConstructor
@@ -106,26 +127,5 @@ public class ProjectFeatureTableDO extends BaseAggregationRoot<ProjectFeatureTab
                     .tableConfig(configs)
                     .build();
         }
-    }
-
-    @Override
-    @JsonIgnore
-    public String getProjectId() {
-        return this.upk.projectId;
-    }
-
-    @Override
-    @JsonIgnore
-    public String getNodeId() {
-        if (StringUtils.equals(DomainConstants.DomainEmbeddedNodeEnum.tee.name(), this.upk.nodeId)) {
-            return null;
-        }
-        return this.upk.nodeId;
-    }
-
-    @Override
-    @JsonIgnore
-    public List<String> getNodeIds() {
-        return super.getNodeIds();
     }
 }

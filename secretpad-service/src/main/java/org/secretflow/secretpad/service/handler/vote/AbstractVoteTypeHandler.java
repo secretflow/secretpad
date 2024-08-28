@@ -23,10 +23,7 @@ import org.secretflow.secretpad.common.util.EncryptUtils;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.persistence.entity.*;
-import org.secretflow.secretpad.persistence.repository.NodeRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectRepository;
-import org.secretflow.secretpad.persistence.repository.VoteInviteRepository;
-import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
+import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.CertificateService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.enums.VoteExecuteEnum;
@@ -41,6 +38,8 @@ import org.secretflow.secretpad.service.model.message.PartyVoteStatus;
 
 import com.google.common.collect.Lists;
 import org.secretflow.v1alpha1.kusciaapi.Certificate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
 
 import java.util.*;
@@ -55,11 +54,14 @@ import java.util.stream.Collectors;
 public abstract class AbstractVoteTypeHandler implements VoteTypeHandler {
 
 
+    private static final Logger log = LoggerFactory.getLogger(AbstractVoteTypeHandler.class);
     protected final VoteInviteRepository voteInviteRepository;
 
     protected final VoteRequestRepository voteRequestRepository;
 
     protected final NodeRepository nodeRepository;
+    protected final InstRepository instRepository;
+
 
     protected final EnvService envService;
 
@@ -68,18 +70,19 @@ public abstract class AbstractVoteTypeHandler implements VoteTypeHandler {
     protected final ProjectRepository projectRepository;
 
 
-    public AbstractVoteTypeHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, EnvService envService, CertificateService certificateService, ProjectRepository projectRepository) {
+    public AbstractVoteTypeHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, InstRepository instRepository, EnvService envService, CertificateService certificateService, ProjectRepository projectRepository) {
         this.voteInviteRepository = voteInviteRepository;
         this.voteRequestRepository = voteRequestRepository;
         this.nodeRepository = nodeRepository;
+        this.instRepository = instRepository;
         this.envService = envService;
         this.certificateService = certificateService;
         this.projectRepository = projectRepository;
     }
 
     @Override
-    public List<? extends PartyVoteStatus> getPartyStatusByVoteID(String voteID) {
-        List<VoteInviteDO> voteInviteDOList = voteInviteRepository.findByVoteID(voteID);
+    public List<? extends PartyVoteStatus> getPartyStatusByVoteID(String voteId) {
+        List<VoteInviteDO> voteInviteDOList = voteInviteRepository.findByVoteID(voteId);
         List<String> partyNodes = voteInviteDOList.stream().map(e -> e.getUpk().getVotePartitionID()).collect(Collectors.toList());
         List<NodeDO> nodeDOS = nodeRepository.findByNodeIdIn(partyNodes);
         Map<String, String> nodeMap = nodeDOS.stream().collect(Collectors.toMap(e -> e.getNodeId(), e -> e.getName()));
@@ -88,8 +91,8 @@ public abstract class AbstractVoteTypeHandler implements VoteTypeHandler {
             PartyVoteStatus partyVoteStatus = PartyVoteStatus.builder()
                     .reason(e.getReason())
                     .action(e.getAction())
-                    .nodeID(e.getUpk().getVotePartitionID())
-                    .nodeName(nodeMap.get(e.getUpk().getVotePartitionID()))
+                    .participantID(e.getUpk().getVotePartitionID())
+                    .participantName(nodeMap.get(e.getUpk().getVotePartitionID()))
                     .build();
             partyVoteStatusList.add(partyVoteStatus);
         });
@@ -102,48 +105,49 @@ public abstract class AbstractVoteTypeHandler implements VoteTypeHandler {
     }
 
     @Override
-    public void flushVoteStatus(String voteID) {
+    public void flushVoteStatus(String voteId) {
 
     }
 
     /**
      * create approval, most of the implementation classes has the same behavior
      *
-     * @param nodeID
+     * @param initiatorId
      * @param voteConfig
      */
     @Override
-    public void createApproval(String nodeID, AbstractVoteConfig voteConfig) {
-
-        //step1 check it own special pre-check logic
-        preCheck(nodeID, voteConfig);
+    public void createApproval(String initiatorId, AbstractVoteConfig voteConfig) {
+        //step1 check its own special pre-check logic
+        preCheck(initiatorId, voteConfig);
         //step2 generate unit uuid
-        String voteID = generateVoteID();
+        String voteId = generateVoteId();
         //step3 create its own type of approval config
-        createVoteConfig(voteID, nodeID, voteConfig);
+        createVoteConfig(voteId, initiatorId, voteConfig);
         //step4 create voteRequestMsg
-        String voteMsg = generateVoteRequestMsg(nodeID, voteConfig, voteID);
+        String voteMsg = generateVoteRequestMsg(initiatorId, voteConfig, voteId);
         //step5 create vote invite
-        createVoteInvite(voteID, nodeID, voteConfig, voteMsg);
+        createVoteInvite(voteId, initiatorId, voteConfig, voteMsg);
         //step6 create vote request
-        createVoteRequest(voteID, nodeID, voteConfig, voteMsg);
+        createVoteRequest(voteId, initiatorId, voteConfig, voteMsg);
 
     }
 
-    protected String generateVoteRequestMsg(String nodeID, AbstractVoteConfig voteConfig, String voteID) {
-        List<String> voters = getVoters(nodeID, voteConfig);
+    protected String generateVoteRequestMsg(String initiatorId, AbstractVoteConfig voteConfig, String voteId) {
+        String majorNodeId = envService.getPlatformNodeId();
+        List<String> voters = getVoters(initiatorId, voteConfig);
         VoteRequestBody voteRequestBody = VoteRequestBody.builder()
-                .rejectedAction(getRejectAction(nodeID, voteConfig))
-                .approvedAction(getApprovedAction(nodeID, voteConfig))
+                .rejectedAction(getRejectAction(initiatorId, voteConfig))
+                .approvedAction(getApprovedAction(initiatorId, voteConfig))
                 .type(getVoteType())
                 .approvedThreshold(voters.size())
-                .initiator(nodeID)
-                .voteRequestID(voteID)
-                .voteCounter(nodeID)
+                .initiator(initiatorId)
+                .voteRequestID(voteId)
+                .voteCounter(initiatorId)
                 .voters(voters)
-                .executors(Lists.newArrayList(nodeID))
+                .executors(Lists.newArrayList(majorNodeId))
                 .build();
-        Certificate.GenerateKeyCertsResponse generateKeyCertsResponse = certificateService.generateCertByNodeID(nodeID);
+        log.info("majorNodeId:{}", majorNodeId);
+        Certificate.GenerateKeyCertsResponse generateKeyCertsResponse = certificateService.generateCertByNodeID(majorNodeId);
         String voteRequestBodyBase64 = Base64Utils.encode(JsonUtils.toJSONString(voteRequestBody).getBytes());
         String key = generateKeyCertsResponse.getKey();
         VoteRequestMessage voteRequestMessage = VoteRequestMessage.builder()
@@ -154,23 +158,27 @@ public abstract class AbstractVoteTypeHandler implements VoteTypeHandler {
         return JsonUtils.toJSONString(voteRequestMessage);
     }
 
+    @Override
+    public String getVoter(String voteParticipantId) {
+        return envService.getPlatformNodeId();
+    }
 
-    private String generateVoteID() {
+    private String generateVoteId() {
         return UUIDUtils.newUUID();
     }
 
-    protected abstract void preCheck(String nodeID, AbstractVoteConfig voteConfig);
+    protected abstract void preCheck(String initiatorId, AbstractVoteConfig voteConfig);
 
-    protected abstract void createVoteConfig(String voteID, String nodeID, AbstractVoteConfig voteConfig);
+    protected abstract void createVoteConfig(String voteId, String initiatorId, AbstractVoteConfig voteConfig);
 
-    private void createVoteInvite(String voteID, String nodeID, AbstractVoteConfig voteConfig, String voteMsg) {
+    private void createVoteInvite(String voteId, String initiatorId, AbstractVoteConfig voteConfig, String voteMsg) {
         //vote participant info
         List<VoteInviteDO> voteInviteDOS = new ArrayList<>();
-        for (String voter : getVoters(nodeID, voteConfig)) {
+        for (String voter : getVoters(initiatorId, voteConfig)) {
             VoteInviteDO voteInviteDO = VoteInviteDO.builder()
-                    .upk(VoteInviteDO.UPK.builder().voteID(voteID).votePartitionID(voter).build())
-                    .initiator(nodeID)
-                    .desc(getInviteDesc(nodeID, voteConfig))
+                    .upk(VoteInviteDO.UPK.builder().voteID(voteId).votePartitionID(voter).build())
+                    .initiator(initiatorId)
+                    .desc(getInviteDesc(initiatorId, voteConfig))
                     .type(getVoteType())
                     .action(VoteStatusEnum.REVIEWING.name())
                     .voteMsg(voteMsg)
@@ -184,17 +192,17 @@ public abstract class AbstractVoteTypeHandler implements VoteTypeHandler {
         Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = new HashSet<>();
         //vote invitor info
         for (String voter : voters) {
-            partyVoteInfos.add(VoteRequestDO.PartyVoteInfo.builder().nodeId(voter).action(VoteStatusEnum.REVIEWING.name()).build());
+            partyVoteInfos.add(VoteRequestDO.PartyVoteInfo.builder().partyId(voter).action(VoteStatusEnum.REVIEWING.name()).build());
         }
         //vote initiator info
-        partyVoteInfos.add(VoteRequestDO.PartyVoteInfo.builder().nodeId(initiator).action(VoteStatusEnum.APPROVED.name()).build());
+        partyVoteInfos.add(VoteRequestDO.PartyVoteInfo.builder().partyId(initiator).action(VoteStatusEnum.APPROVED.name()).build());
         return partyVoteInfos;
     }
 
 
-    protected abstract String getApprovedAction(String nodeID, AbstractVoteConfig voteConfig);
+    protected abstract String getApprovedAction(String initiatorId, AbstractVoteConfig voteConfig);
 
-    protected abstract String getRejectAction(String nodeID, AbstractVoteConfig voteConfig);
+    protected abstract String getRejectAction(String initiatorId, AbstractVoteConfig voteConfig);
 
     protected abstract List<String> getExecutors(String nodeId, AbstractVoteConfig voteConfig);
 
@@ -202,7 +210,7 @@ public abstract class AbstractVoteTypeHandler implements VoteTypeHandler {
     /**
      * @return the inviters,not contains initiator
      */
-    protected abstract List<String> getVoters(String nodeID, AbstractVoteConfig voteConfig);
+    protected abstract List<String> getVoters(String initiatorId, AbstractVoteConfig voteConfig);
 
     /**
      * @return voteType
@@ -220,22 +228,23 @@ public abstract class AbstractVoteTypeHandler implements VoteTypeHandler {
     protected abstract String getInviteDesc(String nodeID, AbstractVoteConfig voteConfig);
 
 
-    private void createVoteRequest(String voteID, String nodeID, AbstractVoteConfig voteConfig, String voteMsg) {
-        List<String> voters = getVoters(nodeID, voteConfig);
-        Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = getPartyVoteInfos(voters, nodeID);
+    private void createVoteRequest(String voteId, String initiatorId, AbstractVoteConfig voteConfig, String voteMsg) {
+        String majorNodeId = envService.getPlatformNodeId();
+        List<String> voters = getVoters(initiatorId, voteConfig);
+        Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = getPartyVoteInfos(voters, initiatorId);
         //vote initiator info
         VoteRequestDO voteRequestDO = VoteRequestDO.builder()
-                .voteID(voteID)
-                .initiator(nodeID)
+                .voteID(voteId)
+                .initiator(initiatorId)
                 .type(getVoteType())
                 .voters(voters)
-                .voteCounter(nodeID)
+                .voteCounter(initiatorId)
                 .requestMsg(voteMsg)
                 .executeStatus(VoteExecuteEnum.COMMITTED.name())
-                .executors(getExecutors(nodeID, voteConfig))
+                .executors(getExecutors(majorNodeId, voteConfig))
                 .approvedThreshold(voters.size())
                 .status(VoteStatusEnum.REVIEWING.getCode())
-                .desc(getRequestDesc(nodeID, voteConfig))
+                .desc(getRequestDesc(initiatorId, voteConfig))
                 .partyVoteInfos(partyVoteInfos)
                 .build();
         voteRequestRepository.saveAndFlush(voteRequestDO);

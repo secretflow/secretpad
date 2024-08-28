@@ -16,7 +16,10 @@
 
 package org.secretflow.secretpad.common.util;
 
+import org.secretflow.secretpad.common.constant.SystemConstants;
+
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.util.ResourceUtils;
 
@@ -24,6 +27,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * File utils
@@ -33,6 +39,16 @@ import java.io.IOException;
  */
 @Slf4j
 public class FileUtils {
+
+    /**
+     *
+     **/
+    public final static String FILE_SEPARATOR = "/";
+
+    /**
+     * cert limit 10kb
+     **/
+    public final static long CERT_FILE_MAX_SIZE = 1 * 10 * 1024;
 
     /**
      * Load file from the classpath resources or filesystem
@@ -74,4 +90,61 @@ public class FileUtils {
     public static String readFile2String(File file) throws IOException {
         return FileCopyUtils.copyToString(new FileReader(file));
     }
+
+
+    /*** create  */
+    public static boolean createDirIfNotExist(String dir) {
+        try {
+            File f = new File(dir);
+            if (!f.exists()) {
+                return f.mkdirs();
+            }
+        } catch (Exception e) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
+     * write content to file(./config/ownerId)
+     *
+     * @param content content
+     */
+    public static void writeToFile(String content) {
+        writeContentToFile(content, SystemConstants.USER_OWNER_ID_FILE);
+    }
+
+    /**
+     * write content to file
+     *
+     * @param content content
+     * @param path    path
+     */
+    public static void writeContentToFile(String content, String path) {
+        Assert.notNull(content, "content is null");
+        Assert.notNull(path, "path is null");
+        try {
+            Path p = Paths.get(path);
+            if (!Files.exists(p.getParent())) {
+                Files.createDirectories(p.getParent());
+            }
+            Files.write(p, content.getBytes());
+        } catch (IOException e) {
+            log.error("write content to file error, path:{}", path, e);
+        }
+    }
+
+    /**
+     * delete file
+     *
+     * @param filePath filePath
+     */
+    public static void delFile(String filePath) {
+        try {
+            Files.delete(Paths.get(filePath));
+        } catch (IOException e) {
+            log.error("delete file error, path:{}", filePath, e);
+        }
+    }
+
 }

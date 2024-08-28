@@ -40,19 +40,17 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping(value = "/api/v1alpha1/user/remote")
 public class RemoteUserController implements NodeUserControllerInterface {
 
+    private final static String HTTP_PREFIX = "http://";
     /**
      * "http://localhost:8080/api/v1alpha1/user/node";
      */
     @Value("${secretpad.gateway}")
     private String gateway;
-
     /**
      * kuscia gateway forwarding destination
      */
     @Value("${secretpad.center-platform-service::secretpad.master.svc}")
     private String centerPlatformService;
-
-    private final static String HTTP_PREFIX = "http://";
 
     /**
      * rest password

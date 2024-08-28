@@ -59,18 +59,16 @@ import static org.secretflow.secretpad.service.sync.center.SseSession.SSE_PING_M
 @Data
 public class EdgeDataSyncServiceImpl implements EdgeDataSyncService {
 
+    private final static String HTTP_PREFIX = "http://";
+    public static AtomicInteger sseSate = new AtomicInteger(-1);
+    private final JpaSyncDataService jpaSyncDataService;
+    private final DataSyncConfig dataSyncConfig;
     @Value("${secretpad.gateway}")
     private String kusciaLiteGateway;
     @Value("${secretpad.center-platform-service}")
     private String routeHeader;
     @Value("${secretpad.node-id}")
     private String nodeId;
-
-    private final JpaSyncDataService jpaSyncDataService;
-    private final DataSyncConfig dataSyncConfig;
-
-    public static AtomicInteger sseSate = new AtomicInteger(-1);
-    private final static String HTTP_PREFIX = "http://";
 
     @SuppressWarnings(value = {"rawtypes"})
     @Override

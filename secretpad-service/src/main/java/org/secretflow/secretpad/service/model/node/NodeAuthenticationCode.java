@@ -55,4 +55,14 @@ public class NodeAuthenticationCode {
      * cert, base64
      */
     private String certText;
+
+    /**
+     * node instId
+     */
+    private String instId;
+
+    /**
+     * node instName
+     */
+    private String instName;
 }

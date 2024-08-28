@@ -22,11 +22,12 @@ Secretpad 对部署环境有一定要求，请参考[部署要求](./request.md)
 | -p  |                              kuscia-gateway暴露的端口号                              |  否   |    18080     |       -        |
 | -k  |                             kuscia-api-http暴露的端口号                              |  否   |    40802     |       -        |
 | -g  |                             kuscia-api-grpc暴露的端口号                              |  否   |    40803     |       -        |
-| -t  |                    仅在lite模式下使用。它指定了部署令牌，可以从secretpad平台获取此令牌                    |  否   |      -       |
+| -t  |                在lite模式/P2P多节点部署使用。它指定了部署令牌，可以从secretpad平台获取此令牌                |  否   |      -       |
 | -d  |                                      安装目录                                      |  否   | $HOME/kuscia |       -        |
 | -P  |                                    kuscia协议                                    |  否   |     tls      | tls、notls、mtls |
 | -q  | 仅在autonomy或lite模式下使用。它指定了用于域内部使用的端口号。您可以通过设置环境变量'DOMAIN_HOST_INTERNAL_PORT'来代替 |  否   |    13081     |       -        |
 | -h  |                                     显示帮助文本                                     |  否   |      -       |       -        |
+| -x  |                            kuscia METRICS_PORT监控端口                             |  否   |    13084     |       -        |
 
 ## 中心化节点部署
 

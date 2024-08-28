@@ -98,6 +98,11 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
         }
     }
 
+    @Override
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
+
     /**
      * Project graph unique primary key
      */
@@ -139,10 +144,5 @@ public class ProjectGraphDO extends BaseAggregationRoot<ProjectGraphDO> {
             return Objects.hash(projectId, graphId);
         }
 
-    }
-
-    @Override
-    public String getProjectId() {
-        return this.upk.projectId;
     }
 }

@@ -31,8 +31,8 @@ import lombok.Setter;
 public class MessagePendingCountRequest {
 
     /**
-     * participant node id
+     * participant owner id
      */
     @NotBlank
-    private String nodeID;
+    private String ownerId;
 }

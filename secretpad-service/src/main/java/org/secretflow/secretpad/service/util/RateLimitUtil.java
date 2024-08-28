@@ -33,13 +33,12 @@ import java.util.concurrent.TimeUnit;
  */
 public final class RateLimitUtil {
 
-    private RateLimitUtil() {
-    }
-
     private static final Cache<String, RateLimiter> rateLimiters = CacheBuilder.newBuilder()
             .expireAfterAccess(1, TimeUnit.HOURS)
             .build();
 
+    private RateLimitUtil() {
+    }
 
     public static void verifyRate() {
         try {
@@ -53,6 +52,10 @@ public final class RateLimitUtil {
     }
 
     private static RateLimiter getRateLimiter(String userName) throws ExecutionException {
-        return rateLimiters.get(userName, () -> RateLimiter.create(5.0 / 60));
+        return getRateLimiter(userName, 5.0, 60);
+    }
+
+    private static RateLimiter getRateLimiter(String userName, double timesCanPassInTimeSeconds, double timeSeconds) throws ExecutionException {
+        return rateLimiters.get(userName, () -> RateLimiter.create(timesCanPassInTimeSeconds / timeSeconds));
     }
 }

@@ -12,3 +12,4 @@
     SUPPORT_MYSQL
     support_sls_cloud_log
     db_version
+    incompatible_statement_cn

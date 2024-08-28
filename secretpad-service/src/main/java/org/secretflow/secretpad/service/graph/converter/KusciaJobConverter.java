@@ -24,7 +24,9 @@ import org.secretflow.secretpad.persistence.entity.ProjectGraphNodeKusciaParamsD
 import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
 import org.secretflow.secretpad.persistence.repository.ProjectGraphNodeKusciaParamsRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectJobTaskRepository;
+import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.ProjectGraphDomainDatasourceService;
+import org.secretflow.secretpad.service.constant.ComponentConstants;
 import org.secretflow.secretpad.service.constant.JobConstants;
 import org.secretflow.secretpad.service.graph.GraphContext;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
@@ -65,25 +67,22 @@ import static org.secretflow.secretpad.service.constant.ComponentConstants.CHECK
 @ConfigurationProperties(prefix = "sfcluster-desc")
 public class KusciaJobConverter implements JobConverter {
     private final static String DEFAULTDS = "default-data-source";
+    private static String crossSiloCommBackend;
+    private static Map<String, String> deviceConfig;
+    ThreadLocal<ProjectGraphNodeKusciaParamsDO> projectGraphNodeKusciaParamsDOThreadLocal = new ThreadLocal<>();
     @Value("${job.max-parallelism:1}")
     @Getter
     private int maxParallelism;
-    private static String crossSiloCommBackend;
-
     @Value("${secretpad.platform-type}")
     private String plaformType;
-
     @Resource
     private ProjectGraphNodeKusciaParamsRepository projectGraphNodeKusciaParamsRepository;
-
     @Resource
     private ProjectJobTaskRepository taskRepository;
-
     @Resource
     private ProjectGraphDomainDatasourceService projectGraphDomainDatasourceService;
-
-    @Value("${secretpad.node-id}")
-    private String localNodeId;
+    @Resource
+    private EnvService envService;
 
     @SuppressWarnings("unused")
     @Value("${sfcluster-desc.ray-fed-config.cross-silo-comm-backend:brpc_link}")
@@ -91,13 +90,9 @@ public class KusciaJobConverter implements JobConverter {
         KusciaJobConverter.crossSiloCommBackend = crossSiloCommBackend;
     }
 
-    private static Map<String, String> deviceConfig;
-
     public void setDeviceConfig(Map<String, String> deviceConfig) {
         KusciaJobConverter.deviceConfig = deviceConfig;
     }
-
-    ThreadLocal<ProjectGraphNodeKusciaParamsDO> projectGraphNodeKusciaParamsDOThreadLocal = new ThreadLocal<>();
 
     /**
      * Converter create job request from project job
@@ -117,7 +112,7 @@ public class KusciaJobConverter implements JobConverter {
                 if (!CollectionUtils.isEmpty(parties)) {
                     initiator = parties.get(0);
                     if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))) {
-                        initiator = localNodeId;
+                        initiator = envService.findLocalNodeId(task);
                         log.info("KusciaJobConverter converter parties {} initiator {}", parties, initiator);
                     }
                     taskParties = parties.stream().map(party -> Job.Party.newBuilder().setDomainId(party).build()).collect(Collectors.toList());
@@ -184,12 +179,15 @@ public class KusciaJobConverter implements JobConverter {
                 pipelineNodeDef = pipelineNodeDef.toBuilder().clearCheckpointUri().setCheckpointUri(CHECKPOINT_PRE + outputs.get(0)).build();
             }
         }
+        List<String> outputUris = outputs.stream().map(output -> output.replace(ComponentConstants.DOMAIN_DATA_TABLE_DELIMITER, ComponentConstants.DATA_TABLE_DELIMITER)).toList();
+        Map<String, TaskConfig.DatasourceConfig> stringDatasourceConfigMap = buildDatasourceConfig(parties, job.getProjectId(), job.getGraphId());
         Cluster.SFClusterDesc sfClusterDesc = buildSfClusterDesc(parties);
         TaskConfig.TaskInputConfig taskInputConfig = TaskConfig.TaskInputConfig.newBuilder()
-                .putAllSfDatasourceConfig(buildDatasourceConfig(parties, job.getProjectId(), job.getGraphId()))
+                .putAllSfDatasourceConfig(stringDatasourceConfigMap)
                 .addAllSfInputIds(inputs)
+                .addAllSfInputPartitionsSpec(buildSfInputPartitions(inputs))
                 .addAllSfOutputIds(outputs)
-                .addAllSfOutputUris(outputs)
+                .addAllSfOutputUris(outputUris)
                 .setSfClusterDesc(sfClusterDesc)
                 .setSfNodeEvalParam(pipelineNodeDef)
                 .build();
@@ -236,7 +234,7 @@ public class KusciaJobConverter implements JobConverter {
     public Map<String, TaskConfig.DatasourceConfig> modelExportDatasourceConfig(List<String> parties, String projectId, String graphId, ModelExportPackageRequest request) {
         Map<String, TaskConfig.DatasourceConfig> stringDatasourceConfigMap = buildDatasourceConfig(parties, projectId, graphId);
         if (ObjectUtils.isEmpty(request) || ObjectUtils.isEmpty(request.getModelPartyConfig())) {
-            return buildDatasourceConfig(parties, null, graphId);
+            return buildDatasourceConfig(parties, request.getProjectId(), graphId);
         }
         for (ModelPartyConfig modelPartyConfig : request.getModelPartyConfig()) {
             if (stringDatasourceConfigMap.containsKey(modelPartyConfig.getModelParty())) {
@@ -261,5 +259,17 @@ public class KusciaJobConverter implements JobConverter {
                 .setCrossSiloCommBackend(crossSiloCommBackend)
                 .build();
         return Cluster.SFClusterDesc.newBuilder().addAllParties(parties).setRayFedConfig(rayFedConfig).addAllDevices(deviceDescs).build();
+    }
+
+    public List<String> buildSfInputPartitions(List<String> inputs) {
+        List<String> sf_input_partitions_spec = new ArrayList<>(inputs.size());
+        for (String input : inputs) {
+            String tablePartitionRule = GraphContext.getTablePartitionRule(input);
+            tablePartitionRule = StringUtils.isNotEmpty(tablePartitionRule)
+                    ? tablePartitionRule.replace(ComponentConstants.DATA_TABLE_PARTITION_DELIMITER, ComponentConstants.DOMAIN_DATA_TABLE_PARTITION_DELIMITER)
+                    : "";
+            sf_input_partitions_spec.add(tablePartitionRule);
+        }
+        return sf_input_partitions_spec;
     }
 }

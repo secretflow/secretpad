@@ -58,20 +58,6 @@ public class TeeNodeDatatableManagementSyncRequest implements ProjectNodesInfo {
 
     private String operateInfo;
 
-    @JsonIgnore
-    @Override
-    public String getProjectId() {
-        return null;
-    }
-
-    @JsonIgnore
-    @Override
-    public List<String> getNodeIds() {
-        List<String> nodeIds = new ArrayList<>();
-        nodeIds.add(nodeId);
-        return nodeIds;
-    }
-
     /**
      * Parse the TeeNodeDatatableManagementSyncRequest object into a TeeNodeDatatableManagementDO object.
      *
@@ -110,5 +96,19 @@ public class TeeNodeDatatableManagementSyncRequest implements ProjectNodesInfo {
         request.setDatatableId(teeNodeDatatableManagementDO.getUpk().getDatatableId());
         request.setJobId(teeNodeDatatableManagementDO.getUpk().getJobId());
         return request;
+    }
+
+    @JsonIgnore
+    @Override
+    public String getProjectId() {
+        return null;
+    }
+
+    @JsonIgnore
+    @Override
+    public List<String> getNodeIds() {
+        List<String> nodeIds = new ArrayList<>();
+        nodeIds.add(nodeId);
+        return nodeIds;
     }
 }

@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.service.model.approval;
 
+
+import org.secretflow.secretpad.persistence.model.ParticipantNodeInstVO;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import lombok.Getter;
@@ -35,5 +37,9 @@ public class ProjectCreateApprovalConfig extends AbstractVoteConfig {
     private String projectId;
 
     @NotEmpty
-    private List<String> nodes;
+    private List<String> participants;
+
+    private List<ParticipantNodeInstVO> participantNodeInstVOS;
+
+
 }

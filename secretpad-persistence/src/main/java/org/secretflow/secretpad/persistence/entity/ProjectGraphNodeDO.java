@@ -94,6 +94,11 @@ public class ProjectGraphNodeDO extends BaseAggregationRoot<ProjectGraphNodeDO> 
     @Convert(converter = Object2JsonStrConverter.class)
     private Object nodeDef;
 
+    @Override
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
+
     /**
      * Project graph node unique primary key
      */
@@ -139,10 +144,5 @@ public class ProjectGraphNodeDO extends BaseAggregationRoot<ProjectGraphNodeDO> 
         public int hashCode() {
             return Objects.hash(projectId, graphId, graphNodeId);
         }
-    }
-
-    @Override
-    public String getProjectId() {
-        return this.upk.projectId;
     }
 }

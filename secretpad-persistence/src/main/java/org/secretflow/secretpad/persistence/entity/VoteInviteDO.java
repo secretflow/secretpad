@@ -85,6 +85,24 @@ public class VoteInviteDO extends BaseAggregationRoot<VoteInviteDO> {
     @Column(name = "description", nullable = false, length = 64)
     private String desc;
 
+    @Override
+    @JsonIgnore
+    public String getNodeId() {
+        return this.upk.votePartitionID;
+    }
+
+    @Override
+    @JsonIgnore
+    public List<String> getNodeIds() {
+        List<String> nodeIds = new ArrayList<>();
+        nodeIds.add(initiator);
+        nodeIds.add(this.upk.votePartitionID);
+        return nodeIds;
+    }
+
+    public String obtainVoteID() {
+        return this.upk.getVoteID();
+    }
 
     @Getter
     @Setter
@@ -120,24 +138,5 @@ public class VoteInviteDO extends BaseAggregationRoot<VoteInviteDO> {
         public int hashCode() {
             return Objects.hash(voteID, votePartitionID);
         }
-    }
-
-    @Override
-    @JsonIgnore
-    public String getNodeId() {
-        return this.upk.votePartitionID;
-    }
-
-    @Override
-    @JsonIgnore
-    public List<String> getNodeIds() {
-        List<String> nodeIds = new ArrayList<>();
-        nodeIds.add(initiator);
-        nodeIds.add(this.upk.votePartitionID);
-        return nodeIds;
-    }
-
-    public String obtainVoteID() {
-        return this.upk.getVoteID();
     }
 }

@@ -75,7 +75,7 @@ public class ProjectNodeVO {
                 .nodeId(pnp.getProjectNodeDO().getUpk().getNodeId())
                 .datatables(CollectionUtils.isEmpty(dts) ? null
                         : dts.stream().map(dt -> new ProjectDatatableBaseVO(dt.getDatatableId(),
-                        dt.getDatatableName())).collect(Collectors.toList()))
+                        dt.getDatatableName(), dt.getPartition())).collect(Collectors.toList()))
                 .nodeName(pnp.getNodeName())
                 .nodeType(pnp.getNodeType())
                 .build();

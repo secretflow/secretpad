@@ -16,9 +16,9 @@
 
 package org.secretflow.secretpad.service.model.datasource;
 
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
+
+import java.util.Map;
 
 /**
  * @author chenmingliang
@@ -26,9 +26,13 @@ import lombok.Setter;
  */
 @Getter
 @Setter
+@Builder
 @AllArgsConstructor
+@NoArgsConstructor
 public class CreateDatasourceVO {
 
     private String datasourceId;
+
+    private Map<String, String> failedCreatedNodes;
 
 }

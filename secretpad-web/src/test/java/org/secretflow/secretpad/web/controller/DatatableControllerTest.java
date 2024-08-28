@@ -21,14 +21,8 @@ import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
-import org.secretflow.secretpad.persistence.entity.FeatureTableDO;
-import org.secretflow.secretpad.persistence.entity.ProjectDO;
-import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO;
-import org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO;
-import org.secretflow.secretpad.persistence.repository.FeatureTableRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectDatatableRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectFeatureTableRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectRepository;
+import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.decorator.awsoss.OssAutoCloseableClient;
 import org.secretflow.secretpad.service.factory.OssClientFactory;
 import org.secretflow.secretpad.service.model.datatable.CreateDatatableRequest;
@@ -73,6 +67,9 @@ class DatatableControllerTest extends ControllerTest {
     private ProjectRepository projectRepository;
 
     @MockBean
+    private NodeRepository nodeRepository;
+
+    @MockBean
     private FeatureTableRepository featureTableRepository;
 
     @MockBean
@@ -94,15 +91,16 @@ class DatatableControllerTest extends ControllerTest {
         CreateDatatableRequest request = FakerUtils.fake(CreateDatatableRequest.class);
         request.setDatasourceType("OSS");
         request.setDatasourceName("ossDatasource");
-        request.setNodeId("alice");
+        request.setOwnerId("alice");
         UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_CREATE));
         Domaindata.CreateDomainDataResponse response = Domaindata.CreateDomainDataResponse.newBuilder()
                 .setData(Domaindata.CreateDomainDataResponseData.newBuilder()
-                        .setDomaindataId(request.getNodeId())
+                        .setDomaindataId(request.getOwnerId())
                         .build())
                 .build();
         Mockito.when(kusciaGrpcClientAdapter.createDomainData(
                 Mockito.any())).thenReturn(response);
+        Mockito.when(kusciaGrpcClientAdapter.queryDomainDataSource(Mockito.any())).thenReturn(Domaindatasource.QueryDomainDataSourceResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(0).build()).build());
 
         // Act & Assert
         assertResponse(() -> {
@@ -118,7 +116,7 @@ class DatatableControllerTest extends ControllerTest {
             ListDatatableRequest request = FakerUtils.fake(ListDatatableRequest.class);
             request.setPageSize(10);
             request.setPageNumber(1);
-            request.setNodeId("alice");
+            request.setOwnerId("alice");
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_LIST));
 
@@ -132,15 +130,19 @@ class DatatableControllerTest extends ControllerTest {
                                     Domaindata.ListDomainDataRequestData.newBuilder()
                                             .setDomaindataType(DATA_TYPE_TABLE)
                                             .setDomaindataVendor(DATA_VENDOR_MANUAL)
-                                            .setDomainId(request.getNodeId())
+                                            .setDomainId(request.getOwnerId())
                                             .build()
                             )
-                            .build()))
+                            .build(), "alice"))
                     .thenReturn(response);
+            NodeDO nodeDO = FakerUtils.fake(NodeDO.class);
+            nodeDO.setNodeId("alice");
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
             ProjectFeatureTableDO projectFeatureTableDO = FakerUtils.fake(ProjectFeatureTableDO.class);
-            Mockito.when(projectFeatureTableRepository.findByNodeIdAndFeatureTableIds(request.getNodeId(), Lists.newArrayList(featureTableDO.getUpk().getFeatureTableId()))).thenReturn(Collections.singletonList(projectFeatureTableDO));
-            Mockito.when(featureTableRepository.findByNodeId(request.getNodeId())).thenReturn(Collections.singletonList(featureTableDO));
+            Mockito.when(nodeRepository.findByInstId(Mockito.anyString())).thenReturn(Collections.singletonList(nodeDO));
+            Mockito.when(nodeRepository.findByNodeId("alice")).thenReturn(nodeDO);
+            Mockito.when(projectFeatureTableRepository.findByNodeIdAndFeatureTableIds(request.getOwnerId(), Lists.newArrayList(featureTableDO.getUpk().getFeatureTableId()))).thenReturn(Collections.singletonList(projectFeatureTableDO));
+            Mockito.when(featureTableRepository.findByNodeId(request.getOwnerId())).thenReturn(Collections.singletonList(featureTableDO));
 
             return MockMvcRequestBuilders.post(getMappingUrl(DatatableController.class, "listDatatables", ListDatatableRequest.class))
                     .content(JsonUtils.toJSONString(request));
@@ -153,6 +155,10 @@ class DatatableControllerTest extends ControllerTest {
             GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
             request.setNodeId("alice");
             request.setType("CSV");
+
+            NodeDO nodeDO = FakerUtils.fake(NodeDO.class);
+            nodeDO.setNodeId("alice");
+            Mockito.when(nodeRepository.findByNodeId("alice")).thenReturn(nodeDO);
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_GET));
 
@@ -185,6 +191,10 @@ class DatatableControllerTest extends ControllerTest {
             GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
             request.setNodeId("alice");
             request.setType("CSV");
+
+            NodeDO nodeDO = FakerUtils.fake(NodeDO.class);
+            nodeDO.setNodeId("alice");
+            Mockito.when(nodeRepository.findByNodeId("alice")).thenReturn(nodeDO);
 
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_GET));
 
@@ -237,6 +247,10 @@ class DatatableControllerTest extends ControllerTest {
         request.setNodeId("alice");
         request.setType("CSV");
 
+        NodeDO nodeDO = FakerUtils.fake(NodeDO.class);
+        nodeDO.setNodeId("alice");
+        Mockito.when(nodeRepository.findByNodeId("alice")).thenReturn(nodeDO);
+
         UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_GET));
 
         Domaindata.QueryDomainDataResponse response = Domaindata.QueryDomainDataResponse.newBuilder()
@@ -287,6 +301,10 @@ class DatatableControllerTest extends ControllerTest {
         GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
         request.setNodeId("alice");
         request.setType("CSV");
+
+        NodeDO nodeDO = FakerUtils.fake(NodeDO.class);
+        nodeDO.setNodeId("alice");
+        Mockito.when(nodeRepository.findByNodeId("alice")).thenReturn(nodeDO);
 
         UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_GET));
 

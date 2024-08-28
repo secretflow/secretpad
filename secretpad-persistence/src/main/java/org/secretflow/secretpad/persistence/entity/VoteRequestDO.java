@@ -145,7 +145,7 @@ public class VoteRequestDO extends BaseAggregationRoot<VoteRequestDO> {
         @Serial
         private static final long serialVersionUID = 291568296509217011L;
 
-        private String nodeId;
+        private String partyId;
         private String action;
         private String reason;
 
@@ -158,12 +158,12 @@ public class VoteRequestDO extends BaseAggregationRoot<VoteRequestDO> {
                 return false;
             }
             PartyVoteInfo that = (PartyVoteInfo) o;
-            return this.nodeId.equals(that.nodeId);
+            return this.partyId.equals(that.partyId);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(nodeId);
+            return Objects.hash(partyId);
         }
     }
 }

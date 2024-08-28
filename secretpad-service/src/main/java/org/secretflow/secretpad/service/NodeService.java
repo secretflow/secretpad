@@ -63,6 +63,7 @@ public interface NodeService {
      */
     String createP2pNode(P2pCreateNodeRequest request);
 
+
     /**
      * Delete a node
      *
@@ -76,6 +77,16 @@ public interface NodeService {
      * @param routerId target routerId
      */
     void deleteP2pNode(String routerId);
+
+    void deleteP2pNodeRoute(String routerId);
+
+    /**
+     * List all node result products
+     *
+     * @param request list node result request
+     * @return All node results list view object
+     */
+    AllNodeResultsListVO listAllNodeResults(ListNodeResultRequest request);
 
     /**
      * List the node result products
@@ -152,5 +163,7 @@ public interface NodeService {
     /**
      * Initial node for p2p mode
      */
-    void initialNode();
+    void initialNode(String instName);
+
+    void updateNodeMasterNodeId(String nodeId);
 }

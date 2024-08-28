@@ -21,12 +21,12 @@ import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.enums.DataTableTypeEnum;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
-import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.model.DatatableListDTO;
+import org.secretflow.secretpad.manager.integration.node.SearchTargetNodeManager;
 import org.secretflow.secretpad.persistence.entity.FeatureTableDO;
 import org.secretflow.secretpad.persistence.repository.FeatureTableRepository;
 
@@ -54,79 +54,173 @@ import static org.secretflow.secretpad.common.constant.Constants.STATUS_UNAVAILA
  * @date 2023/5/23
  */
 public class DatatableManager extends AbstractDatatableManager {
-    @Value("${secretpad.platform-type}")
-    private String plaformType;
-    @Value("${secretpad.node-id}")
-    private String localNodeId;
     private final static Logger LOGGER = LoggerFactory.getLogger(DatatableManager.class);
-
     /**
      * Domain data service blocking stub
      */
     private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
-
     private final FeatureTableRepository featureTableRepository;
+    @Value("${secretpad.platform-type}")
+    private String plaformType;
+
+    @Value("${secretpad.node-id}")
+    private String localNodeId;
 
     public DatatableManager(KusciaGrpcClientAdapter kusciaGrpcClientAdapter, FeatureTableRepository featureTableRepository) {
         this.featureTableRepository = featureTableRepository;
         this.kusciaGrpcClientAdapter = kusciaGrpcClientAdapter;
     }
 
+    /**
+     * local inst query
+     **/
     @Override
     public Optional<DatatableDTO> findById(DatatableDTO.NodeDatatableId nodeDatatableId) {
-        Domaindata.QueryDomainDataRequest queryDomainDataRequest;
+
+        Domaindata.QueryDomainDataRequest queryDomainDataRequest = Domaindata.QueryDomainDataRequest.newBuilder()
+                .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
+                        .setDomainId(nodeDatatableId.getNodeId())
+                        .setDomaindataId(nodeDatatableId.getDatatableId())
+                        .build())
+                .build();
+        Domaindata.QueryDomainDataResponse response;
         if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))) {
-            queryDomainDataRequest = Domaindata.QueryDomainDataRequest.newBuilder()
-                    .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
-                            .setDomainId(localNodeId)
-                            .setDomaindataId(nodeDatatableId.getDatatableId())
-                            .build())
-                    .build();
+            response = kusciaGrpcClientAdapter.queryDomainData(queryDomainDataRequest, nodeDatatableId.getNodeId());
         } else {
-            queryDomainDataRequest = Domaindata.QueryDomainDataRequest.newBuilder()
-                    .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
-                            .setDomainId(nodeDatatableId.getNodeId())
-                            .setDomaindataId(nodeDatatableId.getDatatableId())
-                            .build())
-                    .build();
+            response = kusciaGrpcClientAdapter.queryDomainData(queryDomainDataRequest);
         }
-        Domaindata.QueryDomainDataResponse response = kusciaGrpcClientAdapter.queryDomainData(queryDomainDataRequest);
+
+        if (response == null) {
+            LOGGER.error("lock up from kusciaapi failed ,response is null");
+            throw SecretpadException.of(DatatableErrorCode.QUERY_DATATABLE_FAILED);
+        }
         if (response.getStatus().getCode() != 0) {
             LOGGER.error("lock up from kusciaapi failed: code={}, message={}, request={}",
                     response.getStatus().getCode(), response.getStatus().getMessage(), JsonUtils.toJSONString(nodeDatatableId));
             throw SecretpadException.of(DatatableErrorCode.QUERY_DATATABLE_FAILED);
         }
+
         return Optional.of(DatatableDTO.fromDomainData(response.getData()));
     }
 
+
     @Override
-    public Map<DatatableDTO.NodeDatatableId, DatatableDTO> findByIds(List<DatatableDTO.NodeDatatableId> nodeDatatableIds) {
-        Domaindata.BatchQueryDomainDataRequest batchQueryDomainDataRequest;
+    public List<Domaindata.DomainData> findByIdsBase(List<DatatableDTO.NodeDatatableId> nodeDatatableIds, SearchTargetNodeManager nodeService) {
+        final List<Domaindata.DomainData> domainDataList = new ArrayList<>();
         if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))) {
-            batchQueryDomainDataRequest = Domaindata.BatchQueryDomainDataRequest.newBuilder()
-                    .addAllData(nodeDatatableIds.stream().map(
-                            it -> Domaindata.QueryDomainDataRequestData.newBuilder()
-                                    // todo: if is output table then set domain id as node id
-                                    .setDomainId(it.getDatatableId().contains("output") ? it.getNodeId() : localNodeId)
-                                    .setDomaindataId(it.getDatatableId()).build()).collect(Collectors.toList()))
+            String targetNodeId = nodeService.getTargetNodeId(nodeDatatableIds.get(0).getNodeId(), null);
+            Domaindata.BatchQueryDomainDataRequest nodeRequest = Domaindata.BatchQueryDomainDataRequest.
+                    newBuilder().addAllData(
+                            nodeDatatableIds.stream().map(
+                                            it -> Domaindata.QueryDomainDataRequestData.newBuilder()
+                                                    .setDomainId(it.getNodeId())
+                                                    .setDomaindataId(it.getDatatableId())
+                                                    .build())
+                                    .collect(Collectors.toList()))
                     .build();
+
+            Domaindata.BatchQueryDomainDataResponse responses = kusciaGrpcClientAdapter.batchQueryDomainData(nodeRequest, targetNodeId);
+            if (responses.getStatus().getCode() != 0) {
+                LOGGER.error("findByIds lock up from kusciaapi failed: code={}, message={}, request={}",
+                        responses.getStatus().getCode(), responses.getStatus().getMessage(), JsonUtils.toJSONString(nodeDatatableIds));
+                throw SecretpadException.of(DatatableErrorCode.QUERY_DATATABLE_FAILED);
+            }
+
+            if (!CollectionUtils.isEmpty(responses.getData().getDomaindataListList())) {
+                domainDataList.addAll(responses.getData().getDomaindataListList());
+            }
+
         } else {
-            batchQueryDomainDataRequest = Domaindata.BatchQueryDomainDataRequest.newBuilder()
+            Domaindata.BatchQueryDomainDataRequest batchQueryDomainDataRequest = Domaindata.BatchQueryDomainDataRequest.newBuilder()
                     .addAllData(nodeDatatableIds.stream().map(
                             it -> Domaindata.QueryDomainDataRequestData.newBuilder()
                                     .setDomainId(it.getNodeId()).setDomaindataId(it.getDatatableId()).build()).collect(Collectors.toList()))
                     .build();
+            Domaindata.BatchQueryDomainDataResponse responses = kusciaGrpcClientAdapter.batchQueryDomainData(batchQueryDomainDataRequest);
+            if (responses.getStatus().getCode() != 0) {
+                LOGGER.error("findByIds lock up from kusciaapi failed: code={}, message={}, request={}",
+                        responses.getStatus().getCode(), responses.getStatus().getMessage(), JsonUtils.toJSONString(nodeDatatableIds));
+                throw SecretpadException.of(DatatableErrorCode.QUERY_DATATABLE_FAILED);
+            }
+
+            domainDataList.addAll(responses.getData().getDomaindataListList());
+            LOGGER.debug("request table  responses {} ", responses);
         }
-        Domaindata.BatchQueryDomainDataResponse responses = kusciaGrpcClientAdapter.batchQueryDomainData(batchQueryDomainDataRequest);
-        if (responses.getStatus().getCode() != 0) {
-            LOGGER.error("findByIds lock up from kusciaapi failed: code={}, message={}, request={}",
-                    responses.getStatus().getCode(), responses.getStatus().getMessage(), JsonUtils.toJSONString(nodeDatatableIds));
-            throw SecretpadException.of(DatatableErrorCode.QUERY_DATATABLE_FAILED);
-        }
-        List<Domaindata.DomainData> domaindataListList = responses.getData().getDomaindataListList();
-        Map<DatatableDTO.NodeDatatableId, DatatableDTO> result = domaindataListList.stream().map(DatatableDTO::fromDomainData)
+        return domainDataList;
+    }
+
+    @Override
+    public Map<DatatableDTO.NodeDatatableId, DatatableDTO> findByIds(List<DatatableDTO.NodeDatatableId> nodeDatatableIds, SearchTargetNodeManager nodeService) {
+        List<Domaindata.DomainData> domainDataList = this.findByIdsBase(nodeDatatableIds, nodeService);
+        Map<DatatableDTO.NodeDatatableId, DatatableDTO> result = domainDataList.stream().map(DatatableDTO::fromDomainData)
                 .collect(Collectors.toMap(it -> DatatableDTO.NodeDatatableId.from(it.getNodeId(), it.getDatatableId()), Function.identity()));
-        LOGGER.debug("request table  responses {} ", responses);
+
+        LOGGER.debug("request table  result {} ", result);
+        LOGGER.info("request table size={}, and response table size={} ", nodeDatatableIds.size(), result.size());
+        return result;
+    }
+
+    @Override
+    public  List<Domaindata.DomainData> findByIdGroup(List<DatatableDTO.NodeDatatableId> nodeDatatableIds , SearchTargetNodeManager searchManager){
+        final List<Domaindata.DomainData> domainDataList = new ArrayList<>();
+        if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))) {
+            /* set target node  */
+            nodeDatatableIds.forEach(it -> it.setNodeId(searchManager.getTargetNodeId(it.getNodeId(), null)));
+            /* group by target node */
+            Map<String, List<DatatableDTO.NodeDatatableId>> nodeIdMap = nodeDatatableIds.stream().collect(Collectors.groupingBy(DatatableDTO.NodeDatatableId::getNodeId));
+            nodeIdMap.forEach((key, value) -> {
+                Domaindata.BatchQueryDomainDataRequest nodeRequest = Domaindata.BatchQueryDomainDataRequest.
+                        newBuilder().addAllData(value.stream().map(it -> Domaindata.QueryDomainDataRequestData.newBuilder()
+                                .setDomainId(it.getNodeId())
+                                .setDomaindataId(it.getDatatableId()).build()).collect(Collectors.toList()))
+                        .build();
+
+                Domaindata.BatchQueryDomainDataResponse responses = kusciaGrpcClientAdapter.batchQueryDomainData(nodeRequest, key);
+                if (responses.getStatus().getCode() != 0) {
+                    LOGGER.error("findByIds lock up from kusciaapi failed: code={}, message={}, request={}",
+                            responses.getStatus().getCode(), responses.getStatus().getMessage(), JsonUtils.toJSONString(nodeDatatableIds));
+                    throw SecretpadException.of(DatatableErrorCode.QUERY_DATATABLE_FAILED);
+                }
+
+                if (!CollectionUtils.isEmpty(responses.getData().getDomaindataListList())) {
+                    domainDataList.addAll(responses.getData().getDomaindataListList());
+                }
+            });
+        } else {
+            Domaindata.BatchQueryDomainDataRequest batchQueryDomainDataRequest = Domaindata.BatchQueryDomainDataRequest.newBuilder()
+                    .addAllData(nodeDatatableIds.stream().map(
+                            it -> Domaindata.QueryDomainDataRequestData.newBuilder()
+                                    .setDomainId(it.getNodeId()).setDomaindataId(it.getDatatableId()).build()).collect(Collectors.toList()))
+                    .build();
+            Domaindata.BatchQueryDomainDataResponse responses = kusciaGrpcClientAdapter.batchQueryDomainData(batchQueryDomainDataRequest);
+            if (responses.getStatus().getCode() != 0) {
+                LOGGER.error("findByIds lock up from kusciaapi failed: code={}, message={}, request={}",
+                        responses.getStatus().getCode(), responses.getStatus().getMessage(), JsonUtils.toJSONString(nodeDatatableIds));
+                throw SecretpadException.of(DatatableErrorCode.QUERY_DATATABLE_FAILED);
+            }
+
+            domainDataList.addAll(responses.getData().getDomaindataListList());
+            LOGGER.debug("request table  responses {} ", responses);
+        }
+        return domainDataList;
+    }
+
+
+
+
+    /***
+     *  nodes a1 a2 b1 b2 in same project,show all data tables
+     *  a1 <-> b1
+     *  a2 <-> b2
+     *  when you are in inst a , map b1,b2 to a1,a2, then query from node a1,a2
+     *  when you are in inst b , map a1,a2 to b1,b2, then query from node b1,b2
+     */
+    @Override
+    public Map<DatatableDTO.NodeDatatableId, DatatableDTO> findByIdsFromProjectConfig(List<DatatableDTO.NodeDatatableId> nodeDatatableIds, SearchTargetNodeManager searchManager) {
+        final List<Domaindata.DomainData> domainDataList = findByIdGroup(nodeDatatableIds, searchManager);
+        Map<DatatableDTO.NodeDatatableId, DatatableDTO> result = domainDataList.stream().map(DatatableDTO::fromDomainData)
+                .collect(Collectors.toMap(it -> DatatableDTO.NodeDatatableId.from(it.getNodeId(), it.getDatatableId()), Function.identity()));
+
         LOGGER.debug("request table  result {} ", result);
         LOGGER.info("request table size={}, and response table size={} ", nodeDatatableIds.size(), result.size());
         return result;
@@ -154,15 +248,15 @@ public class DatatableManager extends AbstractDatatableManager {
         LOGGER.info("After filter by name, the datatable list len = {}, now paging.", datatableDTOList.size());
         datatableDTOList = filterByDatasourceTypes(datatableDTOList, types);
         LOGGER.info("After filter by types, the datatable list len = {}, now paging.", datatableDTOList.size());
-        int startIndex = pageSize * (pageNumber - 1);
-        if (startIndex > datatableDTOList.size()) {
-            LOGGER.error("When find by node id, the page start index {} > datatableDtolist len {}", startIndex, datatableDTOList.size());
-            throw SecretpadException.of(SystemErrorCode.OUT_OF_RANGE_ERROR, "page start index > datatable list length.");
-        }
-        int endIndex = Math.min((startIndex + pageSize), datatableDTOList.size());
-        LOGGER.info("After page, we show from {} to {}", startIndex, endIndex);
+//        int startIndex = pageSize * (pageNumber - 1);
+//        if (startIndex > datatableDTOList.size()) {
+//            LOGGER.error("When find by node id, the page start index {} > datatableDtolist len {}", startIndex, datatableDTOList.size());
+//            throw SecretpadException.of(SystemErrorCode.OUT_OF_RANGE_ERROR, "page start index > datatable list length.");
+//        }
+//        int endIndex = Math.min((startIndex + pageSize), datatableDTOList.size());
+//        LOGGER.info("After page, we show from {} to {}", startIndex, endIndex);
         return DatatableListDTO.builder()
-                .datatableDTOList(datatableDTOList.subList(startIndex, endIndex))
+                .datatableDTOList(datatableDTOList)
                 .totalDatatableNums(datatableDTOList.size())
                 .build();
     }
@@ -208,9 +302,15 @@ public class DatatableManager extends AbstractDatatableManager {
         if (vendor != null) {
             builder.setDomaindataVendor(vendor);
         }
+
+        //protect unregistered domain
+        if (!kusciaGrpcClientAdapter.isDomainRegistered(PlatformTypeEnum.CENTER.equals(PlatformTypeEnum.valueOf(plaformType)) ? localNodeId : nodeId)) {
+            LOGGER.warn("domain not registered  nodeId: nodeId={}", nodeId);
+            return new ArrayList<>();
+        }
         Domaindata.ListDomainDataResponse responses = kusciaGrpcClientAdapter.listDomainData(
                 Domaindata.ListDomainDataRequest.newBuilder()
-                        .setData(builder.build()).build());
+                        .setData(builder.build()).build(), PlatformTypeEnum.CENTER.equals(PlatformTypeEnum.valueOf(plaformType)) ? localNodeId : nodeId);
         if (responses.getStatus().getCode() != 0) {
             LOGGER.error("lock up from kusciaapi failed: code={}, message={}, nodeId={}, vendor={}",
                     responses.getStatus().getCode(), responses.getStatus().getMessage(), nodeId, vendor);
@@ -224,7 +324,13 @@ public class DatatableManager extends AbstractDatatableManager {
         Domaindata.DeleteDomainDataRequest.Builder builder = Domaindata.DeleteDomainDataRequest.newBuilder()
                 .setDomainId(nodeDatatableId.getNodeId())
                 .setDomaindataId(nodeDatatableId.getDatatableId());
-        Domaindata.DeleteDomainDataResponse response = kusciaGrpcClientAdapter.deleteDomainData(builder.build());
+        Domaindata.DeleteDomainDataResponse response;
+        if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))) {
+            response = kusciaGrpcClientAdapter.deleteDomainData(builder.build(), nodeDatatableId.getNodeId());
+        } else {
+            response = kusciaGrpcClientAdapter.deleteDomainData(builder.build());
+        }
+
         if (response.getStatus().getCode() != 0) {
             LOGGER.error("delete datatable failed: code={}, message={}, nodeId={}, datatableId={}",
                     response.getStatus().getCode(), response.getStatus().getMessage(), nodeDatatableId.getNodeId(), nodeDatatableId.getDatatableId());

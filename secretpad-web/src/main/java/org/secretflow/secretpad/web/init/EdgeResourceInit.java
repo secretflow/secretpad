@@ -26,6 +26,7 @@ import org.secretflow.secretpad.persistence.entity.AccountsDO;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.UserAccountsRepository;
+import org.secretflow.secretpad.service.dataproxy.DataProxyService;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -55,6 +56,7 @@ public class EdgeResourceInit implements CommandLineRunner {
     private final NodeRepository nodeRepository;
     private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
+    private final DataProxyService dataProxyService;
     private final UserAccountsRepository userAccountsRepository;
     @Value("${secretpad.platform-type}")
     private String platformType;
@@ -83,13 +85,15 @@ public class EdgeResourceInit implements CommandLineRunner {
             nodeDO.setType(DomainConstants.DomainTypeEnum.normal.name());
             nodeDO.setIsDeleted(Boolean.FALSE);
             nodeDO.setMode(1);
+            nodeDO.setInstId("");
 
             UserContextDTO userContextDTO = new UserContextDTO();
             userContextDTO.setName("admin");
             UserContext.setBaseUser(userContextDTO);
 
             nodeRepository.saveAndFlush(nodeDO);
-
+            /* update by edge self*/
+            dataProxyService.updateDataSourceUseDataProxyByDomainId(domainData.getDomainId(), domainData.getDomainId());
             UserContext.remove();
         } else {
             log.error("kuscia lite {} , not ready", ownerId);

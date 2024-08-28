@@ -14,6 +14,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `Fixed` for any bug fixes.
 `Security` in case of vulnerabilities.
 
+## [0.10.0b0] - 2024-08-15
+### Added
+- [Feature]  Supports multi-node management in P2P deploy mode
+- [Feature]  Added a data source management module with ODPS(MaxCompute) data source
+- [Feature]  Supports self-define NUll value at data table registration
+- [Feature]  Supports model pacakge and deployment by OSS or ODPS(MaxCompute) data source
+- [Feature]  Supports XGB model serialization and deserialization
+- [Feature]  Supports output received by single side receiver in psi component
+- [Feature]  Added a express condition filter component
+- [Feature]  Added a NULL filter parameter in condition filter component
+- [Feature]  Added a new resident service named dataproxy to access different data sources
+- [Documentation] Supplemental documentation for Secretpad incompatible change (incompatible_statement_cn.md)
+
+### Changed
+- [Incompatible] Refactor VoteRequestDO  [incompatible statement](./docs/development/incompatible_statement_cn.md)
+
+
 ## [0.9.0b0] - 2024-07-15
 
 ### Added

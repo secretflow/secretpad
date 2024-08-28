@@ -71,8 +71,8 @@ public class NodeRouteMessageHandler extends AbstractVoteTypeHandler {
     private final NodeRouteRepository nodeRouteRepository;
 
 
-    public NodeRouteMessageHandler(VoteInviteRepository voteInviteRepository, NodeRepository nodeRepository, EnvService envService, NodeRouteAuditConfigRepository nodeRouteAuditConfigRepository, VoteRequestRepository voteRequestRepository, NodeRouterService nodeRouterService, NodeRouteRepository nodeRouteRepository, CertificateService certificateService, ProjectRepository projectRepository) {
-        super(voteInviteRepository, voteRequestRepository, nodeRepository, envService, certificateService, projectRepository);
+    public NodeRouteMessageHandler(VoteInviteRepository voteInviteRepository, NodeRepository nodeRepository, InstRepository instRepository, EnvService envService, NodeRouteAuditConfigRepository nodeRouteAuditConfigRepository, VoteRequestRepository voteRequestRepository, NodeRouterService nodeRouterService, NodeRouteRepository nodeRouteRepository, CertificateService certificateService, ProjectRepository projectRepository) {
+        super(voteInviteRepository, voteRequestRepository, nodeRepository, instRepository, envService, certificateService, projectRepository);
         this.nodeRouteAuditConfigRepository = nodeRouteAuditConfigRepository;
         this.nodeRouterService = nodeRouterService;
         this.nodeRouteRepository = nodeRouteRepository;

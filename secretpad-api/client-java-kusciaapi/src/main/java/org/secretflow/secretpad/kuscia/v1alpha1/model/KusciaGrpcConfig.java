@@ -31,6 +31,9 @@ import lombok.*;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.File;
+import java.io.Serial;
+import java.io.Serializable;
+import java.util.Objects;
 import java.util.Set;
 
 /**
@@ -45,8 +48,10 @@ import java.util.Set;
 @ToString
 @NoArgsConstructor
 @AllArgsConstructor
-@EqualsAndHashCode
-public class KusciaGrpcConfig {
+public class KusciaGrpcConfig implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @NotNull(message = "domainId cannot be null or empty")
     private String domainId;
@@ -102,5 +107,17 @@ public class KusciaGrpcConfig {
                     throw new IllegalArgumentException("Invalid KusciaGrpcConfig: protocol must be TLS or MTLS or NOTLS");
         }
 
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof KusciaGrpcConfig config)) return false;
+        return Objects.equals(domainId, config.domainId);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hashCode(domainId);
     }
 }

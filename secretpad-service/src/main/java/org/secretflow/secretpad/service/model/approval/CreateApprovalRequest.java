@@ -35,7 +35,8 @@ import lombok.Setter;
 @Setter
 public class CreateApprovalRequest {
     @NotBlank
-    private String nodeID;
+    private String initiatorId;
+
 
     @OneOfType(types = {"TEE_DOWNLOAD", "NODE_ROUTE", "PROJECT_CREATE", "PROJECT_ARCHIVE"})
     @NotBlank

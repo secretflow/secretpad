@@ -16,8 +16,9 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
+import org.secretflow.secretpad.persistence.converter.BaseObjectListJsonConverter;
 import org.secretflow.secretpad.persistence.converter.StringListJsonConverter;
-
+import org.secretflow.secretpad.persistence.model.ParticipantNodeInstVO;
 import jakarta.persistence.*;
 import lombok.*;
 import org.apache.commons.lang3.StringUtils;
@@ -63,6 +64,10 @@ public class ProjectApprovalConfigDO extends BaseAggregationRoot<ProjectApproval
     @Convert(converter = StringListJsonConverter.class)
     private List<String> parties;
 
+    @Column(name = "participant_node_info")
+    @Convert(converter = ParticipantNodeInstConverter.class)
+    private List<ParticipantNodeInstVO> participantNodeInfo;
+
     @Column(name = "project_id", length = 64)
     private String projectId;
 
@@ -71,6 +76,12 @@ public class ProjectApprovalConfigDO extends BaseAggregationRoot<ProjectApproval
      */
     @Column(name = "invite_node_id", length = 64)
     private String inviteNodeId;
+    @Converter
+    public static class ParticipantNodeInstConverter extends BaseObjectListJsonConverter<ParticipantNodeInstVO> {
+        public ParticipantNodeInstConverter() {
+            super(ParticipantNodeInstVO.class);
+        }
+    }
 
     @Override
     public List<String> getNodeIds() {

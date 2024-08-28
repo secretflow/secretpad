@@ -47,4 +47,8 @@ public class ComponentConstants {
     public static final String MODEL_PARAM_MODIFICATIONS_CODENAME = "preprocessing/model_param_modifications";
 
     public static final String DATA_PREP_UNION = "data_prep/union";
+
+    public static final String DATA_FILTER_EXPR_CONDITION_FILTER = "data_filter/expr_condition_filter";
+
+    public static final String TABLE_SEPARATOR = "_";
 }

@@ -23,4 +23,7 @@ package org.secretflow.secretpad.common.constant;
  * @date 2023/2/24
  */
 public class InstConstants {
+    public static final String DEFAULT_INST_NAME = "DEFAULT_INST";
+
+    public static final Integer MAX_NODE_NUM = 10;
 }

@@ -16,13 +16,14 @@
 #
 
 # shellcheck disable=SC2223
-: ${KUSCIA_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.10.0b0"}
-: ${SECRETPAD_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.9.0b0"}
-: ${SECRETFLOW_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.8.0b0"}
-: ${SECRETFLOW_SERVING_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.5.0b0"}
+: ${KUSCIA_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.11.0b0"}
+: ${SECRETPAD_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.10.0b0"}
+: ${SECRETFLOW_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.9.0b0"}
+: ${SECRETFLOW_SERVING_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.6.0b0"}
 : ${TEE_APP_IMAGE:="secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"}
 : ${TEE_DM_IMAGE:="secretflow/sf-tee-dm-sim:0.1.0b0"}
 : ${CAPSULE_MANAGER_SIM_IMAGE:="secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"}
+: ${DATAPROXY_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/dataproxy:0.1.0b1"}
 
 GREEN='\033[0;32m'
 NC='\033[0m'
@@ -95,11 +96,15 @@ fi
 if [ "${SECRETFLOW_SERVING_IMAGE}" == "" ]; then
 	SECRETFLOW_SERVING_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:latest
 fi
+if [ "${DATAPROXY_IMAGE}" == "" ]; then
+	DATAPROXY_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/dataproxy:latest
+fi
 
 echo "kuscia image: $KUSCIA_IMAGE"
 echo "secretpad image: $SECRETPAD_IMAGE"
 echo "secretflow image: $SECRETFLOW_IMAGE"
 echo "secretflow serving image: $SECRETFLOW_SERVING_IMAGE"
+echo "dataproxy image: $DATAPROXY_IMAGE"
 
 set -e
 echo "docker pull --platform=$platform ${KUSCIA_IMAGE}"
@@ -118,6 +123,10 @@ echo "docker pull --platform=$platform ${SECRETFLOW_SERVING_IMAGE}"
 docker pull --platform=$platform ${SECRETFLOW_SERVING_IMAGE}
 log "docker pull --platform=$platform ${SECRETFLOW_SERVING_IMAGE} done"
 
+echo "docker pull --platform=$platform ${DATAPROXY_IMAGE}"
+docker pull --platform=$platform ${DATAPROXY_IMAGE}
+log "docker pull --platform=$platform ${DATAPROXY_IMAGE} done"
+
 kusciaTag=${KUSCIA_IMAGE##*:}
 echo "kuscia tag: $kusciaTag"
 secretpadTag=${SECRETPAD_IMAGE##*:}
@@ -126,6 +135,8 @@ secretflowTag=${SECRETFLOW_IMAGE##*:}
 echo "secretflow tag: $secretflowTag"
 secretflowServingTag=${SECRETFLOW_SERVING_IMAGE##*:}
 echo "secretflow serving tag: $secretflowServingTag"
+dataproxyTag=${DATAPROXY_IMAGE##*:}
+echo "dataproxy tag: $dataproxyTag"
 
 VERSION_TAG="$(git describe --tags)"
 echo "secretflow-allinone-package tag: $VERSION_TAG"
@@ -141,6 +152,9 @@ docker save -o ./secretflow-allinone-package/images/secretflow-${secretflowTag}.
 
 echo "docker save -o ./secretflow-allinone-package/images/serving-${secretflowServingTag}.tar ${SECRETFLOW_SERVING_IMAGE} "
 docker save -o ./secretflow-allinone-package/images/serving-${secretflowServingTag}.tar ${SECRETFLOW_SERVING_IMAGE}
+
+echo "docker save -o ./secretflow-allinone-package/images/dataproxy-${dataproxyTag}.tar ${DATAPROXY_IMAGE} "
+docker save -o ./secretflow-allinone-package/images/dataproxy-${dataproxyTag}.tar ${DATAPROXY_IMAGE}
 
 # tee
 if [ "$NEED_TEE" = "true" ]; then

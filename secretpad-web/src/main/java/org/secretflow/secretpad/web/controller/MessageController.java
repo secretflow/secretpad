@@ -41,14 +41,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(value = "/api/v1alpha1/message")
 public class MessageController {
 
+    private final static Logger LOGGER = LoggerFactory.getLogger(MessageController.class);
     private final MessageService messageService;
 
     public MessageController(MessageService messageService) {
         this.messageService = messageService;
     }
-
-    private final static Logger LOGGER = LoggerFactory.getLogger(MessageController.class);
-
 
     /**
      * vote invite reply
@@ -57,9 +55,9 @@ public class MessageController {
      * @return
      */
     @PostMapping(value = "/reply", consumes = "application/json")
-    @DataResource(field = "voteParticipantID", resourceType = DataResourceTypeEnum.NODE_ID)
+    @DataResource(field = "voteParticipantId", resourceType = DataResourceTypeEnum.NODE_ID)
     public SecretPadResponse<Object> reply(@Valid @RequestBody VoteReplyRequest voteReplyRequest) {
-        messageService.reply(voteReplyRequest.getAction(), voteReplyRequest.getReason(), voteReplyRequest.getVoteParticipantID(), voteReplyRequest.getVoteID());
+        messageService.reply(voteReplyRequest.getAction(), voteReplyRequest.getReason(), voteReplyRequest.getVoteParticipantId(), voteReplyRequest.getVoteId());
         return SecretPadResponse.success();
     }
 
@@ -70,10 +68,10 @@ public class MessageController {
      * @return
      */
     @PostMapping(value = "/list", consumes = "application/json")
-    @DataResource(field = "nodeID", resourceType = DataResourceTypeEnum.NODE_ID)
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     public SecretPadResponse<MessageListVO> list(@Valid @RequestBody MessageListRequest request) {
         LOGGER.info("params = {}", JsonUtils.toJSONString(request));
-        MessageListVO messageListVO = messageService.list(request.getIsInitiator(), request.getNodeID(), request.getType(), request.getKeyWord(), request.getIsProcessed(), request.of());
+        MessageListVO messageListVO = messageService.list(request.getIsInitiator(), request.getOwnerId(), request.getType(), request.getKeyWord(), request.getIsProcessed(), request.of());
         return SecretPadResponse.success(messageListVO);
     }
 
@@ -84,9 +82,9 @@ public class MessageController {
      * @return
      */
     @PostMapping(value = "/detail", consumes = "application/json")
-    @DataResource(field = "nodeID", resourceType = DataResourceTypeEnum.NODE_ID)
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     public SecretPadResponse<MessageDetailVO> detail(@Valid @RequestBody MessageDetailRequest messageDetailRequest) {
-        MessageDetailVO messageDetailVO = messageService.detail(messageDetailRequest.getIsInitiator(), messageDetailRequest.getNodeID(), messageDetailRequest.getVoteID(), messageDetailRequest.getVoteType());
+        MessageDetailVO messageDetailVO = messageService.detail(messageDetailRequest.getIsInitiator(), messageDetailRequest.getOwnerId(), messageDetailRequest.getVoteId(), messageDetailRequest.getVoteType());
         return SecretPadResponse.success(messageDetailVO);
     }
 
@@ -97,9 +95,9 @@ public class MessageController {
      * @return
      */
     @PostMapping(value = "/pending", consumes = "application/json")
-    @DataResource(field = "nodeID", resourceType = DataResourceTypeEnum.NODE_ID)
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     public SecretPadResponse<Long> pending(@Valid @RequestBody MessagePendingCountRequest messagePendingCountRequest) {
-        Long pendingCount = messageService.pendingCount(messagePendingCountRequest.getNodeID());
+        Long pendingCount = messageService.pendingCount(messagePendingCountRequest.getOwnerId());
         return SecretPadResponse.success(pendingCount);
     }
 

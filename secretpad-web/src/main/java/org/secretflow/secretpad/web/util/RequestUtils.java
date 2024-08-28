@@ -17,12 +17,19 @@
 package org.secretflow.secretpad.web.util;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.util.Assert;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
-import java.util.Objects;
+import java.net.Inet4Address;
+import java.net.InetAddress;
+import java.net.NetworkInterface;
+import java.net.SocketException;
+import java.nio.charset.StandardCharsets;
+import java.util.*;
 
 /**
  * Request utils
@@ -30,7 +37,16 @@ import java.util.Objects;
  * @author yansi
  * @date 2023/5/10
  */
+@Slf4j
 public class RequestUtils {
+    /**
+     *
+     **/
+    public static final String LOCAL_IP_V6 = "0:0:0:0:0:0:0:1";
+    public static final String LOCAL_IP_BASE64 = "MTI3LjAuMC4x";
+    public static final List<String> HEADERS = List.of("X-Forwarded-For",
+            "Proxy-Client-IP", "WL-Proxy-Client-IP", "HTTP_CLIENT_IP", "X-Real-IP");
+
     /**
      * Get current httpRequest from request holder attributes
      *
@@ -56,4 +72,58 @@ public class RequestUtils {
         }
         return currentHttpRequest.getRequestURI();
     }
+
+    public static String getRemoteHost() {
+        String ipAddresses = "";
+        HttpServletRequest request = getCurrentHttpRequest();
+        Assert.notNull(request, "request is null");
+        Optional<String> first = HEADERS.stream().filter(header -> isValidIP(request, header)).findFirst();
+        if (first.isPresent()) {
+            ipAddresses = first.get();
+            if (!ipAddresses.isEmpty()) {
+                ipAddresses = ipAddresses.split(",")[0];
+                return ipAddresses;
+            }
+        }
+        /* not found */
+        if (StringUtils.isEmpty(ipAddresses)) {
+            ipAddresses = request.getRemoteAddr();
+            if (LOCAL_IP_V6.equalsIgnoreCase(ipAddresses) || LOCAL_IP_BASE64.equalsIgnoreCase(Base64.getEncoder().encodeToString(ipAddresses.getBytes(StandardCharsets.UTF_8)))) {
+                try {
+                    ipAddresses = getHostIP();
+                } catch (SocketException e) {
+                    log.error("getHostIP error", e);
+                }
+            }
+        }
+        return ipAddresses;
+    }
+
+
+    private static boolean isValidIP(HttpServletRequest request, String header) {
+        String ipAddresses = request.getHeader(header);
+        return ipAddresses != null && !ipAddresses.isEmpty() && !"unknown".equalsIgnoreCase(ipAddresses);
+    }
+
+
+    private static String getHostIP() throws SocketException {
+        Enumeration<NetworkInterface> allNetInterfaces = NetworkInterface.getNetworkInterfaces();
+
+        while (allNetInterfaces.hasMoreElements()) {
+            NetworkInterface netInterface = allNetInterfaces.nextElement();
+            if (netInterface.isLoopback() || netInterface.isVirtual() || !netInterface.isUp()) {
+                continue;
+            }
+
+            Enumeration<InetAddress> addresses = netInterface.getInetAddresses();
+            while (addresses.hasMoreElements()) {
+                InetAddress ip = addresses.nextElement();
+                if (ip instanceof Inet4Address) {
+                    return ip.getHostAddress();
+                }
+            }
+        }
+        return null;
+    }
+
 }

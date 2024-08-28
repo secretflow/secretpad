@@ -10,3 +10,4 @@
 secretpad  version: ${secretpad.version.secretpad-image}
 kuscia     version: ${secretpad.version.kuscia-image}
 secretflow version: ${secretpad.version.secretflow-image}
+serving    version: ${secretpad.version.secretflow-serving-image}

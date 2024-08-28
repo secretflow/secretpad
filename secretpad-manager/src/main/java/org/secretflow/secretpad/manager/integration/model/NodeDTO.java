@@ -71,6 +71,14 @@ public class NodeDTO {
     private List<NodeInstanceDTO> nodeInstances;
     private String protocol;
 
+
+    private String instId;
+    private String instName;
+    private String instToken;
+    private Boolean isMainNode = false;
+    private Boolean allowDeletion = false;
+
+
     /**
      * Convert NodeDO to NodeDTO
      *
@@ -94,6 +102,10 @@ public class NodeDTO {
         nodeDTO.setNodeName(nodeDO.getName());
         nodeDTO.setMode(nodeDO.getMode());
         nodeDTO.setMasterNodeId(nodeDO.getMasterNodeId());
+        nodeDTO.setInstId(nodeDO.getInstId());
+        nodeDTO.setInstToken(nodeDO.getInstToken());
+        nodeDTO.setProtocol(nodeDO.getProtocol());
+        //nodeDTO.setInstName();
         return nodeDTO;
     }
 

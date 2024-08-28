@@ -42,6 +42,12 @@ public abstract class DataSyncDataBufferTemplate {
      */
     public abstract EntityChangeListener.DbChangeEvent<BaseAggregationRoot> peek(String nodeId) throws InterruptedException;
 
+
+    /**
+     * pop data at first of buffer
+     */
+    public abstract EntityChangeListener.DbChangeEvent<BaseAggregationRoot> pool(String nodeId) throws InterruptedException;
+
     public abstract int size(String nodeId);
 
     public abstract void commit(String nodeId, EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event);

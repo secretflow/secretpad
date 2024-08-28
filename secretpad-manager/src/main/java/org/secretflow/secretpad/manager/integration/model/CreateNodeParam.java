@@ -35,9 +35,14 @@ public class CreateNodeParam {
     private String name;
 
     /**
-     * Node id
+     * dstNodeId
      */
-    private String nodeId;
+    private String dstNodeId;
+
+    /**
+     * srcNodeId
+     */
+    private String srcNodeId;
 
     /**
      * Certificate related authorization
@@ -68,4 +73,15 @@ public class CreateNodeParam {
      * node certText
      */
     private String certText;
+
+
+    /**
+     * node instId
+     */
+    private String instId;
+
+    /**
+     * node instName
+     */
+    private String instName;
 }

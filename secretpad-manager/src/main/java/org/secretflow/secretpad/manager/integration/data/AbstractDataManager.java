@@ -18,6 +18,7 @@ package org.secretflow.secretpad.manager.integration.data;
 
 import org.secretflow.secretpad.manager.integration.model.DatatableSchema;
 
+import org.secretflow.v1alpha1.common.Common;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 
 import java.util.List;
@@ -37,6 +38,7 @@ public abstract class AbstractDataManager {
      * @param tableName           table name provided by the user
      * @param description         table description
      * @param datatableSchemaList table schema
+     * @param nullStrs
      * @return domain data id
      */
     public abstract String createData(
@@ -47,8 +49,9 @@ public abstract class AbstractDataManager {
             String description,
             String datasourceType,
             String datasourceName,
-            List<DatatableSchema> datatableSchemaList
-    );
+            List<DatatableSchema> datatableSchemaList,
+            List<String> nullStrs);
+
 
     /**
      * Create data
@@ -56,10 +59,11 @@ public abstract class AbstractDataManager {
      * @param domainId
      * @param name
      * @param tablePath
+     * @param datasourceId
      * @param description
      * @param datasourceType
      * @param datasourceName
-     * @param datasourceId
+     * @param nullStrs
      * @param datatableSchemaList
      * @return domain data id
      */
@@ -71,10 +75,38 @@ public abstract class AbstractDataManager {
             String description,
             String datasourceType,
             String datasourceName,
-            List<DatatableSchema> datatableSchemaList
+            List<String> nullStrs, List<DatatableSchema> datatableSchemaList
     );
 
-    public abstract Domaindata.DomainData queryDomainData(String domainId, String domainDataId);
+    /**
+     * Create data for multiple nodes
+     *
+     * @param domainDataId
+     * @param domainId
+     * @param name
+     * @param tablePath
+     * @param description
+     * @param datasourceType
+     * @param datasourceName
+     * @param datasourceId
+     * @param datatableSchemaList
+     * @return domain data id
+     */
+    public abstract String createDatatable(
+            String domainDataId,
+            String domainId,
+            String name,
+            String tablePath,
+            String datasourceId,
+            String description,
+            String datasourceType,
+            String datasourceName,
+            List<String> nullStrs,
+            List<DatatableSchema> datatableSchemaList,
+            Common.Partition partition
+    );
+
+    public abstract Domaindata.DomainData queryDomainData(String domainId, String domainDataId, String targetNode);
 
 
     /**

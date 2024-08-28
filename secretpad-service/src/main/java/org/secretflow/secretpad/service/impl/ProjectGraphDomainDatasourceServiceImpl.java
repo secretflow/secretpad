@@ -24,6 +24,7 @@ import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
+import org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pDataSyncProducerTemplate;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
 import org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO;
@@ -32,6 +33,7 @@ import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectGraphDomainDatasourceRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectRepository;
+import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.ProjectGraphDomainDatasourceService;
 import org.secretflow.secretpad.service.model.graph.CreateGraphRequest;
 import org.secretflow.secretpad.service.model.graph.FullUpdateGraphRequest;
@@ -69,7 +71,7 @@ public class ProjectGraphDomainDatasourceServiceImpl implements ProjectGraphDoma
     private final ProjectGraphDomainDatasourceRepository repository;
     private final NodeRepository nodeRepository;
     private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
-    private final EnvServiceImpl envServiceImpl;
+    private final EnvService envService;
     private final ProjectNodeRepository projectNodeRepository;
     private final ProjectRepository projectRepository;
 
@@ -110,9 +112,10 @@ public class ProjectGraphDomainDatasourceServiceImpl implements ProjectGraphDoma
     }
 
     public Domaindatasource.ListDomainDataSourceResponse findDomainDataSourceByNodeId(String nodeId) {
-        return kusciaGrpcClientAdapter.listDomainDataSource(
-                Domaindatasource.ListDomainDataSourceRequest.newBuilder().setDomainId(nodeId).build()
-        );
+        if(envService.isAutonomy()){
+           return  kusciaGrpcClientAdapter.listDomainDataSource(Domaindatasource.ListDomainDataSourceRequest.newBuilder().setDomainId(nodeId).build(),nodeId);
+        }
+        return kusciaGrpcClientAdapter.listDomainDataSource(Domaindatasource.ListDomainDataSourceRequest.newBuilder().setDomainId(nodeId).build());
     }
 
     public NodeDO findDataSourceByNodeId(String nodeId) {
@@ -143,7 +146,7 @@ public class ProjectGraphDomainDatasourceServiceImpl implements ProjectGraphDoma
 
     @Override
     public Set<ProjectGraphDomainDataSourceVO.DataSource> getDomainDataSources(String domainId) {
-        Set<ProjectGraphDomainDataSourceVO.DataSource> result = null;
+        Set<ProjectGraphDomainDataSourceVO.DataSource> result;
         Domaindatasource.ListDomainDataSourceResponse domainDataSourceByNodeId = findDomainDataSourceByNodeId(domainId);
         if (ObjectUtils.isNotEmpty(domainDataSourceByNodeId) && domainDataSourceByNodeId.getStatus().getCode() == 0) {
             result = domainDataSourceByNodeId.getData().getDatasourceListList().stream().map(dataSource -> ProjectGraphDomainDataSourceVO.DataSource.builder()
@@ -184,18 +187,21 @@ public class ProjectGraphDomainDatasourceServiceImpl implements ProjectGraphDoma
         }
         switch (ownerType) {
             case CENTER -> {
-                if (envServiceImpl.isCenter()) {
+                if (envService.isCenter()) {
                     controlNodeIds.remove(ownerId);
                     controlNodeIds.addAll(projectNodes);
                 }
             }
             case P2P -> {
-                if (projectNodes.contains(ownerId)) {
-                    controlNodeIds.add(ownerId);
+                controlNodeIds.clear();
+                for (String n : projectNodes) {
+                    if (P2pDataSyncProducerTemplate.nodeIds.contains(n)) {
+                        controlNodeIds.add(n);
+                    }
                 }
             }
             case EDGE -> {
-                if (envServiceImpl.isCenter()) {
+                if (envService.isCenter()) {
                     controlNodeIds.clear();
                     controlNodeIds.addAll(projectNodes);
                 } else {

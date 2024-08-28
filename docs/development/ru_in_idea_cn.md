@@ -35,7 +35,8 @@ mvn compile
 >SecretPad 版本与 Kuscia 版本需要对应，具体可参考
 [版本映射表](../../README.zh-CN.md#组件版本)
 
-下载地址：[下载MVP](https://secretflow-public.oss-cn-hangzhou.aliyuncs.com/mvp-packages/secretflow-allinone-package-latest.tar.gz)
+- linux/amd64 [secretflow-allinone-linux-x86_64-latest.tar.gz](https://secretflow-public.oss-cn-hangzhou.aliyuncs.com/mvp-packages/secretflow-allinone-linux-x86_64-latest.tar.gz)
+- linux/arm64 [secretflow-allinone-linux-aarch_64-latest.tar.gz](https://secretflow-public.oss-cn-hangzhou.aliyuncs.com/mvp-packages/secretflow-allinone-linux-aarch_64-latest.tar.gz)
 
 
 SecretPad 分为两种模式，中心化模式和 p2p 模式，因此本地调试也分两种模式进行调试。

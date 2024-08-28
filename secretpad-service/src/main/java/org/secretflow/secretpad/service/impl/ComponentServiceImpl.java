@@ -36,7 +36,6 @@ import com.secretflow.spec.v1.ComponentDef;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.secretflow.proto.pipeline.Pipeline;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
@@ -61,13 +60,13 @@ public class ComponentServiceImpl implements ComponentService {
     @Value("${component.i18n.location:./config/i18n}")
     private String i18nLocation;
 
-    @Autowired
+    @Resource
     private List<CompListDef> components;
 
     @Resource
     private SecretpadComponentConfig secretpadComponentConfig;
 
-    @Autowired
+    @Resource
     private SecretFlowVersionConfig secretFlowVersionConfig;
 
     @Override
@@ -114,11 +113,7 @@ public class ComponentServiceImpl implements ComponentService {
     public List<ComponentDef> batchGetComponent(List<ComponentKey> keys) {
         List<ComponentDef> result = new ArrayList<>();
         Map<ComponentKey, ComponentDef> componentMap = new HashMap<>();
-        components.stream().filter(compListDef -> !CollectionUtils.isEmpty(compListDef.getCompsList())).forEach(compListDef -> {
-            compListDef.getCompsList().forEach(componentDef -> {
-                componentMap.put(new ComponentKey(compListDef.getName(), componentDef.getDomain(), componentDef.getName()), componentDef);
-            });
-        });
+        components.stream().filter(compListDef -> !CollectionUtils.isEmpty(compListDef.getCompsList())).forEach(compListDef -> compListDef.getCompsList().forEach(componentDef -> componentMap.put(new ComponentKey(compListDef.getName(), componentDef.getDomain(), componentDef.getName()), componentDef)));
         if (!CollectionUtils.isEmpty(keys)) {
             keys.forEach(key -> {
                 if (!componentMap.containsKey(key)) {
@@ -193,12 +188,15 @@ public class ComponentServiceImpl implements ComponentService {
                     .secretpadImage(secretFlowVersionConfig.getSecretpadImage())
                     .secretflowImage(secretFlowVersionConfig.getSecretflowImage())
                     .secretflowServingImage(secretFlowVersionConfig.getSecretflowServingImage())
-                    .kusciaImage(secretFlowVersionConfig.getKusciaImage()).build();
+                    .kusciaImage(secretFlowVersionConfig.getKusciaImage())
+                    .dataProxyImage(secretFlowVersionConfig.getDataProxyImage())
+                    .build();
 
             case TEE -> ComponentVersion.builder()
                     .teeDmImage(secretFlowVersionConfig.getTeeDmImage())
                     .teeAppImage(secretFlowVersionConfig.getTeeAppImage())
-                    .capsuleManagerSimImage(secretFlowVersionConfig.getCapsuleManagerSimImage()).build();
+                    .capsuleManagerSimImage(secretFlowVersionConfig.getCapsuleManagerSimImage())
+                    .build();
 
             case ALL_IN_ONE -> ComponentVersion.builder()
                     .teeDmImage(secretFlowVersionConfig.getTeeDmImage())
@@ -207,7 +205,9 @@ public class ComponentServiceImpl implements ComponentService {
                     .secretpadImage(secretFlowVersionConfig.getSecretpadImage())
                     .secretflowServingImage(secretFlowVersionConfig.getSecretflowServingImage())
                     .kusciaImage(secretFlowVersionConfig.getKusciaImage())
-                    .secretflowImage(secretFlowVersionConfig.getSecretflowImage()).build();
+                    .secretflowImage(secretFlowVersionConfig.getSecretflowImage())
+                    .dataProxyImage(secretFlowVersionConfig.getDataProxyImage())
+                    .build();
             default -> null;
         };
         log.info("listALLINONEComponentVersion:{}", version);

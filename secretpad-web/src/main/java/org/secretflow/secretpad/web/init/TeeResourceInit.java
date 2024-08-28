@@ -88,7 +88,7 @@ public class TeeResourceInit implements CommandLineRunner {
 
     @Transactional
     public NodeDO initTeeNodeInDb() {
-        NodeDO tee = NodeDO.builder().nodeId("tee").name("tee").controlNodeId("tee").auth("tee").description("tee")
+        NodeDO tee = NodeDO.builder().nodeId("tee").name("tee").controlNodeId("tee").auth("tee").description("tee").instId("")
                 .type(DomainConstants.DomainTypeEnum.embedded.name()).netAddress("127.0.0.1:48080").mode(DomainConstants.DomainModeEnum.tee.code).build();
         nodeRepository.save(tee);
         return tee;

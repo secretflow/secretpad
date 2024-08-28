@@ -75,6 +75,10 @@ public class ProjectGraphNodeKusciaParamsDO extends BaseAggregationRoot<ProjectG
     @Column(name = "node_eval_param")
     private String nodeEvalParam;
 
+    @Override
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
 
     /**
      * Project graph graph_node unique primary key
@@ -105,10 +109,5 @@ public class ProjectGraphNodeKusciaParamsDO extends BaseAggregationRoot<ProjectG
          */
         @Column(name = "graph_node_id", nullable = false, length = 64)
         private String graphNodeId;
-    }
-
-    @Override
-    public String getProjectId() {
-        return this.upk.projectId;
     }
 }

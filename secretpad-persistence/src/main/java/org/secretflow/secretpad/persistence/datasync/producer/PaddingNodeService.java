@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.persistence.datasync.producer;
 
 import org.secretflow.secretpad.persistence.datasync.listener.EntityChangeListener;
+import org.secretflow.secretpad.persistence.entity.AccountsDO;
 import org.secretflow.secretpad.persistence.entity.BaseAggregationRoot;
 
 /**
@@ -34,4 +35,8 @@ public interface PaddingNodeService {
     void paddingNodes(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event);
 
     void compensate(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event);
+
+    void supInstInfo(AccountsDO accountsDO);
+
+    String turnInstToRouteId(String instId);
 }

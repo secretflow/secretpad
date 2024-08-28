@@ -58,7 +58,7 @@ public class NodeRouteController {
      * @return page of domainRoute
      */
     @PostMapping(value = "/page", consumes = "application/json")
-    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     @ApiResource(code = ApiResourceCodeConstants.NODE_ROUTE_PAGE)
     public SecretPadResponse<SecretPadPageResponse<NodeRouterVO>> page(@Valid @RequestBody PageNodeRouteRequest query) {
         return SecretPadResponse.success(nodeRouterService.queryPage(query, query.of()));

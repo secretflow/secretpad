@@ -34,10 +34,13 @@ public enum DatasourceErrorCode implements ErrorCode {
 
     DATA_SOURCE_DELETE_FAIL(202012509),
 
+    DATA_SOURCE_NOT_FOUND(202012510),
+
     /**
      * Failed to query the data source
      */
     QUERY_DATASOURCE_FAILED(202012505),
+    UPDATE_DATASOURCE_FAILED(202012511),
     ;
 
 

@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.web.controller;
 
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.manager.integration.datatablegrant.DatatableGrantManager;
 import org.secretflow.secretpad.manager.integration.job.JobManager;
 import org.secretflow.secretpad.persistence.entity.*;
@@ -51,6 +52,9 @@ import java.util.Map;
 })
 public class JobManagerTest extends ControllerTest {
 
+    private static int index = 1;
+    @MockBean
+    JobServiceGrpc.JobServiceStub jobServiceAsyncStub;
     @Resource
     private JobManager jobManager;
     @Resource
@@ -63,83 +67,10 @@ public class JobManagerTest extends ControllerTest {
     private ProjectJobTaskRepository projectJobTaskRepository;
     @Resource
     private ProjectGraphNodeRepository projectGraphNodeRepository;
-    @MockBean
-    JobServiceGrpc.JobServiceStub jobServiceAsyncStub;
     private Server mockServer;
     private ManagedChannel inProcessChannel;
-
-    private static int index = 1;
     @MockBean
     private DatatableGrantManager datatableGrantManager;
-
-    public static class JobServiceStubService extends JobServiceGrpc.JobServiceImplBase {
-        @Override
-        public void watchJob(Job.WatchJobRequest request, StreamObserver<Job.WatchJobEventResponse> responseObserver) {
-            responseObserver.onNext(buildPendingdWatchJobEventResponse());
-            responseObserver.onNext(buildSuccessdWatchJobEventResponse());
-            responseObserver.onNext(buildExitSuccessdWatchJobEventResponse());
-            responseObserver.onNext(buildTaskEmptyWatchJobEventResponse());
-            responseObserver.onNext(buildJobEndTaskRunPendingdWatchJobEventResponse());
-            responseObserver.onNext(buildTaskEmptyJobSuccessWatchJobEventResponse());
-            responseObserver.onNext(buildTaskWatchJobEventResponse());
-            responseObserver.onNext(buildTaskRuningJobSuccessJobSuccessWatchJobEventResponse());
-            responseObserver.onNext(buildTaskRuningJobSuccessJobSuccessWatchJobEventResponse());
-            responseObserver.onNext(buildTaskEmptyJobSuccessWatchJobEventResponse());
-            if (index % 2 == 0) {
-                responseObserver.onError(new RuntimeException());
-            } else {
-                responseObserver.onCompleted();
-            }
-        }
-    }
-
-    @BeforeEach
-    public void setUp() throws Exception {
-        String serverName = InProcessServerBuilder.generateName();
-        mockServer = InProcessServerBuilder.forName(serverName)
-                .directExecutor()
-                .addService(new JobServiceStubService())
-                .build()
-                .start();
-
-        inProcessChannel = InProcessChannelBuilder.forName(serverName)
-                .directExecutor()
-                .build();
-        projectRepository.deleteAllAuthentic();
-        projectGraphRepository.deleteAll();
-        projectGraphNodeRepository.deleteAll();
-        projectJobRepository.deleteAllAuthentic();
-        projectJobTaskRepository.deleteAllAuthentic();
-
-        projectRepository.saveAndFlush(buildProjectDO());
-        projectGraphNodeRepository.saveAllAndFlush(buildProjectGraphNodeDOs());
-        projectGraphRepository.saveAndFlush(buildProjectGraphDO());
-        projectJobTaskRepository.saveAndFlush(buildProjectTaskDO());
-        projectJobRepository.saveAndFlush(buildProjectJobDO());
-    }
-
-    @AfterEach
-    public void tearDown() {
-        inProcessChannel.shutdownNow();
-        mockServer.shutdownNow();
-        projectRepository.deleteAllAuthentic();
-        projectGraphRepository.deleteAll();
-        projectGraphNodeRepository.deleteAll();
-        projectJobRepository.deleteAllAuthentic();
-        projectJobTaskRepository.deleteAllAuthentic();
-    }
-
-    @Test
-    void testJobAsyncStub() {
-        jobServiceAsyncStub = JobServiceGrpc.newStub(inProcessChannel);
-        Assertions.assertDoesNotThrow(() -> jobManager.startSync());
-        index++;
-        Assertions.assertDoesNotThrow(() -> jobManager.startSync());
-        Mockito.when(datatableGrantManager.queryDomainGrant(Mockito.any(), Mockito.any())).thenThrow(new RuntimeException());
-        Mockito.when(datatableGrantManager.createDomainGrant(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any())).thenThrow(new RuntimeException());
-        Assertions.assertDoesNotThrow(() -> jobManager.checkOrCreateDomainDataGrant("alice", "bob", "test"));
-    }
-
 
     static Job.WatchJobEventResponse buildTaskEmptyJobSuccessWatchJobEventResponse() {
         return Job.WatchJobEventResponse.newBuilder().setType(Job.EventType.MODIFIED)
@@ -309,6 +240,68 @@ public class JobManagerTest extends ControllerTest {
                 .build();
     }
 
+    @BeforeEach
+    public void setUp() throws Exception {
+        String serverName = InProcessServerBuilder.generateName();
+        mockServer = InProcessServerBuilder.forName(serverName)
+                .directExecutor()
+                .addService(new JobServiceStubService())
+                .build()
+                .start();
+
+        inProcessChannel = InProcessChannelBuilder.forName(serverName)
+                .directExecutor()
+                .build();
+        projectRepository.deleteAllAuthentic();
+        projectGraphRepository.deleteAll();
+        projectGraphNodeRepository.deleteAll();
+        projectJobRepository.deleteAllAuthentic();
+        projectJobTaskRepository.deleteAllAuthentic();
+
+        projectRepository.saveAndFlush(buildProjectDO());
+        projectGraphNodeRepository.saveAllAndFlush(buildProjectGraphNodeDOs());
+        projectGraphRepository.saveAndFlush(buildProjectGraphDO());
+        projectJobTaskRepository.saveAndFlush(buildProjectTaskDO());
+        projectJobRepository.saveAndFlush(buildProjectJobDO());
+    }
+
+    @AfterEach
+    public void tearDown() {
+        inProcessChannel.shutdownNow();
+        mockServer.shutdownNow();
+        projectRepository.deleteAllAuthentic();
+        projectGraphRepository.deleteAll();
+        projectGraphNodeRepository.deleteAll();
+        projectJobRepository.deleteAllAuthentic();
+        projectJobTaskRepository.deleteAllAuthentic();
+    }
+
+    @Test
+    void testJobAsyncStub() {
+        jobServiceAsyncStub = JobServiceGrpc.newStub(inProcessChannel);
+        Assertions.assertDoesNotThrow(() -> jobManager.startSync());
+        index++;
+        Assertions.assertDoesNotThrow(() -> jobManager.startSync());
+        Mockito.when(datatableGrantManager.createDomainGrant(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any())).thenThrow(new RuntimeException());
+        jobManager.setPlaformType(PlatformTypeEnum.CENTER.name());
+        Assertions.assertDoesNotThrow(() -> jobManager.checkOrCreateDomainDataGrant("alice", "bob", "test"));
+        jobManager.setPlaformType(PlatformTypeEnum.AUTONOMY.name());
+        Assertions.assertDoesNotThrow(() -> jobManager.checkOrCreateDomainDataGrant("alice", "bob", "test"));
+    }
+
+    @Test
+    void test() {
+        Mockito.when(datatableGrantManager.createDomainGrant(Mockito.any(), Mockito.any(), Mockito.any(), Mockito.any())).thenReturn("");
+        jobManager.setPlaformType(PlatformTypeEnum.CENTER.name());
+        ProjectTaskDO projectTaskDO = ProjectTaskDO.builder()
+                .upk(ProjectTaskDO.UPK.builder().taskId("task").projectId("project").jobId("job").build())
+                .parties(List.of("alice"))
+                .build();
+        Assertions.assertDoesNotThrow(() -> jobManager.checkOrCreateDomainDataGrant("alice", "bob", "test"));
+        jobManager.setPlaformType(PlatformTypeEnum.AUTONOMY.name());
+        Assertions.assertDoesNotThrow(() -> jobManager.checkOrCreateDomainDataGrant("alice", "bob", "test"));
+    }
+
     ProjectGraphDO buildProjectGraphDO() {
         ProjectGraphDO build = ProjectGraphDO.builder()
                 .upk(new ProjectGraphDO.UPK("test", "atxtxxwc"))
@@ -380,6 +373,27 @@ public class JobManagerTest extends ControllerTest {
                 .computeFunc("ALL")
                 .status(1)
                 .build();
+    }
+
+    public static class JobServiceStubService extends JobServiceGrpc.JobServiceImplBase {
+        @Override
+        public void watchJob(Job.WatchJobRequest request, StreamObserver<Job.WatchJobEventResponse> responseObserver) {
+            responseObserver.onNext(buildPendingdWatchJobEventResponse());
+            responseObserver.onNext(buildSuccessdWatchJobEventResponse());
+            responseObserver.onNext(buildExitSuccessdWatchJobEventResponse());
+            responseObserver.onNext(buildTaskEmptyWatchJobEventResponse());
+            responseObserver.onNext(buildJobEndTaskRunPendingdWatchJobEventResponse());
+            responseObserver.onNext(buildTaskEmptyJobSuccessWatchJobEventResponse());
+            responseObserver.onNext(buildTaskWatchJobEventResponse());
+            responseObserver.onNext(buildTaskRuningJobSuccessJobSuccessWatchJobEventResponse());
+            responseObserver.onNext(buildTaskRuningJobSuccessJobSuccessWatchJobEventResponse());
+            responseObserver.onNext(buildTaskEmptyJobSuccessWatchJobEventResponse());
+            if (index % 2 == 0) {
+                responseObserver.onError(new RuntimeException());
+            } else {
+                responseObserver.onCompleted();
+            }
+        }
     }
 
 }

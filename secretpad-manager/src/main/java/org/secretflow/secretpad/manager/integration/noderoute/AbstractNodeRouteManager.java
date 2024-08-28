@@ -31,21 +31,24 @@ public abstract class AbstractNodeRouteManager {
 
     public abstract void createNodeRouteInKuscia(CreateNodeRouteParam param, NodeDO srcNode, NodeDO desNode, boolean check);
 
-    public abstract void createNodeRoute(CreateNodeRouteParam param, NodeDO srcNode, NodeDO dstNode);
+    public abstract void createNodeRoute(CreateNodeRouteParam param, NodeDO srcNode, NodeDO dstNode, String sourceNodeId);
 
     public abstract NodeRouteDTO queryNodeRoute(String srcNodeId);
 
-    public abstract void deleteNodeRoute(String srcNodeId, String dstNodeId);
 
     public abstract void deleteNodeRoute(String nodeRouteId);
 
+    public abstract void deleteNodeRouteInKuscia(String sourceNodeId, String dstNodeId, String channelNodeId);
+
     public abstract void updateNodeRoute(NodeRouteDO nodeRouteDO, NodeDO srcNode, NodeDO dstNode);
 
-    public abstract DomainRoute.RouteStatus getRouteStatus(String srcNodeId, String dstNodeId);
+    public abstract DomainRoute.RouteStatus getRouteStatus(String srcNodeId, String dstNodeId, String channelNodeId);
 
-    public abstract boolean checkNodeRouteExists(String srcNodeId, String dstNodeId);
+    public abstract boolean checkNodeRouteReady(String srcNodeId, String dstNodeId, String channelNodeId);
 
-    public abstract boolean checkNodeRouteReady(String srcNodeId, String dstNodeId);
+    public abstract void checkRouteNotExistInDB(String srcNodeId, String dstNodeId);
 
-    public abstract void checkRouteNotExist(String srcNodeId, String dstNodeId);
+    public abstract boolean checkDomainRouterExistsInKuscia(String srcNodeId, String dstNodeId, String sourceNodeId);
+
+    public abstract void deleteNodeInKuscia(String srcNodeId, String channelNodeId);
 }

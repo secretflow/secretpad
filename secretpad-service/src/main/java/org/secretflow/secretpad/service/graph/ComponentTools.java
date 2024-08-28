@@ -56,13 +56,25 @@ public class ComponentTools {
         List<Struct> attrsList = nodeDef.getAttrsList();
         String tableId = "";
         if (!CollectionUtils.isEmpty(attrsList)) {
-            for (Struct attr : attrsList) {
-                if (!attr.containsFields(ComponentConstants.CUSTOM_PROTOBUF_CLS)) {
-                    tableId = attr.getFieldsOrDefault(ComponentConstants.ATTRIBUTE_S, Value.newBuilder().build()).getStringValue();
-                }
-            }
+            tableId = attrsList.get(0).getFieldsOrDefault(ComponentConstants.ATTRIBUTE_S, Value.newBuilder().build()).getStringValue();
         }
         return tableId;
+    }
+
+    public static String getDataTablePartition(GraphNodeInfo nodeInfo) {
+        Pipeline.NodeDef nodeDef;
+        if (nodeInfo.getNodeDef() instanceof Pipeline.NodeDef) {
+            nodeDef = (Pipeline.NodeDef) nodeInfo.getNodeDef();
+        } else {
+            Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
+            nodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeInfo.getNodeDef(), nodeDefBuilder);
+        }
+        List<Struct> attrsList = nodeDef.getAttrsList();
+        String datatable_partition = "";
+        if (!CollectionUtils.isEmpty(attrsList) && attrsList.size() == 2) {
+            datatable_partition = attrsList.get(1).getFieldsOrDefault(ComponentConstants.ATTRIBUTE_S, Value.newBuilder().setStringValue("").build()).getStringValue();
+        }
+        return datatable_partition;
     }
 
     /**

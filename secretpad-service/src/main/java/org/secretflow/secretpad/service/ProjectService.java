@@ -140,10 +140,10 @@ public interface ProjectService {
      * check the project contain node.
      *
      * @param projectId project resource ID
-     * @param nodeId    node ID
+     * @param ownerId   owner ID
      * @return boolean
      */
-    boolean checkNodeInProject(String projectId, String nodeId);
+    boolean checkOwnerInProject(String projectId, String ownerId);
 
     /**
      * create a project in Autonomy mode
@@ -193,4 +193,6 @@ public interface ProjectService {
     boolean checkNodeArchive(String projectId);
 
     Set<ProjectGraphDomainDataSourceVO> getProjectGraphDomainDataSource(GetProjectGraphDomainDataSourceRequest request);
+
+    ProjectParticipantsDetailVO getProjectParticipants(ProjectParticipantsRequest request);
 }

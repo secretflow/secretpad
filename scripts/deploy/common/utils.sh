@@ -163,6 +163,14 @@ function is_p2p() {
 	fi
 }
 
+function is_p2p_node() {
+	if [ "$MODE" = 'autonomy-node' ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
 function is_alice_lite() {
 	if [ "$NODE_ID" = 'alice' ] && is_lite; then
 		return 0
@@ -189,23 +197,26 @@ function is_tee_lite() {
 
 function show_env() {
 	log "
-    mode:       $MODE     $DEPLOY_MODE
-    node:       $NODE_ID
-    secretpad   http      port: $PAD_PORT
-    kuscia      http      port: $KUSCIA_API_HTTP_PORT
-    kuscia      grpc      port: $KUSCIA_API_GRPC_PORT
-    kuscia      gateway   port: $KUSCIA_GATEWAY_PORT
-    kuscia      protocol: $KUSCIA_PROTOCOL
-    secretpad   ctr:      $PAD_CTR
-    kuscia      ctr:      $KUSCIA_CTR
-    secretpad   dir:      $PAD_VOLUME_PATH
-    kuscia      dir:      $KUSCIA_INSTALL_DIR
+    mode:         $MODE     $DEPLOY_MODE
+    node:         $NODE_ID
+    secretpad     http      port: $PAD_PORT
+    kuscia        http      port: $KUSCIA_API_HTTP_PORT
+    kuscia        grpc      port: $KUSCIA_API_GRPC_PORT
+    kuscia        gateway   port: $KUSCIA_GATEWAY_PORT
+    kuscia        protocol: $KUSCIA_PROTOCOL
+    secretpad     ctr:      $PAD_CTR
+    kuscia        ctr:      $KUSCIA_CTR
+    secretpad     dir:      $PAD_VOLUME_PATH
+    kuscia        dir:      $KUSCIA_INSTALL_DIR
+    k3s           dir:      $KUSCIA_K3S_INSTALL_DIR
+    kuscia.yaml   dir:      $KUSCIA_CONFIG_INSTALL_DIR
     "
 }
 
 function clear_env() {
 	unset MODE
 	unset PAD_PORT
+	unset PAD_DEBUG_PORT
 	unset KUSCIA_API_HTTP_PORT
 	unset KUSCIA_API_GRPC_PORT
 	unset KUSCIA_GATEWAY_PORT
@@ -228,6 +239,9 @@ function clear_env() {
 	unset CAPSULE_MANAGER_SIM_IMAGE
 	unset PAD_VOLUME_PATH
 	unset SPRING_PROFILES_ACTIVE
+	unset DOMAIN_HOST_INTERNAL_PORT
+	unset KUSCIA_K3S_INSTALL_DIR
+	unset KUSCIA_CONFIG_INSTALL_DIR
 }
 
 function prepare_environment() {
@@ -238,6 +252,8 @@ function prepare_environment() {
 		export KUSCIA_API_GRPC_PORT=18083
 		export KUSCIA_CTR="$KUSCIA_CTR_PREFIX-$PAD_MASTER"
 		export PAD_CTR="$KUSCIA_CTR_PREFIX-$PAD_MASTER-$PAD"
+		export KUSCIA_K3S_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/$KUSCIA_MASTER_NODE_ID/k3s"
+		export KUSCIA_CONFIG_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/$KUSCIA_MASTER_NODE_ID"
 		export KUSCIA_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/$PAD_DATA"
 		export PAD_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/$PAD_DATA"
 		export PAD_VOLUME_PATH="$INSTALL_DIR/$PAD_MASTER/$PAD"
@@ -252,6 +268,8 @@ function prepare_environment() {
 		check_str "$DOMAIN_HOST_INTERNAL_PORT" "missing args -q"
 		export KUSCIA_CTR="$KUSCIA_CTR_PREFIX-$PAD_LITE-$NODE_ID"
 		export PAD_CTR="$KUSCIA_CTR_PREFIX-$PAD_LITE-$PAD-$NODE_ID"
+		export KUSCIA_K3S_INSTALL_DIR="$INSTALL_DIR/$PAD_LITE/$NODE_ID/k3s"
+		export KUSCIA_CONFIG_INSTALL_DIR="$INSTALL_DIR/$PAD_LITE/$NODE_ID"
 		export KUSCIA_INSTALL_DIR="$INSTALL_DIR/$PAD_LITE/$PAD_DATA/$NODE_ID"
 		export PAD_INSTALL_DIR="$INSTALL_DIR/$PAD_LITE/$PAD_DATA"
 		export PAD_VOLUME_PATH="$INSTALL_DIR/$PAD_LITE/$PAD"
@@ -261,6 +279,8 @@ function prepare_environment() {
 			export KUSCIA_GATEWAY_PORT=28080
 			export KUSCIA_API_HTTP_PORT=28082
 			export KUSCIA_API_GRPC_PORT=28083
+			export KUSCIA_K3S_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/alice/k3s"
+			export KUSCIA_CONFIG_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/alice"
 			export KUSCIA_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/$PAD_DATA/alice"
 			export PAD_VOLUME_PATH="$INSTALL_DIR/$PAD_MASTER/$PAD"
 			export KUSCIA_LOG_PATH="$INSTALL_DIR/$PAD_MASTER/$NODE_ID"
@@ -269,6 +289,8 @@ function prepare_environment() {
 			export KUSCIA_GATEWAY_PORT=38080
 			export KUSCIA_API_HTTP_PORT=38082
 			export KUSCIA_API_GRPC_PORT=38083
+			export KUSCIA_K3S_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/bob/k3s"
+			export KUSCIA_CONFIG_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/bob"
 			export KUSCIA_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/$PAD_DATA/bob"
 			export PAD_VOLUME_PATH="$INSTALL_DIR/$PAD_MASTER/$PAD"
 			export KUSCIA_LOG_PATH="$INSTALL_DIR/$PAD_MASTER/$NODE_ID"
@@ -277,6 +299,8 @@ function prepare_environment() {
 			export KUSCIA_GATEWAY_PORT=48080
 			export KUSCIA_API_HTTP_PORT=48082
 			export KUSCIA_API_GRPC_PORT=48083
+			export KUSCIA_K3S_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/tee/k3s"
+			export KUSCIA_CONFIG_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/tee"
 			export KUSCIA_INSTALL_DIR="$INSTALL_DIR/$PAD_MASTER/$PAD_DATA/tee"
 			export PAD_VOLUME_PATH="$INSTALL_DIR/$PAD_MASTER/$PAD"
 			export KUSCIA_LOG_PATH="$INSTALL_DIR/$PAD_MASTER/$NODE_ID"
@@ -291,6 +315,27 @@ function prepare_environment() {
 		check_str "$KUSCIA_API_GRPC_PORT" "missing args -g"
 		export KUSCIA_CTR="$KUSCIA_CTR_PREFIX-$PAD_AUTONOMY-$NODE_ID"
 		export PAD_CTR="$KUSCIA_CTR_PREFIX-$PAD_AUTONOMY-$PAD-$NODE_ID"
+		export KUSCIA_K3S_INSTALL_DIR="$INSTALL_DIR/$PAD_AUTONOMY/$NODE_ID/k3s"
+		export KUSCIA_CONFIG_INSTALL_DIR="$INSTALL_DIR/$PAD_AUTONOMY/$NODE_ID"
+		export KUSCIA_INSTALL_DIR="$INSTALL_DIR/$PAD_AUTONOMY/$PAD_DATA/$NODE_ID"
+		export PAD_INSTALL_DIR="$INSTALL_DIR/$PAD_AUTONOMY/$PAD_DATA"
+		export PAD_VOLUME_PATH="$INSTALL_DIR/$PAD_AUTONOMY/$PAD"
+		export KUSCIA_LOG_PATH="$INSTALL_DIR/$PAD_AUTONOMY/$NODE_ID"
+		export SPRING_PROFILES_ACTIVE="p2p"
+		export DEPLOY_MODE="MPC"
+	fi
+	if is_p2p_node; then
+		check_str "$NODE_ID" "missing args -n"
+		check_str "$DOMAIN_HOST_INTERNAL_PORT" "missing args -q"
+		check_str "$SECRETPAD_MASTER_ENDPOINT" "missing args -m"
+		check_str "$KUSCIA_TOKEN" "missing args -t"
+		check_str "$KUSCIA_GATEWAY_PORT" "missing args -p"
+		check_str "$KUSCIA_API_HTTP_PORT" "missing args -k"
+		check_str "$KUSCIA_API_GRPC_PORT" "missing args -g"
+		export KUSCIA_CTR="$KUSCIA_CTR_PREFIX-$PAD_AUTONOMY-$NODE_ID"
+		export PAD_CTR="$KUSCIA_CTR_PREFIX-$PAD_AUTONOMY-$PAD-$NODE_ID"
+		export KUSCIA_K3S_INSTALL_DIR="$INSTALL_DIR/$PAD_AUTONOMY/$NODE_ID/k3s"
+		export KUSCIA_CONFIG_INSTALL_DIR="$INSTALL_DIR/$PAD_AUTONOMY/$NODE_ID"
 		export KUSCIA_INSTALL_DIR="$INSTALL_DIR/$PAD_AUTONOMY/$PAD_DATA/$NODE_ID"
 		export PAD_INSTALL_DIR="$INSTALL_DIR/$PAD_AUTONOMY/$PAD_DATA"
 		export PAD_VOLUME_PATH="$INSTALL_DIR/$PAD_AUTONOMY/$PAD"
@@ -323,36 +368,6 @@ function need_lite_alice_bob() {
 	else
 		return 1
 	fi
-}
-
-function loadImage2Container() {
-	local container_id=$1
-	local image_tar=$2
-	docker exec -it "$container_id" ctr -a="${CTR_ROOT}"/containerd/run/containerd.sock -n=k8s.io images import "$image_tar"
-}
-
-function save_image() {
-	local image=$1
-	image_id=$(docker images --filter="reference=${image}" --format "{{.ID}}")
-	image_tar=/tmp/$(echo "${image}" | sed 's/\//_/g').${image_id}.tar
-	if [ ! -e "$image_tar" ]; then
-		docker save "$image" -o "$image_tar"
-	fi
-	image_tar_path=$image_tar
-}
-
-function saveAndLoad2Container() {
-	local image_basename=$1
-	local container_id=$2
-	if docker exec -it "$container_id" crictl inspecti "${image_basename}" >/dev/null 2>&1; then
-		log "Image '${image_basename}' already exists in domain '${container_id}'"
-		return
-	fi
-	save_image "$image_basename"
-	log "Save image: $image_basename path: $image_tar_path"
-	log "loadImage2Container $container_id $image_tar_path"
-	loadImage2Container "$container_id" "$image_tar_path"
-	log "Successfully imported image '${image_basename}' to container '${container_id}' ..."
 }
 
 function init_tee() {
@@ -446,8 +461,19 @@ function create_alice_bob_domain_route() {
 }
 
 function init_kuscia_config() {
-	mkdir -p "${KUSCIA_CTR}"
-	kuscia_config_file="${KUSCIA_CTR}/kuscia.yaml"
+	mkdir -p "${KUSCIA_INSTALL_DIR}"
+	mkdir -p "${KUSCIA_K3S_INSTALL_DIR}"
+	kuscia_config_old_file="${KUSCIA_CTR}/kuscia.yaml"
+	kuscia_config_file="${KUSCIA_CONFIG_INSTALL_DIR}/kuscia.yaml"
+	if [ -f "${kuscia_config_file}" ]; then
+		if [ -f "${kuscia_config_file}" ]; then
+			echo "${kuscia_config_file} exit, remove old file ${kuscia_config_old_file}"
+			rm -f "${kuscia_config_old_file}"
+		else
+			echo "${kuscia_config_file} not exit, move old file to path ${kuscia_config_file}"
+			mv "${kuscia_config_old_file}" "${kuscia_config_file}"
+		fi
+	fi
 	local domainKeyData=""
 	if [ -f "${kuscia_config_file}" ]; then
 		echo "${kuscia_config_file} exit, use old domainKeyData"
@@ -469,9 +495,65 @@ function init_kuscia_config() {
 	if is_p2p; then
 		docker run -it --rm "${KUSCIA_IMAGE}" kuscia init --mode autonomy --domain "${NODE_ID}" --protocol "${KUSCIA_PROTOCOL}" >"${kuscia_config_file}"
 	fi
+	if is_p2p_node; then
+		docker run -it --rm "${KUSCIA_IMAGE}" kuscia init --mode autonomy --domain "${NODE_ID}" --protocol "${KUSCIA_PROTOCOL}" >"${kuscia_config_file}"
+	fi
 	if [ -n "$domainKeyData" ]; then
 		echo "domainKeyData is not empty, cover kuscia.yaml"
 		sed -i "s/^domainKeyData: .*/domainKeyData: ${domainKeyData}/" "${kuscia_config_file}"
 	fi
+}
 
+function copy_kuscia_api_client_certs() {
+	local volume_path=$1
+	# copy result
+	tmp_path=${volume_path}/temp/certs
+	mkdir -p "${tmp_path}"
+	# shellcheck disable=SC2086
+	if ! noTls; then
+		docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/token "${tmp_path}"/token
+	fi
+	docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/ca.crt "${tmp_path}"/ca.crt
+	docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/kusciaapi-client.crt "${tmp_path}"/client.crt
+	docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/kusciaapi-client.key "${tmp_path}"/client.pem
+	docker run -d --rm --name "${KUSCIA_CTR_PREFIX}"-dummy --volume="${volume_path}"/config:/tmp/temp "$KUSCIA_IMAGE" tail -f /dev/null >/dev/null 2>&1
+	docker cp -a "${tmp_path}" "${KUSCIA_CTR_PREFIX}"-dummy:/tmp/temp/
+	docker rm -f "${KUSCIA_CTR_PREFIX}"-dummy >/dev/null 2>&1
+	rm -rf "${volume_path}"/temp
+	log "Copy kuscia api client certs to web server container done"
+}
+
+function post_kuscia_node() {
+	log "init kuscia_node by post"
+	copy_kuscia_api_client_certs "${DIR}"
+	if [[ ! -e "${DIR}/config/certs/token" ]]; then
+		touch "${DIR}/config/certs/token"
+	fi
+	local PAD_HTTP_STATUS=0
+	local curl_cmd="curl --retry 3 --retry-delay 1 --max-time 10 -k --write-out '%{http_code}' --silent -o post_kuscia_node.txt -X POST \
+		-H \"Content-Type: multipart/form-data\" \
+		-F 'json_data={\"domainId\":\"${NODE_ID}\",\"token\":\"${KUSCIA_TOKEN}\",\"mode\":\"p2p\",\"port\":\"${KUSCIA_API_GRPC_PORT}\",\"protocol\":\"${KUSCIA_PROTOCOL}\",\"transPort\":\"${KUSCIA_GATEWAY_PORT}\"};type=application/json' \
+		-F \"certFile=@${DIR}/config/certs/client.crt\" \
+		-F \"keyFile=@${DIR}/config/certs/client.pem\" \
+		-F \"token=@${DIR}/config/certs/token\" \
+		\"${SECRETPAD_MASTER_ENDPOINT}/api/v1alpha1/inst/node/register\""
+
+	PAD_HTTP_STATUS=$(eval "$curl_cmd") || true
+	if [[ ! -e post_kuscia_node.txt ]]; then
+		log_error "HTTP failed，code: $PAD_HTTP_STATUS ; ${KUSCIA_CTR} removed"
+		docker rm -f "${KUSCIA_CTR}" >/dev/null 2>&1
+		log "init kuscia_node error..."
+		return 1
+	fi
+	resp=$(cat post_kuscia_node.txt)
+	code=$(echo "$resp" | grep -o '"code":[0-9]*' | cut -d':' -f2 | tr -d ' ')
+	if [ "$PAD_HTTP_STATUS" -eq 200 ] && [ "$code" -eq 0 ]; then
+		log_success "HTTP success，code: $PAD_HTTP_STATUS"
+		log "init kuscia_node success..."
+	else
+		log_error "HTTP failed，code: $PAD_HTTP_STATUS ; ${KUSCIA_CTR} removed"
+		docker rm -f "${KUSCIA_CTR}" >/dev/null 2>&1
+		log "init kuscia_node error..."
+		return 1
+	fi
 }

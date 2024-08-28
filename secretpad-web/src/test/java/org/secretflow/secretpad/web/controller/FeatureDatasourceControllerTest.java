@@ -31,7 +31,10 @@ import org.mockito.Mockito;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.List;
+
 import static org.secretflow.secretpad.common.errorcode.FeatureTableErrorCode.FEATURE_TABLE_IP_NOT_KNOWN;
 
 /**
@@ -50,6 +53,9 @@ public class FeatureDatasourceControllerTest extends ControllerTest {
     public void createFeatureDatasource() throws Exception {
         assertResponseWithEmptyData(() -> {
             CreateFeatureDatasourceRequest createFeatureDatasourceRequest = FakerUtils.fake(CreateFeatureDatasourceRequest.class);
+
+            List<String> nodeIds = Arrays.asList("alice1", "alice2");
+            createFeatureDatasourceRequest.setNodeIds(nodeIds);
             createFeatureDatasourceRequest.setType("HTTP");
             createFeatureDatasourceRequest.setUrl("http://12.0.0.1");
             return MockMvcRequestBuilders.post(getMappingUrl(FeatureDatasourceController.class, "createFeatureDatasource", CreateFeatureDatasourceRequest.class))

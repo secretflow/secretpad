@@ -34,16 +34,16 @@ import lombok.Setter;
 public class MessageDetailRequest {
 
     /**
-     * requester nodeID
+     * requester ownerId
      */
     @NotBlank
-    private String nodeID;
+    private String ownerId;
 
     /**
      * unique voteID
      */
     @NotBlank
-    private String voteID;
+    private String voteId;
 
     /**
      * if it is initiator
@@ -55,6 +55,6 @@ public class MessageDetailRequest {
     @NotBlank
     private String voteType;
 
-    private String projectID;
+    private String projectId;
 
 }

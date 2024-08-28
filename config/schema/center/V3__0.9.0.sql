@@ -1,5 +1,5 @@
 /*
- * Copyright 2023 Ant Group Co., Ltd.
+ * Copyright 2024 Ant Group Co., Ltd.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,20 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+alter table node add column inst_id varchar(64) not null default "";
+alter table node add column inst_token varchar(300)  default "";
+alter table node add column protocol varchar(32)  default "";
 
-package org.secretflow.secretpad.persistence.datasync.rest.p2p;
+alter table user_accounts add column inst_id varchar(64) not null default "";
 
-import lombok.Builder;
-import lombok.Data;
+alter table project_approval_config add column participant_node_info text default '';
 
-import java.io.Serializable;
-
-/**
- * @author yutu
- * @date 2023/12/20
- */
-@Builder
-@Data
-public class P2pSyncReq implements Serializable {
-    private String p;
-}
+create unique index if not exists `upk_inst_node_id` on node (`inst_id`, `node_id`);

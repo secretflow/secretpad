@@ -32,9 +32,9 @@ import lombok.*;
 @NoArgsConstructor
 public class PartyVoteStatus {
 
-    private String nodeID;
+    private String participantID;
 
-    private String nodeName;
+    private String participantName;
 
     private String action;
 

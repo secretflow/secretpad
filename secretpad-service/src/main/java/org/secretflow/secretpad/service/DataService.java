@@ -55,13 +55,6 @@ public interface DataService {
      */
     DownloadInfo download(DownloadDataRequest request);
 
-    /**
-     * createDataByDataSource
-     *
-     * @param request request info
-     * @return domaindata id
-     */
-    String createDataByDataSource(CreateDataByDataSourceRequest request);
 
     /**
      * queryDataSources

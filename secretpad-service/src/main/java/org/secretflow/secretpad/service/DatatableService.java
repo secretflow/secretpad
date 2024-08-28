@@ -28,6 +28,14 @@ import java.util.List;
  */
 public interface DatatableService {
     /**
+     * List all datatable list by ownerId
+     *
+     * @param request list datatable list request
+     * @return all node datatable list view object
+     */
+    AllDatatableListVO listDatatablesByOwnerId(ListDatatableRequest request);
+
+    /**
      * List datatable list by nodeId
      *
      * @param request list datatable list request
@@ -41,7 +49,7 @@ public interface DatatableService {
      * @param request query datatable request
      * @return datatable view object
      */
-    DatatableVO getDatatable(GetDatatableRequest request);
+    DatatableNodeVO getDatatable(GetDatatableRequest request);
 
     /**
      * Delete datatable by request
@@ -78,11 +86,11 @@ public interface DatatableService {
 
     /**
      * create data table
+     *
      * @param createDatatableRequest
      * @return
      */
-    String createDataTable(CreateDatatableRequest createDatatableRequest);
-
+    OssDatatableVO createDataTable(CreateDatatableRequest createDatatableRequest);
 
 
     List<DatatableVO> findDatatableByNodeId(String nodeId);

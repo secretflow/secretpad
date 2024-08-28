@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service.model.project;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -34,6 +35,10 @@ import java.util.Set;
 @Setter
 @Builder
 public class ProjectVO {
+    /**
+     * vote invite patties's vote information
+     */
+    Set<PartyVoteInfoVO> partyVoteInfos;
     /**
      * Project id
      */
@@ -54,6 +59,12 @@ public class ProjectVO {
      */
     @Schema(description = "list of added nodes")
     private List<ProjectNodeVO> nodes;
+    /**
+     * List of added insts
+     */
+    @Schema(description = "list of added insts")
+    @JsonInclude(JsonInclude.Include.NON_EMPTY)
+    private List<ProjectInstVO> insts;
     /**
      * The count of graph
      */
@@ -79,29 +90,19 @@ public class ProjectVO {
      */
     @Schema(description = "teeNodeId", requiredMode = Schema.RequiredMode.REQUIRED)
     private String teeNodeId;
-
     /**
      * project approval status
      * {@link org.secretflow.secretpad.common.enums.ProjectStatusEnum}
      */
     private String status;
-
     /**
      * project initiator nodeId
      */
     private String initiator;
-
-
     /**
      * project initiator nodeName
      */
     private String initiatorName;
-
-    /**
-     * vote invite patties's vote information
-     */
-    Set<PartyVoteInfoVO> partyVoteInfos;
-
     /**
      * computeFunc
      * {@link org.secretflow.secretpad.common.constant.ProjectConstants.ComputeFuncEnum}

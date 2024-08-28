@@ -21,6 +21,8 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.InputStream;
+
 /**
  * Download information
  *
@@ -41,8 +43,9 @@ public class DownloadInfo {
     /**
      * File path
      */
-    @Schema(description = "file path")
-    private String filePath;
+    @Schema(description = "file length")
+    private int fileLength;
 
-
+    @Schema(description = "file byte array")
+    private InputStream inputStream;
 }

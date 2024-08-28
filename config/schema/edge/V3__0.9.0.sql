@@ -13,26 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+alter table node add column inst_id varchar(64) not null default "";
+alter table node add column inst_token varchar(300)  default "";
+alter table node add column protocol varchar(32)  default "";
 
-package org.secretflow.secretpad.web.condition;
+alter table user_accounts add column inst_id varchar(64) not null default "";
 
-/**
- * @author yutu
- * @date 2024/03/15
- */
+alter table project_approval_config add column participant_node_info text default '';
 
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.annotation.Condition;
-import org.springframework.context.annotation.ConditionContext;
-import org.springframework.core.type.AnnotatedTypeMetadata;
-
-@Slf4j
-public class GithubCondition implements Condition {
-
-    @Override
-    public boolean matches(ConditionContext context, AnnotatedTypeMetadata metadata) {
-        String githubActions = System.getenv("GITHUB_ACTIONS");
-        return !"true".equals(githubActions);
-    }
-
-}
+create unique index if not exists `upk_inst_node_id` on node (`inst_id`, `node_id`);

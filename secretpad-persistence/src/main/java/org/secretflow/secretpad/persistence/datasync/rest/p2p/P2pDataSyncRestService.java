@@ -25,7 +25,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.annotation.PostExchange;
-import reactor.core.publisher.Mono;
 
 /**
  * @author yutu
@@ -35,5 +34,5 @@ import reactor.core.publisher.Mono;
 @HttpExchange
 public interface P2pDataSyncRestService {
     @PostExchange("/api/v1alpha1/data/sync")
-    Mono<SecretPadResponse<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>>> sync(@RequestHeader("kuscia-origin-source") String node, @RequestHeader("host") String nodeId, @RequestBody String p);
+    SecretPadResponse<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> sync(@RequestHeader("kuscia-origin-source") String node, @RequestHeader("host") String nodeId, @RequestBody String p);
 }

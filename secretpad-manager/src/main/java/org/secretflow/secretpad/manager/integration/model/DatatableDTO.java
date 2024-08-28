@@ -19,7 +19,9 @@ package org.secretflow.secretpad.manager.integration.model;
 import org.secretflow.secretpad.common.constant.DomainDataConstants;
 import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO;
+
 import lombok.*;
+import org.apache.commons.lang3.ObjectUtils;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.springframework.util.CollectionUtils;
 
@@ -96,6 +98,9 @@ public class DatatableDTO {
      */
     private List<TableColumnDTO> schema;
 
+    private OdpsPartitionParam partition;
+
+
     /**
      * Convert DatatableDTO from DomainData
      *
@@ -117,6 +122,7 @@ public class DatatableDTO {
                 .schema(domainData.getColumnsList().stream().map(it ->
                                 new TableColumnDTO(it.getName(), it.getType(), it.getComment()))
                         .collect(Collectors.toList()))
+                .partition(ObjectUtils.isEmpty(domainData.getPartition()) ? null : OdpsPartitionParam.fromPartition(domainData.getPartition()))
                 .build();
     }
 

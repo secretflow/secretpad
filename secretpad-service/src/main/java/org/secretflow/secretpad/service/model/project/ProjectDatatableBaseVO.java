@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.service.model.project;
 
+import org.secretflow.secretpad.manager.integration.model.OdpsPartitionParam;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -41,4 +43,6 @@ public class ProjectDatatableBaseVO {
      */
     @Schema(description = "datatable name")
     private String datatableName;
+
+    private OdpsPartitionParam partition;
 }

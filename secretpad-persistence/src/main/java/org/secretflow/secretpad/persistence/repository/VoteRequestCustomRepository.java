@@ -41,11 +41,9 @@ import java.util.Objects;
  */
 @Repository
 public class VoteRequestCustomRepository {
+    private static final Integer REVIEWING = 0;
     @PersistenceContext
     EntityManager entityManager;
-
-    private static final Integer REVIEWING = 0;
-
 
     public List<VoteRequestDO> pageQuery(String nodeID, String type, String keyWord, Boolean isProcessed, Pageable page) {
 

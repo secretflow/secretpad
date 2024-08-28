@@ -21,7 +21,9 @@ import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.service.auth.DataResourceAuth;
 
+import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -35,6 +37,9 @@ public class DefaultDataResourceAuth implements DataResourceAuth {
 
     @Autowired
     private DataResourceProjectAuth dataResourceProjectAuth;
+
+    @Resource
+    private DataResourceInstAuth dataResourceInstAuth;
 
     /**
      * @param resourceType resource type
@@ -50,9 +55,8 @@ public class DefaultDataResourceAuth implements DataResourceAuth {
         }
 
         if (DataResourceTypeEnum.NODE_ID.equals(resourceType)) {
-            return UserContext.getUser().getOwnerId().equals(resourceId);
+            return StringUtils.equals(UserContext.getUser().getOwnerId(), resourceId) || dataResourceInstAuth.check(UserContext.getUser().getOwnerId(), resourceId);
         }
-
         if (DataResourceTypeEnum.PROJECT_ID.equals(resourceType)) {
             return dataResourceProjectAuth.check(resourceId);
         }

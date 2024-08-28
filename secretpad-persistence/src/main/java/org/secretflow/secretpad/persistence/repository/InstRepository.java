@@ -18,7 +18,11 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.InstDO;
 
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+
+import java.util.Collection;
+import java.util.List;
 
 /**
  * Institution repository
@@ -28,4 +32,10 @@ import org.springframework.stereotype.Repository;
  */
 @Repository
 public interface InstRepository extends BaseRepository<InstDO, String> {
+
+    @Query("from InstDO ist where ist.instId=:instId")
+    InstDO findByInstId(String instId);
+
+    List<InstDO> findByInstIdIn(Collection<String> instIDs);
+
 }

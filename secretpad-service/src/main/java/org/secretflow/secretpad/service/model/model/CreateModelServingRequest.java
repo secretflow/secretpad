@@ -48,17 +48,13 @@ public class CreateModelServingRequest {
     @Getter
     public static class PartyConfig {
 
+        List<Feature> features;
         @NotBlank
         private String nodeId;
-
         @NotBlank
         private String featureTableId;
-
         @NotNull
         private Boolean isMock;
-
-        List<Feature> features;
-
         private @Valid List<ResourceVO> resources;
 
         @Getter

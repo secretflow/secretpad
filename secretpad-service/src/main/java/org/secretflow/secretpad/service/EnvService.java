@@ -18,6 +18,7 @@ package org.secretflow.secretpad.service;
 
 import org.secretflow.secretpad.common.dto.EnvDTO;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
+import org.secretflow.secretpad.service.model.graph.ProjectJob;
 
 /**
  * environment service
@@ -78,6 +79,20 @@ public interface EnvService {
      */
     Boolean isCurrentNodeEnvironment(String nodeID);
 
+    /**
+     * check Current Inst Environment
+     *
+     * @param instID
+     * @return
+     */
+    Boolean isCurrentInstEnvironment(String instID);
+
+
     Boolean isP2pEdge();
+
+
+    Boolean isNodeInCurrentInst(String nodeId);
+
+    String findLocalNodeId(ProjectJob.JobTask task);
 
 }

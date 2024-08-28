@@ -10,11 +10,15 @@ secretpad:
   node-id: ${NODE_ID}
   center-platform-service: secretpad.master.svc
   p2p-platform-service: secretpad
+  inst-name: ${INST_NAME} #  input at install.sh
   auth:
     enabled: true
   data:
     host-path: ${HOST_PATH}
     dir-path: /app/data/
+  certs:
+    dir-path: /app/config/certs/
+
   datasync:
     center: false
     p2p: true
@@ -49,6 +53,7 @@ data:
     - org.secretflow.secretpad.persistence.entity.ProjectModelPackDO
     - org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO
     - org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO
+    - org.secretflow.secretpad.persistence.entity.ProjectInstDO
 
 # path which do not use in this mode ,config this mvc return 404 to user
 # @see DynamicBeanRegisterInit
@@ -94,3 +99,10 @@ white-list:
     - /api/v1alpha1/graph/detail
     - /api/v1alpha1/graph/node/output
     - /api/v1alpha1/graph/node/logs
+    - /api/v1alpha1/inst/get
+    - /api/v1alpha1/inst/node/list
+    - /api/v1alpha1/inst/node/add
+    - /api/v1alpha1/inst/node/token
+    - /api/v1alpha1/inst/node/newToken
+    - /api/v1alpha1/inst/node/delete
+    - /api/v1alpha1/inst/node/register

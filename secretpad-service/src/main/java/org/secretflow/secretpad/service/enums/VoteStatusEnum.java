@@ -31,10 +31,6 @@ public enum VoteStatusEnum {
 
     private final Integer code;
 
-    public Integer getCode() {
-        return code;
-    }
-
     VoteStatusEnum(Integer code) {
         this.code = code;
     }
@@ -46,5 +42,9 @@ public enum VoteStatusEnum {
             }
         }
         return null;
+    }
+
+    public Integer getCode() {
+        return code;
     }
 }

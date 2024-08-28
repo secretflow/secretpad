@@ -24,6 +24,7 @@ import org.secretflow.secretpad.manager.integration.model.NodeRouteDTO;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.CollectionUtils;
 
 import java.util.Base64;
@@ -53,6 +54,12 @@ public class NodeVO {
      */
     @Schema(description = "nodeName")
     private String nodeName;
+
+    @Schema(description = "instId")
+    private String instId;
+
+    @Schema(description = "instName")
+    private String instName;
     /**
      * controlNodeId
      */
@@ -156,9 +163,33 @@ public class NodeVO {
     @Schema(description = "protocol")
     private String protocol;
 
+    @Schema(description = "instToken")
+    private String instToken;
+
+    //now for p2p
+    @Schema(description = "this node allow or not  to be deleted")
+    private Boolean allowDeletion = false;
+
+    @Schema(description = "the main node for network communication")
+    private Boolean isMainNode = false;
+
+    /**
+     * simple copy
+     */
+    public static NodeVO from(NodeDTO nodeDTO) {
+        return NodeVO.builder().
+                nodeId(nodeDTO.getNodeId()).
+                nodeName(nodeDTO.getNodeName()).
+                nodeStatus(nodeDTO.getNodeStatus()).
+                isMainNode(nodeDTO.getIsMainNode())
+                .build();
+    }
+
+
     public static NodeVO from(NodeDTO nodeDTO, List<DatatableDTO> datatables, List<NodeRouteDTO> nodeRoutes,
                               Long resultCount) {
         return NodeVO.builder().nodeId(nodeDTO.getNodeId()).nodeName(nodeDTO.getNodeName())
+                .instId(nodeDTO.getInstId()).instName(nodeDTO.getInstName())
                 .controlNodeId(nodeDTO.getControlNodeId()).description(nodeDTO.getDescription())
                 .netAddress(nodeDTO.getNetAddress()).cert(nodeDTO.getCert()).token(nodeDTO.getToken())
                 .tokenStatus(nodeDTO.getTokenStatus()).nodeRole(nodeDTO.getNodeRole()).nodeStatus(nodeDTO.getNodeStatus())
@@ -173,7 +204,11 @@ public class NodeVO {
                 .nodeRoutes(CollectionUtils.isEmpty(nodeRoutes) ? null : nodeRoutes.stream()
                         .map(NodeRouteVO::fromDto).collect(Collectors.toList()))
                 .protocol(nodeDTO.getProtocol())
-                .resultCount(resultCount).build();
+                .resultCount(resultCount)
+                .instToken(nodeDTO.getInstToken())
+                .isMainNode(nodeDTO.getIsMainNode())
+                .allowDeletion(nodeDTO.getAllowDeletion())
+                .build();
     }
 
     public static NodeVO fromDto(NodeDTO nodeDTO) {
@@ -196,6 +231,7 @@ public class NodeVO {
         nodeVO.setMasterNodeId(nodeDTO.getMasterNodeId());
         nodeVO.setCertText(nodeDTO.getCertText());
         nodeVO.setNodeAuthenticationCode(buildNodeAuthenticationCode(nodeDTO));
+        nodeVO.setInstToken(nodeDTO.getInstToken());
         return nodeVO;
     }
 
@@ -212,6 +248,10 @@ public class NodeVO {
                 .dstNetAddress(nodeDTO.getNetAddress())
                 .name(nodeDTO.getNodeName())
                 .certText(nodeDTO.getCertText()).build();
+        if (StringUtils.isNotBlank(nodeDTO.getInstId()) && StringUtils.isNotBlank(nodeDTO.getInstName())) {
+            nodeAuthenticationCode.setInstId(nodeDTO.getInstId());
+            nodeAuthenticationCode.setInstName(nodeDTO.getInstName());
+        }
         return Base64.getEncoder().encodeToString(JsonUtils.toJSONString(nodeAuthenticationCode).getBytes());
     }
 }

@@ -16,9 +16,14 @@
 
 package org.secretflow.secretpad.common.util;
 
+import org.secretflow.secretpad.common.constant.SystemConstants;
+
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.FileNotFoundException;
+import java.io.IOException;
+import java.nio.file.Path;
 
 /**
  * File test
@@ -33,5 +38,17 @@ public class FileTest {
         for (String filename : filenames) {
             FileUtils.readFile(filename);
         }
+    }
+
+    @Test
+    public void testWriteToFile() throws IOException {
+        Assertions.assertDoesNotThrow(() -> FileUtils.delFile(SystemConstants.USER_OWNER_ID_FILE));
+        Assertions.assertDoesNotThrow(() -> FileUtils.writeToFile("test1"));
+        Assertions.assertEquals("test1", FileUtils.readFile2String(SystemConstants.USER_OWNER_ID_FILE));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> FileUtils.writeToFile(null));
+        Assertions.assertDoesNotThrow(() -> FileUtils.writeToFile("test2"));
+        Assertions.assertEquals("test2", FileUtils.readFile2String(SystemConstants.USER_OWNER_ID_FILE));
+        FileUtils.delFile(SystemConstants.USER_OWNER_ID_FILE);
+        FileUtils.delFile(Path.of(SystemConstants.USER_OWNER_ID_FILE).getParent().toString());
     }
 }

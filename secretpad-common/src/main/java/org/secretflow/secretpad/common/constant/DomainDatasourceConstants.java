@@ -29,8 +29,15 @@ public class DomainDatasourceConstants {
     public final static String DEFAULT_DATASOURCE = "default-data-source";
     public final static String DEFAULT_DATASOURCE_TYPE = "localfs";
     public static final String DEFAULT_OSS_DATASOURCE_TYPE = "OSS";
+    public static final String DEFAULT_ODPS_DATASOURCE_TYPE = "ODPS";
     public static final String DEFAULT_HTTP_DATASOURCE_TYPE = "HTTP";
+
+    public static final String ODPS_DATASOURCE_PARTITION_TYPE_ODPS = "odps";
+    public static final String ODPS_DATASOURCE_PARTITION_TYPE_PATH = "path";
 
     public final static String DATASOURCE_TYPE = "DatasourceType";
     public final static String DATASOURCE_NAME = "DatasourceName";
+
+    public final static String DATASOURCE_ID_PREFIX = "oss-";
+    public final static String DATASOURCE_ODPS_ID_PREFIX = "odps-";
 }

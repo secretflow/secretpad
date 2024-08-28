@@ -73,6 +73,19 @@ public class NodeDO extends BaseAggregationRoot<NodeDO> {
     @Column(name = "master_node_id", length = 64)
     private String masterNodeId;
 
+    @Column(name = "inst_id", length = 64)
+    private String instId;
+
+    /**
+     * token for inst register
+     **/
+    @Column(name = "inst_token", length = 300)
+
+    private String instToken;
+
+    @Column(name = "protocol", length = 32)
+    private String protocol;
+
     private String controlNodeId;
     private String netAddress;
     private String token;

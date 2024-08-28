@@ -16,10 +16,12 @@
 
 package org.secretflow.secretpad.manager.integration.node;
 
+import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.datasource.DatasourceManager;
 import org.secretflow.secretpad.manager.integration.model.DatasourceDTO;
 
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -48,8 +50,12 @@ public class DatasourceManagerTest {
                 .setDomainId(nodeDatasourceId.getNodeId())
                 .setDatasourceId(nodeDatasourceId.getDatasourceId())
                 .build();
+        datasourceManager.setPlaformType("CENTER");
         Mockito.when(kusciaGrpcClientAdapter.queryDomainDataSource(queryDomainDataSourceRequest)).thenReturn(buildQueryDomainDatasourceResponse(0));
         datasourceManager.findById(nodeDatasourceId);
+
+        Mockito.when(kusciaGrpcClientAdapter.queryDomainDataSource(queryDomainDataSourceRequest)).thenReturn(buildQueryDomainDatasourceResponse(-1));
+        Assertions.assertThrows(SecretpadException.class, () -> datasourceManager.findById(nodeDatasourceId));
     }
 
     private Domaindatasource.QueryDomainDataSourceResponse buildQueryDomainDatasourceResponse(Integer code) {

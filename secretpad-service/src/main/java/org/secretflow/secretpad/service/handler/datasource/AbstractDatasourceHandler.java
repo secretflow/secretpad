@@ -16,9 +16,23 @@
 
 package org.secretflow.secretpad.service.handler.datasource;
 
+import org.secretflow.secretpad.common.dto.KusciaResponse;
+import org.secretflow.secretpad.common.errorcode.ConcurrentErrorCode;
+import org.secretflow.secretpad.common.errorcode.DatasourceErrorCode;
+import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.service.model.datasource.CreateDatasourceRequest;
 import org.secretflow.secretpad.service.model.datasource.CreateDatasourceVO;
 import org.secretflow.secretpad.service.model.datasource.DeleteDatasourceRequest;
+import org.secretflow.secretpad.service.util.HttpUtils;
+
+import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
 
 /**
@@ -36,6 +50,37 @@ public abstract class AbstractDatasourceHandler implements DatasourceHandler {
     @Override
     public void deleteDatasource(DeleteDatasourceRequest deleteDatasourceRequest) {
         throw new UnsupportedOperationException("unsupported operation");
+    }
 
+    public void serviceCheck(String endpoint) {
+        if (!HttpUtils.detection(endpoint)) {
+            throw SecretpadException.of(DatasourceErrorCode.DATA_SOURCE_ENDPOINT_CONNECT_FAIL);
+        }
+    }
+
+    public void fetchResult(Map<String, String> failedDatasource, List<CompletableFuture<KusciaResponse<Domaindatasource.CreateDomainDataSourceResponse>>> completableFutures) {
+        try {
+            CompletableFuture
+                    .allOf(completableFutures.toArray(new CompletableFuture[0]))
+                    .get(5000, TimeUnit.MILLISECONDS);
+            for (CompletableFuture<KusciaResponse<Domaindatasource.CreateDomainDataSourceResponse>> task : completableFutures) {
+
+                KusciaResponse<Domaindatasource.CreateDomainDataSourceResponse> taskNow = task.get();
+                if (taskNow.getData() == null && !failedDatasource.containsKey(taskNow.getNodeId())) {
+                    failedDatasource.put(task.get().getNodeId(), "task failed or timeout");
+                }
+                //success to the async operation,but kuscia status is not success
+                if (taskNow.getData().getStatus().getCode() != 0) {
+                    failedDatasource.put(taskNow.getNodeId(), taskNow.getData().getStatus().getMessage());
+                }
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw SecretpadException.of(ConcurrentErrorCode.TASK_INTERRUPTED_ERROR, e);
+        } catch (ExecutionException e) {
+            throw SecretpadException.of(ConcurrentErrorCode.TASK_EXECUTION_ERROR, e);
+        } catch (TimeoutException e) {
+            throw SecretpadException.of(ConcurrentErrorCode.TASK_TIME_OUT_ERROR, e);
+        }
     }
 }

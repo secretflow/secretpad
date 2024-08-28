@@ -43,11 +43,9 @@ import java.util.List;
  */
 public class EncryptUtils {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(EncryptUtils.class);
-
-
     public static final String KEY_ALGORITHM = "RSA";
     public static final String SIGNATURE_ALGORITHM = "SHA256withRSA";
+    private final static Logger LOGGER = LoggerFactory.getLogger(EncryptUtils.class);
 
     /**
      * encrypt use private key

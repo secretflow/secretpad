@@ -53,6 +53,30 @@ public class BinningModificationsAdapter implements NodeDefAdapter {
     @Resource
     private ProjectReadDtaRepository readDtaRepository;
 
+    public static Object deepCopy(Object object) {
+        ByteArrayOutputStream baos = null;
+        ObjectOutputStream oos = null;
+        ByteArrayInputStream bais = null;
+        ObjectInputStream ois = null;
+        try {
+            baos = new ByteArrayOutputStream();
+            oos = new ObjectOutputStream(baos);
+            oos.writeObject(object);
+            oos.close();
+            bais = new ByteArrayInputStream(baos.toByteArray());
+            ois = new ObjectInputStream(bais);
+            return ois.readObject();
+        } catch (Exception e) {
+            log.error("deepCopy error", e);
+            return null;
+        } finally {
+            IOUtils.closeQuietly(baos);
+            IOUtils.closeQuietly(oos);
+            IOUtils.closeQuietly(bais);
+            IOUtils.closeQuietly(ois);
+        }
+    }
+
     @Override
     public ProjectJob.JobTask adapter(Pipeline.NodeDef nodeDef, GraphNodeInfo graphNodeInfo, ProjectJob.JobTask task) {
         return adapter1(nodeDef, graphNodeInfo, task);
@@ -120,7 +144,7 @@ public class BinningModificationsAdapter implements NodeDefAdapter {
             String asString = jsonElement.toString();
             struct = struct.toBuilder().putFields(ComponentConstants.ATTRIBUTE_S, Value.newBuilder().setStringValue(asString).build()).build();
             build = build.toBuilder().setAttrs(0, struct).build();
-            log.debug("------- modelHash build {} ", build);
+            log.debug("convertToWrite modelHash build {} ", build);
         }
         String new_outPut_id = outputs.get(0);
         List<ProjectReadDataDO> byHash = readDtaRepository.findByHashAndGrapNodeId(modelHash, graphNodeId);
@@ -161,29 +185,5 @@ public class BinningModificationsAdapter implements NodeDefAdapter {
                 .setVersion(componentDef.getVersion())
                 .build();
         return getJobTask(build, graphNodeInfo, task, outputs);
-    }
-
-    public static Object deepCopy(Object object) {
-        ByteArrayOutputStream baos = null;
-        ObjectOutputStream oos = null;
-        ByteArrayInputStream bais = null;
-        ObjectInputStream ois = null;
-        try {
-            baos = new ByteArrayOutputStream();
-            oos = new ObjectOutputStream(baos);
-            oos.writeObject(object);
-            oos.close();
-            bais = new ByteArrayInputStream(baos.toByteArray());
-            ois = new ObjectInputStream(bais);
-            return ois.readObject();
-        } catch (Exception e) {
-            log.error("deepCopy error", e);
-            return null;
-        } finally {
-            IOUtils.closeQuietly(baos);
-            IOUtils.closeQuietly(oos);
-            IOUtils.closeQuietly(bais);
-            IOUtils.closeQuietly(ois);
-        }
     }
 }

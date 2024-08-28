@@ -20,8 +20,10 @@ import org.secretflow.secretpad.common.constant.CacheConstants;
 import org.secretflow.secretpad.persistence.datasync.listener.EntityChangeListener;
 import org.secretflow.secretpad.persistence.datasync.producer.PaddingNodeService;
 import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.NodeInstDTO;
+import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectApprovalConfigRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectInstRepository;
 import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -29,10 +31,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
+import org.springframework.util.Assert;
 import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
 import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -43,7 +47,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class P2pPaddingNodeServiceImpl implements PaddingNodeService {
 
-    private final ProjectNodeRepository projectNodeRepository;
+    private final ProjectInstRepository projectInstRepository;
 
     private final ProjectApprovalConfigRepository projectApprovalConfigRepository;
 
@@ -51,20 +55,25 @@ public class P2pPaddingNodeServiceImpl implements PaddingNodeService {
 
     private final CacheManager cacheManager;
 
+    private final NodeRepository nodeRepository;
+
+    private Map<String, String> inst_Node = new ConcurrentHashMap<>();
+
     @Override
     public void paddingNodes(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         String projectId = event.getProjectId();
-        List<String> nodeIds = event.getNodeIds();
-        if (CollectionUtils.isEmpty(nodeIds)) {
-            nodeIds = new ArrayList<>();
+        List<String> nodeIds = new ArrayList<>();
+        if (event.getSource() instanceof VoteRequestDO || event.getSource() instanceof VoteInviteDO) {
+            nodeIds = event.getNodeIds();
         }
         if (StringUtils.isNotEmpty(projectId)) {
-            List<ProjectNodeDO> pns = projectNodeRepository.findByProjectId(projectId);
-            if (!CollectionUtils.isEmpty(pns)) {
-                for (ProjectNodeDO p : pns) {
-                    nodeIds.add(p.getNodeId());
+            List<ProjectInstDO> pis = projectInstRepository.findByUpkProjectId(projectId);
+            if (!CollectionUtils.isEmpty(pis)) {
+                for (ProjectInstDO p : pis) {
+                    nodeIds.add(p.getUpk().getInstId());
                 }
             }
+
             Optional<ProjectApprovalConfigDO> projectApprovalConfigDOOptional = projectApprovalConfigRepository.findByProjectIdAndType(projectId, "PROJECT_CREATE");
             if (projectApprovalConfigDOOptional.isPresent()) {
                 nodeIds.addAll(projectApprovalConfigDOOptional.get().getNodeIds());
@@ -81,6 +90,10 @@ public class P2pPaddingNodeServiceImpl implements PaddingNodeService {
         }
         List<String> collect = nodeIds.stream().distinct().collect(Collectors.toList());
         event.setNodeIds(collect);
+        List<NodeInstDTO> nodeDOList = nodeRepository.findInstMasterNodeId();
+        for (NodeInstDTO nodeInstDto : nodeDOList) {
+            inst_Node.put(nodeInstDto.getInstId(), nodeInstDto.getMasterNodeId());
+        }
     }
 
     @Override
@@ -93,8 +106,8 @@ public class P2pPaddingNodeServiceImpl implements PaddingNodeService {
                 VoteRequestDO voteRequestDO = voteRequestDOOptional.get();
                 Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = voteRequestDO.getPartyVoteInfos();
                 for (VoteRequestDO.PartyVoteInfo partyVoteInfo : partyVoteInfos) {
-                    if (voteInviteDO.getUpk().getVotePartitionID().equals(partyVoteInfo.getNodeId())) {
-                        log.debug("node -> {} compensate action {}", partyVoteInfo.getNodeId(), voteInviteDO.getAction());
+                    if (voteInviteDO.getUpk().getVotePartitionID().equals(partyVoteInfo.getPartyId())) {
+                        log.debug("inst -> {} compensate action {}", partyVoteInfo.getPartyId(), voteInviteDO.getAction());
                         partyVoteInfo.setAction(voteInviteDO.getAction());
                         partyVoteInfo.setReason(voteInviteDO.getReason());
                         voteRequestDO.setGmtModified(LocalDateTime.now());
@@ -104,5 +117,18 @@ public class P2pPaddingNodeServiceImpl implements PaddingNodeService {
                 }
             }
         }
+    }
+
+    @Override
+    public void supInstInfo(AccountsDO accountsDO) {
+        Assert.notNull(accountsDO, "accountsDO is null");
+        Assert.notNull(accountsDO.getInstId(), "instId IS null");
+        P2pDataSyncProducerTemplate.instId = accountsDO.getInstId();
+    }
+
+    @Override
+    public String turnInstToRouteId(String instId) {
+        log.info("inst_Node = {} from {} to {}", inst_Node, instId, inst_Node.get(instId));
+        return inst_Node.get(instId);
     }
 }

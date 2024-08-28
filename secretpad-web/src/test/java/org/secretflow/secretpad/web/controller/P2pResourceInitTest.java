@@ -49,7 +49,7 @@ public class P2pResourceInitTest extends ControllerTest {
     private P2pDataInit p2pDataInit;
 
     @Test
-    void init() {
+    void init() throws Exception {
         if (!projectRepository.existsById("test")) {
             projectRepository.save(ProjectDO.builder()
                     .status(0)
@@ -60,6 +60,7 @@ public class P2pResourceInitTest extends ControllerTest {
                     .ownerId("alice")
                     .build());
         }
+        p2pDataInit.run();
         p2pDataInit.init_ownerId_cache();
         log.info("init {}", ownerId_cache);
         projectRepository.deleteAllAuthentic();

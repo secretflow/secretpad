@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.errorcode.InstErrorCode;
 import org.secretflow.secretpad.common.errorcode.JobErrorCode;
 import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
 import org.secretflow.secretpad.common.errorcode.VoteErrorCode;
@@ -32,13 +33,13 @@ import org.secretflow.secretpad.service.model.approval.AbstractVoteConfig;
 import org.secretflow.secretpad.service.model.approval.Participant;
 import org.secretflow.secretpad.service.model.approval.PullStatusVO;
 
-import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.ObjectUtils;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -65,6 +66,7 @@ public class ApprovalServiceImpl implements ApprovalService {
 
     private final NodeRepository nodeRepository;
 
+
     private final Map<VoteTypeEnum, VoteTypeHandler> voteTypeHandlerMap;
 
     private final ProjectJobRepository projectJobRepository;
@@ -72,6 +74,7 @@ public class ApprovalServiceImpl implements ApprovalService {
     private final ProjectNodeRepository projectNodeRepository;
 
     private final EnvService envService;
+    private final InstRepository instRepository;
 
     public ApprovalServiceImpl(VoteRequestRepository voteRequestRepository,
                                TeeDownLoadAuditConfigRepository teeDownLoadAuditConfigRepository,
@@ -80,7 +83,7 @@ public class ApprovalServiceImpl implements ApprovalService {
                                VoteInviteRepository voteInviteRepository,
                                ProjectJobRepository projectJobRepository,
                                ProjectNodeRepository projectNodeRepository,
-                               EnvService envService) {
+                               EnvService envService, InstRepository instRepository) {
         this.voteRequestRepository = voteRequestRepository;
         this.teeDownLoadAuditConfigRepository = teeDownLoadAuditConfigRepository;
         this.voteInviteRepository = voteInviteRepository;
@@ -89,19 +92,29 @@ public class ApprovalServiceImpl implements ApprovalService {
         this.projectJobRepository = projectJobRepository;
         this.projectNodeRepository = projectNodeRepository;
         this.envService = envService;
+        this.instRepository = instRepository;
     }
 
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public void createApproval(String nodeID, AbstractVoteConfig voteConfig, String voteType) {
-        identityVerification(nodeID);
-        //check node exists
-        NodeDO nodeDO = nodeRepository.findByNodeId(nodeID);
-        if (ObjectUtils.isEmpty(nodeDO)) {
-            LOGGER.error("Cannot find node by nodeId {}.", nodeID);
-            throw SecretpadException.of(NodeErrorCode.NODE_NOT_EXIST_ERROR);
+    public void createApproval(String initiatorId, AbstractVoteConfig voteConfig, String voteType) {
+        identityVerification(initiatorId);
+        //check initiator exists
+        if (envService.isAutonomy()) {
+            InstDO instDO = instRepository.findByInstId(initiatorId);
+            if (ObjectUtils.isEmpty(instDO)) {
+                LOGGER.error("Cannot find inst by instId {}.", initiatorId);
+                throw SecretpadException.of(InstErrorCode.INST_NOT_EXISTS);
+            }
+        } else {
+            NodeDO nodeDO = nodeRepository.findByNodeId(initiatorId);
+            if (ObjectUtils.isEmpty(nodeDO)) {
+                LOGGER.error("Cannot find node by nodeId {}.", initiatorId);
+                throw SecretpadException.of(NodeErrorCode.NODE_NOT_EXIST_ERROR);
+            }
         }
-        voteTypeHandlerMap.get(VoteTypeEnum.valueOf(voteType)).createApproval(nodeID, voteConfig);
+
+        voteTypeHandlerMap.get(VoteTypeEnum.valueOf(voteType)).createApproval(initiatorId, voteConfig);
     }
 
     @Override
@@ -183,8 +196,8 @@ public class ApprovalServiceImpl implements ApprovalService {
                 .build();
     }
 
-    private void identityVerification(String nodeId) {
-        if (envService.isAutonomy() && !StringUtils.equals(UserContext.getUser().getPlatformNodeId(), nodeId)) {
+    private void identityVerification(String initiatorId) {
+        if (envService.isAutonomy() && !StringUtils.equals(UserContext.getUser().getOwnerId(), initiatorId)) {
             throw SecretpadException.of(VoteErrorCode.VOTE_CHECK_FAILED);
         }
     }

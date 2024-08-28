@@ -41,13 +41,10 @@ import org.springframework.stereotype.Component;
 public class DbSyncUtil {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(DbSyncUtil.class);
-
-
+    private static final String HTTP_PREFIX = "http://";
     private static String kusciaLiteGateway;
     private static String routeHeader;
     private static String nodeId;
-
-    private static final String HTTP_PREFIX = "http://";
 
     public static SecretPadResponse dbDataSyncToCenter(DbSyncRequest dbSyncRequest) {
         String redirectUrl = HTTP_PREFIX + kusciaLiteGateway + DataSyncConstants.VOTE_DATA_SYNC;
@@ -82,6 +79,14 @@ public class DbSyncUtil {
         return secretPadResponse;
     }
 
+    private static ImmutableMap<String, String> parseRequestHeader() {
+        return ImmutableMap.of("Host", routeHeader, "kuscia-origin-source", nodeId);
+    }
+
+    private static ImmutableMap<String, String> parseRequestHeader(String nodeId) {
+        return ImmutableMap.of("Host", routeHeader, "kuscia-origin-source", nodeId);
+    }
+
     @Value("${secretpad.gateway}")
     public void setKusciaLiteGateway(String kusciaLiteGateway) {
         DbSyncUtil.kusciaLiteGateway = kusciaLiteGateway;
@@ -95,13 +100,5 @@ public class DbSyncUtil {
     @Value("${secretpad.node-id}")
     public void setNodeId(String nodeId) {
         DbSyncUtil.nodeId = nodeId;
-    }
-
-    private static ImmutableMap<String, String> parseRequestHeader() {
-        return ImmutableMap.of("Host", routeHeader, "kuscia-origin-source", nodeId);
-    }
-
-    private static ImmutableMap<String, String> parseRequestHeader(String nodeId) {
-        return ImmutableMap.of("Host", routeHeader, "kuscia-origin-source", nodeId);
     }
 }

@@ -61,6 +61,16 @@ public class ProjectResultDO extends BaseAggregationRoot<ProjectResultDO> {
     @Column(name = "task_id", nullable = true)
     private String taskId;
 
+    @Override
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
+
+    @Override
+    public String getNodeId() {
+        return this.upk.nodeId;
+    }
+
     /**
      * Project result unique primary key
      */
@@ -95,15 +105,5 @@ public class ProjectResultDO extends BaseAggregationRoot<ProjectResultDO> {
          */
         @Column(name = "ref_id", nullable = false, length = 64)
         private String refId;
-    }
-
-    @Override
-    public String getProjectId() {
-        return this.upk.projectId;
-    }
-
-    @Override
-    public String getNodeId() {
-        return this.upk.nodeId;
     }
 }

@@ -34,6 +34,9 @@ import java.util.function.Function;
 public class PageUtils {
 
 
+    public static Integer DEFAULT_PAGE_SIZE = 1000;
+    public static Integer DEFAULT_PAGE_NUM = 1;
+
     public static <I, O> List<O> convert(Page<I> in, Function<I, O> function) {
         List<O> result = new ArrayList<>();
         if (Objects.nonNull(in) && !CollectionUtils.isEmpty(in.getContent())) {
@@ -42,12 +45,30 @@ public class PageUtils {
         return result;
     }
 
-
     public static <I, O> List<O> convert(Collection<I> in, Function<I, O> function) {
         List<O> result = new ArrayList<>();
         if (!CollectionUtils.isEmpty(in)) {
-            in.forEach(e -> result.add(function.apply(e)));
+            in.forEach(e ->  {
+                O o = function.apply(e);
+                if(o!=null){
+                    result.add(o);
+                }
+            });
         }
         return result;
     }
+
+    /**
+     * common use
+     */
+    public static <T> List<T> rangeList(List<T> dataList, int pageSize, int pageNumber) {
+        final int startIndex = pageSize * (pageNumber - 1);
+        if (startIndex > dataList.size()) {
+            throw new IllegalArgumentException("page start index > dataList length.");
+        }
+        final int endIndex = Math.min(startIndex + pageSize, dataList.size());
+
+        return dataList.subList(startIndex, endIndex);
+    }
+
 }

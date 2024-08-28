@@ -41,10 +41,6 @@ public enum ModelStatsEnum {
         this.desc = desc;
     }
 
-    public Integer getCode() {
-        return code;
-    }
-
     public static String parse(Integer code) {
         for (ModelStatsEnum value : ModelStatsEnum.values()) {
             if (value.code.equals(code)) {
@@ -52,5 +48,9 @@ public enum ModelStatsEnum {
             }
         }
         return null;
+    }
+
+    public Integer getCode() {
+        return code;
     }
 }

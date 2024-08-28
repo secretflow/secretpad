@@ -22,10 +22,15 @@ import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.errorcode.ErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pDataSyncProducerTemplate;
+import org.secretflow.secretpad.persistence.entity.InstDO;
+import org.secretflow.secretpad.persistence.repository.InstRepository;
+import org.secretflow.secretpad.service.dataproxy.DataProxyService;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
 import org.secretflow.secretpad.web.SecretPadApplication;
 
+import jakarta.annotation.Resource;
 import org.apache.commons.lang3.StringUtils;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
@@ -38,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.lang.Nullable;
 import org.springframework.mock.web.MockHttpServletResponse;
@@ -53,9 +59,7 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Method;
-import java.util.HashSet;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -71,13 +75,15 @@ import java.util.regex.Pattern;
 @AutoConfigureMockMvc
 @SpringBootTest(classes = SecretPadApplication.class)
 public class ControllerTest {
-    private final static Logger LOGGER = LoggerFactory.getLogger(ControllerTest.class);
     public static final String PROJECT_ID = "projectagdasvacaghyhbvscvyjnba";
-
+    private final static Logger LOGGER = LoggerFactory.getLogger(ControllerTest.class);
+    public static MockedStatic<DbSyncUtil> pushToCenterUtilMockedStatic;
     @Autowired
     protected MockMvc mockMvc;
-
-    public static MockedStatic<DbSyncUtil> pushToCenterUtilMockedStatic;
+    @MockBean
+    protected DataProxyService dataProxyService;
+    @Resource
+    private InstRepository instRepository;
 
     @BeforeAll
     public static void setup() throws IOException, InterruptedException {
@@ -95,8 +101,14 @@ public class ControllerTest {
                 .platformType(PlatformTypeEnum.CENTER)
                 .platformNodeId("alice")
                 .ownerType(UserOwnerTypeEnum.CENTER)
+                .ownerId("test")
                 .projectIds(Set.of(PROJECT_ID)).build());
         pushToCenterUtilMockedStatic = Mockito.mockStatic(DbSyncUtil.class);
+        Mockito.doNothing().when(dataProxyService).updateDataSourceUseDataProxyInMaster();
+        Mockito.doNothing().when(dataProxyService).updateDataSourceUseDataProxyInP2p(Mockito.anyString());
+        P2pDataSyncProducerTemplate.nodeIds.add("alice");
+        P2pDataSyncProducerTemplate.nodeIds.add("alice1");
+        instRepository.saveAndFlush(InstDO.builder().instId("test").name("test").build());
     }
 
     @AfterEach
@@ -127,6 +139,36 @@ public class ControllerTest {
         Assertions.assertEquals(secretPadResponse.getStatus().getCode(), 0);
         Assertions.assertNull(secretPadResponse.getData());
     }
+
+
+    void assertResponseWithEmptyValue(MvcRequestFunction<MockHttpServletRequestBuilder> f, String assertKey) throws Exception {
+        MockHttpServletResponse response = mockMvc.perform(f.apply()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andReturn()
+                .getResponse();
+        SecretPadResponse secretPadResponse = JsonUtils.toJavaObject(response.getContentAsString(), SecretPadResponse.class);
+        Assertions.assertEquals(secretPadResponse.getStatus().getCode(), 0);
+        if (secretPadResponse.getData() instanceof List) {
+            List<LinkedHashMap> list = (List<LinkedHashMap>) secretPadResponse.getData();
+            Assertions.assertNull((list.get(0)).get(assertKey));
+        }
+    }
+
+
+    void assertResponseWithEmptyListData(MvcRequestFunction<MockHttpServletRequestBuilder> f, String assertKey) throws Exception {
+        MockHttpServletResponse response = mockMvc.perform(f.apply()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andReturn()
+                .getResponse();
+        SecretPadResponse secretPadResponse = JsonUtils.toJavaObject(response.getContentAsString(), SecretPadResponse.class);
+        Assertions.assertEquals(secretPadResponse.getStatus().getCode(), 0);
+        Assertions.assertEquals(((LinkedHashMap) secretPadResponse.getData()).get(assertKey), 0);
+    }
+
 
     void assertErrorCode(MvcRequestFunction<MockHttpServletRequestBuilder> f, ErrorCode errorCode) throws Exception {
         MockHttpServletResponse response = mockMvc.perform(f.apply()
@@ -164,6 +206,17 @@ public class ControllerTest {
         Assertions.assertEquals(response.getContentAsString(), "");
     }
 
+    void assertResponseWithContent(MvcRequestFunction<MockHttpServletRequestBuilder> f) throws Exception {
+        MockHttpServletResponse response = mockMvc.perform(f.apply()
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andReturn()
+                .getResponse();
+        Assertions.assertNotNull(response.getContentAsString());
+    }
+
+
     void assertMultipartResponse(MvcRequestFunction<MockHttpServletRequestBuilder> f) throws Exception {
         MockHttpServletResponse response = mockMvc.perform(f.apply()
                         .contentType(MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -175,6 +228,30 @@ public class ControllerTest {
         Assertions.assertEquals(secretPadResponse.getStatus().getCode(), 0);
         Assertions.assertNotNull(secretPadResponse.getData());
     }
+
+    void assertMultipartResponseWithEmptyData(MvcRequestFunction<MockHttpServletRequestBuilder> f) throws Exception {
+        MockHttpServletResponse response = mockMvc.perform(f.apply()
+                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andReturn()
+                .getResponse();
+        SecretPadResponse secretPadResponse = JsonUtils.toJavaObject(response.getContentAsString(), SecretPadResponse.class);
+        Assertions.assertEquals(secretPadResponse.getStatus().getCode(), 0);
+        Assertions.assertNull(secretPadResponse.getData());
+    }
+
+    void assertMultipartErrorCode(MvcRequestFunction<MockHttpServletRequestBuilder> f, ErrorCode errorCode) throws Exception {
+        MockHttpServletResponse response = mockMvc.perform(f.apply()
+                        .contentType(MediaType.MULTIPART_FORM_DATA_VALUE)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk())
+                .andReturn()
+                .getResponse();
+        SecretPadResponse secretPadResponse = JsonUtils.toJavaObject(response.getContentAsString(), SecretPadResponse.class);
+        Assertions.assertEquals(secretPadResponse.getStatus().getCode(), errorCode.getCode());
+    }
+
 
     String getMappingUrl(Class<?> clazz, String methodName, @Nullable Class<?>... paramTypes) {
         String url = "";

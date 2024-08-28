@@ -73,6 +73,12 @@
                         <exclude>org/secretflow/v1alpha1/factory/**</exclude>
                         <exclude>org/secretflow/secretpad/kuscia/v1alpha1/constant/**</exclude>
                         <exclude>org/secretflow/secretpad/kuscia/v1alpha1/mock/**</exclude>
+                        <exclude>org/secretflow/secretpad/common/errorcode/**</exclude>
+                        <exclude>org/secretflow/secretpad/web/SecretPadApplication</exclude>
+                        <exclude>org/secretflow/secretpad/kuscia/v1alpha1/service/impl/**</exclude>
+                        <exclude>org/secretflow/secretpad/manager/integration/job/event/**</exclude>
+                        <exclude>org/secretflow/secretpad/web/filter/**</exclude>
+                        <exclude>org/secretflow/secretpad/web/init/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>

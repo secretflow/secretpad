@@ -173,6 +173,11 @@ public class ProjectJobDO extends BaseAggregationRoot<ProjectJobDO> {
         }
     }
 
+    @Override
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
+
     /**
      * Project job unique primary key
      */
@@ -283,10 +288,5 @@ public class ProjectJobDO extends BaseAggregationRoot<ProjectJobDO> {
         public String getProjectId(ProjectJobDO source) {
             return source.getUpk().getProjectId();
         }
-    }
-
-    @Override
-    public String getProjectId() {
-        return this.upk.projectId;
     }
 }
