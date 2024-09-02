@@ -35,6 +35,22 @@ import java.util.ArrayList;
  */
 public class EncryptUtilsTest {
 
+    private static Process initCmd() throws IOException {
+        String[] commands = {
+                "/bin/sh", "-c",
+                "openssl genpkey -algorithm RSA -out root.key -aes256 -pass pass:rootpass && " +
+                        "openssl req -x509 -new -key root.key -sha256 -days 3650 -out root.crt -subj \"/C=US/ST=CA/L=San Francisco/O=MyOrg/OU=MyUnit/CN=Root CA\" -passin pass:rootpass && " +
+                        "openssl genpkey -algorithm RSA -out intermediate.key -aes256 -pass pass:intermediatepass && " +
+                        "openssl req -new -key intermediate.key -out intermediate.csr -subj \"/C=US/ST=CA/L=San Francisco/O=MyOrg/OU=MyUnit/CN=Intermediate CA\" -passin pass:intermediatepass && " +
+                        "openssl x509 -req -in intermediate.csr -CA root.crt -CAkey root.key -CAcreateserial -out intermediate.crt -days 3650 -sha256 -passin pass:rootpass"
+        };
+
+        ProcessBuilder pb = new ProcessBuilder(commands);
+        pb.redirectErrorStream(true);
+
+        return pb.start();
+    }
+
     @Test
     public void decodeCertificateInvalidBase64() {
         String base64 = "invalid_base64";
@@ -73,23 +89,6 @@ public class EncryptUtilsTest {
     @Test
     public void testComparePubKeyFalse() {
         EncryptUtils.compareCertPubKey("", "");
-    }
-
-
-    private static Process initCmd() throws IOException {
-        String[] commands = {
-                "/bin/sh", "-c",
-                "openssl genpkey -algorithm RSA -out root.key -aes256 -pass pass:rootpass && " +
-                        "openssl req -x509 -new -key root.key -sha256 -days 3650 -out root.crt -subj \"/C=US/ST=CA/L=San Francisco/O=MyOrg/OU=MyUnit/CN=Root CA\" -passin pass:rootpass && " +
-                        "openssl genpkey -algorithm RSA -out intermediate.key -aes256 -pass pass:intermediatepass && " +
-                        "openssl req -new -key intermediate.key -out intermediate.csr -subj \"/C=US/ST=CA/L=San Francisco/O=MyOrg/OU=MyUnit/CN=Intermediate CA\" -passin pass:intermediatepass && " +
-                        "openssl x509 -req -in intermediate.csr -CA root.crt -CAkey root.key -CAcreateserial -out intermediate.crt -days 3650 -sha256 -passin pass:rootpass"
-        };
-
-        ProcessBuilder pb = new ProcessBuilder(commands);
-        pb.redirectErrorStream(true);
-
-        return pb.start();
     }
 
 

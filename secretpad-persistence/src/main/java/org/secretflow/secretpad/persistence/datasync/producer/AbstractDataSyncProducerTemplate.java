@@ -22,6 +22,7 @@ import org.secretflow.secretpad.persistence.entity.BaseAggregationRoot;
 import org.secretflow.secretpad.persistence.model.DataSyncConfig;
 
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -34,11 +35,12 @@ import org.springframework.beans.factory.annotation.Value;
 @Slf4j
 @RequiredArgsConstructor
 public abstract class AbstractDataSyncProducerTemplate {
-    @Value("${secretpad.platform-type}")
-    public String platformType;
     public final DataSyncConfig dataSyncConfig;
     public final DataSyncDataBufferTemplate dataSyncDataBufferTemplate;
     public final PaddingNodeService p2pPaddingNodeServiceImpl;
+    @Value("${secretpad.platform-type}")
+    @Setter
+    public String platformType;
 
     /**
      * if return ture ignore db event to sync data to remote storage

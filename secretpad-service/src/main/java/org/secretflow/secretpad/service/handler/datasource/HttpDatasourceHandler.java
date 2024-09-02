@@ -17,19 +17,25 @@
 package org.secretflow.secretpad.service.handler.datasource;
 
 import org.secretflow.secretpad.common.constant.Constants;
+import org.secretflow.secretpad.common.constant.DomainConstants;
 import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
+import org.secretflow.secretpad.service.EnvService;
+import org.secretflow.secretpad.service.InstService;
 import org.secretflow.secretpad.service.model.datasource.DatasourceDetailRequest;
-import org.secretflow.secretpad.service.model.datasource.DatasourceDetailVO;
-import org.secretflow.secretpad.service.model.datasource.DatasourceListInfo;
-import org.secretflow.secretpad.service.model.datasource.DatasourceListRequest;
+import org.secretflow.secretpad.service.model.datasource.DatasourceDetailUnAggregateDTO;
+import org.secretflow.secretpad.service.model.datasource.DatasourceListInfoUnAggregate;
+import org.secretflow.secretpad.service.model.node.NodeVO;
 
 import com.google.common.collect.Lists;
+import jakarta.annotation.Resource;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * @author chenmingliang
@@ -41,6 +47,12 @@ import java.util.List;
 public class HttpDatasourceHandler extends AbstractDatasourceHandler {
 
 
+    @Resource
+    private InstService instService;
+
+    @Resource
+    private EnvService envService;
+
     @Override
 
     public List<DataSourceTypeEnum> supports() {
@@ -48,25 +60,39 @@ public class HttpDatasourceHandler extends AbstractDatasourceHandler {
     }
 
     @Override
-    public List<DatasourceListInfo> listDatasource(DatasourceListRequest datasourceListRequest) {
+    public List<DatasourceListInfoUnAggregate> listDatasource(String nodeId) {
         log.info("list http datasource");
-        DatasourceListInfo info = new DatasourceListInfo();
-        info.setNodeId(datasourceListRequest.getNodeId());
+        DatasourceListInfoUnAggregate info = new DatasourceListInfoUnAggregate();
+        info.setNodeId(nodeId);
         info.setDatasourceId(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID);
         info.setName(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_NAME);
         info.setType(DataSourceTypeEnum.HTTP.name());
-        info.setStatus(Constants.STATUS_AVAILABLE);
+        if (envService.isAutonomy()){
+            Map<String, String> nodeVOMap = instService.listNode().stream().collect(Collectors.toMap(NodeVO::getNodeId, NodeVO::getNodeStatus));
+            info.setStatus(nodeVOMap.get(nodeId) == null ? Constants.STATUS_UNAVAILABLE : parses(nodeVOMap.get(nodeId)));
+        }else{
+            info.setStatus(Constants.STATUS_AVAILABLE);
+        }
         return Lists.newArrayList(info);
     }
 
+    private String parses(String nodeStatus) {
+        String status;
+        switch (nodeStatus) {
+            case DomainConstants.NODE_READY -> status = Constants.STATUS_AVAILABLE;
+            default -> status = Constants.STATUS_UNAVAILABLE;
+        }
+        return status;
+    }
+
     @Override
-    public DatasourceDetailVO datasourceDetail(DatasourceDetailRequest datasourceDetailRequest) {
-        DatasourceDetailVO datasourceDetailVO = new DatasourceDetailVO();
-        datasourceDetailVO.setNodeId(datasourceDetailRequest.getNodeId());
-        datasourceDetailVO.setType(DataSourceTypeEnum.HTTP.name());
-        datasourceDetailVO.setName(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_NAME);
-        datasourceDetailVO.setDatasourceId(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID);
-        datasourceDetailVO.setStatus(Constants.STATUS_AVAILABLE);
-        return datasourceDetailVO;
+    public DatasourceDetailUnAggregateDTO datasourceDetail(DatasourceDetailRequest datasourceDetailRequest) {
+        DatasourceDetailUnAggregateDTO datasourceDetailUnAggregateDTO = new DatasourceDetailUnAggregateDTO();
+        datasourceDetailUnAggregateDTO.setNodeId(datasourceDetailRequest.getOwnerId());
+        datasourceDetailUnAggregateDTO.setType(DataSourceTypeEnum.HTTP.name());
+        datasourceDetailUnAggregateDTO.setName(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_NAME);
+        datasourceDetailUnAggregateDTO.setDatasourceId(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID);
+        datasourceDetailUnAggregateDTO.setStatus(Constants.STATUS_AVAILABLE);
+        return datasourceDetailUnAggregateDTO;
     }
 }

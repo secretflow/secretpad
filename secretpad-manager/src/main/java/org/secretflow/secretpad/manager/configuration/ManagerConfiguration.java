@@ -27,8 +27,10 @@ import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 import org.secretflow.secretpad.manager.integration.job.JobManager;
 import org.secretflow.secretpad.persistence.repository.*;
 
+import org.springframework.beans.factory.config.ConfigurableBeanFactory;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
 
 /**
  * Manager configuration init bean
@@ -64,10 +66,10 @@ public class ManagerConfiguration {
      * @param modelRepository
      * @param reportRepository
      * @param managementRepository
-     * @param jobStub
      * @return abstract job manager
      */
     @Bean
+    @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
     AbstractJobManager jobManager(
             ProjectJobRepository projectJobRepository,
             AbstractDatatableManager datatableManager,

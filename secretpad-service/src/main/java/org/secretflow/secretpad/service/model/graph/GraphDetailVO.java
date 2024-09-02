@@ -66,25 +66,6 @@ public class GraphDetailVO {
      */
     private List<DataSourceConfig> dataSourceConfig;
 
-    @Setter
-    @Getter
-    @ToString
-    @NoArgsConstructor
-    @AllArgsConstructor
-    @Builder
-    @EqualsAndHashCode
-    public static class DataSourceConfig implements Serializable {
-        @Serial
-        private static final long serialVersionUID = 1L;
-
-        private Boolean editEnable;
-        private String nodeId;
-        private String nodeName;
-        private String dataSourceName;
-        private String dataSourceId;
-    }
-
-
     /**
      * Build a new graph detail view object from project graph data object and graph node status view object list
      *
@@ -102,5 +83,23 @@ public class GraphDetailVO {
                 .edges(GraphEdge.fromDOList(graphDO.getEdges()))
                 .maxParallelism(graphDO.getMaxParallelism())
                 .build();
+    }
+
+    @Setter
+    @Getter
+    @ToString
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    @EqualsAndHashCode
+    public static class DataSourceConfig implements Serializable {
+        @Serial
+        private static final long serialVersionUID = 1L;
+
+        private Boolean editEnable;
+        private String nodeId;
+        private String nodeName;
+        private String dataSourceName;
+        private String dataSourceId;
     }
 }

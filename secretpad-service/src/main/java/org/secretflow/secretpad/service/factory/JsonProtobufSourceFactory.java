@@ -56,9 +56,11 @@ public class JsonProtobufSourceFactory {
         List<CompListDef> items = new ArrayList<>();
         List<CompListDef> resp = new ArrayList<>();
         List<ComponentDef> secretpad = new ArrayList<>();
+        List<ComponentDef> secretpad_tee = new ArrayList<>();
         for (String location : locations) {
             File dir = ResourceUtils.getFile(location);
             File[] files = dir.listFiles();
+            assert files != null;
             for (File file : files) {
                 Message.Builder itemBuilder = CompListDef.newBuilder();
                 JsonFormat.parser().ignoringUnknownFields().merge(new FileReader(file), itemBuilder);
@@ -67,14 +69,25 @@ public class JsonProtobufSourceFactory {
                 if (compListDef.getName().equals(ComponentConstants.SECRETPAD)) {
                     secretpad = compListDef.getCompsList();
                 }
+                if (compListDef.getName().equals(ComponentConstants.SECRETPAD_TEE)) {
+                    secretpad_tee = compListDef.getCompsList();
+                }
             }
         }
         for (CompListDef item : items) {
-            if (!item.getName().equals(ComponentConstants.SECRETPAD)) {
-                CompListDef build = item.toBuilder().addAllComps(secretpad).build();
-                resp.add(build);
-            } else {
-                resp.add(item);
+            String name = item.getName();
+            switch (name) {
+                case ComponentConstants.SECRETPAD, ComponentConstants.SECRETPAD_TEE:
+                    resp.add(item);
+                    break;
+                case ComponentConstants.TRUSTEDFLOW:
+                    resp.add(item.toBuilder().addAllComps(secretpad_tee).build());
+                    break;
+                case ComponentConstants.SECRETFLOW:
+                    resp.add(item.toBuilder().addAllComps(secretpad).build());
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unknown component name: " + name);
             }
         }
         return resp;

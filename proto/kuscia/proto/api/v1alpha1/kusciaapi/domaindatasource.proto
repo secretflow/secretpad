@@ -22,88 +22,88 @@ option go_package = "github.com/secretflow/kuscia/proto/api/v1alpha1/kusciaapi";
 option java_package = "org.secretflow.v1alpha1.kusciaapi";
 
 service DomainDataSourceService {
-    rpc CreateDomainDataSource(CreateDomainDataSourceRequest) returns (CreateDomainDataSourceResponse);
+  rpc CreateDomainDataSource(CreateDomainDataSourceRequest) returns (CreateDomainDataSourceResponse);
 
-    rpc QueryDomainDataSource(QueryDomainDataSourceRequest) returns (QueryDomainDataSourceResponse);
+  rpc QueryDomainDataSource(QueryDomainDataSourceRequest) returns (QueryDomainDataSourceResponse);
 
-    rpc UpdateDomainDataSource(UpdateDomainDataSourceRequest) returns (UpdateDomainDataSourceResponse);
+  rpc UpdateDomainDataSource(UpdateDomainDataSourceRequest) returns (UpdateDomainDataSourceResponse);
 
-    rpc DeleteDomainDataSource(DeleteDomainDataSourceRequest) returns (DeleteDomainDataSourceResponse);
+  rpc DeleteDomainDataSource(DeleteDomainDataSourceRequest) returns (DeleteDomainDataSourceResponse);
 
-    rpc BatchQueryDomainDataSource(BatchQueryDomainDataSourceRequest) returns (BatchQueryDomainDataSourceResponse);
+  rpc BatchQueryDomainDataSource(BatchQueryDomainDataSourceRequest) returns (BatchQueryDomainDataSourceResponse);
 
-    rpc ListDomainDataSource(ListDomainDataSourceRequest) returns (ListDomainDataSourceResponse);
+  rpc ListDomainDataSource(ListDomainDataSourceRequest) returns (ListDomainDataSourceResponse);
 }
 
 message CreateDomainDataSourceRequest {
-    RequestHeader header = 1;
-    string domain_id = 2;
-    string datasource_id = 3;
-    string type = 4;
-    optional string name = 5;
-    optional DataSourceInfo info = 6;
-    optional string info_key = 7;
-    optional bool access_directly = 8;
+  RequestHeader header = 1;
+  string domain_id = 2;
+  string datasource_id = 3;
+  string type = 4;
+  optional string name = 5;
+  optional DataSourceInfo info = 6;
+  optional string info_key = 7;
+  optional bool access_directly = 8;
 }
 
 message CreateDomainDataSourceResponse {
-    Status status = 1;
-    CreateDomainDataSourceResponseData data = 2;
+  Status status = 1;
+  CreateDomainDataSourceResponseData data = 2;
 }
 
 message CreateDomainDataSourceResponseData {
-    string datasource_id = 1;
+  string datasource_id = 1;
 }
 
 message UpdateDomainDataSourceRequest {
-    RequestHeader header = 1;
-    string domain_id = 2;
-    string datasource_id = 3;
-    string type = 4;
-    optional string name = 5;
-    optional DataSourceInfo info = 6;
-    optional string info_key = 7;
-    optional bool access_directly = 8;
+  RequestHeader header = 1;
+  string domain_id = 2;
+  string datasource_id = 3;
+  string type = 4;
+  optional string name = 5;
+  optional DataSourceInfo info = 6;
+  optional string info_key = 7;
+  optional bool access_directly = 8;
 }
 
 message UpdateDomainDataSourceResponse {
-    Status status = 1;
+  Status status = 1;
 }
 
 message DeleteDomainDataSourceRequest {
-    RequestHeader header = 1;
-    string domain_id = 2;
-    string datasource_id = 3;
+  RequestHeader header = 1;
+  string domain_id = 2;
+  string datasource_id = 3;
 }
 
 message DeleteDomainDataSourceResponse {
-    Status status = 1;
+  Status status = 1;
 }
 
 message QueryDomainDataSourceRequest {
-    RequestHeader header = 1;
-    string domain_id = 2;
-    string datasource_id = 3;
+  RequestHeader header = 1;
+  string domain_id = 2;
+  string datasource_id = 3;
 }
 
 message QueryDomainDataSourceResponse {
-    Status status = 1;
-    DomainDataSource data = 2;
+  Status status = 1;
+  DomainDataSource data = 2;
 }
 
 message QueryDomainDataSourceRequestData {
-    string domain_id = 1;
-    string datasource_id = 2;
+  string domain_id = 1;
+  string datasource_id = 2;
 }
 
 message BatchQueryDomainDataSourceRequest {
-    RequestHeader header = 1;
-    repeated QueryDomainDataSourceRequestData data =2;
+  RequestHeader header = 1;
+  repeated QueryDomainDataSourceRequestData data = 2;
 }
 
 message BatchQueryDomainDataSourceResponse {
-    Status   status = 1;
-    DomainDataSourceList data = 2;
+  Status   status = 1;
+  DomainDataSourceList data = 2;
 }
 
 message ListDomainDataSourceRequest {
@@ -118,7 +118,7 @@ message ListDomainDataSourceResponse {
 }
 
 message DomainDataSourceList {
-    repeated DomainDataSource datasource_list = 1;
+  repeated DomainDataSource datasource_list = 1;
 }
 
 message DomainDataSource {
@@ -148,51 +148,61 @@ message DomainDataSource {
 }
 
 message DataSourceInfo {
-    // there is only one of the localfs or the oss in the DataSourceInfo
-    // LocalDataSourceInfo is exist only if the type of datasource is localfs
-    // OssDataSourceInfo is exist only if the type of datasource is oss
-    LocalDataSourceInfo localfs = 1;
-    // oss not support now
-    OssDataSourceInfo oss = 2;
-    // Relational database info, such as Mysql/oracle/postgres
-    DatabaseDataSourceInfo database = 3;
+  // there is only one of the localfs or the oss in the DataSourceInfo
+  // LocalDataSourceInfo is exist only if the type of datasource is localfs
+  // OssDataSourceInfo is exist only if the type of datasource is oss
+  LocalDataSourceInfo localfs = 1;
+  // aws s3 object storage service
+  OssDataSourceInfo oss = 2;
+  // Relational database info, such as Mysql/oracle/postgres
+  DatabaseDataSourceInfo database = 3;
+  // aliyun odps(MaxCompute)
+  OdpsDataSourceInfo odps = 4;
 }
 
 // datasource info for local path
 message LocalDataSourceInfo {
-    // the local path of datasource
-    string path = 1;
+  // the local path of datasource
+  string path = 1;
 }
 
 // datasource info for oss
 // oss not support now
 message OssDataSourceInfo {
-    // endpoint https://oss.xxx.cn-xxx.com or http://127.0.0.1:9000
-    string endpoint = 1;
-    // the bucket name of the oss datasource
-    string bucket = 2;
-    // the prefix of the oss datasource. e.g.  data/traindata/
-    string prefix = 3;
-    // access key
-    string access_key_id = 4;
-    // access secret
-    string access_key_secret = 5;
-    // virtualhost is the same as AliyunOSS's virtualhost , default true
-    bool virtualhost = 6;
-    // optional enum[s3v2,s3v4]
-    string version = 7;
-    // optional enum[oss,minio] , default oss
-    string storage_type = 8;
+  // endpoint https://oss.xxx.cn-xxx.com or http://127.0.0.1:9000
+  string endpoint = 1;
+  // the bucket name of the oss datasource
+  string bucket = 2;
+  // the prefix of the oss datasource. e.g.  data/traindata/
+  string prefix = 3;
+  // access key
+  string access_key_id = 4;
+  // access secret
+  string access_key_secret = 5;
+  // virtualhost is the same as AliyunOSS's virtualhost , default true
+  bool virtualhost = 6;
+  // optional enum[s3v2,s3v4]
+  string version = 7;
+  // optional enum[oss,minio] , default oss
+  string storage_type = 8;
 }
 
 // datasource info for mysql/oracle/postgres
 message DatabaseDataSourceInfo {
-    // endpoint for database, such as localhost:3306
-    string endpoint = 1;
-    // user name of account to access database
-    string user = 2;
-    // password of account to access database
-    string password = 3;
-    // database name
-    string database = 4;
+  // endpoint for database, such as localhost:3306
+  string endpoint = 1;
+  // user name of account to access database
+  string user = 2;
+  // password of account to access database
+  string password = 3;
+  // database name
+  string database = 4;
+}
+
+message OdpsDataSourceInfo {
+  // ODPS address such as "https://odps.xxx.cn-xxx.com"
+  string endpoint = 1;
+  string project = 2;
+  string access_key_id = 3;
+  string access_key_secret = 4;
 }

@@ -48,6 +48,16 @@ public class CenterDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate
         return QUEUE.take();
     }
 
+    /**
+     * pop data at first of buffer
+     *
+     * @param nodeId
+     */
+    @Override
+    public EntityChangeListener.DbChangeEvent<BaseAggregationRoot> pool(String nodeId) throws InterruptedException {
+        return QUEUE.poll();
+    }
+
     @Override
     public int size(String nodeId) {
         return QUEUE.size();

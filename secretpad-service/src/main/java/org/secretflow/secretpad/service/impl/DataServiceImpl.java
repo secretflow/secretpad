@@ -22,16 +22,16 @@ import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.AuthErrorCode;
 import org.secretflow.secretpad.common.errorcode.DataErrorCode;
+import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
-import org.secretflow.secretpad.common.util.CompressUtils;
-import org.secretflow.secretpad.common.util.SafeFileUtils;
-import org.secretflow.secretpad.common.util.TypeConvertUtils;
-import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.common.util.*;
 import org.secretflow.secretpad.manager.integration.data.AbstractDataManager;
 import org.secretflow.secretpad.manager.integration.model.NodeResultDTO;
 import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
+import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.service.DataService;
+import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.model.data.*;
 
 import org.slf4j.Logger;
@@ -42,7 +42,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
@@ -71,6 +73,9 @@ public class DataServiceImpl implements DataService {
 
     @Autowired
     private AbstractNodeManager nodeManager;
+
+    @Autowired
+    private EnvService envService;
 
     @Value("${secretpad.data.dir-path:/app/data/}")
     private String storeDir;
@@ -113,6 +118,11 @@ public class DataServiceImpl implements DataService {
 
     @Override
     public String createData(CreateDataRequest request) {
+        // In p2p mode, only local data can be uploaded to the master node
+        if (!request.getNodeId().equals(envService.getPlatformNodeId()) && envService.isAutonomy()) {
+            LOGGER.error("The nodeId is not the platform node id.");
+            throw SecretpadException.of(NodeErrorCode.NODE_NOT_EXIST_ERROR);
+        }
         return dataManager.createData(
                 request.getNodeId(),
                 request.getName(),
@@ -121,15 +131,11 @@ public class DataServiceImpl implements DataService {
                 request.getDescription(),
                 request.getDatasourceType(),
                 request.getDatasourceName(),
-                request.getDatatableSchema()
+                request.getDatatableSchema(),
+                request.getNullStrs()
         );
     }
 
-    @Override
-    public String createDataByDataSource(CreateDataByDataSourceRequest request) {
-        return dataManager.createDataByDataSource(request.getNodeId(), request.getName(), request.getTablePath(),
-                request.getDatasourceId(), request.getDescription(), request.getDatasourceType(), request.getDatasourceName(), request.getDatatableSchema());
-    }
 
     @Override
     public DownloadInfo download(DownloadDataRequest request) {
@@ -158,25 +164,44 @@ public class DataServiceImpl implements DataService {
                 LOGGER.error("The result ralative uri file {} is not in the storeDir {}", filePath, dir);
                 throw SecretpadException.of(DataErrorCode.FILE_NOT_EXISTS_ERROR);
             }
-            String downloadFilePath = null;
             String fileName = null;
+            int fileLength = 0;
+            InputStream inputStream = null;
             if (f.isDirectory()) {
                 LOGGER.info("Download process got a dir to download, whose relative uri = {}", relativeUri);
                 CompressUtils.compress(filePath, dir, relativeUri);
                 fileName = relativeUri + ".tar.gz";
                 // since it is a new compressed file, add a suffix
-                downloadFilePath = dir + fileName;
-
+                inputStream = new FileInputStream(dir + fileName);
+                fileLength = (int) new File(dir + fileName).length();
             } else {
-                LOGGER.info("Download process got a  real csv file to download, whose relative uri = {}", relativeUri);
-                fileName = relativeUri + ".csv";
-                // since the source file is already csv, there is no need to add a suffix, but the file name returned above is suffixed
-                downloadFilePath = dir + relativeUri;
+                ResultKind kind = ResultKind.fromDatatable(nodeResult.getResultKind());
+                switch (kind){
+                    case Model:
+                    case Rule: {
+                        //model and rule
+                        CompressUtils.compressTar(List.of(new File(filePath)),filePath,dir,relativeUri);
+                        // a new compressed file, add a suffix
+                        fileName = relativeUri + ".tar.gz";
+                        inputStream = new FileInputStream(dir + fileName);
+                        fileLength = (int) new File(dir + fileName).length();
+                        break;
+                    }
+                    default: {
+                        LOGGER.info("Download process got a  real csv file to download, whose relative uri = {}", relativeUri);
+                        fileName = relativeUri + ".csv";
+                        // since the source file is already csv, there is no need to add a suffix, but the file name returned above is suffixed
+                        inputStream = new FileInputStream(dir + relativeUri);
+                        fileLength = inputStream.available();
+                        break;
+                    }
+                }
             }
             LOGGER.info("When download, the ralative uri = {}. the real file path = {}", relativeUri, filePath);
             return DownloadInfo.builder()
                     .fileName(fileName)
-                    .filePath(downloadFilePath)
+                    .fileLength(fileLength)
+                    .inputStream(inputStream)
                     .build();
         } catch (IOException e) {
             LOGGER.error("IO exception: {}", e.getMessage());

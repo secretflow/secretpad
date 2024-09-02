@@ -51,24 +51,36 @@ import java.util.stream.Collectors;
 @Slf4j
 public class SLSCloudLogServiceImpl implements ICloudLogService {
 
-    private final String projectName;
-
-    private final Client client;
-
     private static final String searchIndex = "\"__tag__:__path__\"";
-
-    private final ProjectJobTaskRepository taskRepository;
-
-    private final NodeRepository nodeRepository;
-
     private static final String LOG_STORE_PREFIX = "secretpad-engin-log-";
-
     private static final String EMBED_ALICE = "alice";
     private static final String EMBED_BOB = "bob";
-
+    private final String projectName;
+    private final Client client;
+    private final ProjectJobTaskRepository taskRepository;
+    private final NodeRepository nodeRepository;
     private String localNodeId;
 
     private String platformType;
+
+    public SLSCloudLogServiceImpl(LogConfigProperties.SLSConfig slsConfig, String platformType, String nodeId, ProjectJobTaskRepository taskRepository, NodeRepository nodeRepository) throws LogException {
+        this.projectName = slsConfig.getProject();
+        this.client = new Client(slsConfig.getHost(), slsConfig.getAk(), slsConfig.getSk());
+        this.taskRepository = taskRepository;
+        this.nodeRepository = nodeRepository;
+        this.localNodeId = nodeId;
+        this.platformType = platformType;
+        queryOrCreateProject(projectName);
+        queryOrCreateLogStore(projectName, platformType, nodeId);
+    }
+
+    public SLSCloudLogServiceImpl(ProjectJobTaskRepository taskRepository, NodeRepository nodeRepository, Client client, LogConfigProperties.SLSConfig slsConfig, String platformType) {
+        this.taskRepository = taskRepository;
+        this.nodeRepository = nodeRepository;
+        this.client = client;
+        this.projectName = slsConfig.getProject();
+        this.platformType = platformType;
+    }
 
     @Override
     public CloudGraphNodeTaskLogsVO fetchLog(GraphNodeCloudLogsRequest request) {
@@ -119,26 +131,6 @@ public class SLSCloudLogServiceImpl implements ICloudLogService {
             }
         }
     }
-
-    public SLSCloudLogServiceImpl(LogConfigProperties.SLSConfig slsConfig, String platformType, String nodeId, ProjectJobTaskRepository taskRepository, NodeRepository nodeRepository) throws LogException {
-        this.projectName = slsConfig.getProject();
-        this.client = new Client(slsConfig.getHost(), slsConfig.getAk(), slsConfig.getSk());
-        this.taskRepository = taskRepository;
-        this.nodeRepository = nodeRepository;
-        this.localNodeId = nodeId;
-        this.platformType = platformType;
-        queryOrCreateProject(projectName);
-        queryOrCreateLogStore(projectName, platformType, nodeId);
-    }
-
-    public SLSCloudLogServiceImpl(ProjectJobTaskRepository taskRepository, NodeRepository nodeRepository, Client client, LogConfigProperties.SLSConfig slsConfig, String platformType) {
-        this.taskRepository = taskRepository;
-        this.nodeRepository = nodeRepository;
-        this.client = client;
-        this.projectName = slsConfig.getProject();
-        this.platformType = platformType;
-    }
-
 
     private void createProject(String projectName) throws LogException {
         CreateProjectRequest createProjectRequest = new CreateProjectRequest(projectName, "", "");

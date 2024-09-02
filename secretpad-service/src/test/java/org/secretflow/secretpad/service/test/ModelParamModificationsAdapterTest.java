@@ -50,13 +50,6 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 public class ModelParamModificationsAdapterTest {
 
-    @InjectMocks
-    private ModelParamModificationsAdapter modelParamModificationsAdapter;
-
-    @Mock
-    private ProjectReadDtaRepository readDtaRepository;
-
-
     private static final String NODE_DEF_EMPTY = """
             {
                     "attrPaths": [
@@ -104,7 +97,10 @@ public class ModelParamModificationsAdapterTest {
                     "version": "0.0.1"
              }
             """;
-
+    @InjectMocks
+    private ModelParamModificationsAdapter modelParamModificationsAdapter;
+    @Mock
+    private ProjectReadDtaRepository readDtaRepository;
 
     @Test
     void adapterWriteTest() {

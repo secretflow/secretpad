@@ -41,19 +41,20 @@ public class DynamicKusciaChannelProviderTest {
 
     private static final KusciaGrpcConfig config = new KusciaGrpcConfig();
 
-    @BeforeEach
-    void setUp() {
-        UserContext.setBaseUser(UserContextDTO.builder()
-                .ownerId("alice")
-                .build());
-    }
-
     static {
         config.setHost(MockKusciaGrpcServer.HOST);
         config.setPort(MockKusciaGrpcServer.PORT);
         config.setProtocol(KusciaProtocolEnum.NOTLS);
         config.setMode(KusciaModeEnum.P2P);
         config.setDomainId("alice");
+    }
+
+    @BeforeEach
+    void setUp() {
+        UserContext.setBaseUser(UserContextDTO.builder()
+                .ownerId("alice")
+                .platformNodeId("alice")
+                .build());
     }
 
     @Test
@@ -63,6 +64,7 @@ public class DynamicKusciaChannelProviderTest {
         dynamicKusciaGrpcConfig.setNodes(new HashSet<>());
         service.setDynamicKusciaGrpcConfig(dynamicKusciaGrpcConfig);
         service.registerKuscia(config);
+        service.setNodeId("alice");
         DomainServiceGrpc.DomainServiceBlockingStub domainServiceBlockingStub = service.currentStub(DomainServiceGrpc.DomainServiceBlockingStub.class);
         Assertions.assertThrows(StatusRuntimeException.class, () -> domainServiceBlockingStub.queryDomain(null));
         Assertions.assertThrows(StatusRuntimeException.class, () -> domainServiceBlockingStub.createDomain(null));

@@ -42,6 +42,12 @@ import java.lang.reflect.InvocationTargetException;
 @Component
 public class KusciaApiServiceAspect {
 
+    public static Object createInstance(Class<?> type) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
+        Constructor<?> constructor = type.getDeclaredConstructor();
+        constructor.setAccessible(true);
+        return constructor.newInstance();
+    }
+
     @Pointcut("execution(public * org.secretflow.secretpad.kuscia.v1alpha1.service.impl..*(..))")
     public void serviceLayerExecution() {
     }
@@ -92,12 +98,5 @@ public class KusciaApiServiceAspect {
             log.error("Failed to create instance of type: {}", type.getName(), ex);
             return null;
         }
-    }
-
-
-    public static Object createInstance(Class<?> type) throws NoSuchMethodException, InvocationTargetException, InstantiationException, IllegalAccessException {
-        Constructor<?> constructor = type.getDeclaredConstructor();
-        constructor.setAccessible(true);
-        return constructor.newInstance();
     }
 }

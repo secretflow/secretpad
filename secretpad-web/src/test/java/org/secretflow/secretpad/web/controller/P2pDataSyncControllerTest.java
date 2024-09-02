@@ -17,8 +17,9 @@
 package org.secretflow.secretpad.web.controller;
 
 
+import org.secretflow.secretpad.common.constant.SystemConstants;
 import org.secretflow.secretpad.common.dto.SyncDataDTO;
-import org.secretflow.secretpad.persistence.datasync.route.RouteDetection;
+import org.secretflow.secretpad.common.util.FileUtils;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.GraphJobStatus;
 import org.secretflow.secretpad.persistence.repository.*;
@@ -29,6 +30,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.context.TestPropertySource;
 
+import java.io.IOException;
 import java.util.List;
 
 /**
@@ -37,19 +39,34 @@ import java.util.List;
  */
 @Slf4j
 @TestPropertySource(properties = {
+        "spring.profiles.include=p2p",
         "secretpad.gateway=127.0.0.1:9001",
         "secretpad.datasync.p2p=true",
         "secretpad.datasync.center=false",
         "secretpad.platform-type=AUTONOMY",
-        "secretpad.node-id=test"
+        "secretpad.node-id=test",
+        "secretpad.inst-name=test",
+        "spring.flyway.locations=filesystem:./config/schema/p2p",
+        "spring.datasource.url=jdbc:sqlite:./db/secretpad_p2p.sqlite"
+
 })
 public class P2pDataSyncControllerTest extends ControllerTest {
+    @Resource
+    ProjectNodeRepository projectNodeRepository;
+    @Resource
+    DataSyncConsumerTemplate dataSyncConsumerTemplate;
+    @Resource
+    ProjectModelServiceRepository projectModelServiceRepository;
+    @Resource
+    ProjectModelPackRepository projectModelPackRepository;
+    @Resource
+    NodeRepository nodeRepository;
+    @Resource
+    ProjectGraphDomainDatasourceRepository projectGraphDomainDatasourceRepository;
     @Resource
     private ProjectRepository projectRepository;
     @Resource
     private ProjectDatatableRepository projectDatatableRepository;
-    @Resource
-    ProjectNodeRepository projectNodeRepository;
     @Resource
     private ProjectGraphRepository projectGraphRepository;
     @Resource
@@ -66,25 +83,13 @@ public class P2pDataSyncControllerTest extends ControllerTest {
     private ProjectApprovalConfigRepository projectApprovalConfigRepository;
     @Resource
     private ProjectGraphNodeKusciaParamsRepository projectGraphNodeKusciaParamsRepository;
-    @Resource
-    RouteDetection routeDetection;
-    @Resource
-    DataSyncConsumerTemplate dataSyncConsumerTemplate;
-    @Resource
-    ProjectModelServiceRepository projectModelServiceRepository;
-    @Resource
-    ProjectModelPackRepository projectModelPackRepository;
-    @Resource
-    NodeRepository nodeRepository;
 
-    @Resource
-    ProjectGraphDomainDatasourceRepository projectGraphDomainDatasourceRepository;
-
-    void saveProjectGraphDO() {
+    void saveProjectGraphDO() throws IOException {
+        String s = FileUtils.readFile2String(SystemConstants.USER_OWNER_ID_FILE);
         ProjectGraphDO projectGraphDO = ProjectGraphDO.builder()
                 .upk(new ProjectGraphDO.UPK("test", "test"))
                 .name("test")
-                .ownerId("test")
+                .ownerId(s)
                 .nodeMaxIndex(32)
                 .maxParallelism(1)
                 .build();
@@ -266,21 +271,21 @@ public class P2pDataSyncControllerTest extends ControllerTest {
 
     void saveNode() {
         nodeRepository.deleteAuthentic("a");
-        nodeRepository.saveAndFlush(NodeDO.builder().nodeId("a").mode(0).name("test").controlNodeId("test").build());
+        nodeRepository.saveAndFlush(NodeDO.builder().nodeId("a").mode(0).name("test").controlNodeId("test").instId("inst").build());
     }
 
     @Test
-    void testP2pDatasync() {
+    void testP2pDatasync() throws IOException {
         saveProjectNode();
-        routeDetection.addAvailableNode("a");
         projectRepository.deleteAllAuthentic();
         saveNode();
+        String s = FileUtils.readFile2String(SystemConstants.USER_OWNER_ID_FILE);
         ProjectDO projectDO = ProjectDO.builder()
                 .projectId("test")
                 .name("test")
-                .ownerId("test1")
+                .ownerId(s)
                 .status(0)
-                .description("")
+                .description("desc")
                 .computeMode("")
                 .computeFunc("")
                 .build();

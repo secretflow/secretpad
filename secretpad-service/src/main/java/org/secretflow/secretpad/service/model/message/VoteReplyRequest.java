@@ -40,8 +40,8 @@ public class VoteReplyRequest {
     private String reason;
 
     @NotBlank
-    private String voteID;
+    private String voteId;
 
     @NotBlank
-    private String voteParticipantID;
+    private String voteParticipantId;
 }

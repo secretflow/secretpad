@@ -30,7 +30,15 @@ public class ComponentConstants {
 
 
     public static final String SECRETPAD = "secretpad";
+    public static final String SECRETPAD_TEE = "secretpad_tee";
     public static final String SECRETFLOW = "secretflow";
+    public static final String TRUSTEDFLOW = "trustedflow";
     public static final String CHECKPOINT_SUB = "_checkpoint";
     public static final String CHECKPOINT_PRE = "ck";
+
+    public static final String DATA_TABLE_DELIMITER = "_";
+    public static final String DOMAIN_DATA_TABLE_DELIMITER = "-";
+
+    public static final String DATA_TABLE_PARTITION_DELIMITER = ",";
+    public static final String DOMAIN_DATA_TABLE_PARTITION_DELIMITER = ";";
 }

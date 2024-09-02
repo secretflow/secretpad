@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.service.model.message;
 
+
+import org.secretflow.secretpad.persistence.model.ParticipantNodeInstVO;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.Setter;
@@ -31,9 +33,9 @@ import java.util.List;
 @Builder
 public class ProjectCreateMessageDetail extends MessageDetailVO {
 
-    private String initiatorNodeID;
+    private String initiatorId;
 
-    private String initiatorNodeName;
+    private String initiatorName;
 
     private String projectName;
 
@@ -46,4 +48,8 @@ public class ProjectCreateMessageDetail extends MessageDetailVO {
     private String projectDesc;
 
     private String gmtCreated;
+
+    private List<ParticipantNodeInstVO> participantNodeInstVOS;
+
+
 }

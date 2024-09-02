@@ -24,8 +24,8 @@ import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.ApplicationContext;
 import org.springframework.context.event.EventListener;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Component;
@@ -41,8 +41,7 @@ import java.util.Arrays;
 public class JobSyncErrorOrCompletedEventListener {
 
     @Autowired
-    @Qualifier("jobManager")
-    private AbstractJobManager jobManager;
+    private ApplicationContext applicationContext;
 
     @Value("${secretpad.node-id}")
     private String nodeId;
@@ -52,10 +51,13 @@ public class JobSyncErrorOrCompletedEventListener {
 
     @EventListener
     public void onJobSyncEvent(JobSyncErrorOrCompletedEvent event) {
+        log.info("JobSyncErrorOrCompletedEventListener onJobSyncEvent {}", event.getNodeId());
         UserContext.setBaseUser(UserContextDTO.builder().ownerId(nodeId).build());
         String[] activeProfiles = env.getActiveProfiles();
         if (!Arrays.asList(activeProfiles).contains(SystemConstants.TEST)) {
-            jobManager.startSync();
+            AbstractJobManager jobManager = applicationContext.getBean("jobManager", AbstractJobManager.class);
+            log.info("JobSyncErrorOrCompletedEventListener onJobSyncEvent {} start again...", event.getNodeId());
+            jobManager.startSync(event.getNodeId());
         }
     }
 }

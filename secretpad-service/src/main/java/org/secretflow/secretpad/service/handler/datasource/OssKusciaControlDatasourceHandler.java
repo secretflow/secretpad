@@ -16,10 +16,15 @@
 
 package org.secretflow.secretpad.service.handler.datasource;
 
+import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
+import org.secretflow.secretpad.common.dto.KusciaResponse;
 import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatasourceErrorCode;
 import org.secretflow.secretpad.common.errorcode.KusciaGrpcErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
+import org.secretflow.secretpad.common.util.AsyncTaskExecutionUtils;
+import org.secretflow.secretpad.common.util.JsonUtils;
+import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.service.DatatableService;
 import org.secretflow.secretpad.service.EnvService;
@@ -27,7 +32,6 @@ import org.secretflow.secretpad.service.OssService;
 import org.secretflow.secretpad.service.decorator.awsoss.AwsOssConfig;
 import org.secretflow.secretpad.service.model.datasource.*;
 import org.secretflow.secretpad.service.model.datatable.DatatableVO;
-import org.secretflow.secretpad.service.util.HttpUtils;
 
 import com.google.common.collect.Lists;
 import lombok.AllArgsConstructor;
@@ -37,10 +41,9 @@ import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Locale;
-import java.util.Objects;
+import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 /**
@@ -67,21 +70,22 @@ public class OssKusciaControlDatasourceHandler extends AbstractDatasourceHandler
     }
 
     @Override
-    public List<DatasourceListInfo> listDatasource(DatasourceListRequest datasourceListRequest) {
+    public List<DatasourceListInfoUnAggregate> listDatasource(String nodeId) {
+        log.info("list datasource in kuscia");
         List<Domaindatasource.DomainDataSource> datasourceListInKuscia = new ArrayList<>();
-        Domaindatasource.ListDomainDataSourceRequest listDomainDataSourceRequest = Domaindatasource.ListDomainDataSourceRequest.newBuilder().setDomainId(datasourceListRequest.getNodeId()).build();
-        if (envService.isCenter() && envService.isEmbeddedNode(datasourceListRequest.getNodeId())) {
-            Domaindatasource.ListDomainDataSourceResponse listDomainDataSourceResponse = kusciaGrpcClientAdapter.listDomainDataSource(listDomainDataSourceRequest, datasourceListRequest.getNodeId());
+        Domaindatasource.ListDomainDataSourceRequest listDomainDataSourceRequest = Domaindatasource.ListDomainDataSourceRequest.newBuilder().setDomainId(nodeId).build();
+        if (envService.isCenter() && envService.isEmbeddedNode(nodeId)) {
+            Domaindatasource.ListDomainDataSourceResponse listDomainDataSourceResponse = kusciaGrpcClientAdapter.listDomainDataSource(listDomainDataSourceRequest, nodeId);
             Domaindatasource.DomainDataSourceList data = listDomainDataSourceResponse.getData();
             List<Domaindatasource.DomainDataSource> datasourceListList = data.getDatasourceListList();
             datasourceListInKuscia.addAll(datasourceListList);
         } else {
-            Domaindatasource.ListDomainDataSourceResponse listDomainDataSourceResponse = kusciaGrpcClientAdapter.listDomainDataSource(listDomainDataSourceRequest);
+            Domaindatasource.ListDomainDataSourceResponse listDomainDataSourceResponse = kusciaGrpcClientAdapter.listDomainDataSource(listDomainDataSourceRequest, nodeId);
             Domaindatasource.DomainDataSourceList data = listDomainDataSourceResponse.getData();
             List<Domaindatasource.DomainDataSource> datasourceListList = data.getDatasourceListList();
             datasourceListInKuscia.addAll(datasourceListList);
         }
-        return datasourceListInKuscia.stream().map(DatasourceListInfo::from).collect(Collectors.toList());
+        return datasourceListInKuscia.stream().map(DatasourceListInfoUnAggregate::from).collect(Collectors.toList());
     }
 
     @Override
@@ -94,18 +98,17 @@ public class OssKusciaControlDatasourceHandler extends AbstractDatasourceHandler
                 .endpoint(info.getEndpoint())
                 .build();
         ossService.checkBucketExists(awsOssConfig, info.getBucket());
-        return new CreateDatasourceVO(createDatasourceInKuscia(createDatasourceRequest, info));
-
+        return createDatasourceInKuscia(createDatasourceRequest, info);
     }
 
     @Override
-    public DatasourceDetailVO datasourceDetail(DatasourceDetailRequest datasourceDetailRequest) {
+    public DatasourceDetailUnAggregateDTO datasourceDetail(DatasourceDetailRequest datasourceDetailRequest) {
         return findDatasourceInKuscia(datasourceDetailRequest);
     }
 
     @Override
     public void deleteDatasource(DeleteDatasourceRequest deleteDatasourceRequest) {
-        List<DatatableVO> datatableVOS = datatableService.findDatatableByNodeId(deleteDatasourceRequest.getNodeId());
+        List<DatatableVO> datatableVOS = datatableService.findDatatableByNodeId(deleteDatasourceRequest.getOwnerId());
         if (!CollectionUtils.isEmpty(datatableVOS) &&
                 !datatableVOS.stream().filter(x -> StringUtils.equals(x.getDatasourceId(),
                         deleteDatasourceRequest.getDatasourceId())).findAny().isEmpty()) {
@@ -113,23 +116,17 @@ public class OssKusciaControlDatasourceHandler extends AbstractDatasourceHandler
         }
         Domaindatasource.DeleteDomainDataSourceRequest deleteDomainDataSourceRequest = Domaindatasource.DeleteDomainDataSourceRequest.newBuilder()
                 .setDatasourceId(deleteDatasourceRequest.getDatasourceId())
-                .setDomainId(deleteDatasourceRequest.getNodeId())
+                .setDomainId(deleteDatasourceRequest.getOwnerId())
                 .build();
-        if (envService.isCenter() && envService.isEmbeddedNode(deleteDatasourceRequest.getNodeId())) {
+        if (envService.isCenter() && envService.isEmbeddedNode(deleteDatasourceRequest.getOwnerId())) {
             kusciaGrpcClientAdapter
-                    .deleteDomainDataSource(deleteDomainDataSourceRequest, deleteDatasourceRequest.getNodeId());
+                    .deleteDomainDataSource(deleteDomainDataSourceRequest, deleteDatasourceRequest.getOwnerId());
         } else {
-            kusciaGrpcClientAdapter.deleteDomainDataSource(deleteDomainDataSourceRequest);
+            kusciaGrpcClientAdapter.deleteDomainDataSource(deleteDomainDataSourceRequest, deleteDatasourceRequest.getOwnerId());
         }
     }
 
-    private void serviceCheck(String endpoint) {
-        if (!HttpUtils.detection(endpoint)) {
-            throw SecretpadException.of(DatasourceErrorCode.DATA_SOURCE_ENDPOINT_CONNECT_FAIL);
-        }
-    }
-
-    private String createDatasourceInKuscia(CreateDatasourceRequest createDatasourceRequest, OssDatasourceInfo info) {
+    private CreateDatasourceVO createDatasourceInKuscia(CreateDatasourceRequest createDatasourceRequest, OssDatasourceInfo info) {
         log.info("start create datasource in kuscia");
         Domaindatasource.OssDataSourceInfo.Builder builder = Domaindatasource.OssDataSourceInfo.newBuilder()
                 .setEndpoint(info.getEndpoint())
@@ -142,37 +139,53 @@ public class OssKusciaControlDatasourceHandler extends AbstractDatasourceHandler
         if (Objects.nonNull(info.getVirtualhost())) {
             builder.setVirtualhost(info.getVirtualhost());
         }
-        Domaindatasource.CreateDomainDataSourceRequest createDomainDataSourceRequest = Domaindatasource.CreateDomainDataSourceRequest.newBuilder()
-                .setDomainId(createDatasourceRequest.getNodeId())
-                .setType(DataSourceTypeEnum.OSS.name().toLowerCase(Locale.ROOT))
-                .setName(createDatasourceRequest.getName())
-                .setAccessDirectly(true)
-                .setInfo(Domaindatasource.DataSourceInfo.newBuilder()
-                        .setOss(builder.build())).build();
-        if (envService.isCenter() && envService.isEmbeddedNode(createDatasourceRequest.getNodeId())) {
-            Domaindatasource.CreateDomainDataSourceResponse domainDataSource = kusciaGrpcClientAdapter.createDomainDataSource(createDomainDataSourceRequest, createDatasourceRequest.getNodeId());
-            if (domainDataSource.getStatus().getCode() != 0) {
-                throw SecretpadException.of(KusciaGrpcErrorCode.RPC_ERROR, domainDataSource.getStatus().getMessage());
+        //record the failed execution node
+        Map<String, String> failedDatasource = new ConcurrentHashMap<>(16);
+        String datasourceId = DomainDatasourceConstants.DATASOURCE_ID_PREFIX.concat(UUIDUtils.random(16));
+        List<CompletableFuture<KusciaResponse<Domaindatasource.CreateDomainDataSourceResponse>>> completableFutures = createDatasourceRequest.getNodeIds().stream().map(nodeId -> {
+            Domaindatasource.CreateDomainDataSourceRequest createDomainDataSourceRequest = Domaindatasource.CreateDomainDataSourceRequest.newBuilder()
+                    .setDomainId(nodeId)
+                    .setDatasourceId(datasourceId)
+                    .setType(DataSourceTypeEnum.OSS.name().toLowerCase(Locale.ROOT))
+                    .setName(createDatasourceRequest.getName())
+                    .setAccessDirectly(Boolean.FALSE)
+                    .setInfo(Domaindatasource.DataSourceInfo.newBuilder()
+                            .setOss(builder.build())).build();
+
+            return AsyncTaskExecutionUtils.executeDecoratedOperation(createDomainDataSourceRequest, this::createDomainDataSource, nodeId, failedDatasource);
+
+        }).collect(Collectors.toList());
+
+
+        fetchResult(failedDatasource, completableFutures);
+        if (!CollectionUtils.isEmpty(failedDatasource)) {
+            log.info("some node create datasource failed {}", JsonUtils.toJSONString(failedDatasource));
+            if (failedDatasource.size() == createDatasourceRequest.getNodeIds().size()) {
+                log.error("all node create datasource failed {}", JsonUtils.toJSONString(failedDatasource));
+                throw SecretpadException.of(DatasourceErrorCode.DATA_SOURCE_CREATE_FAIL, "all node create datasource failed");
             }
-            return domainDataSource.getData().getDatasourceId();
         }
-        Domaindatasource.CreateDomainDataSourceResponse domainDataSource = kusciaGrpcClientAdapter.createDomainDataSource(createDomainDataSourceRequest);
-        return domainDataSource.getData().getDatasourceId();
+        return new CreateDatasourceVO(datasourceId, failedDatasource);
     }
 
-    private DatasourceDetailVO findDatasourceInKuscia(DatasourceDetailRequest datasourceDetailRequest) {
+    private DatasourceDetailUnAggregateDTO findDatasourceInKuscia(DatasourceDetailRequest datasourceDetailRequest) {
         Domaindatasource.QueryDomainDataSourceRequest queryDomainDataSourceRequest = Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
                 .setDatasourceId(datasourceDetailRequest.getDatasourceId())
-                .setDomainId(datasourceDetailRequest.getNodeId())
+                .setDomainId(datasourceDetailRequest.getOwnerId())
                 .build();
-        if (envService.isCenter() && envService.isEmbeddedNode(datasourceDetailRequest.getNodeId())) {
-            Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaGrpcClientAdapter.queryDomainDataSource(queryDomainDataSourceRequest, datasourceDetailRequest.getNodeId());
+        if (envService.isCenter() && envService.isEmbeddedNode(datasourceDetailRequest.getOwnerId())) {
+            Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaGrpcClientAdapter.queryDomainDataSource(queryDomainDataSourceRequest, datasourceDetailRequest.getOwnerId());
             if (queryDomainDataSourceResponse.getStatus().getCode() != 0) {
                 throw SecretpadException.of(KusciaGrpcErrorCode.RPC_ERROR, queryDomainDataSourceResponse.getStatus().getMessage());
             }
-            return DatasourceDetailVO.from(queryDomainDataSourceResponse);
+            return DatasourceDetailUnAggregateDTO.from(queryDomainDataSourceResponse);
         }
-        Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaGrpcClientAdapter.queryDomainDataSource(queryDomainDataSourceRequest);
-        return DatasourceDetailVO.from(queryDomainDataSourceResponse);
+        Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaGrpcClientAdapter.queryDomainDataSource(queryDomainDataSourceRequest, datasourceDetailRequest.getOwnerId());
+        return DatasourceDetailUnAggregateDTO.from(queryDomainDataSourceResponse);
+    }
+
+    private KusciaResponse<Domaindatasource.CreateDomainDataSourceResponse> createDomainDataSource(Domaindatasource.CreateDomainDataSourceRequest request) {
+        Domaindatasource.CreateDomainDataSourceResponse domainDataSource = kusciaGrpcClientAdapter.createDomainDataSource(request, request.getDomainId());
+        return KusciaResponse.of(domainDataSource, request.getDomainId());
     }
 }

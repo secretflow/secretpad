@@ -23,12 +23,15 @@ import org.secretflow.secretpad.common.util.DateTimes;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
+import org.secretflow.secretpad.manager.integration.node.NodeManager;
 import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.ParticipantNodeInstVO;
 import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.model.project.*;
 import org.secretflow.secretpad.web.utils.FakerUtils;
-
+import com.google.common.collect.Lists;
+import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.secretflow.proto.pipeline.Pipeline;
@@ -36,6 +39,7 @@ import org.secretflow.v1alpha1.common.Common;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.*;
@@ -78,6 +82,12 @@ class ProjectControllerTest extends ControllerTest {
 
     @MockBean
     private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
+
+    @MockBean
+    private ProjectApprovalConfigRepository projectApprovalConfigRepository;
+    @Resource
+    private NodeManager nodeManager;
+
 
     private ProjectDO buildProjectDO() {
         return ProjectDO.builder().projectId(PROJECT_ID).ownerId(UserContext.getUser().getOwnerId()).build();
@@ -536,12 +546,21 @@ class ProjectControllerTest extends ControllerTest {
             GetProjectDatatableRequest request = FakerUtils.fake(GetProjectDatatableRequest.class);
             request.setProjectId(PROJECT_ID);
             request.setType("CSV");
-
+            ReflectionTestUtils.setField(nodeManager, "platformType", "AUTONOMY");
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_GET));
+            ProjectApprovalConfigDO projectApprovalConfigDO = new ProjectApprovalConfigDO();
+            projectApprovalConfigDO.setParties(Lists.newArrayList("alice -inst", "bob -inst", "carol -inst"));
+            projectApprovalConfigDO.setProjectId(PROJECT_ID);
+            projectApprovalConfigDO.setParticipantNodeInfo(
+                    List.of(new ParticipantNodeInstVO("alice1", "alice1name", List.of(new ParticipantNodeInstVO.NodeInstVO("bob", "bobname", "bob -inst", "bob -inst -name"))),
+                            new ParticipantNodeInstVO("alice2", "alice2name", List.of(new ParticipantNodeInstVO.NodeInstVO("carol", "bobname", "carol -inst", "carol -inst -name")))));
+            projectApprovalConfigDO.setParticipantNodeInfo(
+                    List.of(new ParticipantNodeInstVO("alice1", "alice1name", List.of(new ParticipantNodeInstVO.NodeInstVO("bob", "bobname", "bob -inst", "bob -inst -name"))),
+                            new ParticipantNodeInstVO("alice2", "alice2name", List.of(new ParticipantNodeInstVO.NodeInstVO("carol", "bobname", "carol -inst", "carol -inst -name")))));
+            Mockito.when(projectApprovalConfigRepository.findByProjectId(Mockito.anyString())).thenReturn(Optional.of(projectApprovalConfigDO));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
             Mockito.when(projectDatatableRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectDatatableDO()));
-
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);
             Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
             return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getProjectDatatable", GetProjectDatatableRequest.class)).
@@ -585,7 +604,16 @@ class ProjectControllerTest extends ControllerTest {
             GetProjectDatatableRequest request = FakerUtils.fake(GetProjectDatatableRequest.class);
             request.setProjectId(PROJECT_ID);
             request.setType("CSV");
-
+            ProjectApprovalConfigDO projectApprovalConfigDO = new ProjectApprovalConfigDO();
+            projectApprovalConfigDO.setParties(Lists.newArrayList("alice -inst", "bob -inst", "carol -inst"));
+            projectApprovalConfigDO.setProjectId(PROJECT_ID);
+            projectApprovalConfigDO.setParticipantNodeInfo(
+                    List.of(new ParticipantNodeInstVO("alice1", "alice1name", List.of(new ParticipantNodeInstVO.NodeInstVO("bob", "bobname", "bob -inst", "bob -inst -name"))),
+                            new ParticipantNodeInstVO("alice2", "alice2name", List.of(new ParticipantNodeInstVO.NodeInstVO("carol", "bobname", "carol -inst", "carol -inst -name")))));
+            projectApprovalConfigDO.setParticipantNodeInfo(
+                    List.of(new ParticipantNodeInstVO("alice1", "alice1name", List.of(new ParticipantNodeInstVO.NodeInstVO("bob", "bobname", "bob -inst", "bob -inst -name"))),
+                            new ParticipantNodeInstVO("alice2", "alice2name", List.of(new ParticipantNodeInstVO.NodeInstVO("carol", "bobname", "carol -inst", "carol -inst -name")))));
+            Mockito.when(projectApprovalConfigRepository.findByProjectId(Mockito.anyString())).thenReturn(Optional.of(projectApprovalConfigDO));
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_DATATABLE_GET));
             Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
             Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));

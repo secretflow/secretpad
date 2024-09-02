@@ -28,6 +28,7 @@ import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 import org.secretflow.secretpad.manager.integration.model.ModelExportDTO;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.GraphEdgeDO;
+import org.secretflow.secretpad.persistence.model.GraphJobStatus;
 import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
 import org.secretflow.secretpad.persistence.model.PartyDataSource;
 import org.secretflow.secretpad.persistence.repository.*;
@@ -58,26 +59,6 @@ import java.util.Optional;
  * @date 2024/02/19
  */
 public class ModelExportControllerTest extends ControllerTest {
-    @MockBean
-    private ProjectJobTaskRepository taskRepository;
-    @MockBean
-    private AbstractJobManager jobManager;
-    @MockBean
-    private ProjectGraphNodeKusciaParamsRepository projectGraphNodeKusciaParamsRepository;
-    @MockBean
-    private ProjectGraphNodeRepository projectGraphNodeRepository;
-    @Resource
-    private CacheManager cacheManager;
-    @MockBean
-    private NodeRepository nodeRepository;
-    @MockBean
-    private GraphService graphService;
-
-    @MockBean
-    private ProjectGraphRepository graphRepository;
-    @MockBean
-    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
-
     private static final String NODE_DEF = """
             {
                     "attrPaths": [
@@ -93,6 +74,27 @@ public class ModelExportControllerTest extends ControllerTest {
                     "version": "0.0.1"
              }
             """;
+    @MockBean
+    private ProjectJobTaskRepository taskRepository;
+    @MockBean
+    private AbstractJobManager jobManager;
+    @MockBean
+    private ProjectGraphNodeKusciaParamsRepository projectGraphNodeKusciaParamsRepository;
+    @MockBean
+    private ProjectGraphNodeRepository projectGraphNodeRepository;
+    @Resource
+    private CacheManager cacheManager;
+    @MockBean
+    private NodeRepository nodeRepository;
+    @MockBean
+    private GraphService graphService;
+    @MockBean
+    private ProjectGraphRepository graphRepository;
+    @MockBean
+    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
+
+    @MockBean
+    private ProjectJobRepository projectJobRepository;
 
     @Test
     public void pack() throws Exception {
@@ -245,6 +247,7 @@ public class ModelExportControllerTest extends ControllerTest {
             ModelPartyPathRequest request = FakerUtils.fake(ModelPartyPathRequest.class);
             Mockito.when(kusciaGrpcClientAdapter.listDomainDataSource(Mockito.any())).thenReturn(buildBatchQueryDomainResponse(0));
             Mockito.when(taskRepository.findLatestTasks(Mockito.anyString(), Mockito.anyString())).thenReturn(Optional.of(buildProjectTaskDO()));
+            Mockito.when(projectJobRepository.findByJobId(Mockito.anyString())).thenReturn(Optional.of(buildProjectJobDO()));
             Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(buildNodeDO());
             return MockMvcRequestBuilders.post(getMappingUrl(ModelExportController.class, "modelPartyPath", ModelPartyPathRequest.class)).
                     content(JsonUtils.toJSONString(request));
@@ -289,6 +292,13 @@ public class ModelExportControllerTest extends ControllerTest {
         return ProjectTaskDO.builder()
                 .upk(ProjectTaskDO.UPK.builder().projectId(UUIDUtils.random(4)).taskId(UUIDUtils.random(4)).jobId(UUIDUtils.random(4)).build())
                 .parties(List.of("alice", "bob"))
+                .build();
+    }
+
+    private ProjectJobDO buildProjectJobDO() {
+        return ProjectJobDO.builder()
+                .upk(new ProjectJobDO.UPK(UUIDUtils.random(4), UUIDUtils.random(4)))
+                .status(GraphJobStatus.SUCCEED)
                 .build();
     }
 

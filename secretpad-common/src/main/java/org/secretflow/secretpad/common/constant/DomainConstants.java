@@ -27,6 +27,8 @@ public class DomainConstants {
     public static final String ALICE_TABLE = "alice-table";
     public static final String BOB_TABLE = "bob-table";
 
+    public static final String NODE_READY = "Ready";
+
     public enum TokenStatusEnum {
         used,
         unused
@@ -51,7 +53,9 @@ public class DomainConstants {
         // embedded
         embedded,
         // normal
-        normal
+        normal,
+        // primary
+        primary
     }
 
     public enum DomainCertConfigEnum {

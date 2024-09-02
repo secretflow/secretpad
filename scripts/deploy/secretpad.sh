@@ -43,15 +43,36 @@ function create_secretpad_user_password() {
 	log "create webserver user and password done"
 }
 
+function is_reinstall() {
+	local volume_path=$1
+	if [ -f "${volume_path}/db/.update" ]; then
+		x=$(cat "${volume_path}"/db/.update)
+		read -rp "$(echo -e "${GREEN}"The data \'"${x}"\' already exists. keep it? [y/n]: "${NC}")" yn
+		case $yn in
+		[Yy]*)
+			echo -e "${GREEN}keep data ${x} ...${NC}"
+			export SECRETPAD_KEEP_HISTORY_DATA=true
+			;;
+		*)
+			echo -e "${GREEN}remove data ${x} ...${NC}"
+			export SECRETPAD_KEEP_HISTORY_DATA=false
+			;;
+		esac
+	else
+		export SECRETPAD_KEEP_HISTORY_DATA=false
+	fi
+}
+
 function copy_secretpad_file_to_volume() {
 	local dst_path=$1
-	if [ -f "${dst_path}/db/.update" ]; then
-		log "back up the secretpad file ..."
+	if [ -f "${volume_path}/db/.update" ]; then
 		x=$(cat "${dst_path}"/db/.update)
 		cp -rp "${dst_path}" "${dst_path}"_back_up_"${x}"
-	else
+		log "back up secretpad data ... ${dst_path}_back_up_${x}"
+	fi
+	if [ "$SECRETPAD_KEEP_HISTORY_DATA" == "false" ]; then
 		log "create ${dst_path}/db/.update"
-		rm -rf "${dst_path}/*"
+		rm -rf "${dst_path}"
 		docker run --rm --entrypoint /bin/bash -v "${dst_path}":/tmp/secretpad "$SECRETPAD_IMAGE" -c 'cp -R /app/db /tmp/secretpad/'
 		echo "${SECRETPAD_IMAGE##*:}" >"${dst_path}"/db/.update
 	fi
@@ -69,14 +90,12 @@ function update_sf_comp() {
 
 function copy_kuscia_api_client_certs() {
 	local volume_path=$1
-	# copy result
 	tmp_path=${volume_path}/temp/certs
 	mkdir -p "${tmp_path}"
-	# shellcheck disable=SC2086
 	if ! noTls; then
 		docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/token "${tmp_path}"/token
 	fi
-	docker cp ${KUSCIA_CTR}:/${CTR_CERT_ROOT}/ca.crt ${tmp_path}/ca.crt
+	docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/ca.crt "${tmp_path}"/ca.crt
 	docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/kusciaapi-client.crt "${tmp_path}"/client.crt
 	docker cp "${KUSCIA_CTR}":/"${CTR_CERT_ROOT}"/kusciaapi-client.key "${tmp_path}"/client.pem
 	docker run -d --rm --name "${KUSCIA_CTR_PREFIX}"-dummy --volume="${volume_path}"/config:/tmp/temp "$KUSCIA_IMAGE" tail -f /dev/null >/dev/null 2>&1
@@ -128,6 +147,39 @@ function check_user_passwd() {
 	fi
 }
 
+function instName_settings() {
+	if ! is_p2p; then
+		return 0
+	fi
+	if [ "$SECRETPAD_KEEP_HISTORY_DATA" == "true" ]; then
+		return 0
+	fi
+	default_org_name="DEFAULT_INST"
+	log "Please set the instName(${default_org_name}).length should be between 4 and 16 characters, spaces will be ignored"
+	read -r -p "Enter instName(DEFAULT_INST):" input_org_name
+	trimmed_input_org_name=$(echo "$input_org_name" | xargs)
+
+	while true; do
+		if [[ -z "$trimmed_input_org_name" ]]; then
+			org_name="$default_org_name"
+			break
+		elif [[ ${#trimmed_input_org_name} -ge 4 && ${#trimmed_input_org_name} -le 16 ]]; then
+			org_name=$(echo "$trimmed_input_org_name" | tr -d '[:space:]')
+			break
+		elif [[ ${#trimmed_input_org_name} -lt 4 ]]; then
+			log_warn "The entered name is too short and requires at least 4 characters (after removing spaces). Please re-enter."
+			read -r -p "Enter instName(DEFAULT_INST):" input_org_name
+			trimmed_input_org_name=$(echo "$input_org_name" | xargs)
+		else
+			log_warn "The entered name (after removing spaces) is too long and cannot exceed 16 characters. Please re-enter."
+			read -r -p "Enter instName(DEFAULT_INST):" input_org_name
+			trimmed_input_org_name=$(echo "$input_org_name" | xargs)
+		fi
+	done
+	export INST_NAME="$org_name"
+	log "instName is: $INST_NAME"
+}
+
 function account_settings() {
 	local RET
 	set +e
@@ -171,19 +223,22 @@ including uppercase and lowercase letters, numbers, and special characters."
 	log "The user and password have been set up successfully."
 }
 
-generate_password() {
+# shellcheck disable=SC2120
+function generate_password() {
 	local length=${1:-7}
 	local lcs="abcdefghijklmnopqrstuvwxyz"
 	local ucs="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	local digits="0123456789"
 	local special="!@#$%^&*()+=-"
 	# Generate a random password that may not contain all types of characters
+	# shellcheck disable=SC2155
 	local password=$(openssl rand -base64 12 | tr -d '/+=' | cut -c1-"$length")
 	# Ensure that the password contains lowercase letters, uppercase letters, and numbers
 	while [[ ! "$password" =~ [$lcs] || ! "$password" =~ [$ucs] || ! "$password" =~ [$digits] ]]; do
 		password=$(openssl rand -base64 12 | tr -d '/+=' | cut -c1-"$length")
 	done
 	# If the password still does not meet the length requirement, then supplement
+	# shellcheck disable=SC2004
 	while ((${#password} < $length)); do
 		local char_type=$((RANDOM % 3))
 		case $char_type in
@@ -250,8 +305,10 @@ function start() {
 	# │   │   └── db
 	# │   │   └── log
 	#
-	account_settings
 	local volume_path=$PAD_VOLUME_PATH/$NODE_ID
+	is_reinstall "${volume_path}"
+	instName_settings
+	account_settings
 	if need_start_docker_container "$PAD_CTR"; then
 		log "Starting container '$PAD_CTR' ..."
 		mkdir -p "${volume_path}"
@@ -262,10 +319,6 @@ function start() {
 		# generate server key
 		log "Generate server key '$volume_path' ..."
 		generate_secretpad_serverkey "${volume_path}" ${secretpad_key_pass}
-		# initialize secretpad dbd
-		#		log "initialize secretpad db ..."
-		#		init_secretpad_db
-		# copy kuscia api client certs
 		log "copy kuscia api client certs ..."
 		copy_kuscia_api_client_certs "${volume_path}"
 		# copy alice/bob lite certs
@@ -274,7 +327,6 @@ function start() {
 		# render secretpad config
 		log "render secretpad config ..."
 		render_secretpad_config "${volume_path}" ${secretpad_key_pass}
-		# make directory
 		# run secretpad
 		docker run -itd --init --name="${PAD_CTR}" --restart=always --network="${NETWORK_NAME}" -m "$LITE_MEMORY_LIMIT" \
 			--volume="${PAD_INSTALL_DIR}":/app/data \
@@ -305,21 +357,16 @@ function start() {
 			-e KUSCIA_API_LITE_BOB_ADDRESS="${KUSCIA_API_LITE_BOB_ADDRESS}" \
 			-e SECRETPAD_USER_NAME="${SECRETPAD_USER_NAME}" \
 			-e SECRETPAD_PASSWORD="${SECRETPAD_PASSWORD}" \
+			-e INST_NAME="${INST_NAME}" \
 			-e JAVA_OPTS="${JAVA_OPTS}" \
+			-e DATAPROXY_ENABLE="${DATAPROXY_ENABLE}" \
 			"${SECRETPAD_IMAGE}"
 		probe_secret_pad "${PAD_CTR}"
 		create_secretpad_svc "${KUSCIA_CTR}" "${PAD_CTR}" "$NODE_ID"
 		log "Web server started successfully"
 		log "Please visit the website http://localhost:${PAD_PORT} (or http://{the IPAddress of this machine}:$PAD_PORT) to experience the Kuscia web's functions ."
 		log "The login name:'${SECRETPAD_USER_NAME}' ,The login password:'${SECRETPAD_PASSWORD}' ."
-		log "The demo data would be stored in the path: $PAD_INSTALL_DIR ."
-		log "The SECRETPAD_IMAGE is: ${SECRETPAD_IMAGE} ."
-		log "The KUSCIA_IMAGE is: ${KUSCIA_IMAGE} ."
-		log "The SECRETFLOW_TAG is: ${SECRETFLOW_IMAGE} ."
-		log "The SECRETFLOW_SERVING_IMAGE is: ${SECRETFLOW_SERVING_IMAGE} ."
-		log "The TEE_APP_IMAGE is: ${TEE_APP_IMAGE} ."
-		log "The TEE_DM_IMAGE is: ${TEE_DM_IMAGE} ."
-		log "The CAPSULE_MANAGER_SIM_IMAGE is: ${CAPSULE_MANAGER_SIM_IMAGE} ."
+		log "The data would be stored in the path: $PAD_INSTALL_DIR ."
 	fi
 }
 
@@ -332,7 +379,7 @@ usage() {
     "
 }
 
-while getopts 'n:d:s:' option; do
+while getopts 'n:d:s:b' option; do
 	case "$option" in
 	n)
 		export NODE_ID=$OPTARG
@@ -342,6 +389,9 @@ while getopts 'n:d:s:' option; do
 		;;
 	s)
 		export PAD_PORT=$OPTARG
+		;;
+	b)
+		export PAD_DEBUG_PORT=$OPTARG
 		;;
 	:)
 		printf "missing argument for -%s\n" "$OPTARG" >&2

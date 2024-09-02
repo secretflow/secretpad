@@ -168,10 +168,10 @@ public class NodeController {
      * @return successful SecretPadResponse with node result list view object
      */
     @PostMapping(value = "/result/list", consumes = "application/json")
-    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     @ApiResource(code = ApiResourceCodeConstants.NODE_RESULT_LIST)
-    public SecretPadResponse<NodeResultsListVO> listResults(@Valid @RequestBody ListNodeResultRequest request) {
-        return SecretPadResponse.success(nodeService.listResults(request));
+    public SecretPadResponse<AllNodeResultsListVO> listResults(@Valid @RequestBody ListNodeResultRequest request) {
+        return SecretPadResponse.success(nodeService.listAllNodeResults(request));
     }
 
     /**

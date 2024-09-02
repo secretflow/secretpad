@@ -38,6 +38,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.nio.charset.StandardCharsets;
 
 /**
  * SecretPad application
@@ -56,41 +57,15 @@ public class SecretPadApplication {
     private Integer httpPort;
     @Value("${server.http-port-inner}")
     private Integer innerHttpPort;
+    @Value("${server.compression.mime-types}")
+    private String mimeTypes;
+    @Value("${server.compression.min-response-size}")
+    private Integer compressionMinResponseSize;
 
     public static void main(String[] args) throws UnknownHostException {
         ConfigurableApplicationContext context = SpringApplication.run(SecretPadApplication.class, args);
         Environment environment = context.getBean(Environment.class);
         printEnvironment(environment);
-    }
-
-    /**
-     * Build tomcat servlet webServer factory
-     *
-     * @return tomcat servlet webServer factory
-     */
-    @Bean
-    public ServletWebServerFactory containerFactory() {
-        TomcatServletWebServerFactory tomcat = new TomcatServletWebServerFactory();
-        Connector connector = new Connector("org.apache.coyote.http11.Http11NioProtocol");
-        connector.setPort(httpPort);
-        tomcat.addAdditionalTomcatConnectors(connector);
-
-        Connector innerConnector = new Connector("org.apache.coyote.http11.Http11NioProtocol");
-        innerConnector.setPort(innerHttpPort);
-        tomcat.addAdditionalTomcatConnectors(innerConnector);
-        return tomcat;
-    }
-
-    /**
-     * Build a new http message converters
-     *
-     * @return a new http message converters
-     */
-    @Bean
-    public HttpMessageConverters protobufHttpMessageConverter() {
-        ProtobufHttpMessageConverter protobufHttpMessageConverter = new ProtobufHttpMessageConverter();
-        protobufHttpMessageConverter.setSupportedMediaTypes(Lists.newArrayList(MediaType.APPLICATION_JSON, MediaType.parseMediaType(MediaType.TEXT_PLAIN_VALUE + ";charset=ISO-8859-1")));
-        return new HttpMessageConverters(protobufHttpMessageConverter);
     }
 
     private static void printEnvironment(Environment environment) throws UnknownHostException {
@@ -108,6 +83,47 @@ public class SecretPadApplication {
             log.debug("initUserAndPwd failed use default", e);
             password = AuthConstants.PASSWORD;
         }
-        log.info("userNma:{} password:{}", userName, password);
+        log.info("userName:{} password:{}", userName, password);
+    }
+
+    /**
+     * Build tomcat servlet webServer factory
+     *
+     * @return tomcat servlet webServer factory
+     */
+    @Bean
+    public ServletWebServerFactory containerFactory() {
+        TomcatServletWebServerFactory tomcat = new TomcatServletWebServerFactory();
+        buildConnector(tomcat, httpPort);
+        buildConnector(tomcat, innerHttpPort);
+        tomcat.setUriEncoding(StandardCharsets.UTF_8);
+        return tomcat;
+    }
+
+    private void buildConnector(TomcatServletWebServerFactory tomcat, Integer innerHttpPort) {
+        Connector innerConnector = new Connector("org.apache.coyote.http11.Http11NioProtocol");
+        innerConnector.setPort(innerHttpPort);
+        innerConnector.setProperty(ConnectorCompression.COMPRESSION, "on");
+        innerConnector.setProperty(ConnectorCompression.COMPRESSION_MIN_RESPONSE_SIZE, String.valueOf(compressionMinResponseSize));
+        innerConnector.setProperty(ConnectorCompression.COMPRESSION_MIME_TYPES, mimeTypes);
+        tomcat.addAdditionalTomcatConnectors(innerConnector);
+    }
+
+    private static class ConnectorCompression {
+        static final String COMPRESSION_MIN_RESPONSE_SIZE = "compressionMinResponseSize";
+        static final String COMPRESSION_MIME_TYPES = "compressionMimeTypes";
+        static final String COMPRESSION = "compression";
+    }
+
+    /**
+     * Build a new http message converters
+     *
+     * @return a new http message converters
+     */
+    @Bean
+    public HttpMessageConverters protobufHttpMessageConverter() {
+        ProtobufHttpMessageConverter protobufHttpMessageConverter = new ProtobufHttpMessageConverter();
+        protobufHttpMessageConverter.setSupportedMediaTypes(Lists.newArrayList(MediaType.APPLICATION_JSON, MediaType.parseMediaType(MediaType.TEXT_PLAIN_VALUE + ";charset=ISO-8859-1")));
+        return new HttpMessageConverters(protobufHttpMessageConverter);
     }
 }

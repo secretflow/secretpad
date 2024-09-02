@@ -29,12 +29,12 @@ public interface DatasourceHandler {
 
     List<DataSourceTypeEnum> supports();
 
-    List<DatasourceListInfo> listDatasource(DatasourceListRequest datasourceListRequest);
+    List<DatasourceListInfoUnAggregate> listDatasource(String nodeId);
 
     CreateDatasourceVO createDatasource(CreateDatasourceRequest createDatasourceRequest);
 
     void deleteDatasource(DeleteDatasourceRequest deleteDatasourceRequest);
 
-    DatasourceDetailVO datasourceDetail(DatasourceDetailRequest datasourceDetailRequest);
+    DatasourceDetailUnAggregateDTO datasourceDetail(DatasourceDetailRequest datasourceDetailRequest);
 
 }

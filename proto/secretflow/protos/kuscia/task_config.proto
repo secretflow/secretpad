@@ -28,8 +28,9 @@ message TaskInputConfig {
   secretflow.pipeline.NodeDef sf_node_eval_param = 3;
   repeated string sf_output_uris = 4;
   repeated string sf_input_ids = 5;
-  repeated string sf_output_ids = 6;
-  secretflow.pipeline.TaskConfig tee_task_config = 7;
+  repeated string sf_input_partitions_spec = 6;
+  repeated string sf_output_ids = 7;
+  secretflow.pipeline.TaskConfig tee_task_config = 8;
 }
 
 message DatasourceConfig {

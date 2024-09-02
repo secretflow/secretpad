@@ -17,10 +17,7 @@
 package org.secretflow.secretpad.service.handler.vote;
 
 import org.secretflow.secretpad.persistence.entity.VoteRequestDO;
-import org.secretflow.secretpad.persistence.repository.NodeRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectRepository;
-import org.secretflow.secretpad.persistence.repository.VoteInviteRepository;
-import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
+import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.CertificateService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
@@ -39,8 +36,8 @@ import java.util.List;
  */
 @Component
 public class ProjectNodeAddHandler extends AbstractVoteTypeHandler {
-    public ProjectNodeAddHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, EnvService envService, CertificateService certificateService, ProjectRepository projectRepository) {
-        super(voteInviteRepository, voteRequestRepository, nodeRepository, envService, certificateService, projectRepository);
+    public ProjectNodeAddHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, InstRepository instRepository, EnvService envService, CertificateService certificateService, ProjectRepository projectRepository) {
+        super(voteInviteRepository, voteRequestRepository, nodeRepository, instRepository, envService, certificateService, projectRepository);
     }
 
     @Override

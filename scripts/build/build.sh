@@ -39,4 +39,4 @@ fi
 mvn -version
 java -version
 
-mvn clean package -DskipTests
+mvn clean package -DskipTests -Dfile.encoding=UTF-8

@@ -101,6 +101,15 @@ public class ProjectTaskDO extends BaseAggregationRoot {
     }
 
     /**
+     * Whether the graph job status is finished
+     *
+     * @return whether finished
+     */
+    public boolean isFinished() {
+        return this.status == GraphNodeTaskStatus.SUCCEED || this.status == GraphNodeTaskStatus.FAILED || this.status == GraphNodeTaskStatus.STOPPED;
+    }
+
+    /**
      * Project task unique primary key
      */
     @Getter
@@ -134,15 +143,6 @@ public class ProjectTaskDO extends BaseAggregationRoot {
         public GraphNodeConverter() {
             super(ProjectGraphNodeDO.class);
         }
-    }
-
-    /**
-     * Whether the graph job status is finished
-     *
-     * @return whether finished
-     */
-    public boolean isFinished() {
-        return this.status == GraphNodeTaskStatus.SUCCEED || this.status == GraphNodeTaskStatus.FAILED || this.status == GraphNodeTaskStatus.STOPPED;
     }
 
     /**

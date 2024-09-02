@@ -2,12 +2,12 @@
 
 ## 开发环境搭建
 
-| 名称      | 推荐版本                                       | 下载地址                                                                | 说明 |
-|---------|--------------------------------------------|---------------------------------------------------------------------|----|
+| 名称      | 推荐版本                                      | 下载地址                                                                | 说明 |
+|---------|-------------------------------------------|---------------------------------------------------------------------|----|
 | JDK     | OpenJDK17U-jdk_x64_linux_hotspot_17.0.11_9 | [下载JDK](https://www.oracle.com/java/technologies/downloads/#java17) |    |
-| Maven   | apache-maven-3.8.8                         | [下载Maven](https://maven.apache.org/download.cgi)                    |    |
-Docker|   要求最低版本 20.10      |                          [下载Docker Desktop](https://docs.docker.com/desktop/)                   |                                                                     |    |
-| SqlLite | 3.43.2                                     | [下载sqlite studio](https://sqlitestudio.pl/)                         |    |
+| Maven   | apache-maven-3.8.8                        | [下载Maven](https://maven.apache.org/download.cgi)                    |    |
+| Docker  |   要求最低版本 20.10      |                          [下载Docker Desktop](https://docs.docker.com/desktop/)                   |                                                                     |    |
+| SqlLite | 3.4.2                                     | [下载sqlite studio](https://sqlitestudio.pl/)                         |    |
 
 ## 构建 SecretPad
 

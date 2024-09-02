@@ -21,11 +21,13 @@ import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.enums.DataTableTypeEnum;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
+import org.secretflow.secretpad.common.errorcode.ConcurrentErrorCode;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.FeatureTableErrorCode;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.JsonUtils;
+import org.secretflow.secretpad.common.util.PageUtils;
 import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
@@ -34,10 +36,8 @@ import org.secretflow.secretpad.manager.integration.datasource.AbstractDatasourc
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.datatablegrant.AbstractDatatableGrantManager;
 import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
-import org.secretflow.secretpad.manager.integration.model.DatasourceDTO;
-import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
-import org.secretflow.secretpad.manager.integration.model.DatatableListDTO;
-import org.secretflow.secretpad.manager.integration.model.DatatableSchema;
+import org.secretflow.secretpad.manager.integration.model.*;
+import org.secretflow.secretpad.manager.integration.node.NodeManager;
 import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
 import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.TeeJobKind;
@@ -59,6 +59,7 @@ import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.RateLimiter;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.javatuples.Pair;
 import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
@@ -66,6 +67,7 @@ import org.secretflow.v1alpha1.kusciaapi.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -73,8 +75,8 @@ import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Resource;
 import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -94,139 +96,168 @@ public class DatatableServiceImpl implements DatatableService {
     private final static Logger LOGGER = LoggerFactory.getLogger(DatatableServiceImpl.class);
 
     private static final String DOMAIN_DATA_GRANT_ID = "domaindatagrant_id";
-
+    private final Cache<String, RateLimiter> rateLimiters = CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.HOURS).build();
+    @Autowired
+    @Qualifier("kusciaApiFutureTaskThreadPool")
+    private Executor kusciaApiFutureThreadPool;
     @Autowired
     private AbstractDatatableManager datatableManager;
-
     @Autowired
     private AbstractDataManager dataManager;
-
+    @Autowired
+    private NodeManager nodeManager;
     @Autowired
     private OssService ossService;
-
     @Autowired
     private AbstractDatasourceManager datasourceManager;
-
     @Autowired
     private AbstractDatatableGrantManager datatableGrantManager;
-
     @Autowired
     private AbstractNodeRouteManager nodeRouteManager;
-
     @Autowired
     private AbstractJobManager jobManager;
-
     @Autowired
     private KusciaTeeDataManagerConverter teeJobConverter;
-
     @Autowired
     private ProjectRepository projectRepository;
-
     @Autowired
     private ProjectDatatableRepository projectDatatableRepository;
-
     @Autowired
     private TeeNodeDatatableManagementRepository teeNodeDatatableManagementRepository;
-
     @Autowired
     private FeatureTableRepository featureTableRepository;
-
     @Autowired
     private ProjectFeatureTableRepository projectFeatureTableRepository;
-
+    @Autowired
+    private NodeRepository nodeRepository;
     @Resource
     private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
-
     @Resource
     private EnvService envService;
-
     @Value("${tee.domain-id:tee}")
     private String teeNodeId;
-
     @Value("${secretpad.platform-type}")
     private String plaformType;
 
-    private final Cache<String, RateLimiter> rateLimiters = CacheBuilder.newBuilder()
-            .expireAfterAccess(1, TimeUnit.HOURS)
-            .build();
+
+    private List<String> getNodeIds(String instId, List<String> nodeNameFilter) {
+        List<NodeDTO> nodeDTOS = nodeManager.listReadyNodeByNames(instId, nodeNameFilter);
+        return nodeDTOS.stream().map(NodeDTO::getNodeId).toList();
+    }
+
+
+    @Override
+    public AllDatatableListVO listDatatablesByOwnerId(ListDatatableRequest request) {
+        List<String> nodeIds = new ArrayList<>();
+        if (envService.isAutonomy()) {
+            nodeIds.addAll(getNodeIds(InstServiceImpl.INST_ID, request.getNodeNamesFilter()));
+        } else {
+            nodeIds.add(request.getOwnerId());
+        }
+
+        List<DatatableNodeVO> datatableNodeVOList = new CopyOnWriteArrayList<>();
+        AtomicInteger totalDatatableNum = new AtomicInteger();
+        List<CompletableFuture<Void>> futures = nodeIds.stream().map(nodeId -> CompletableFuture.supplyAsync(() -> {
+            ListDatatableRequest nodeRequest = createNodeRequest(request, nodeId);
+            return listDatatablesByNodeId(nodeRequest);
+        }, kusciaApiFutureThreadPool).handle((datatableListVO, ex) -> {
+            if (ex != null) {
+                LOGGER.error("Error processing nodeId {}: {}", nodeId, ex.getMessage(), ex);
+                return null;
+            } else {
+                return datatableListVO;
+            }
+        }).thenAccept(datatableListVO -> {
+            NodeDO nodeDO = nodeRepository.findByNodeId(nodeId);
+            if (ObjectUtils.isEmpty(nodeDO)) {
+                LOGGER.error("getNodeToken Cannot find node by nodeId {}.", nodeId);
+                return;
+            }
+
+            totalDatatableNum.addAndGet(datatableListVO.getTotalDatatableNums());
+            datatableListVO.getDatatableVOList().forEach(datatableVO -> {
+                datatableNodeVOList.add(DatatableNodeVO.builder()
+                        .datatableVO(datatableVO)
+                        .nodeId(nodeId)
+                        .nodeName(nodeDO.getName())
+                        .build());
+            });
+        })).toList();
+
+        try {
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(5, TimeUnit.SECONDS);
+        } catch (ExecutionException e) {
+            Throwable actualException = e.getCause();
+            if (actualException instanceof SecretpadException) {
+                throw (SecretpadException) actualException;
+            } else {
+                throw SecretpadException.of(ConcurrentErrorCode.TASK_EXECUTION_ERROR, e);
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw SecretpadException.of(ConcurrentErrorCode.TASK_INTERRUPTED_ERROR, e);
+        } catch (TimeoutException e) {
+            throw SecretpadException.of(ConcurrentErrorCode.TASK_TIME_OUT_ERROR, e);
+        }
+
+        List<DatatableNodeVO> rangeVOList = PageUtils.rangeList(datatableNodeVOList, request.getPageSize(), request.getPageNumber());
+
+        return AllDatatableListVO.builder()
+                .datatableNodeVOList(rangeVOList)
+                .totalDatatableNums(totalDatatableNum.get())
+                .build();
+    }
 
     @Override
     public DatatableListVO listDatatablesByNodeId(ListDatatableRequest request) {
-        LOGGER.info("List data table by nodeId = {}", request.getNodeId());
-        DatatableListDTO dataTableListDTO = datatableManager.findByNodeId(
-                request.getNodeId(), request.getPageSize(), request.getPageNumber(), request.getStatusFilter(), request.getDatatableNameFilter(), request.getTypes()
-        );
+        LOGGER.info("List data table by nodeId = {}", request.getOwnerId());
+        DatatableListDTO dataTableListDTO = datatableManager.findByNodeId(request.getOwnerId(), request.getPageSize(), request.getPageNumber(), request.getStatusFilter(), request.getDatatableNameFilter(), request.getTypes());
         LOGGER.info("Try get a map with datatableId: DatatableDTO");
-        Map<Object, DatatableDTO> datatables = dataTableListDTO.getDatatableDTOList()
-                .stream().collect(Collectors.toMap(DatatableDTO::getDatatableId, Function.identity()));
+        Map<Object, DatatableDTO> datatables = dataTableListDTO.getDatatableDTOList().stream().collect(Collectors.toMap(DatatableDTO::getDatatableId, Function.identity()));
         LOGGER.info("Try get auth project pairs with Map<DatatableID, List<Pair<ProjectDatatableDO, ProjectDO>>>");
-        Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> datatableAuthPairs = getAuthProjectPairs(
-                request.getNodeId(),
-                Lists.newArrayList(datatables.values().stream().filter(e -> !StringUtils.equals(e.getType(), DataTableTypeEnum.HTTP.name())).map(DatatableDTO::getDatatableId).collect(Collectors.toList()))
-        );
-        Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> featureAuthProjectPairs = getHttpFeatureAuthProjectPairs(request.getNodeId(), Lists.newArrayList(datatables.values().stream().filter(e -> StringUtils.equals(e.getType(), DataTableTypeEnum.HTTP.name())).map(DatatableDTO::getDatatableId).collect(Collectors.toList())));
+        Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> datatableAuthPairs = getAuthProjectPairs(request.getOwnerId(), Lists.newArrayList(datatables.values().stream().filter(e -> !StringUtils.equals(e.getType(), DataTableTypeEnum.HTTP.name())).map(DatatableDTO::getDatatableId).collect(Collectors.toList())));
+        Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> featureAuthProjectPairs = getHttpFeatureAuthProjectPairs(request.getOwnerId(), Lists.newArrayList(datatables.values().stream().filter(e -> StringUtils.equals(e.getType(), DataTableTypeEnum.HTTP.name())).map(DatatableDTO::getDatatableId).collect(Collectors.toList())));
         //merge data table and feature table
         datatableAuthPairs.putAll(featureAuthProjectPairs);
         LOGGER.info("get datatable VO list from datatableListDTO and with datatable auth pairs.");
         // teeNodeId maybe blank
         String teeDomainId = StringUtils.isBlank(request.getTeeNodeId()) ? teeNodeId : request.getTeeNodeId();
         // query push to tee map
-        Map<String, List<TeeNodeDatatableManagementDO>> pushToTeeInfoMap = getPushToTeeInfos(request.getNodeId(), teeDomainId,
-                Lists.newArrayList(datatables.values().stream().map(DatatableDTO::getDatatableId).collect(Collectors.toList())));
+        Map<String, List<TeeNodeDatatableManagementDO>> pushToTeeInfoMap = getPushToTeeInfos(request.getOwnerId(), teeDomainId, Lists.newArrayList(datatables.values().stream().map(DatatableDTO::getDatatableId).collect(Collectors.toList())));
 
-        List<DatatableVO> datatableVOList = dataTableListDTO.getDatatableDTOList().stream().map(
-                it -> {
-                    List<Pair<ProjectDatatableDO, ProjectDO>> pairs = datatableAuthPairs.get(it.getDatatableId());
-                    List<AuthProjectVO> authProjectVOList = null;
-                    if (pairs != null) {
-                        authProjectVOList = AuthProjectVO.fromPairs(pairs);
-                    }
-                    // query management data object
-                    List<TeeNodeDatatableManagementDO> pushToTeeInfos = pushToTeeInfoMap.get(teeJobConverter.buildTeeDatatableId(teeDomainId, it.getDatatableId()));
-                    TeeNodeDatatableManagementDO managementDO = CollectionUtils.isEmpty(pushToTeeInfos) ? null : pushToTeeInfos.stream()
-                            .sorted(Comparator.comparing(TeeNodeDatatableManagementDO::getGmtCreate).reversed()).toList().get(0);
-                    DatatableDTO datatableDTO = datatables.get(it.getDatatableId());
-                    return DatatableVO.from(datatableDTO, authProjectVOList, managementDO);
-                }
-        ).collect(Collectors.toList());
-
-        return DatatableListVO.builder()
-                .datatableVOList(datatableVOList)
-                .totalDatatableNums(dataTableListDTO.getTotalDatatableNums())
-                .build();
+        List<DatatableVO> datatableVOList = dataTableListDTO.getDatatableDTOList().stream().map(it -> {
+            List<Pair<ProjectDatatableDO, ProjectDO>> pairs = datatableAuthPairs.get(it.getDatatableId());
+            List<AuthProjectVO> authProjectVOList = null;
+            if (pairs != null) {
+                authProjectVOList = AuthProjectVO.fromPairs(pairs);
+            }
+            // query management data object
+            List<TeeNodeDatatableManagementDO> pushToTeeInfos = pushToTeeInfoMap.get(teeJobConverter.buildTeeDatatableId(teeDomainId, it.getDatatableId()));
+            TeeNodeDatatableManagementDO managementDO = CollectionUtils.isEmpty(pushToTeeInfos) ? null : pushToTeeInfos.stream().sorted(Comparator.comparing(TeeNodeDatatableManagementDO::getGmtCreate).reversed()).toList().get(0);
+            DatatableDTO datatableDTO = datatables.get(it.getDatatableId());
+            return DatatableVO.from(datatableDTO, authProjectVOList, managementDO);
+        }).collect(Collectors.toList());
+        return DatatableListVO.builder().datatableVOList(datatableVOList).totalDatatableNums(dataTableListDTO.getTotalDatatableNums()).build();
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public DatatableVO getDatatable(GetDatatableRequest request) {
+    public DatatableNodeVO getDatatable(GetDatatableRequest request) {
         LOGGER.info("Get datatable detail with nodeID = {}, datatable id = {}", request.getNodeId(), request.getDatatableId());
         if (DataTableTypeEnum.HTTP.name().equals(request.getType())) {
             Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(request.getDatatableId(), request.getNodeId(), DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID));
-            if (!featureTableDOOptional.isPresent()) {
+            if (featureTableDOOptional.isEmpty()) {
                 throw SecretpadException.of(FeatureTableErrorCode.FEATURE_TABLE_NOT_EXIST);
             }
             FeatureTableDO featureTableDO = featureTableDOOptional.get();
-            Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> datatableAuthPairs =
-                    getHttpFeatureAuthProjectPairs(request.getNodeId(), Lists.newArrayList(featureTableDO.getUpk().getFeatureTableId()));
+            Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> datatableAuthPairs = getHttpFeatureAuthProjectPairs(request.getNodeId(), Lists.newArrayList(featureTableDO.getUpk().getFeatureTableId()));
             boolean success = HttpUtils.detection(featureTableDO.getUrl());
             String status = success ? Constants.STATUS_AVAILABLE : Constants.STATUS_UNAVAILABLE;
             featureTableDO.setStatus(status);
             featureTableRepository.save(featureTableDO);
-            DatatableDTO datatableDTO = DatatableDTO.builder()
-                    .datatableId(featureTableDO.getUpk().getFeatureTableId())
-                    .datatableName(featureTableDO.getFeatureTableName())
-                    .nodeId(featureTableDO.getNodeId())
-                    .relativeUri(featureTableDO.getUrl())
-                    .datasourceId(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID)
-                    .status(status)
-                    .datasourceType(DataSourceTypeEnum.HTTP.name())
-                    .type(DataTableTypeEnum.HTTP.name())
-                    .schema(featureTableDO.getColumns().stream().map(it ->
-                                    new DatatableDTO.TableColumnDTO(it.getColName(), it.getColType(), it.getColComment()))
-                            .collect(Collectors.toList()))
-                    .build();
-            return DatatableVO.from(datatableDTO, datatableAuthPairs.containsKey(datatableDTO.getDatatableId()) ?
-                    AuthProjectVO.fromPairs(datatableAuthPairs.get(datatableDTO.getDatatableId())) : null, null);
+            DatatableDTO datatableDTO = DatatableDTO.builder().datatableId(featureTableDO.getUpk().getFeatureTableId()).datatableName(featureTableDO.getFeatureTableName()).nodeId(featureTableDO.getNodeId()).relativeUri(featureTableDO.getUrl()).datasourceId(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID).status(status).datasourceType(DataSourceTypeEnum.HTTP.name()).type(DataTableTypeEnum.HTTP.name()).schema(featureTableDO.getColumns().stream().map(it -> new DatatableDTO.TableColumnDTO(it.getColName(), it.getColType(), it.getColComment())).collect(Collectors.toList())).build();
+            DatatableVO datatableVO = DatatableVO.from(datatableDTO, datatableAuthPairs.containsKey(datatableDTO.getDatatableId()) ? AuthProjectVO.fromPairs(datatableAuthPairs.get(datatableDTO.getDatatableId())) : null, null);
+            return DatatableNodeVO.builder().datatableVO(datatableVO).nodeId(request.getNodeId()).nodeName(nodeRepository.findByNodeId(request.getNodeId()).getName()).build();
         }
         Optional<DatatableDTO> datatableOpt = datatableManager.findById(DatatableDTO.NodeDatatableId.from(request.getNodeId(), request.getDatatableId()));
         if (datatableOpt.isEmpty()) {
@@ -236,39 +267,33 @@ public class DatatableServiceImpl implements DatatableService {
         if (DataSourceTypeEnum.OSS.name().equals(datatableOpt.get().getDatasourceType())) {
             Optional<DatasourceDTO> datasourceOpt;
             if (envService.isCenter() && envService.isEmbeddedNode(datatableOpt.get().getNodeId())) {
-                Domaindatasource.QueryDomainDataSourceResponse response = kusciaGrpcClientAdapter.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
-                        .setDomainId(datatableOpt.get().getNodeId())
-                        .setDatasourceId(datatableOpt.get().getDatasourceId())
-                        .build(), datatableOpt.get().getNodeId());
+                Domaindatasource.QueryDomainDataSourceResponse response = kusciaGrpcClientAdapter.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder().setDomainId(datatableOpt.get().getNodeId()).setDatasourceId(datatableOpt.get().getDatasourceId()).build(), datatableOpt.get().getNodeId());
                 datasourceOpt = Optional.of(DatasourceDTO.fromDomainDatasource(response.getData()));
             } else {
                 datasourceOpt = datasourceManager.findById(DatasourceDTO.NodeDatasourceId.from(datatableOpt.get().getNodeId(), datatableOpt.get().getDatasourceId()));
             }
             DatasourceDTO.OssDataSourceInfoDTO ossDataSourceInfoDTO = datasourceOpt.get().getOssDataSourceInfoDTO();
-            AwsOssConfig awsOssConfig = AwsOssConfig.builder()
-                    .accessKeyId(ossDataSourceInfoDTO.getAccessKeyId())
-                    .secretAccessKey(ossDataSourceInfoDTO.getSecretAccessKey())
-                    .endpoint(ossDataSourceInfoDTO.getEndpoint())
-                    .build();
+            AwsOssConfig awsOssConfig = AwsOssConfig.builder().accessKeyId(ossDataSourceInfoDTO.getAccessKeyId()).secretAccessKey(ossDataSourceInfoDTO.getSecretAccessKey()).endpoint(ossDataSourceInfoDTO.getEndpoint()).build();
             if (!ossService.checkObjectExists(awsOssConfig, ossDataSourceInfoDTO.getBucket(), datatableOpt.get().getRelativeUri())) {
-                datatableOpt.get().setStatus("Unavailable");
+                datatableOpt.get().setStatus(Constants.STATUS_UNAVAILABLE);
             }
         }
         DatatableDTO dto = datatableOpt.get();
 
-        Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> datatableAuthPairs =
-                getAuthProjectPairs(request.getNodeId(), Lists.newArrayList(dto.getDatatableId()));
+        Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> datatableAuthPairs = getAuthProjectPairs(request.getNodeId(), Lists.newArrayList(dto.getDatatableId()));
         // teeNodeId maybe blank
         String teeDomainId = StringUtils.isBlank(request.getTeeNodeId()) ? teeNodeId : request.getTeeNodeId();
         // query push to tee map
-        Map<String, List<TeeNodeDatatableManagementDO>> pushToTeeInfoMap = getPushToTeeInfos(request.getNodeId(), teeDomainId,
-                Lists.newArrayList(dto.getDatatableId()));
+        Map<String, List<TeeNodeDatatableManagementDO>> pushToTeeInfoMap = getPushToTeeInfos(request.getNodeId(), teeDomainId, Lists.newArrayList(dto.getDatatableId()));
         // query management data object
         List<TeeNodeDatatableManagementDO> pushToTeeInfos = pushToTeeInfoMap.get(teeJobConverter.buildTeeDatatableId(teeDomainId, dto.getDatatableId()));
-        TeeNodeDatatableManagementDO managementDO = CollectionUtils.isEmpty(pushToTeeInfos) ? null : pushToTeeInfos.stream()
-                .sorted(Comparator.comparing(TeeNodeDatatableManagementDO::getGmtCreate).reversed()).toList().get(0);
-        return DatatableVO.from(dto, datatableAuthPairs.containsKey(dto.getDatatableId()) ?
-                AuthProjectVO.fromPairs(datatableAuthPairs.get(dto.getDatatableId())) : null, managementDO);
+        TeeNodeDatatableManagementDO managementDO = CollectionUtils.isEmpty(pushToTeeInfos) ? null : pushToTeeInfos.stream().sorted(Comparator.comparing(TeeNodeDatatableManagementDO::getGmtCreate).reversed()).toList().get(0);
+        DatatableVO datatableVO = DatatableVO.from(dto, datatableAuthPairs.containsKey(dto.getDatatableId()) ? AuthProjectVO.fromPairs(datatableAuthPairs.get(dto.getDatatableId())) : null, managementDO);
+        return DatatableNodeVO.builder()
+                .datatableVO(datatableVO)
+                .nodeId(request.getNodeId())
+                .nodeName(nodeRepository.findByNodeId(request.getNodeId()).getName())
+                .build();
     }
 
     @Override
@@ -292,8 +317,7 @@ public class DatatableServiceImpl implements DatatableService {
         String teeDomainId = StringUtils.isBlank(request.getTeeNodeId()) ? teeNodeId : request.getTeeNodeId();
         String datatableId = teeJobConverter.buildTeeDatatableId(teeNodeId, request.getDatatableId());
         // query last push to tee job
-        Optional<TeeNodeDatatableManagementDO> pushOptional = teeNodeDatatableManagementRepository
-                .findFirstByNodeIdAndTeeNodeIdAndDatatableIdAndKind(request.getNodeId(), teeDomainId, datatableId, TeeJobKind.Push);
+        Optional<TeeNodeDatatableManagementDO> pushOptional = teeNodeDatatableManagementRepository.findFirstByNodeIdAndTeeNodeIdAndDatatableIdAndKind(request.getNodeId(), teeDomainId, datatableId, TeeJobKind.Push);
         // delete tee node datatable if status is success
         if (pushOptional.isPresent() && pushOptional.get().getStatus().equals(TeeJobStatus.SUCCESS)) {
             // datasourceId and relativeUri maybe blank
@@ -303,13 +327,7 @@ public class DatatableServiceImpl implements DatatableService {
             deleteFromTeeMap.put(PUSH_TO_TEE_JOB_ID, pushOptional.get().getUpk().getJobId());
             deleteFromTeeMap.put(TeeJob.RELATIVE_URI, relativeUri);
             // save delete datatable from Tee node job
-            TeeNodeDatatableManagementDO deleteFromDO = TeeNodeDatatableManagementDO.builder()
-                    .upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(request.getNodeId()).datatableId(datatableId)
-                            .teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build())
-                    .datasourceId(datasourceId)
-                    .status(TeeJobStatus.RUNNING)
-                    .kind(TeeJobKind.Delete)
-                    .operateInfo(JsonUtils.toJSONString(deleteFromTeeMap)).build();
+            TeeNodeDatatableManagementDO deleteFromDO = TeeNodeDatatableManagementDO.builder().upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(request.getNodeId()).datatableId(datatableId).teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build()).datasourceId(datasourceId).status(TeeJobStatus.RUNNING).kind(TeeJobKind.Delete).operateInfo(JsonUtils.toJSONString(deleteFromTeeMap)).build();
             saveTeeNodeDatatableManagementOrPush(deleteFromDO);
             // build tee job model
             TeeJob teeJob = TeeJob.genTeeJob(deleteFromDO, List.of(request.getNodeId()), "", Collections.emptyList(), Collections.emptyList());
@@ -333,11 +351,10 @@ public class DatatableServiceImpl implements DatatableService {
         String datatableId = teeJobConverter.buildTeeDatatableId(teeNodeId, request.getDatatableId());
         String relativeUri = StringUtils.isBlank(request.getRelativeUri()) ? datatableId : request.getRelativeUri();
         // check node route
-        nodeRouteManager.checkRouteNotExist(request.getNodeId(), teeDomainId);
-        nodeRouteManager.checkRouteNotExist(teeDomainId, request.getNodeId());
+        nodeRouteManager.checkRouteNotExistInDB(request.getNodeId(), teeDomainId);
+        nodeRouteManager.checkRouteNotExistInDB(teeDomainId, request.getNodeId());
         // query domain data grant id from database
-        Optional<TeeNodeDatatableManagementDO> pushAuthOptional = teeNodeDatatableManagementRepository
-                .findFirstByNodeIdAndTeeNodeIdAndDatatableIdAndKind(request.getNodeId(), teeDomainId, request.getDatatableId(), TeeJobKind.PushAuth);
+        Optional<TeeNodeDatatableManagementDO> pushAuthOptional = teeNodeDatatableManagementRepository.findFirstByNodeIdAndTeeNodeIdAndDatatableIdAndKind(request.getNodeId(), teeDomainId, request.getDatatableId(), TeeJobKind.PushAuth);
         if (pushAuthOptional.isPresent()) {
             Map<String, Object> operateInfoMap = TeeJob.getOperateInfoMap(pushAuthOptional.get().getOperateInfo());
             if (!CollectionUtils.isEmpty(operateInfoMap) && operateInfoMap.containsKey(DOMAIN_DATA_GRANT_ID)) {
@@ -360,26 +377,14 @@ public class DatatableServiceImpl implements DatatableService {
             // save domain grant id
             Map<String, String> domainGrantIdMap = new HashMap<>(1);
             domainGrantIdMap.put(DOMAIN_DATA_GRANT_ID, domainGrantId);
-            TeeNodeDatatableManagementDO pushAuthDO = TeeNodeDatatableManagementDO.builder()
-                    .upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(request.getNodeId()).datatableId(request.getDatatableId())
-                            .teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build())
-                    .datasourceId(datasourceId)
-                    .status(TeeJobStatus.SUCCESS)
-                    .kind(TeeJobKind.PushAuth)
-                    .operateInfo(JsonUtils.toJSONString(domainGrantIdMap)).build();
+            TeeNodeDatatableManagementDO pushAuthDO = TeeNodeDatatableManagementDO.builder().upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(request.getNodeId()).datatableId(request.getDatatableId()).teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build()).datasourceId(datasourceId).status(TeeJobStatus.SUCCESS).kind(TeeJobKind.PushAuth).operateInfo(JsonUtils.toJSONString(domainGrantIdMap)).build();
 //            teeNodeDatatableManagementRepository.save(pushAuthDO);
             saveTeeNodeDatatableManagementOrPush(pushAuthDO);
         }
         Map<String, String> pushToTeeMap = new HashMap<>(1);
         pushToTeeMap.put(TeeJob.RELATIVE_URI, relativeUri);
         // save push datatable to Tee node job
-        TeeNodeDatatableManagementDO pushToTeeDO = TeeNodeDatatableManagementDO.builder()
-                .upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(request.getNodeId()).datatableId(datatableId)
-                        .teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build())
-                .datasourceId(datasourceId)
-                .status(TeeJobStatus.RUNNING)
-                .kind(TeeJobKind.Push)
-                .operateInfo(JsonUtils.toJSONString(pushToTeeMap)).build();
+        TeeNodeDatatableManagementDO pushToTeeDO = TeeNodeDatatableManagementDO.builder().upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(request.getNodeId()).datatableId(datatableId).teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build()).datasourceId(datasourceId).status(TeeJobStatus.RUNNING).kind(TeeJobKind.Push).operateInfo(JsonUtils.toJSONString(pushToTeeMap)).build();
 //        teeNodeDatatableManagementRepository.save(pushToTeeDO);
         saveTeeNodeDatatableManagementOrPush(pushToTeeDO);
         // build tee job model
@@ -392,8 +397,7 @@ public class DatatableServiceImpl implements DatatableService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void pullResultFromTeeNode(String nodeId, String datatableId, String targetTeeNodeId, String datasourceId, String relativeUri, String voteResult,
-                                      String projectId, String projectJobId, String projectJobTaskId, String resultType) {
+    public void pullResultFromTeeNode(String nodeId, String datatableId, String targetTeeNodeId, String datasourceId, String relativeUri, String voteResult, String projectId, String projectJobId, String projectJobTaskId, String resultType) {
         LOGGER.info("Pull result from teeNode with node id = {}, datatable id = {}", nodeId, datatableId);
         // teeNodeId and datasourceId maybe blank
         String teeDomainId = StringUtils.isBlank(targetTeeNodeId) ? teeNodeId : targetTeeNodeId;
@@ -410,13 +414,7 @@ public class DatatableServiceImpl implements DatatableService {
         pullFromTeeMap.put(TeeJob.PROJECT_JOB_TASK_ID, projectJobTaskId);
         pullFromTeeMap.put(TeeJob.RESULT_TYPE, resultType);
         // save pull result from Tee node job
-        TeeNodeDatatableManagementDO pullFromTeeDO = TeeNodeDatatableManagementDO.builder()
-                .upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(nodeId).datatableId(datatableId)
-                        .teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build())
-                .datasourceId(datasourceId)
-                .status(TeeJobStatus.RUNNING)
-                .kind(TeeJobKind.Pull)
-                .operateInfo(JsonUtils.toJSONString(pullFromTeeMap)).build();
+        TeeNodeDatatableManagementDO pullFromTeeDO = TeeNodeDatatableManagementDO.builder().upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(nodeId).datatableId(datatableId).teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build()).datasourceId(datasourceId).status(TeeJobStatus.RUNNING).kind(TeeJobKind.Pull).operateInfo(JsonUtils.toJSONString(pullFromTeeMap)).build();
 //        teeNodeDatatableManagementRepository.save(pullFromTeeDO);
         saveTeeNodeDatatableManagementOrPush(pullFromTeeDO);
         // build tee job model
@@ -428,25 +426,104 @@ public class DatatableServiceImpl implements DatatableService {
     }
 
     @Override
-    public String createDataTable(CreateDatatableRequest createDatatableRequest) {
+    public OssDatatableVO createDataTable(CreateDatatableRequest createDatatableRequest) {
         verifyRate();
-        return dataManager.createDataByDataSource(
-                createDatatableRequest.getNodeId(),
+        String domainDataId = genDomainDataId();
+        Map<String, String> failedCreatedNodes = new ConcurrentHashMap<>();
+
+        if (envService.isAutonomy()) {
+            createDatatableRequest.getNodeIds().forEach(nodeId -> {
+                datasourceManager.findById(
+                        DatasourceDTO.NodeDatasourceId.builder()
+                                .nodeId(nodeId)
+                                .datasourceId(createDatatableRequest.getDatasourceId())
+                                .build()
+                );
+            });
+            List<CompletableFuture<Void>> futures = createDatatableRequest.getNodeIds().stream()
+                    .map(nodeId -> CompletableFuture.supplyAsync(() -> dataManager.createDatatable(
+                                    genDomainDataId(),
+                                    nodeId,
+                                    createDatatableRequest.getDatatableName(),
+                                    createDatatableRequest.getRelativeUri(),
+                                    createDatatableRequest.getDatasourceId(),
+                                    createDatatableRequest.getDesc(),
+                                    createDatatableRequest.getDatasourceType(),
+                                    createDatatableRequest.getDatasourceName(),
+                                    createDatatableRequest.getNullStrs(),
+                                    createDatatableRequest.getColumns().stream().map(column -> {
+                                        DatatableSchema schema = new DatatableSchema();
+                                        schema.setFeatureName(column.getColName());
+                                        schema.setFeatureType(column.getColType());
+                                        schema.setFeatureDescription(StringUtils.isNotEmpty(column.getColComment()) ? column.getColComment() : "");
+                                        return schema;
+                                    }).toList(),
+                                    ObjectUtils.isEmpty(createDatatableRequest.getPartition()) ? null : createDatatableRequest.getPartition().toPartition()
+                            ), kusciaApiFutureThreadPool)
+                            .handle((result, ex) -> {
+                                if (ex != null) {
+                                    LOGGER.error("Failed to create data for nodeId {}", nodeId, ex);
+                                    failedCreatedNodes.put(nodeId, ex.getMessage());
+                                } else {
+                                    LOGGER.info("record domainDataId for nodeId {}: result={}", nodeId, result);
+                                }
+                                return null;
+                            }).thenAccept(result -> {
+                            })).toList();
+
+            try {
+                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(5, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                throw SecretpadException.of(ConcurrentErrorCode.TASK_INTERRUPTED_ERROR, e);
+            } catch (TimeoutException e) {
+                throw SecretpadException.of(ConcurrentErrorCode.TASK_TIME_OUT_ERROR, e);
+            } catch (ExecutionException e) {
+                throw SecretpadException.of(ConcurrentErrorCode.TASK_EXECUTION_ERROR, e);
+            }
+
+            return OssDatatableVO.builder()
+                    .domainDataId(domainDataId)
+                    .failedCreatedNodes(failedCreatedNodes)
+                    .build();
+        }
+        datasourceManager.findById(
+                DatasourceDTO.NodeDatasourceId.builder()
+                        .nodeId(createDatatableRequest.getOwnerId())
+                        .datasourceId(createDatatableRequest.getDatasourceId())
+                        .build()
+        );
+        String result = dataManager.createDatatable(
+                domainDataId,
+                createDatatableRequest.getOwnerId(),
                 createDatatableRequest.getDatatableName(),
                 createDatatableRequest.getRelativeUri(),
                 createDatatableRequest.getDatasourceId(),
                 createDatatableRequest.getDesc(),
                 createDatatableRequest.getDatasourceType(),
                 createDatatableRequest.getDatasourceName(),
+                createDatatableRequest.getNullStrs(),
                 createDatatableRequest.getColumns().stream().map(column -> {
                     DatatableSchema schema = new DatatableSchema();
                     schema.setFeatureName(column.getColName());
                     schema.setFeatureType(column.getColType());
                     schema.setFeatureDescription(column.getColComment());
                     return schema;
-                }).collect(Collectors.toList())
+                }).collect(Collectors.toList()),
+                ObjectUtils.isEmpty(createDatatableRequest.getPartition()) ? null : createDatatableRequest.getPartition().toPartition()
         );
+
+        if (!domainDataId.equals(result)) {
+            LOGGER.warn("Inconsistent domainDataId for ownerId {}: Expected {}, Got {}", createDatatableRequest.getOwnerId(), domainDataId, result);
+            failedCreatedNodes.put(createDatatableRequest.getOwnerId(), "Inconsistent domainDataId");
+        }
+
+        return OssDatatableVO.builder()
+                .domainDataId(domainDataId)
+                .failedCreatedNodes(failedCreatedNodes)
+                .build();
     }
+
 
     @Override
     public List<DatatableVO> findDatatableByNodeId(String nodeId) {
@@ -454,7 +531,7 @@ public class DatatableServiceImpl implements DatatableService {
         if (CollectionUtils.isEmpty(datatableDTOS)) {
             return Collections.EMPTY_LIST;
         }
-        return datatableDTOS.stream().map(e -> DatatableVO.builder().datatableId(e.getDatatableId()).datatableName(e.getDatatableName()).type(e.getType()).datasourceId(e.getDatasourceId()).build()).collect(Collectors.toList());
+        return datatableDTOS.stream().map(e -> DatatableVO.builder().datatableId(e.getDatatableId()).datatableName(e.getDatatableName()).type(e.getType()).datasourceId(e.getDatasourceId()).nodeId(e.getNodeId()).build()).collect(Collectors.toList());
     }
 
     /**
@@ -465,29 +542,22 @@ public class DatatableServiceImpl implements DatatableService {
      * @return Map of datatableId and auth project pair list
      */
     private Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> getAuthProjectPairs(String nodeId, List<String> datatableIds) {
-        List<ProjectDatatableDO> authProjectDatatables = projectDatatableRepository.authProjectDatatablesByDatatableIds(nodeId,
-                datatableIds);
+        List<ProjectDatatableDO> authProjectDatatables = projectDatatableRepository.authProjectDatatablesByDatatableIds(nodeId, datatableIds);
         return getStringListMap(authProjectDatatables);
     }
 
     private Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> getHttpFeatureAuthProjectPairs(String nodeId, List<String> featureTableIds) {
         List<ProjectFeatureTableDO> featureTableDOS = projectFeatureTableRepository.findByNodeIdAndFeatureTableIds(nodeId, featureTableIds);
-        List<ProjectDatatableDO> authProjectDatatables = featureTableDOS.stream().map(e -> ProjectDatatableDO.builder()
-                .tableConfig(e.getTableConfig())
-                .source(e.getSource())
-                .upk(new ProjectDatatableDO.UPK(e.getUpk().getProjectId(), e.getUpk().getNodeId(), e.getUpk().getFeatureTableId()))
-                .build()).collect(Collectors.toList());
+        List<ProjectDatatableDO> authProjectDatatables = featureTableDOS.stream().map(e -> ProjectDatatableDO.builder().tableConfig(e.getTableConfig()).source(e.getSource()).upk(new ProjectDatatableDO.UPK(e.getUpk().getProjectId(), e.getUpk().getNodeId(), e.getUpk().getFeatureTableId())).build()).collect(Collectors.toList());
         return getStringListMap(authProjectDatatables);
     }
 
     private Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> getStringListMap(List<ProjectDatatableDO> authProjectDatatables) {
         List<String> projectIds = authProjectDatatables.stream().map(it -> it.getUpk().getProjectId()).collect(Collectors.toList());
-        Map<String, ProjectDO> projectMap = projectRepository.findAllById(projectIds).stream().collect(
-                Collectors.toMap(ProjectDO::getProjectId, Function.identity()));
+        Map<String, ProjectDO> projectMap = projectRepository.findAllById(projectIds).stream().collect(Collectors.toMap(ProjectDO::getProjectId, Function.identity()));
         return authProjectDatatables.stream().map(
                         // List<Pair>
-                        it -> new Pair<>(it, projectMap.getOrDefault(it.getUpk().getProjectId(), null)))
-                .filter(it -> it.getValue1() != null)
+                        it -> new Pair<>(it, projectMap.getOrDefault(it.getUpk().getProjectId(), null))).filter(it -> it.getValue1() != null)
                 // Map<datatable, List<Pair>>
                 .collect(Collectors.groupingBy(it -> it.getValue0().getUpk().getDatatableId()));
     }
@@ -503,8 +573,7 @@ public class DatatableServiceImpl implements DatatableService {
     private Map<String, List<TeeNodeDatatableManagementDO>> getPushToTeeInfos(String nodeId, String teeNodeId, List<String> datatableIds) {
         List<String> teeDatatables = datatableIds.stream().map(datatableId -> teeJobConverter.buildTeeDatatableId(teeNodeId, datatableId)).toList();
         // batch query push to tee job list by datatableIds
-        List<TeeNodeDatatableManagementDO> managementList = teeNodeDatatableManagementRepository
-                .findAllByNodeIdAndTeeNodeIdAndDatatableIdsAndKind(nodeId, teeNodeId, teeDatatables, TeeJobKind.Push);
+        List<TeeNodeDatatableManagementDO> managementList = teeNodeDatatableManagementRepository.findAllByNodeIdAndTeeNodeIdAndDatatableIdsAndKind(nodeId, teeNodeId, teeDatatables, TeeJobKind.Push);
         if (CollectionUtils.isEmpty(managementList)) {
             return Collections.emptyMap();
         }
@@ -535,6 +604,17 @@ public class DatatableServiceImpl implements DatatableService {
 
     private RateLimiter getRateLimiter(String userName) throws ExecutionException {
         return rateLimiters.get(userName, () -> RateLimiter.create(5.0 / 60));
+    }
+
+    private String genDomainDataId() {
+        return UUIDUtils.random(8);
+    }
+
+    /**
+     * query all then page
+     */
+    private ListDatatableRequest createNodeRequest(ListDatatableRequest request, String nodeId) {
+        return ListDatatableRequest.builder().statusFilter(request.getStatusFilter()).datatableNameFilter(request.getDatatableNameFilter()).types(request.getTypes()).ownerId(nodeId).teeNodeId(request.getTeeNodeId()).build();
     }
 
 

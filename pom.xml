@@ -31,7 +31,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.1.11</version>
+        <version>3.2.8</version>
     </parent>
     <groupId>org.secretflow</groupId>
     <artifactId>secretpad-parent</artifactId>
@@ -40,12 +40,14 @@
     <description>secretpad parent</description>
     <properties>
         <java.version>17</java.version>
+        <tomcat.version>10.1.26</tomcat.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <lombok.version>1.18.24</lombok.version>
         <protobuf.version>3.22.2</protobuf.version>
         <grpc.version>1.62.2</grpc.version>
-        <jackson.version>2.15.0</jackson.version>
+        <jackson.version>2.17.2</jackson.version>
         <swagger.version>2.1.6</swagger.version>
         <sqlite-jdbc.version>3.42.0.0</sqlite-jdbc.version>
         <sqlite-dialect.version>1.0</sqlite-dialect.version>
@@ -72,6 +74,8 @@
         <client-version>4.5.13</client-version>
         <maven-clean-plugin.version>3.2.0</maven-clean-plugin.version>
         <build-helper-maven-plugin.version>3.0.0</build-helper-maven-plugin.version>
+        <java-jwt.version>4.3.0</java-jwt.version>
+        <odps-code.version>0.48.8-public</odps-code.version>
     </properties>
 
     <dependencyManagement>
@@ -253,10 +257,25 @@
                 <artifactId>httpclient</artifactId>
                 <version>${client-version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.auth0</groupId>
+                <artifactId>java-jwt</artifactId>
+                <version>${java-jwt.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>com.aliyun.odps</groupId>
+                <artifactId>odps-sdk-core</artifactId>
+                <version>${odps-code.version}</version>
+            </dependency>
+
         </dependencies>
     </dependencyManagement>
 
     <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-actuator</artifactId>
+        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-validation</artifactId>
@@ -280,6 +299,10 @@
             <groupId>io.grpc</groupId>
             <artifactId>grpc-testing</artifactId>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
         </dependency>
     </dependencies>
 

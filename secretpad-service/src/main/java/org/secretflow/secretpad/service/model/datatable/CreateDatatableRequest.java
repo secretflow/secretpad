@@ -22,7 +22,9 @@ import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.util.List;
 
@@ -31,13 +33,21 @@ import java.util.List;
  * @date 2024/5/22
  */
 @Data
+@NoArgsConstructor
+@AllArgsConstructor
 public class CreateDatatableRequest {
 
     /**
-     * node ID
+     * owner ID
      */
     @NotBlank
-    private String nodeId;
+    private String ownerId;
+
+    /**
+     * The node ID to which the data belongs. In p2p mode, there may be more than one node ID.
+     */
+    @NotEmpty
+    private List<@NotBlank String> nodeIds;
 
     /**
      * table name
@@ -62,7 +72,7 @@ public class CreateDatatableRequest {
      * datatable type
      */
     @NotBlank
-    @OneOfType(types = {DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE})
+    @OneOfType(types = {DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE, DomainDatasourceConstants.DEFAULT_ODPS_DATASOURCE_TYPE})
     private String datasourceType;
 
     /**
@@ -82,4 +92,11 @@ public class CreateDatatableRequest {
      */
     @NotEmpty
     private List<TableColumnVO> columns;
+
+    private OdpsPartitionRequest partition;
+
+    /**
+     * When registering a table, users can specify certain specific values to be treated as nulls.
+     */
+    private List<String> nullStrs;
 }

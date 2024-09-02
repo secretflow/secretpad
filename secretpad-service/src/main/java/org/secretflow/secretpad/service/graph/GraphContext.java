@@ -24,7 +24,9 @@ import org.secretflow.secretpad.persistence.entity.ProjectDO;
 import lombok.*;
 import org.apache.commons.lang3.ObjectUtils;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 
 /**
@@ -74,6 +76,18 @@ public final class GraphContext {
         return graphParties;
     }
 
+    public static Map<String, String> getTablePartitionRule() {
+        return GRAPH_CONTEXT_BEAN_THREAD_LOCAL.get().table_partition_rule;
+    }
+
+    public static String getTablePartitionRule(String datableId) {
+        Map<String, String> table_partition_rule = getTablePartitionRule();
+        if (ObjectUtils.isEmpty(table_partition_rule)) {
+            return null;
+        }
+        return table_partition_rule.get(datableId);
+    }
+
     public static String getTeeNodeId() {
         if (isTee()) {
             return Objects.requireNonNull(getProject()).getProjectInfo().getTeeDomainId();
@@ -89,6 +103,23 @@ public final class GraphContext {
         GRAPH_CONTEXT_BEAN_THREAD_LOCAL.set(new GraphContextBean(projectDO, parties, breakpoint));
     }
 
+    public static void set(ProjectDO projectDO, GraphParties parties, Boolean breakpoint, HashMap<String, String> table_partition_rule) {
+        GRAPH_CONTEXT_BEAN_THREAD_LOCAL.set(new GraphContextBean(projectDO, parties, breakpoint, table_partition_rule));
+    }
+
+    public static void set(HashMap<String, String> table_partition_rule) {
+        GraphContextBean graphContextBean = GRAPH_CONTEXT_BEAN_THREAD_LOCAL.get();
+        if (ObjectUtils.isNotEmpty(graphContextBean)) {
+            Map<String, String> tablePartitionRule = graphContextBean.table_partition_rule;
+            if (ObjectUtils.isEmpty(tablePartitionRule)) {
+                graphContextBean.table_partition_rule = table_partition_rule;
+                return;
+            } else {
+                tablePartitionRule.putAll(table_partition_rule);
+            }
+        }
+    }
+
     public static void remove() {
         GRAPH_CONTEXT_BEAN_THREAD_LOCAL.remove();
     }
@@ -97,6 +128,7 @@ public final class GraphContext {
         ProjectDO projectDO;
         GraphParties graphParties;
         Boolean breakpoint = false;
+        HashMap<String, String> table_partition_rule;
 
 
         public GraphContextBean(ProjectDO projectDO, GraphParties graphParties) {
@@ -108,6 +140,13 @@ public final class GraphContext {
             this.projectDO = projectDO;
             this.graphParties = graphParties;
             this.breakpoint = breakpoint;
+        }
+
+        public GraphContextBean(ProjectDO projectDO, GraphParties graphParties, Boolean breakpoint, HashMap<String, String> table_partition_rule) {
+            this.projectDO = projectDO;
+            this.graphParties = graphParties;
+            this.breakpoint = breakpoint;
+            this.table_partition_rule = table_partition_rule;
         }
     }
 

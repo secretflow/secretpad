@@ -66,4 +66,9 @@ public class SecretFlowVersionConfig {
      */
     private String capsuleManagerSimImage;
 
+    /*
+     * data proxy image version
+     */
+    private String dataProxyImage;
+
 }

@@ -50,6 +50,10 @@ public final class UserContext {
         return userContextDTO;
     }
 
+    public static UserContextDTO getUserOrNotExist() {
+        return USER.get();
+    }
+
     public static void setBaseUser(UserContextDTO userContextDTO) {
         if (!ObjectUtils.isEmpty(userContextDTO) && userContextDTO.getVirtualUserForNode() == null) {
             userContextDTO.setVirtualUserForNode(false);

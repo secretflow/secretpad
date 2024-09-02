@@ -19,12 +19,12 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.ProjectApprovalConfigDO;
 
-import java.util.List;
-import java.util.Optional;
-
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
 
 /**
  * @author cml
@@ -37,6 +37,9 @@ public interface ProjectApprovalConfigRepository extends BaseRepository<ProjectA
     List<ProjectApprovalConfigDO> listProjectApprovalConfigByType(@Param("type") String type);
 
     List<ProjectApprovalConfigDO> findByType(@Param("type") String type);
+
+    Optional<ProjectApprovalConfigDO> findByProjectId(@Param("projectId") String projectId);
+
 
     Optional<ProjectApprovalConfigDO> findByProjectIdAndType(@Param("projectId") String projectId, @Param("type") String type);
 

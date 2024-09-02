@@ -51,7 +51,9 @@ create table if not exists `node`
     `master_node_id`  varchar(64) default 'master', -- master node id
     `is_deleted`      tinyint(1) default '0' not null, -- delete flag
     `gmt_create`      datetime default current_timestamp not null, -- create time
-    `gmt_modified`    datetime default current_timestamp not null -- modified time
+    `gmt_modified`    datetime default current_timestamp not null, -- modified time
+    `inst_id`         varchar(64) default '' not null,
+    `inst_token`      varchar(200)
 );
 
 create unique index `upk_node_id` on `node` (`node_id`);

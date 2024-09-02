@@ -33,9 +33,9 @@ import java.util.List;
 @NoArgsConstructor
 public class DatasourceListVO extends AbstractPageResponse {
 
-    List<DatasourceListInfo> infos;
+    List<DatasourceListInfoAggregate> infos;
 
-    public static DatasourceListVO newInstance(List<DatasourceListInfo> datasources, Integer pageNum, Integer pageSize, Long total) {
+    public static DatasourceListVO newInstance(List<DatasourceListInfoAggregate> datasources, Integer pageNum, Integer pageSize, Long total) {
         DatasourceListVO datasourceListVO = new DatasourceListVO();
         datasourceListVO.setInfos(datasources);
         datasourceListVO.setPageNum(pageNum);

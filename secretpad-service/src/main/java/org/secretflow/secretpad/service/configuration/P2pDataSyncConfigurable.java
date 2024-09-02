@@ -30,10 +30,14 @@ import org.secretflow.secretpad.persistence.datasync.retry.DataSyncRetryTemplate
 import org.secretflow.secretpad.persistence.datasync.retry.impl.ThrowDataSyncRetry;
 import org.secretflow.secretpad.persistence.datasync.retry.impl.TryDataSyncRetry;
 import org.secretflow.secretpad.persistence.model.DataSyncConfig;
+import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectApprovalConfigRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectInstRepository;
 import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
 
+import io.netty.channel.ChannelOption;
+import io.netty.handler.timeout.ReadTimeoutHandler;
+import io.netty.handler.timeout.WriteTimeoutHandler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -41,12 +45,15 @@ import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatusCode;
+import org.springframework.http.client.reactive.ReactorClientHttpConnector;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.support.WebClientAdapter;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
+import reactor.core.publisher.Mono;
+import reactor.netty.http.client.HttpClient;
 
-import java.time.Duration;
 import java.util.concurrent.Executor;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -65,9 +72,9 @@ public class P2pDataSyncConfigurable {
     @Value("${secretpad.datasync.retry:fastFailedPolicy}")
     private String retry;
 
-    @Bean
-    public PaddingNodeService p2pPaddingNodeServiceImpl(ProjectNodeRepository projectNodeRepository, ProjectApprovalConfigRepository projectApprovalConfigRepository, VoteRequestRepository voteRequestRepository, CacheManager cacheManager) {
-        return new P2pPaddingNodeServiceImpl(projectNodeRepository, projectApprovalConfigRepository, voteRequestRepository, cacheManager);
+    @Bean("p2pPaddingNodeService")
+    public PaddingNodeService p2pPaddingNodeServiceImpl(ProjectInstRepository projectInstRepository, ProjectApprovalConfigRepository projectApprovalConfigRepository, VoteRequestRepository voteRequestRepository, CacheManager cacheManager, NodeRepository nodeRepository) {
+        return new P2pPaddingNodeServiceImpl(projectInstRepository, projectApprovalConfigRepository, voteRequestRepository, cacheManager, nodeRepository);
     }
 
     @Bean
@@ -77,12 +84,10 @@ public class P2pDataSyncConfigurable {
 
     @Bean
     public DataSyncRetryTemplate dataSyncRetryTemplate() {
-        switch (retry) {
-            case "retryPolicy":
-                return new TryDataSyncRetry();
-            default:
-                return new ThrowDataSyncRetry();
+        if ("retryPolicy".equals(retry)) {
+            return new TryDataSyncRetry();
         }
+        return new ThrowDataSyncRetry();
     }
 
 
@@ -101,15 +106,26 @@ public class P2pDataSyncConfigurable {
 
     @Bean
     public P2pDataSyncRestService p2pDataSyncRestService() {
+        HttpClient httpClient = HttpClient.create()
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10 * 1000)  //Connected timeout
+                .doOnConnected(conn -> {
+                    conn.addHandlerLast(new ReadTimeoutHandler(6)); //read timeout
+                    conn.addHandlerLast(new WriteTimeoutHandler(6)); //write timeout
+                });
         if (!kusciaLiteGateway.contains(":")) {
             kusciaLiteGateway = kusciaLiteGateway + ":80";
         }
         WebClient webClient = WebClient.builder()
                 .baseUrl("http://" + kusciaLiteGateway)
-                .build();
+                .clientConnector(new ReactorClientHttpConnector(httpClient))
+                //error callback
+                .defaultStatusHandler(HttpStatusCode::isError, clientResponse -> {
+                    log.info("p2pDataSyncRestService error,{}", clientResponse.statusCode().value());
+                    return Mono.error(new RuntimeException("p2pDataSyncRestService error " + clientResponse.statusCode().value()));
+                }).build();
         HttpServiceProxyFactory proxyFactory
-                = HttpServiceProxyFactory.builder(
-                WebClientAdapter.forClient(webClient)).blockTimeout(Duration.ofSeconds(20)).build();
+                = HttpServiceProxyFactory.builderFor(
+                WebClientAdapter.create(webClient)).build();
         return proxyFactory.createClient(P2pDataSyncRestService.class);
     }
 
@@ -118,7 +134,7 @@ public class P2pDataSyncConfigurable {
         ThreadPoolTaskExecutor threadPoolTaskExecutor = new ThreadPoolTaskExecutor();
         threadPoolTaskExecutor.setCorePoolSize(11);
         threadPoolTaskExecutor.setMaxPoolSize(20);
-        threadPoolTaskExecutor.setQueueCapacity(10);
+        threadPoolTaskExecutor.setQueueCapacity(100);
         threadPoolTaskExecutor.setThreadNamePrefix("DataSyncThreadPool-");
         threadPoolTaskExecutor.setRejectedExecutionHandler(new ThreadPoolExecutor.CallerRunsPolicy());
         threadPoolTaskExecutor.initialize();

@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.service.model.approval;
 
 import org.secretflow.secretpad.persistence.entity.ProjectDO;
+import org.secretflow.secretpad.persistence.entity.ProjectInstDO;
 import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
 
 import lombok.Getter;
@@ -34,6 +35,7 @@ public class ProjectCallBackAction {
 
     private ProjectDO projectDO;
 
+    private List<ProjectInstDO> projectInstDOS;
     private List<ProjectNodeDO> projectNodeDOS;
 
 }

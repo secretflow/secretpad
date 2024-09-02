@@ -20,7 +20,6 @@ import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.VoteErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.*;
-import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.VoteInviteDO;
 import org.secretflow.secretpad.persistence.entity.VoteRequestDO;
 import org.secretflow.secretpad.persistence.repository.*;
@@ -70,6 +69,8 @@ public class MessageServiceImpl implements MessageService {
 
     private final NodeRepository nodeRepository;
 
+    private final InstRepository instRepository;
+
     private final Map<VoteTypeEnum, VoteTypeHandler> voteTypeHandlerMap;
 
 
@@ -82,10 +83,11 @@ public class MessageServiceImpl implements MessageService {
     private final CertificateService certificateService;
 
 
-    public MessageServiceImpl(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, Map<VoteTypeEnum, VoteTypeHandler> voteTypeHandlerMap, VoteRequestCustomRepository voteRequestCustomRepository, VoteInviteCustomRepository voteInviteCustomRepository, EnvService envService, CertificateService certificateService) {
+    public MessageServiceImpl(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, InstRepository instRepository, Map<VoteTypeEnum, VoteTypeHandler> voteTypeHandlerMap, VoteRequestCustomRepository voteRequestCustomRepository, VoteInviteCustomRepository voteInviteCustomRepository, EnvService envService, CertificateService certificateService) {
         this.voteInviteRepository = voteInviteRepository;
         this.voteRequestRepository = voteRequestRepository;
         this.nodeRepository = nodeRepository;
+        this.instRepository = instRepository;
         this.voteTypeHandlerMap = voteTypeHandlerMap;
         this.voteRequestCustomRepository = voteRequestCustomRepository;
         this.voteInviteCustomRepository = voteInviteCustomRepository;
@@ -95,23 +97,23 @@ public class MessageServiceImpl implements MessageService {
 
     @Transactional(rollbackFor = Exception.class)
     @Override
-    public void reply(String action, String reason, String voteParticipantID, String voteID) {
-        identityVerification(voteParticipantID);
-
-        Optional<VoteInviteDO> voteInviteDOOptional = voteInviteRepository.findById(new VoteInviteDO.UPK(voteID, voteParticipantID));
+    public void reply(String action, String reason, String voteParticipantId, String voteId) {
+        identityVerification(voteParticipantId);
+        Optional<VoteInviteDO> voteInviteDOOptional = voteInviteRepository.findById(new VoteInviteDO.UPK(voteId, voteParticipantId));
         if (!voteInviteDOOptional.isPresent()) {
-            LOGGER.error("Cannot find vote info by voteID {} and voteParticipantID {}.", voteID, voteParticipantID);
+            LOGGER.error("Cannot find vote info by voteID {} and voteParticipantID {}.", voteId, voteParticipantId);
             throw SecretpadException.of(VoteErrorCode.VOTE_NOT_EXISTS);
         }
         VoteInviteDO voteInviteDO = voteInviteDOOptional.get();
-        Optional<VoteRequestDO> optionalVoteRequestDO = voteRequestRepository.findById(voteID);
+        String voter = voteTypeHandlerMap.get(VoteTypeEnum.valueOf(voteInviteDO.getType())).getVoter(voteParticipantId);
+        Optional<VoteRequestDO> optionalVoteRequestDO = voteRequestRepository.findById(voteId);
         if (!optionalVoteRequestDO.isPresent()) {
             throw SecretpadException.of(VoteErrorCode.VOTE_NOT_EXISTS);
         }
         VoteRequestDO voteRequestDO = optionalVoteRequestDO.get();
         String requestMsg = voteRequestDO.getRequestMsg();
         String teeAction = VoteStatusEnum.APPROVED.name().equals(action) ? "APPROVE" : "REJECT";
-        LOGGER.debug("requestMsg = {},voteID = {}", requestMsg, voteID);
+        LOGGER.debug("requestMsg = {},voteID = {}", requestMsg, voteId);
         VoteRequestMessage voteRequestMessage = JsonUtils.toJavaObject(requestMsg, VoteRequestMessage.class);
         String voteType = voteRequestDO.getType();
         List<String> executors = voteRequestDO.getExecutors();
@@ -124,19 +126,19 @@ public class MessageServiceImpl implements MessageService {
 
         VoteRequestBody voteRequestBody;
         voteRequestBody = JsonUtils.toJavaObject(new String(Base64Utils.decode(voteRequestMessage.getBody())), VoteRequestBody.class);
-        if (!voteRequestBody.getVoters().contains(voteParticipantID)) {
+        if (!voteRequestBody.getVoters().contains(voteParticipantId)) {
             throw SecretpadException.of(VoteErrorCode.VOTE_CHECK_FAILED);
         }
         //tee node route can not sign in tee node,so skip
         if (teeNodeRoute) {
             voteInviteDO.setAction(action);
         } else {
-            Certificate.GenerateKeyCertsResponse generateKeyCertsResponse = certificateService.generateCertByNodeID(voteParticipantID);
+            Certificate.GenerateKeyCertsResponse generateKeyCertsResponse = certificateService.generateCertByNodeID(voter);
             String privateKey = generateKeyCertsResponse.getKey();
             List<String> certChainList = generateKeyCertsResponse.getCertChainList();
             VoteReplyBody voteReplyBodyBaseInfo = VoteReplyBody.builder()
-                    .voteRequestID(voteID)
-                    .voter(voteParticipantID)
+                    .voteRequestID(voteId)
+                    .voter(voter)
                     .action(teeAction)
                     .build();
             String voteStr = JsonUtils.toJSONString(voteReplyBodyBaseInfo);
@@ -165,11 +167,11 @@ public class MessageServiceImpl implements MessageService {
             case AUTONOMY -> {
                 voteInviteRepository.saveAndFlush(voteInviteDO);
                 Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = voteRequestDO.getPartyVoteInfos();
-                VoteRequestDO.PartyVoteInfo partyVoteInfo = VoteRequestDO.PartyVoteInfo.builder().action(voteInviteDO.getAction()).nodeId(voteInviteDO.getUpk().getVotePartitionID()).reason(voteInviteDO.getReason()).build();
+                VoteRequestDO.PartyVoteInfo partyVoteInfo = VoteRequestDO.PartyVoteInfo.builder().action(voteInviteDO.getAction()).partyId(voteInviteDO.getUpk().getVotePartitionID()).reason(voteInviteDO.getReason()).build();
                 partyVoteInfos.remove(partyVoteInfo);
                 partyVoteInfos.add(partyVoteInfo);
                 if (partyVoteInfos.stream().allMatch(e -> StringUtils.equals(e.getAction(), VoteStatusEnum.APPROVED.name()))) {
-                    voteTypeHandlerMap.get(VoteTypeEnum.valueOf(voteType)).flushVoteStatus(voteID);
+                    voteTypeHandlerMap.get(VoteTypeEnum.valueOf(voteType)).flushVoteStatus(voteId);
                 }
                 voteRequestDO.setGmtModified(LocalDateTime.now());
                 voteRequestRepository.saveAndFlush(voteRequestDO);
@@ -177,9 +179,9 @@ public class MessageServiceImpl implements MessageService {
         }
     }
 
-    private void identityVerification(String nodeId) {
+    private void identityVerification(String ownerId) {
         if (envService.isAutonomy()) {
-            if (!StringUtils.equals(UserContext.getUser().getPlatformNodeId(), nodeId)) {
+            if (!StringUtils.equals(UserContext.getUser().getOwnerId(), ownerId)) {
                 throw SecretpadException.of(VoteErrorCode.VOTE_CHECK_FAILED);
             }
         }
@@ -187,49 +189,56 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public MessageListVO list(Boolean isInitiator, String nodeID, String type, String keyWord, Boolean isProcessed, Pageable page) {
-        identityVerification(nodeID);
+    public MessageListVO list(Boolean isInitiator, String ownerId, String type, String keyWord, Boolean isProcessed, Pageable page) {
+        identityVerification(ownerId);
         if (!isInitiator) {
-            List<VoteInviteDO> voteInviteDOS = voteInviteCustomRepository.pageQuery(nodeID, isProcessed, type, keyWord, page);
-            Long total = voteInviteCustomRepository.queryCount(nodeID, isProcessed, type, keyWord);
+            List<VoteInviteDO> voteInviteDOS = voteInviteCustomRepository.pageQuery(ownerId, isProcessed, type, keyWord, page);
+            Long total = voteInviteCustomRepository.queryCount(ownerId, isProcessed, type, keyWord);
             List<MessageVO> messageVOS = PageUtils.convert(voteInviteDOS, this::convert2VO);
             return MessageListVO.newInstance(messageVOS, page.getPageNumber() + 1, page.getPageSize(), total);
         } else {
-            List<VoteRequestDO> voteRequestDOS = voteRequestCustomRepository.pageQuery(nodeID, type, keyWord, isProcessed, page);
-            Long total = voteRequestCustomRepository.queryCount(nodeID, type, keyWord);
+            List<VoteRequestDO> voteRequestDOS = voteRequestCustomRepository.pageQuery(ownerId, type, keyWord, isProcessed, page);
+            Long total = voteRequestCustomRepository.queryCount(ownerId, type, keyWord);
             List<MessageVO> messageVOS = PageUtils.convert(voteRequestDOS, this::convert2VO);
             return MessageListVO.newInstance(messageVOS, page.getPageNumber() + 1, page.getPageSize(), total);
         }
     }
 
     @Override
-    public MessageDetailVO detail(Boolean isInitiator, String nodeID, String voteID, String voteType) {
-        identityVerification(nodeID);
+    public MessageDetailVO detail(Boolean isInitiator, String ownerId, String voteID, String voteType) {
+        identityVerification(ownerId);
         VoteTypeHandler voteTypeHandler = voteTypeHandlerMap.get(VoteTypeEnum.valueOf(voteType));
-        return voteTypeHandler.getVoteMessageDetail(isInitiator, nodeID, voteID);
+        return voteTypeHandler.getVoteMessageDetail(isInitiator, ownerId, voteID);
     }
 
     @Override
-    public Long pendingCount(String nodeID) {
-        identityVerification(nodeID);
-        return voteInviteRepository.queryPendingCount(nodeID, VoteStatusEnum.REVIEWING.name());
+    public Long pendingCount(String ownerId) {
+        identityVerification(ownerId);
+        return voteInviteRepository.queryPendingCount(ownerId, VoteStatusEnum.REVIEWING.name());
     }
 
 
     private MessageVO convert2VO(VoteInviteDO inviteDO) {
         Optional<VoteRequestDO> voteRequestDOOptional = voteRequestRepository.findByVoteID(inviteDO.getUpk().getVoteID());
         if (!voteRequestDOOptional.isPresent()) {
-            throw SecretpadException.of(VoteErrorCode.VOTE_NOT_EXISTS, inviteDO.getUpk().getVoteID() + " not found in voteRequest");
+            LOGGER.error("Cannot find vote request  by voteID {}", inviteDO.getUpk().getVoteID());
+            return null;
+            //throw SecretpadException.of(VoteErrorCode.VOTE_NOT_EXISTS, inviteDO.getUpk().getVoteID() + " not found in voteRequest");
         }
         String initiator = voteRequestDOOptional.get().getInitiator();
-        NodeDO nodeDO = nodeRepository.findByNodeId(initiator);
+        String initiatorNodeName;
+        if (envService.getPlatformType().equals(PlatformTypeEnum.AUTONOMY)) {
+            initiatorNodeName = instRepository.findByInstId(initiator).getName();
+        } else {
+            initiatorNodeName = nodeRepository.findByNodeId(initiator).getName();
+        }
         return MessageVO.builder()
                 .createTime(DateTimes.toRfc3339(inviteDO.getGmtCreate()))
                 .voteID(inviteDO.getUpk().getVoteID())
                 .type(inviteDO.getType())
                 .messageName(inviteDO.getDesc())
                 .status(inviteDO.getAction())
-                .initiatingTypeMessage(ReceiverMessage.builder().participantID(inviteDO.getUpk().getVotePartitionID()).reason(inviteDO.getReason()).initiatorNodeID(initiator).initiatorNodeName(nodeDO.getName()).build())
+                .initiatingTypeMessage(ReceiverMessage.builder().participantID(inviteDO.getUpk().getVotePartitionID()).reason(inviteDO.getReason()).initiatorNodeID(initiator).initiatorNodeName(initiatorNodeName).build())
                 .voteTypeMessage(voteTypeHandlerMap.get(VoteTypeEnum.valueOf(inviteDO.getType())).getMessageListNecessaryInfo(inviteDO.getUpk().getVoteID()))
                 .build();
     }

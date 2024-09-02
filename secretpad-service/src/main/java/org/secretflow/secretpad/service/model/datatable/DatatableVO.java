@@ -16,11 +16,14 @@
 
 package org.secretflow.secretpad.service.model.datatable;
 
+import org.secretflow.secretpad.common.constant.DomainDataConstants;
+import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.persistence.entity.TeeNodeDatatableManagementDO;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
+import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.util.CollectionUtils;
 
@@ -88,6 +91,11 @@ public class DatatableVO {
     private String datasourceName;
 
     /**
+     * The data source node which it belongs to
+     */
+    private String nodeId;
+
+    /**
      * Relative uri
      */
     private String relativeUri;
@@ -111,6 +119,11 @@ public class DatatableVO {
      */
     @Schema(description = "authorized project list")
     private List<AuthProjectVO> authProjects;
+
+    private OdpsPartitionRequest partition;
+
+    @Schema(description = "Null value defined at data table registration")
+    private List<String> nullStrs;
 
     /**
      * Convert datatable view object from datatable data transfer object and authorized project list
@@ -136,9 +149,25 @@ public class DatatableVO {
                 .datasourceType(dto.getDatasourceType())
                 .datasourceName(dto.getDatasourceName())
                 .schema(dto.getSchema().stream().map(TableColumnVO::from).collect(Collectors.toList()))
+                .partition(
+                        ObjectUtils.isEmpty(dto.getPartition()) ? null :
+                                OdpsPartitionRequest.builder()
+                                        .type(dto.getPartition().getType())
+                                        .fields(
+                                                ObjectUtils.isEmpty(dto.getPartition().getFields()) ? null :
+                                                        dto.getPartition().getFields().stream().map(OdpsPartitionRequest.Field::from).collect(Collectors.toList()))
+                                        .build())
                 .authProjects(authProjects)
                 .pushToTeeStatus(null == managementDO ? "" : managementDO.getStatus().name())
                 .pushToTeeErrMsg(null == managementDO ? "" : managementDO.getErrMsg())
+                .nullStrs(getNullStrs(dto.getAttributes()))
                 .build();
+    }
+
+    private static List<String> getNullStrs(Map<String, String> attributes) {
+        if (CollectionUtils.isEmpty(attributes) || !attributes.containsKey(DomainDataConstants.NULL_STRS)) {
+            return null;
+        }
+        return JsonUtils.toJavaList(attributes.get(DomainDataConstants.NULL_STRS), String.class);
     }
 }

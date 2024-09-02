@@ -52,6 +52,24 @@ public class ProjectNodeDO extends BaseAggregationRoot<ProjectNodeDO> {
     @EmbeddedId
     private UPK upk;
 
+    @Override
+    @JsonIgnore
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
+
+    @Override
+    @JsonIgnore
+    public String getNodeId() {
+        return this.upk.nodeId;
+    }
+
+    @Override
+    @JsonIgnore
+    public List<String> getNodeIds() {
+        return super.getNodeIds();
+    }
+
     public static class Factory {
         /**
          * Create a new project node DO via projectId and nodeId
@@ -84,24 +102,6 @@ public class ProjectNodeDO extends BaseAggregationRoot<ProjectNodeDO> {
          */
         @Column(name = "node_id", nullable = false, length = 64)
         private String nodeId;
-    }
-
-    @Override
-    @JsonIgnore
-    public String getProjectId() {
-        return this.upk.projectId;
-    }
-
-    @Override
-    @JsonIgnore
-    public String getNodeId() {
-        return this.upk.nodeId;
-    }
-
-    @Override
-    @JsonIgnore
-    public List<String> getNodeIds() {
-        return super.getNodeIds();
     }
 }
 

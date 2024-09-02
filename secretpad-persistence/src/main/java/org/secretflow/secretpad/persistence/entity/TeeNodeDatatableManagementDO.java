@@ -86,6 +86,23 @@ public class TeeNodeDatatableManagementDO extends BaseAggregationRoot<TeeNodeDat
     private String operateInfo;
 
     /**
+     * Whether the tee job status is finished
+     *
+     * @return whether finished
+     */
+    public boolean isFinished() {
+        return this.status == TeeJobStatus.FAILED || this.status == TeeJobStatus.SUCCESS;
+    }
+
+    /**
+     * Get Node id
+     */
+    @Override
+    public String getNodeId() {
+        return this.upk.nodeId;
+    }
+
+    /**
      * Tee node datatable management unique primary key
      */
     @Builder
@@ -119,22 +136,5 @@ public class TeeNodeDatatableManagementDO extends BaseAggregationRoot<TeeNodeDat
          */
         @Column(name = "job_id", nullable = false, length = 64)
         private String jobId;
-    }
-
-    /**
-     * Whether the tee job status is finished
-     *
-     * @return whether finished
-     */
-    public boolean isFinished() {
-        return this.status == TeeJobStatus.FAILED || this.status == TeeJobStatus.SUCCESS;
-    }
-
-    /**
-     * Get Node id
-     */
-    @Override
-    public String getNodeId() {
-        return this.upk.nodeId;
     }
 }

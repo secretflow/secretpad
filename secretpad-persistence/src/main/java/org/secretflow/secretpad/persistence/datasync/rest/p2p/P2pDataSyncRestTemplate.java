@@ -26,7 +26,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.ObjectUtils;
 
-import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * @author yutu
@@ -35,13 +37,17 @@ import java.time.Duration;
 @Slf4j
 @RequiredArgsConstructor
 public class P2pDataSyncRestTemplate extends DataSyncRestTemplate {
+
+    Map<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>, AtomicInteger> retryTimes = new ConcurrentHashMap<>();
+    static final int MAX_RETRY_TIMES = 3;
+
     @Override
     public EntityChangeListener.DbChangeEvent<BaseAggregationRoot> send(String node) throws InterruptedException {
         int size = dataSyncDataBufferTemplate.size(node);
         EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event = null;
         while (size > 0) {
             log.debug("data sync start to send {}, now size {}", node, size);
-            event = dataSyncDataBufferTemplate.peek(node);
+            event = dataSyncDataBufferTemplate.pool(node);
             if (!ObjectUtils.isEmpty(event)) {
                 SecretPadResponse<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> syncResp;
                 try {
@@ -49,7 +55,9 @@ public class P2pDataSyncRestTemplate extends DataSyncRestTemplate {
                             .tableName(event.getDType())
                             .action(event.getAction())
                             .data(event.getSource()).build();
-                    syncResp = p2pDataSyncRestService.sync(node, "secretpad." + node + ".svc", syncDataDTO.toJson()).block(Duration.ofSeconds(5));
+                    String routeId = p2pPaddingNodeService.turnInstToRouteId(node);
+                    log.info("P2pDataSyncRestTemplate send, routeId:{} instId:{}", routeId, node);
+                    syncResp = p2pDataSyncRestService.sync(node, "secretpad." + routeId + ".svc", syncDataDTO.toJson());
                     if (0 == syncResp.getStatus().getCode()) {
                         onSuccess(node, event);
                     } else {
@@ -74,9 +82,20 @@ public class P2pDataSyncRestTemplate extends DataSyncRestTemplate {
 
     @Override
     public void onError(String node, EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
-        int retry = dataSyncRetryTemplate.retry(node, event);
-        if (retry == -1) {
+        if (retryTimes.containsKey(event)) {
+            retryTimes.get(event).incrementAndGet();
+        } else {
+            retryTimes.put(event, new AtomicInteger(0));
+        }
+        int i = retryTimes.get(event).get();
+        if (i < MAX_RETRY_TIMES) {
+            log.warn("data sync send error, retry {} times", i);
             dataSyncDataBufferTemplate.commit(node, event);
+            dataSyncDataBufferTemplate.push(event);
+        } else {
+            log.error("data sync send error, retry {} times, remove it", i);
+            dataSyncDataBufferTemplate.commit(node, event);
+            retryTimes.remove(event);
         }
     }
 

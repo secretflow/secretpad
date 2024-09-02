@@ -35,41 +35,35 @@ import java.util.List;
 public class ListNodeResultRequest {
 
     /**
-     * Node id
+     * Owner id
      */
     @Schema(description = "node id")
-    String nodeId;
-
-    /**
-     * Tee node id, it can be blank and has default value
-     */
-    @Schema(description = "tee node id")
-    private String teeNodeId;
-
+    String ownerId;
     /**
      * How many pieces of data are in each page
      */
     @Schema(description = "page size")
     Integer pageSize;
-
     /**
      * What page is currently requested? Note that starting at 1 represents the first page
      */
     @Schema(description = "page number")
     Integer pageNumber;
-
+    /**
+     * Rules for filtering by node name, not filled when listing all outputs
+     */
+    @Schema(description = "node name filter")
+    List<String> nodeNamesFilter;
     /**
      * Rules for filtering by kind, not filled when listing all outputs
      */
     @Schema(description = "kind filters")
     List<String> kindFilters;
-
     /**
      * Rules for producer filtering by data vendor, not filled when listing all outputs
      */
     @Schema(description = "data vendor filter")
     String dataVendorFilter;
-
     /**
      * Filter by any name, such as table name, project, training stream and so on
      * Note: Because the current version (20230630) does not use name, the front end is required to fill in domain data id here
@@ -77,7 +71,6 @@ public class ListNodeResultRequest {
      */
     @Schema(description = "result name filter")
     String nameFilter;
-
     /**
      * The rules are sorted by time
      * 1. Ascending：ascending
@@ -85,5 +78,10 @@ public class ListNodeResultRequest {
      */
     @Schema(description = "time sorting rule")
     String timeSortingRule;
+    /**
+     * Tee node id, it can be blank and has default value
+     */
+    @Schema(description = "tee node id")
+    private String teeNodeId;
 
 }

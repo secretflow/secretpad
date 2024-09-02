@@ -55,18 +55,6 @@ public class VoteInviteDataSyncRequest implements ProjectNodesInfo {
 
     private String desc;
 
-    @JsonIgnore
-    @Override
-    public String getProjectId() {
-        return null;
-    }
-
-    @JsonIgnore
-    @Override
-    public List<String> getNodeIds() {
-        return null;
-    }
-
     public static VoteInviteDO parse2DO(VoteInviteDataSyncRequest voteInviteDataSyncRequest) {
         VoteInviteDO voteInviteDO = new VoteInviteDO();
         VoteInviteDO.UPK upk = new VoteInviteDO.UPK(voteInviteDataSyncRequest.getVoteID(), voteInviteDataSyncRequest.getVotePartitionID());
@@ -91,5 +79,17 @@ public class VoteInviteDataSyncRequest implements ProjectNodesInfo {
         request.setVotePartitionID(voteInviteDO.getUpk().getVotePartitionID());
         request.setInitiator(voteInviteDO.getInitiator());
         return request;
+    }
+
+    @JsonIgnore
+    @Override
+    public String getProjectId() {
+        return null;
+    }
+
+    @JsonIgnore
+    @Override
+    public List<String> getNodeIds() {
+        return null;
     }
 }

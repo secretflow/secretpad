@@ -26,7 +26,7 @@ public class Constants {
 
     public final static String STATUS_AVAILABLE = "Available";
 
-    public final static String STATUS_UNAVAILABLE = "Unavailable";
+    public final static String STATUS_UNAVAILABLE = "UnAvailable";
 
     public final static String SUCCESS_STATUS_MESSAGE = "success";
 

@@ -64,4 +64,10 @@ docs/_build
 /secretpad-common/root.crt
 /secretpad-common/root.key
 /secretpad-common/root.srl
+/config/ownerId
+/config/ehcache-data/
+/config/kuscia/
+/secretpad-service/config/
+/secretpad-persistence/config/
+/secretpad-common/output.orc
 /config/ehcache-data/

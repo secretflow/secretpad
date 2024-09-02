@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.manager.integration.job.event;
 
+import lombok.Getter;
 import org.springframework.context.ApplicationEvent;
 
 /**
@@ -24,8 +25,12 @@ import org.springframework.context.ApplicationEvent;
  */
 public class JobSyncErrorOrCompletedEvent extends ApplicationEvent {
 
-    public JobSyncErrorOrCompletedEvent(Object source) {
+    @Getter
+    private String nodeId;
+
+    public JobSyncErrorOrCompletedEvent(Object source, String nodeId) {
         super(source);
+        this.nodeId = nodeId;
     }
 
     public Object getSource() {

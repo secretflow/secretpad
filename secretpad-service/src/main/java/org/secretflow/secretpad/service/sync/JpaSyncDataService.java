@@ -61,6 +61,8 @@ import java.util.concurrent.ConcurrentHashMap;
 @RequiredArgsConstructor
 @SuppressWarnings("unchecked")
 public class JpaSyncDataService {
+    @SuppressWarnings(value = {"rawtypes"})
+    private static Map<String, BaseRepository> doAndRepository;
     private final EdgeDataSyncLogRepository edgeDataSyncLogRepository;
     private final InstRepository instRepository;
     private final NodeRepository nodeRepository;
@@ -86,22 +88,15 @@ public class JpaSyncDataService {
     private final VoteInviteRepository voteInviteRepository;
     private final VoteRequestRepository voteRequestRepository;
     private final NodeRouteAuditConfigRepository nodeRouteAuditConfigRepository;
-
     private final ProjectApprovalConfigRepository projectApprovalConfigRepository;
     private final ProjectGraphNodeKusciaParamsRepository projectGraphNodeKusciaParamsRepository;
     private final ProjectModelServiceRepository projectModelServiceRepository;
-
     private final ProjectModelPackRepository projectModelPackRepository;
-
     private final ProjectFeatureTableRepository projectFeatureTableRepository;
-
     private final FeatureTableRepository featureTableRepository;
     private final ProjectGraphDomainDatasourceRepository projectGraphDomainDatasourceRepository;
     @PersistenceContext
     private final EntityManager entityManager;
-
-    @SuppressWarnings(value = {"rawtypes"})
-    private static Map<String, BaseRepository> doAndRepository;
 
     @PostConstruct
     public void init() {

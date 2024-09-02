@@ -107,6 +107,16 @@ public class ModelManagementServiceImpl implements ModelManagementService {
     @Resource
     private EnvService envService;
 
+    public static String transferKeyword(String keyword) {
+        if (StringUtils.isBlank(keyword)) {
+            return "";
+        }
+        if (keyword.contains("%") || keyword.contains("_")) {
+            keyword = keyword.replaceAll("%", "!%").replaceAll("_", "!_");
+        }
+        return keyword;
+    }
+
     @Override
     public ModelPackListVO modelPackPage(QueryModelPageRequest queryModelPageRequest) {
         Pageable page = queryModelPageRequest.of();
@@ -150,6 +160,13 @@ public class ModelManagementServiceImpl implements ModelManagementService {
         return ModelPackListVO.instance(PageUtils.convert(modelPackPage, this::convert), page.getPageNumber() + 1, page.getPageSize(), modelPackPage.getTotalElements());
     }
 
+    private String getTargetNode(Set<String> nodeIdSet) {
+        if (envService.isAutonomy()) {
+            return nodeIdSet.stream().filter(party -> envService.isNodeInCurrentInst(party)).findFirst().get();
+        }
+        return null;
+    }
+
     @Override
     public ModelPackDetailVO modelPackDetail(String modelId, String projectId) {
         Optional<ProjectModelPackDO> projectModelPackDOOptional = projectModelPackRepository.findById(modelId);
@@ -161,16 +178,18 @@ public class ModelManagementServiceImpl implements ModelManagementService {
         Map<String, String> partyTableMap = JsonUtils.toJavaMap(sampleTables, String.class);
         List<NodeDO> nodeDOList = nodeRepository.findByNodeIdIn(partyTableMap.keySet());
         Map<String, String> nodeMap = nodeDOList.stream().collect(Collectors.toMap(NodeDO::getNodeId, NodeDO::getName));
+
+        String targetNodeId = getTargetNode(partyTableMap.keySet());
         //model train.by this version single component
         List<ModelPackDetailVO.Parties> partiesListVO = new ArrayList<>();
         partyTableMap.forEach((key, value) -> {
-            Domaindata.DomainData modelDomainData = dataManager.queryDomainData(key, projectModelPackDO.getModelReportId());
+            Domaindata.DomainData modelDomainData = dataManager.queryDomainData(key, projectModelPackDO.getModelReportId(), targetNodeId);
             //attributes contains both party of schema.
             Map<String, String> attributes = modelDomainData.getAttributesMap();
             //get schema from attributes
             List<String> columns = explainColumnFromDomainDataDistData(attributes);
             //get its onw raw sample table, prepare to filter its own schema
-            Domaindata.DomainData rawTabbleDomainData = dataManager.queryDomainData(key, value);
+            Domaindata.DomainData rawTabbleDomainData = dataManager.queryDomainData(key, value, targetNodeId);
             //do filter
             List<String> ownSchema = filterOwnSchema(columns, rawTabbleDomainData.getColumnsList());
             ModelPackDetailVO.Parties partiesVO = new ModelPackDetailVO.Parties();
@@ -251,6 +270,8 @@ public class ModelManagementServiceImpl implements ModelManagementService {
         AtomicReference<ServingConfig.KusciaServingConfig> kusciaServingConfig = new AtomicReference<>(ServingConfig.KusciaServingConfig.newBuilder()
                 .build());
         if (!CollectionUtils.isEmpty(partyConfigs)) {
+            String targetNode = getTargetNode(partyConfigs.stream().map(CreateModelServingRequest.PartyConfig::getNodeId).collect(Collectors.toSet()));
+
             partyConfigs.forEach(party -> {
                 Map<String, String> featureMapping = new HashMap<>();
                 ServingConfig.KusciaServingConfig.PartyConfig kusciaServingConfigPartyConfig = ServingConfig.KusciaServingConfig.PartyConfig.newBuilder()
@@ -266,12 +287,12 @@ public class ModelManagementServiceImpl implements ModelManagementService {
                         .build();
 
                 //model config
-                Domaindata.DomainData domainData = dataManager.queryDomainData(domainId, modelId);
+                Domaindata.DomainData domainData = dataManager.queryDomainData(domainId, modelId, targetNode);
                 ModelConfigOuterClass.ModelConfig servingModelConfig = ModelConfigOuterClass.ModelConfig.newBuilder()
                         .setModelId(modelId)
                         .setBasePath("/")
-                        .setSourcePath("/home/kuscia/var/storage/data/" + domainData.getRelativeUri())
-                        .setSourceType(ModelConfigOuterClass.SourceType.ST_FILE)
+                        .setSourcePath(domainData.getDomaindataId())
+                        .setSourceType(ModelConfigOuterClass.SourceType.ST_DP)
                         .build();
                 //featureSourceConfig
                 String endpoint = "mock";
@@ -328,7 +349,7 @@ public class ModelManagementServiceImpl implements ModelManagementService {
             if (StringUtils.isNotEmpty(servingId) && Objects.equals(projectModelPackDO.getModelStats(), ModelStatsEnum.OFFLINE.getCode())) {
                 servingId = projectModelPackDO.getServingId();
             }
-            String initiator = envService.isCenter() ? servingParties.stream().findAny().get().getDomainId() : UserContext.getUser().getOwnerId();
+
             // Filter out non-positive minimum resource values
             List<Serving.ServingParty> filteredServingParties = servingParties.stream()
                     .map(originalParty -> {
@@ -358,13 +379,32 @@ public class ModelManagementServiceImpl implements ModelManagementService {
                         }
                         return filteredServingPartyBuilder.build();
                     }).collect(Collectors.toList());
-            Serving.CreateServingRequest createServingRequest = Serving.CreateServingRequest.newBuilder()
-                    .setInitiator(initiator)
-                    .setServingId(servingId)
-                    .setServingInputConfig(servingInputConfig)
-                    .addAllParties(filteredServingParties)
-                    .build();
-            kusciaGrpcClientAdapter.createServing(createServingRequest);
+
+
+            String initiator = servingParties.stream().findAny().get().getDomainId();
+            Serving.CreateServingResponse servingResponse;
+            if (envService.isAutonomy()) {
+                initiator = servingParties.stream().filter(party -> envService.isNodeInCurrentInst(party.getDomainId())).findFirst().get().getDomainId();
+                Serving.CreateServingRequest createServingRequest = Serving.CreateServingRequest.newBuilder()
+                        .setInitiator(initiator)
+                        .setServingId(servingId)
+                        .setServingInputConfig(servingInputConfig)
+                        .addAllParties(filteredServingParties)
+                        .build();
+
+                servingResponse = kusciaGrpcClientAdapter.createServing(createServingRequest, initiator);
+            } else {
+                Serving.CreateServingRequest createServingRequest = Serving.CreateServingRequest.newBuilder()
+                        .setInitiator(initiator)
+                        .setServingId(servingId)
+                        .setServingInputConfig(servingInputConfig)
+                        .addAllParties(filteredServingParties)
+                        .build();
+
+                servingResponse = kusciaGrpcClientAdapter.createServing(createServingRequest);
+            }
+            log.info("createServing status = {}", servingResponse.getStatus());
+
             ProjectModelServingDO projectModelServingDO = ProjectModelServingDO.builder()
                     .servingId(servingId)
                     .projectId(projectId)
@@ -544,13 +584,17 @@ public class ModelManagementServiceImpl implements ModelManagementService {
                 log.info("project model serving stats changed to {}", modelStats);
             }
         }
+        String ownerId = projectModelPackDO.getInitiator();
+        if (envService.isAutonomy() && envService.isNodeInCurrentInst(projectModelPackDO.getInitiator())) {
+            ownerId = InstServiceImpl.INST_ID;
+        }
         return ModelPackVO.builder()
                 .modelId(projectModelPackDO.getModelId())
                 .servingId(projectModelPackDO.getServingId())
                 .modelDesc(projectModelPackDO.getModelDesc())
                 .modelName(projectModelPackDO.getModelName())
                 .modelStats(modelStats)
-                .ownerId(projectModelPackDO.getInitiator())
+                .ownerId(ownerId)
                 .gmtCreate(DateTimes.toRfc3339(projectModelPackDO.getGmtCreate()))
                 .build();
     }
@@ -568,16 +612,6 @@ public class ModelManagementServiceImpl implements ModelManagementService {
     private List<String> explainColumnFromDomainDataDistData(Map<String, String> kusciaAttributes) {
         String value = kusciaAttributes.get("dist_data");
         return parse(value);
-    }
-
-    public static String transferKeyword(String keyword) {
-        if (StringUtils.isBlank(keyword)) {
-            return "";
-        }
-        if (keyword.contains("%") || keyword.contains("_")) {
-            keyword = keyword.replaceAll("%", "!%").replaceAll("_", "!_");
-        }
-        return keyword;
     }
 
     private void validateResourceConfig(ResourceVO resource, String nodeId) {

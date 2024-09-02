@@ -32,8 +32,8 @@ import java.util.List;
 @Setter
 public class DatasourceListRequest extends SecretPadPageRequest {
 
-    @NotBlank(message = "node id cannot be blank")
-    private String nodeId;
+    @NotBlank(message = "ownerId id cannot be blank")
+    private String ownerId;
 
     private String name;
 

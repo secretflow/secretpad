@@ -43,6 +43,15 @@ public enum UserOwnerTypeEnum {
      */
     P2P;
 
+    public static UserOwnerTypeEnum fromString(String str) {
+        return switch (str.toLowerCase(Locale.ROOT)) {
+            case "edge", "test" -> EDGE;
+            case "center" -> CENTER;
+            case "p2p", "autonomy" -> P2P;
+            default -> throw new IllegalArgumentException("Invalidate user owner type: " + str);
+        };
+    }
+
     public PermissionUserTypeEnum toPermissionUserType() {
         if (EDGE.equals(this)) {
             return PermissionUserTypeEnum.EDGE_USER;
@@ -54,14 +63,5 @@ public enum UserOwnerTypeEnum {
             return PermissionUserTypeEnum.NODE;
         }
         throw SecretpadException.of(SystemErrorCode.VALIDATION_ERROR, "Invalidate user owner type: " + this);
-    }
-
-    public static UserOwnerTypeEnum fromString(String str) {
-        return switch (str.toLowerCase(Locale.ROOT)) {
-            case "edge", "test" -> EDGE;
-            case "center" -> CENTER;
-            case "p2p", "autonomy" -> P2P;
-            default -> throw new IllegalArgumentException("Invalidate user owner type: " + str);
-        };
     }
 }

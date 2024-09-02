@@ -16,12 +16,10 @@
 
 package org.secretflow.secretpad.service.impl;
 
-import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.KusciaGrpcErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.service.CertificateService;
-import org.secretflow.secretpad.service.EnvService;
 
 import jakarta.annotation.Resource;
 import org.secretflow.v1alpha1.kusciaapi.Certificate;
@@ -38,20 +36,12 @@ public class CertificateServiceImpl implements CertificateService {
     @Resource
     private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
-    @Resource
-    private EnvService envService;
-
-
     @Override
     public Certificate.GenerateKeyCertsResponse generateCertByNodeID(String nodeID) {
-        Certificate.GenerateKeyCertsResponse generateKeyCertsResponse;
-        if (!PlatformTypeEnum.AUTONOMY.equals(envService.getPlatformType()) && envService.isEmbeddedNode(nodeID)) {
-            generateKeyCertsResponse = kusciaGrpcClientAdapter.generateKeyCerts(Certificate.GenerateKeyCertsRequest.newBuilder().setCommonName("vote").setKeyType("PKCS#8").build(), nodeID);
-            if (generateKeyCertsResponse.getStatus().getCode() != 0) {
-                throw SecretpadException.of(KusciaGrpcErrorCode.RPC_ERROR, generateKeyCertsResponse.getStatus().getMessage());
-            }
-        } else {
-            generateKeyCertsResponse = kusciaGrpcClientAdapter.generateKeyCerts(Certificate.GenerateKeyCertsRequest.newBuilder().setCommonName("vote").setKeyType("PKCS#8").build());
+        Certificate.GenerateKeyCertsResponse generateKeyCertsResponse =
+                kusciaGrpcClientAdapter.generateKeyCerts(Certificate.GenerateKeyCertsRequest.newBuilder().setCommonName("vote").setKeyType("PKCS#8").build(), nodeID);
+        if (generateKeyCertsResponse.getStatus().getCode() != 0) {
+            throw SecretpadException.of(KusciaGrpcErrorCode.RPC_ERROR, generateKeyCertsResponse.getStatus().getMessage());
         }
         return generateKeyCertsResponse;
     }

@@ -57,6 +57,30 @@ public class ModelParamModificationsAdapter implements NodeDefAdapter {
     @Resource
     private ProjectReadDtaRepository readDtaRepository;
 
+    public static Object deepCopy(Object object) {
+        ByteArrayOutputStream baos = null;
+        ObjectOutputStream oos = null;
+        ByteArrayInputStream bais = null;
+        ObjectInputStream ois = null;
+        try {
+            baos = new ByteArrayOutputStream();
+            oos = new ObjectOutputStream(baos);
+            oos.writeObject(object);
+            oos.close();
+            bais = new ByteArrayInputStream(baos.toByteArray());
+            ois = new ObjectInputStream(bais);
+            return ois.readObject();
+        } catch (Exception e) {
+            log.error("deepCopy error", e);
+            return null;
+        } finally {
+            IOUtils.closeQuietly(baos);
+            IOUtils.closeQuietly(oos);
+            IOUtils.closeQuietly(bais);
+            IOUtils.closeQuietly(ois);
+        }
+    }
+
     @Override
     public ProjectJob.JobTask adapter(Pipeline.NodeDef nodeDef, GraphNodeInfo graphNodeInfo, ProjectJob.JobTask task) {
         return adapter1(nodeDef, graphNodeInfo, task);
@@ -165,29 +189,5 @@ public class ModelParamModificationsAdapter implements NodeDefAdapter {
                 .setVersion(componentDef.getVersion())
                 .build();
         return getJobTask(build, graphNodeInfo, task, outputs);
-    }
-
-    public static Object deepCopy(Object object) {
-        ByteArrayOutputStream baos = null;
-        ObjectOutputStream oos = null;
-        ByteArrayInputStream bais = null;
-        ObjectInputStream ois = null;
-        try {
-            baos = new ByteArrayOutputStream();
-            oos = new ObjectOutputStream(baos);
-            oos.writeObject(object);
-            oos.close();
-            bais = new ByteArrayInputStream(baos.toByteArray());
-            ois = new ObjectInputStream(bais);
-            return ois.readObject();
-        } catch (Exception e) {
-            log.error("deepCopy error", e);
-            return null;
-        } finally {
-            IOUtils.closeQuietly(baos);
-            IOUtils.closeQuietly(oos);
-            IOUtils.closeQuietly(bais);
-            IOUtils.closeQuietly(ois);
-        }
     }
 }

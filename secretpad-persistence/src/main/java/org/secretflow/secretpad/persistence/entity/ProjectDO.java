@@ -86,6 +86,11 @@ public class ProjectDO extends BaseAggregationRoot<ProjectDO> {
     @Column(name = "status", nullable = false, length = 1)
     private Integer status;
 
+    @Override
+    public String getProjectId() {
+        return this.projectId;
+    }
+
     /**
      * Create a new project DO class
      */
@@ -105,10 +110,5 @@ public class ProjectDO extends BaseAggregationRoot<ProjectDO> {
             projectDO.setStatus(ProjectStatusEnum.REVIEWING.getCode());
             return projectDO;
         }
-    }
-
-    @Override
-    public String getProjectId() {
-        return this.projectId;
     }
 }

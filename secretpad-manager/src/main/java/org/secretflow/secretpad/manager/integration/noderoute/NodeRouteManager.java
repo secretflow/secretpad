@@ -33,6 +33,8 @@ import org.secretflow.secretpad.persistence.repository.NodeRouteRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
 import org.secretflow.v1alpha1.kusciaapi.DomainRoute;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -64,21 +66,24 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
 
     @Override
     public void createNodeRouteInKuscia(CreateNodeRouteParam param, NodeDO srcNode, NodeDO dstNode, boolean check) {
+        String channelNodeId = PlatformTypeEnum.AUTONOMY.name().equals(platformType) ? srcNode.getNodeId() : null;
         if (DomainRouterConstants.DomainRouterTypeEnum.FullDuplex.name().equals(param.getRouteType())
                 && !routeExist(param.getDstNodeId(), param.getSrcNodeId())
         ) {
-            createNodeRoute(param, dstNode, srcNode);
+            log.info("createNodeRouteInKuscia part 1");
+            createNodeRoute(param, dstNode, srcNode, channelNodeId);
         }
         if (check) {
             checkRouteExist(param.getSrcNodeId(), param.getDstNodeId());
         }
-        createNodeRoute(param, srcNode, dstNode);
+        log.info("createNodeRouteInKuscia part 2");
+        createNodeRoute(param, srcNode, dstNode, channelNodeId);
     }
 
 
-    private void createNodeRouteNotInDb(NodeDO srcNode, NodeDO dstNode) {
-        if (checkDomainRouterExists(srcNode.getNodeId(), dstNode.getNodeId())) {
-            deleteDomainRouter(srcNode.getNodeId(), dstNode.getNodeId());
+    private void createNodeRouteNotInDb(NodeDO srcNode, NodeDO dstNode, String channelNodeId) {
+        if (checkDomainRouterExistsInKuscia(srcNode.getNodeId(), dstNode.getNodeId(), channelNodeId)) {
+            deleteDomainRouter(srcNode.getNodeId(), dstNode.getNodeId(), channelNodeId);
         }
         DomainRoute.TokenConfig tokenConfig = buildTokenConfig();
         DomainRoute.RouteEndpoint routeEndpoint = buildRouteEndpoint(dstNode);
@@ -86,8 +91,16 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
                 DomainRoute.CreateDomainRouteRequest.newBuilder().setAuthenticationType("Token").setTokenConfig(tokenConfig)
                         .setDestination(dstNode.getNodeId()).setEndpoint(routeEndpoint).setSource(srcNode.getNodeId()).build();
         log.info("start create domain route!");
-        DomainRoute.CreateDomainRouteResponse createDomainRouteResponse =
-                kusciaGrpcClientAdapter.createDomainRoute(createDomainRouteRequest);
+        log.info("create domain route request dst: {},source {},sourceNodeId {}", createDomainRouteRequest.getDestination(), createDomainRouteRequest.getSource(), channelNodeId);
+
+        DomainRoute.CreateDomainRouteResponse createDomainRouteResponse;
+        if (StringUtils.isNotBlank(channelNodeId)) {
+            createDomainRouteResponse =
+                    kusciaGrpcClientAdapter.createDomainRoute(createDomainRouteRequest, channelNodeId);
+        } else {
+            createDomainRouteResponse =
+                    kusciaGrpcClientAdapter.createDomainRoute(createDomainRouteRequest);
+        }
         log.info("end create domain route!");
         if (createDomainRouteResponse.getStatus().getCode() != 0) {
             log.error("Create node router failed, code = {}, msg = {}", createDomainRouteResponse.getStatus().getCode(),
@@ -99,8 +112,8 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
     }
 
     @Override
-    public void createNodeRoute(CreateNodeRouteParam param, NodeDO srcNode, NodeDO dstNode) {
-        createNodeRouteNotInDb(srcNode, dstNode);
+    public void createNodeRoute(CreateNodeRouteParam param, NodeDO srcNode, NodeDO dstNode, String channelNodeId) {
+        createNodeRouteNotInDb(srcNode, dstNode, channelNodeId);
     }
 
     @Override
@@ -108,11 +121,6 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
         return null;
     }
 
-    @Override
-    public void deleteNodeRoute(String srcNodeId, String dstNodeId) {
-        Optional<NodeRouteDO> nodeRouteDO = nodeRouteRepository.findBySrcNodeIdAndDstNodeId(srcNodeId, dstNodeId);
-        nodeRouteDO.ifPresent(this::deleteNodeRoute);
-    }
 
     @Override
     public void deleteNodeRoute(String nodeRouteId) {
@@ -122,6 +130,17 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
         }
         NodeRouteDO nodeRouteDO = nodeRouteRepository.findByRouteId(nodeRouteId);
         deleteNodeRoute(nodeRouteDO);
+    }
+
+    @Override
+    public void deleteNodeRouteInKuscia(String sourceNodeId, String dstNodeId, String channelNodeId) {
+        log.info("deleteNodeRouteInKuscia srcNodeId = {}, dstNodeId = {}", sourceNodeId, dstNodeId);
+        DomainRoute.DeleteDomainRouteRequest request =
+                DomainRoute.DeleteDomainRouteRequest.newBuilder().setSource(sourceNodeId).setDestination(dstNodeId).build();
+        DomainRoute.DeleteDomainRouteResponse deleteDomainRouteResponse = kusciaGrpcClientAdapter.deleteDomainRoute(request, channelNodeId);
+        if (deleteDomainRouteResponse.getStatus().getCode() != 0) {
+            throw SecretpadException.of(NodeRouteErrorCode.NODE_ROUTE_DELETE_ERROR, deleteDomainRouteResponse.getStatus().getMessage());
+        }
     }
 
     @Transactional
@@ -136,7 +155,7 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
     @Override
     public void updateNodeRoute(NodeRouteDO nodeRouteDO, NodeDO srcNode, NodeDO dstNode) {
 
-        checkRouteNotExist(nodeRouteDO.getSrcNodeId(), nodeRouteDO.getDstNodeId());
+        checkRouteNotExistInDB(nodeRouteDO.getSrcNodeId(), nodeRouteDO.getDstNodeId());
         createNodeRouteInKuscia(
                 CreateNodeRouteParam.builder().srcNodeId(nodeRouteDO.getSrcNodeId()).dstNodeId(nodeRouteDO.getDstNodeId())
                         .srcNetAddress(nodeRouteDO.getSrcNetAddress()).dstNetAddress(nodeRouteDO.getDstNetAddress()).
@@ -145,9 +164,9 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
     }
 
     @Override
-    public DomainRoute.RouteStatus getRouteStatus(String srcNodeId, String dstNodeId) {
+    public DomainRoute.RouteStatus getRouteStatus(String srcNodeId, String dstNodeId, String channelNodeId) {
         DomainRoute.RouteStatus status = null;
-        DomainRoute.QueryDomainRouteResponse response = queryDomainRouter(srcNodeId, dstNodeId);
+        DomainRoute.QueryDomainRouteResponse response = queryDomainRouter(srcNodeId, dstNodeId, channelNodeId);
         log.info("DomainRoute.RouteStatus response {}", response);
         if (response.getStatus().getCode() == 0) {
             status = response.getData().getStatus();
@@ -155,14 +174,10 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
         return status;
     }
 
-    @Override
-    public boolean checkNodeRouteExists(String srcNodeId, String dstNodeId) {
-        return checkDomainRouterExists(srcNodeId, dstNodeId);
-    }
 
     @Override
-    public boolean checkNodeRouteReady(String srcNodeId, String dstNodeId) {
-        DomainRoute.QueryDomainRouteResponse response = queryDomainRouter(srcNodeId, dstNodeId);
+    public boolean checkNodeRouteReady(String srcNodeId, String dstNodeId, String channelNodeId) {
+        DomainRoute.QueryDomainRouteResponse response = queryDomainRouter(srcNodeId, dstNodeId, channelNodeId);
         if (response.getStatus().getCode() != 0) {
             return false;
         }
@@ -196,31 +211,46 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
         }
     }
 
-    private DomainRoute.QueryDomainRouteResponse queryDomainRouter(String srcNodeId, String dstNodeId) {
+    private DomainRoute.QueryDomainRouteResponse queryDomainRouter(String srcNodeId, String dstNodeId, String channelNodeId) {
         DomainRoute.QueryDomainRouteRequest queryDomainRouteRequest =
                 DomainRoute.QueryDomainRouteRequest.newBuilder().setSource(srcNodeId).setDestination(dstNodeId).build();
-        return kusciaGrpcClientAdapter.queryDomainRoute(queryDomainRouteRequest);
+        if (StringUtils.isBlank(channelNodeId)) {
+            return kusciaGrpcClientAdapter.queryDomainRoute(queryDomainRouteRequest);
+        }
+        return kusciaGrpcClientAdapter.queryDomainRoute(queryDomainRouteRequest, channelNodeId);
     }
 
-    private boolean checkDomainRouterExists(String srcNodeId, String dstNodeId) {
-        DomainRoute.QueryDomainRouteResponse response = queryDomainRouter(srcNodeId, dstNodeId);
+    public boolean checkDomainRouterExistsInKuscia(String srcNodeId, String dstNodeId, String channelNodeId) {
+        DomainRoute.QueryDomainRouteResponse response = queryDomainRouter(srcNodeId, dstNodeId, channelNodeId);
         return response.getStatus().getCode() == 0;
     }
 
-    private void deleteDomainRouter(String srcNodeId, String dstNodeId) {
+    @Override
+    public void deleteNodeInKuscia(String srcNodeId, String channelNodeId) {
+        DomainOuterClass.DeleteDomainRequest request = DomainOuterClass.DeleteDomainRequest.newBuilder().setDomainId(srcNodeId).build();
+        kusciaGrpcClientAdapter.deleteDomain(request, channelNodeId);
+    }
+
+    private void deleteDomainRouter(String srcNodeId, String dstNodeId,String channelNodeId) {
         DomainRoute.DeleteDomainRouteRequest request =
                 DomainRoute.DeleteDomainRouteRequest.newBuilder().setSource(srcNodeId).setDestination(dstNodeId).build();
-        kusciaGrpcClientAdapter.deleteDomainRoute(request);
+        if (StringUtils.isBlank(channelNodeId)) {
+            kusciaGrpcClientAdapter.deleteDomainRoute(request);
+        }else {
+            kusciaGrpcClientAdapter.deleteDomainRoute(request, channelNodeId);
+        }
     }
 
     private void deleteDomainRouter(NodeRouteDO nodeRouteDO) {
         // if platformType is AUTONOMY, delete route node id is opposite. later version will delete
         String srcNodeId = getPlatformType().equals(PlatformTypeEnum.AUTONOMY) ? nodeRouteDO.getDstNodeId() : nodeRouteDO.getSrcNodeId();
         String dstNodeId = getPlatformType().equals(PlatformTypeEnum.AUTONOMY) ? nodeRouteDO.getSrcNodeId() : nodeRouteDO.getDstNodeId();
+        log.info("deleteDomainRouter srcNodeId = {} , dstNodeId = {}", srcNodeId, dstNodeId);
         DomainRoute.DeleteDomainRouteRequest request =
                 DomainRoute.DeleteDomainRouteRequest.newBuilder().setSource(srcNodeId).setDestination(dstNodeId).build();
         DomainRoute.DeleteDomainRouteResponse response = kusciaGrpcClientAdapter.deleteDomainRoute(request);
         if (response.getStatus().getCode() == 11404) {
+            log.warn("DeleteDomainRouteResponse 11404  srcNodeId = {} , dstNodeId = {}", srcNodeId, dstNodeId);
             nodeRouteRepository.deleteById(nodeRouteDO.getRouteId());
             nodeRouteRepository.flush();
             return;
@@ -244,7 +274,7 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
     }
 
     @Override
-    public void checkRouteNotExist(String srcNodeId, String dstNodeId) {
+    public void checkRouteNotExistInDB(String srcNodeId, String dstNodeId) {
         if (!routeExist(srcNodeId, dstNodeId)) {
             throw SecretpadException.of(NodeRouteErrorCode.NODE_ROUTE_NOT_EXIST_ERROR,
                     "route not exist " + srcNodeId + "->" + dstNodeId);

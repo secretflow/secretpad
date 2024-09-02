@@ -27,6 +27,7 @@ public enum DataSourceTypeEnum {
     OSS(true),
     LOCAL(true),
     MYSQL(true),
+    ODPS(true),
     ;
 
     /**
@@ -39,21 +40,21 @@ public enum DataSourceTypeEnum {
         this.isKusciaControl = isKusciaControl;
     }
 
-    public boolean isKusciaControl() {
-        return isKusciaControl;
-    }
-
     public static DataSourceTypeEnum fromString(String str) {
         return switch (str.toLowerCase(Locale.ROOT)) {
             case "localfs" -> LOCAL;
             case "oss" -> OSS;
             case "mysql" -> MYSQL;
+            case "odps" -> ODPS;
             default -> throw new IllegalArgumentException("Invalidate DataSource type: " + str);
         };
     }
 
-
     public static String kuscia2platform(String str) {
         return fromString(str).name();
+    }
+
+    public boolean isKusciaControl() {
+        return isKusciaControl;
     }
 }

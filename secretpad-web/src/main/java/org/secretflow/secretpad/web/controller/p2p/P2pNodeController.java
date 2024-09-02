@@ -66,7 +66,7 @@ public class P2pNodeController {
     @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
     @ApiResource(code = ApiResourceCodeConstants.NODE_DELETE)
     public SecretPadResponse<Void> deleteP2pNode(@Valid @RequestBody RouterIdRequest request) {
-        nodeService.deleteP2pNode(request.getRouterId());
+        nodeService.deleteP2pNodeRoute(request.getRouterId());
         return SecretPadResponse.success();
     }
 }

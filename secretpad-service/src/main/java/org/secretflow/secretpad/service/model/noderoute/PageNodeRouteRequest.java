@@ -40,5 +40,5 @@ public class PageNodeRouteRequest extends SecretPadPageRequest {
     /**
      * srcNodeId  data filter
      */
-    private String nodeId;
+    private String ownerId;
 }

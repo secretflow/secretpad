@@ -77,6 +77,13 @@ public class P2pCreateNodeRequest {
     private String srcNetAddress;
 
     /**
+     * the nodeId of initiator
+     */
+    @Schema(description = "srcNodeId")
+    @NotBlank(message = "srcNodeId cannot be empty")
+    private String srcNodeId;
+
+    /**
      * net address of collaborative node
      */
     @NotBlank
@@ -84,4 +91,16 @@ public class P2pCreateNodeRequest {
     @Pattern(regexp = Constants.IP_PREFIX_REG, message = "address needs to start with http or https")
     @Pattern(regexp = Constants.IP_PORT_PATTERN, message = "address not support rule")
     private String dstNetAddress;
+
+    /**
+     * the dst node's instId
+     */
+    @Schema(description = "dstInstId")
+    private String dstInstId;
+
+    /**
+     * the dst node's instName
+     */
+    @Schema(description = "dstInstName")
+    private String dstInstName;
 }

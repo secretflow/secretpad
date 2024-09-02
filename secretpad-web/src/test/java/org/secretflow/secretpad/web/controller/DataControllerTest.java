@@ -25,6 +25,7 @@ import org.secretflow.secretpad.persistence.entity.ProjectDO;
 import org.secretflow.secretpad.persistence.entity.ProjectGraphDO;
 import org.secretflow.secretpad.persistence.entity.ProjectJobDO;
 import org.secretflow.secretpad.persistence.entity.ProjectResultDO;
+import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.persistence.repository.ProjectGraphRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectJobRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectRepository;
@@ -104,9 +105,9 @@ class DataControllerTest extends ControllerTest {
     void createData() throws Exception {
         assertResponse(() -> {
             CreateDataRequest createDataRequest = FakerUtils.fake(CreateDataRequest.class);
-            createDataRequest.setNodeId("alice");
+            createDataRequest.setNodeId("kuscia-system");
             createDataRequest.setDatasourceType("local");
-            createDataRequest.setDatasourceName("本地数据源");
+            createDataRequest.setDatasourceName("LOCAL_DATASOURCE");
             UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATA_CREATE));
 
             Domaindata.ListDomainDataResponse response = Domaindata.ListDomainDataResponse.newBuilder()
@@ -128,7 +129,7 @@ class DataControllerTest extends ControllerTest {
             Domaindata.CreateDomainDataResponse domainData = Domaindata.CreateDomainDataResponse.newBuilder()
                     .setData(
                             Domaindata.CreateDomainDataResponseData.newBuilder()
-                                    .setDomaindataId(createDataRequest.getNodeId())
+                                    .setDomaindataId("some_generated_id")
                                     .build()
                     )
                     .build();
@@ -168,6 +169,7 @@ class DataControllerTest extends ControllerTest {
                     .setData(
                             Domaindata.DomainData.newBuilder()
                                     .setRelativeUri("mockFile")
+                                    .setType("table")
                                     .build()
                     )
                     .build();
@@ -184,9 +186,165 @@ class DataControllerTest extends ControllerTest {
         });
     }
 
+    /**
+     * downloadFileExists with domainData type is model
+     * @throws Exception
+     */
+
+    @Test
+    void downloadFileExistsWithModel() throws Exception {
+        assertResponseWithContent(() -> {
+            String userAgent = FakerUtils.fake(String.class);
+            DownloadDataRequest request = FakerUtils.fake(DownloadDataRequest.class);
+            request.setNodeId("mockMvcNodeId");
+
+            ProjectResultDO projectResultDO = FakerUtils.fake(ProjectResultDO.class);
+            projectResultDO.setGmtCreate(LocalDateTime.now());
+            Mockito.when(projectResultRepository.findByNodeIdAndRefId(request.getNodeId(), request.getDomainDataId()))
+                    .thenReturn(Optional.of(projectResultDO));
+
+            ProjectDO projectDO = FakerUtils.fake(ProjectDO.class);
+            Mockito.when(projectRepository.findById(projectResultDO.getUpk().getProjectId()))
+                    .thenReturn(Optional.of(projectDO));
+
+            ProjectJobDO projectJobDO = FakerUtils.fake(ProjectJobDO.class);
+            Mockito.when(projectJobRepository.findByJobId(projectResultDO.getJobId()))
+                    .thenReturn(Optional.of(projectJobDO));
+
+            ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
+            Mockito.when(projectGraphRepository.findByGraphId(projectJobDO.getGraphId(), projectDO.getProjectId()))
+                    .thenReturn(Optional.of(projectGraphDO));
+
+            Domaindata.QueryDomainDataResponse domainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder()
+                    .setData(
+                            Domaindata.DomainData.newBuilder()
+                                    .setRelativeUri("mockFile")
+                                    .setType("model")
+                                    .build()
+                    )
+                    .build();
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder()
+                            .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
+                                    .setDomainId(request.getNodeId())
+                                    .setDomaindataId(request.getDomainDataId())
+                                     .build())
+                            .build()))
+                    .thenReturn(domainDataResponse);
+
+            return MockMvcRequestBuilders.post(getMappingUrl(DataController.class, "download", HttpServletResponse.class, DownloadDataRequest.class))
+                    .header("User-Agent", userAgent).content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    /**
+     * downloadFileExists with domainData type is rule
+     * @throws Exception
+     */
+
+    @Test
+    void downloadFileExistsWithRule() throws Exception {
+        assertResponseWithContent(() -> {
+            String userAgent = FakerUtils.fake(String.class);
+            DownloadDataRequest request = FakerUtils.fake(DownloadDataRequest.class);
+            request.setNodeId("mockMvcNodeId");
+
+            ProjectResultDO projectResultDO = FakerUtils.fake(ProjectResultDO.class);
+            projectResultDO.setGmtCreate(LocalDateTime.now());
+            Mockito.when(projectResultRepository.findByNodeIdAndRefId(request.getNodeId(), request.getDomainDataId()))
+                    .thenReturn(Optional.of(projectResultDO));
+
+            ProjectDO projectDO = FakerUtils.fake(ProjectDO.class);
+            Mockito.when(projectRepository.findById(projectResultDO.getUpk().getProjectId()))
+                    .thenReturn(Optional.of(projectDO));
+
+            ProjectJobDO projectJobDO = FakerUtils.fake(ProjectJobDO.class);
+            Mockito.when(projectJobRepository.findByJobId(projectResultDO.getJobId()))
+                    .thenReturn(Optional.of(projectJobDO));
+
+            ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
+            Mockito.when(projectGraphRepository.findByGraphId(projectJobDO.getGraphId(), projectDO.getProjectId()))
+                    .thenReturn(Optional.of(projectGraphDO));
+
+            Domaindata.QueryDomainDataResponse domainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder()
+                    .setData(
+                            Domaindata.DomainData.newBuilder()
+                                    .setRelativeUri("mockFile")
+                                    .setType("rule")
+                                    .build()
+                    )
+                    .build();
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder()
+                            .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
+                                    .setDomainId(request.getNodeId())
+                                    .setDomaindataId(request.getDomainDataId())
+                                         .build())
+                            .build()))
+                    .thenReturn(domainDataResponse);
+
+            return MockMvcRequestBuilders.post(getMappingUrl(DataController.class, "download", HttpServletResponse.class, DownloadDataRequest.class))
+                    .header("User - Agent", userAgent).content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    /**
+     * downloadFileNotExists
+     * @throws Exception
+     */
     @Test
     void downloadFiLeNotExists() throws Exception {
         assertResponseWithEmptyContent(() -> {
+            String userAgent = FakerUtils.fake(String.class);
+            DownloadDataRequest request = FakerUtils.fake(DownloadDataRequest.class);
+            request.setNodeId("mockMvcNodeId");
+
+            ProjectResultDO projectResultDO = FakerUtils.fake(ProjectResultDO.class);
+            projectResultDO.setGmtCreate(LocalDateTime.now());
+            ProjectResultDO.UPK upk = new ProjectResultDO.UPK();
+            upk.setKind(ResultKind.FedTable);
+            projectResultDO.setUpk(upk);
+            Mockito.when(projectResultRepository.findByNodeIdAndRefId(request.getNodeId(), request.getDomainDataId()))
+                    .thenReturn(Optional.of(projectResultDO));
+
+            ProjectDO projectDO = FakerUtils.fake(ProjectDO.class);
+            Mockito.when(projectRepository.findById(projectResultDO.getUpk().getProjectId()))
+                    .thenReturn(Optional.of(projectDO));
+
+            ProjectJobDO projectJobDO = FakerUtils.fake(ProjectJobDO.class);
+            Mockito.when(projectJobRepository.findByJobId(projectResultDO.getJobId()))
+                    .thenReturn(Optional.of(projectJobDO));
+
+            ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
+            Mockito.when(projectGraphRepository.findByGraphId(projectJobDO.getGraphId(), projectDO.getProjectId()))
+                    .thenReturn(Optional.of(projectGraphDO));
+
+            Domaindata.QueryDomainDataResponse domainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder()
+                    .setData(
+                            Domaindata.DomainData.newBuilder()
+                                    .setRelativeUri(FakerUtils.fake(String.class))
+                                    .setType("table")
+                                    .build()
+                    )
+                    .build();
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder()
+                            .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
+                                    .setDomainId(request.getNodeId())
+                                    .setDomaindataId(request.getDomainDataId())
+                                    .build())
+                            .build()))
+                    .thenReturn(domainDataResponse);
+
+            return MockMvcRequestBuilders.post(getMappingUrl(DataController.class, "download", HttpServletResponse.class, DownloadDataRequest.class))
+                    .header("User-Agent", userAgent).content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    /**
+     * downloadFileNotExists with Domaindata type is model
+     * @throws Exception
+     */
+    @Test
+    void downloadFileNotExistsWithModel() throws Exception {
+        assertResponseWithContent(() -> {
             String userAgent = FakerUtils.fake(String.class);
             DownloadDataRequest request = FakerUtils.fake(DownloadDataRequest.class);
             request.setNodeId("mockMvcNodeId");
@@ -212,6 +370,7 @@ class DataControllerTest extends ControllerTest {
                     .setData(
                             Domaindata.DomainData.newBuilder()
                                     .setRelativeUri(FakerUtils.fake(String.class))
+                                    .setType("model")
                                     .build()
                     )
                     .build();
@@ -227,4 +386,54 @@ class DataControllerTest extends ControllerTest {
                     .header("User-Agent", userAgent).content(JsonUtils.toJSONString(request));
         });
     }
+
+    /**
+     * downloadFileNotExists with Domaindata type is rule
+     * @throws Exception
+     */
+    @Test
+    void downloadFileNotExistsWithRule() throws Exception {
+        assertResponseWithContent(() -> {
+            String userAgent = FakerUtils.fake(String.class);
+            DownloadDataRequest request = FakerUtils.fake(DownloadDataRequest.class);
+            request.setNodeId("mockMvcNodeId");
+
+            ProjectResultDO projectResultDO = FakerUtils.fake(ProjectResultDO.class);
+            projectResultDO.setGmtCreate(LocalDateTime.now());
+            Mockito.when(projectResultRepository.findByNodeIdAndRefId(request.getNodeId(), request.getDomainDataId()))
+                    .thenReturn(Optional.of(projectResultDO));
+
+            ProjectDO projectDO = FakerUtils.fake(ProjectDO.class);
+            Mockito.when(projectRepository.findById(projectResultDO.getUpk().getProjectId()))
+                    .thenReturn(Optional.of(projectDO));
+
+            ProjectJobDO projectJobDO = FakerUtils.fake(ProjectJobDO.class);
+            Mockito.when(projectJobRepository.findByJobId(projectResultDO.getJobId()))
+                    .thenReturn(Optional.of(projectJobDO));
+
+            ProjectGraphDO projectGraphDO = FakerUtils.fake(ProjectGraphDO.class);
+            Mockito.when(projectGraphRepository.findByGraphId(projectJobDO.getGraphId(), projectDO.getProjectId()))
+                    .thenReturn(Optional.of(projectGraphDO));
+
+            Domaindata.QueryDomainDataResponse domainDataResponse = Domaindata.QueryDomainDataResponse.newBuilder()
+                    .setData(
+                            Domaindata.DomainData.newBuilder()
+                                    .setRelativeUri(FakerUtils.fake(String.class))
+                                    .setType("rule")
+                                    .build()
+                    )
+                    .build();
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Domaindata.QueryDomainDataRequest.newBuilder()
+                            .setData(Domaindata.QueryDomainDataRequestData.newBuilder()
+                                    .setDomainId(request.getNodeId())
+                                    .setDomaindataId(request.getDomainDataId())
+                                    .build())
+                            .build()))
+                    .thenReturn(domainDataResponse);
+
+            return MockMvcRequestBuilders.post(getMappingUrl(DataController.class, "download", HttpServletResponse.class, DownloadDataRequest.class))
+                    .header("User-Agent", userAgent).content(JsonUtils.toJSONString(request));
+        });
+    }
+
 }

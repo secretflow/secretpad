@@ -42,6 +42,7 @@ public class CreateNodeRequest {
     /**
      * Node name, the value cannot be empty and can be the same
      */
+    @NotNull
     @Schema(description = "node name")
     @Pattern(regexp = Constants.NODE_NAME_PATTERN, message = "node name illegal")
     private String name;

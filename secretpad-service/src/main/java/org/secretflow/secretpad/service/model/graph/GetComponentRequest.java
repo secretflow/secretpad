@@ -64,6 +64,6 @@ public class GetComponentRequest {
      * @return ComponentKey list
      */
     public static List<ComponentKey> toComponentKeyList(List<GetComponentRequest> requests) {
-        return requests.stream().map(request -> toComponentKey(request)).collect(Collectors.toList());
+        return requests.stream().map(GetComponentRequest::toComponentKey).collect(Collectors.toList());
     }
 }

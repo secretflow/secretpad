@@ -24,6 +24,12 @@ import org.secretflow.v1alpha1.kusciaapi.Job;
  * @date 2023/5/23
  */
 public abstract class AbstractJobManager {
+
+    /**
+     * Start synchronized job by nodeId
+     */
+    public abstract void startSync(String nodeId);
+
     /**
      * Start synchronized job
      */

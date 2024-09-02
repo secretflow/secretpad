@@ -18,11 +18,13 @@ package org.secretflow.secretpad.persistence.datasync.rest;
 
 import org.secretflow.secretpad.persistence.datasync.buffer.DataSyncDataBufferTemplate;
 import org.secretflow.secretpad.persistence.datasync.listener.EntityChangeListener;
+import org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pPaddingNodeServiceImpl;
 import org.secretflow.secretpad.persistence.datasync.rest.p2p.P2pDataSyncRestService;
 import org.secretflow.secretpad.persistence.datasync.retry.DataSyncRetryTemplate;
 import org.secretflow.secretpad.persistence.entity.BaseAggregationRoot;
 
 import jakarta.annotation.Resource;
+import lombok.Setter;
 
 /**
  * @author yutu
@@ -30,11 +32,17 @@ import jakarta.annotation.Resource;
  */
 public abstract class DataSyncRestTemplate {
     @Resource
+    @Setter
     protected P2pDataSyncRestService p2pDataSyncRestService;
     @Resource
+    @Setter
     protected DataSyncRetryTemplate dataSyncRetryTemplate;
     @Resource
+    @Setter
     protected DataSyncDataBufferTemplate dataSyncDataBufferTemplate;
+    @Resource
+    @Setter
+    protected P2pPaddingNodeServiceImpl p2pPaddingNodeService;
 
     public abstract EntityChangeListener.DbChangeEvent<BaseAggregationRoot> send(String node) throws InterruptedException;
 

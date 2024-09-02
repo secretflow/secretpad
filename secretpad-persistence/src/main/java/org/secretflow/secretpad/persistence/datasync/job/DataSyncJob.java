@@ -18,16 +18,15 @@ package org.secretflow.secretpad.persistence.datasync.job;
 
 import org.secretflow.secretpad.persistence.datasync.event.P2pDataSyncSendEvent;
 import org.secretflow.secretpad.persistence.datasync.rest.DataSyncRestTemplate;
-import org.secretflow.secretpad.persistence.datasync.route.RouteDetection;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 /**
@@ -39,13 +38,11 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 @Service
 @RequiredArgsConstructor
+@ConditionalOnProperty(prefix = "secretpad.datasync", value = "p2p", matchIfMissing = false, havingValue = "true")
 public class DataSyncJob implements ApplicationListener<P2pDataSyncSendEvent> {
 
-    private final DataSyncRestTemplate dataSyncRestTemplate;
-    private final RouteDetection routeDetection;
-
     private static final Map<String, String> NODE_WORK_THREAD_NAME = new ConcurrentHashMap<>();
-
+    private final DataSyncRestTemplate dataSyncRestTemplate;
 
     /**
      * Perform data synchronization tasks
@@ -54,18 +51,12 @@ public class DataSyncJob implements ApplicationListener<P2pDataSyncSendEvent> {
      * @throws InterruptedException Thread Interrupt Exception
      */
     public void work(String node) throws InterruptedException {
-        // gets a collection of available nodes
-        Set<String> availableNodes = routeDetection.getAvailableNodes();
         // get the name of the current thread
         String threadName = Thread.currentThread().getName();
         // If the target node is included in the collection of available nodes
-        if (availableNodes.contains(node)) {
-            log.debug("{} start", threadName);
-            // Send a data synchronization request to the destination node
-            dataSyncRestTemplate.send(node);
-        } else {
-            log.warn("{} dataSyncJob work ignore , because {} is not alive", threadName, node);
-        }
+        log.debug("{} start", threadName);
+        // Send a data synchronization request to the destination node
+        dataSyncRestTemplate.send(node);
     }
 
     /**

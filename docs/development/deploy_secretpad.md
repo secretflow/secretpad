@@ -84,9 +84,18 @@ bash install.sh autonomy -n alice -s 8080 -g 40803 -k 40802 -p 10080 -q 13081 -P
 # 部署两个autonomy节点之后就可以进行通信了
 ```
 
+## 四. 点对点模式多节点部署
+
+```shell
+# P2P Secretpad (0.10.b0)版本支持同机构独立 autonomy节点注册到Secretpad平台，这种不包含Secretpad的独立的节点部署模式为 autonomy-node
+bash install.sh autonomy-node -n alice -g 18083 -k 18082 -p 18080 -q 13081 -P mtls  -m 'https://secretpad:8080' -t xdeploy-tokenx
+# 安装后可以到平台节点详情查看节点注册状态
+```
+
+
 [点对点添加合作节点教程](https://www.secretflow.org.cn/zh-CN/docs/secretpad/latest/kvu445094gvtkp3f)
 
-## 四. 参数说明
+## 五. 参数说明
 
 ### 配置项详解
 
@@ -97,7 +106,12 @@ bash install.sh autonomy -n alice -s 8080 -g 40803 -k 40802 -p 10080 -q 13081 -P
         - (tls、mtls)->https
     - `ip`:master节点的ip地址
     - `port`:master节点的gateway端口号
-- `t`:节点token，平台页面中的节点部署令牌
+- `t`:token，不同部署模式下含义不同，用作平台页面中的节点部署令牌
+  - lite 模式部署，代表中心化部署场景下节点token，平台页面中的节点部署令牌
+  - autonomy-node 模式部署，代表P2P多节点模式下，平台颁发给当前机构注册的token
+    - 此token为平台颁发，提供给多节点注册认证使用，非Kuscia生成
+    - token有效期默认30分钟，平台强校验注册token是否与当前平台展示token一致
+    - 建议autonomy-node 注册前使用最新token进行注册，刷新后以及历史token均为无效token
 - `d`:项目的安装目录(默认安装目录是：$HOME/kuscia)
 - `p`:参数传递的是 lite/autonomy 容器 kuscia-gateway 映射到主机的端口，保证和主机上现有的端口不冲突即可
 - `k`:参数传递的是 lite/autonomy 容器 Kuscia-api 映射到主机的 HTTP/HTTPS 端口，保证和主机上现有的端口不冲突即可
@@ -110,3 +124,5 @@ bash install.sh autonomy -n alice -s 8080 -g 40803 -k 40802 -p 10080 -q 13081 -P
     - `notls`: 此模式下，通信通过未加密的 HTTP 传输，比较安全的内部网络环境或者 Kuscia 已经存在外部网关的情况可以使用该模式【直接部署在公网有安全风险】。
     - `tls`: (默认)在此模式下，通信通过 TLS 协议进行加密，即使用 HTTPS 进行安全传输，不需要手动配置证书。
     - `mtls`: 这种模式也使用 HTTPS 进行通信，但它支持双向 TLS 验证，需要手动交换证书以建立安全连接。
+- `m`:secretpad 的页面入口地址，表示当前注册机构的地址
+  - 仅针对 autonomy-node 模式生效

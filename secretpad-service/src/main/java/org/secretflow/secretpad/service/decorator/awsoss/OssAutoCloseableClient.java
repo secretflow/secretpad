@@ -30,22 +30,14 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
  */
 public final class OssAutoCloseableClient implements AutoCloseable {
 
-    private OssAutoCloseableClient(AmazonS3 amazonS3Client) {
-        this.amazonS3Client = amazonS3Client;
-    }
-
-    private AmazonS3 amazonS3Client;
-
     private static ClientConfiguration
             clientConfiguration = new ClientConfiguration().withConnectionTimeout(500)
             .withProtocol(Protocol.HTTP)
             .withSocketTimeout(500);
+    private AmazonS3 amazonS3Client;
 
-    @Override
-    public void close() throws Exception {
-        if (amazonS3Client != null) {
-            amazonS3Client.shutdown();
-        }
+    private OssAutoCloseableClient(AmazonS3 amazonS3Client) {
+        this.amazonS3Client = amazonS3Client;
     }
 
     public static OssAutoCloseableClient createClient(AwsOssConfig config) {
@@ -59,6 +51,13 @@ public final class OssAutoCloseableClient implements AutoCloseable {
                 .withChunkedEncodingDisabled(true)
                 .build();
         return new OssAutoCloseableClient(s3Client);
+    }
+
+    @Override
+    public void close() throws Exception {
+        if (amazonS3Client != null) {
+            amazonS3Client.shutdown();
+        }
     }
 
     public boolean doesBucketExistV2(String bucketName) {

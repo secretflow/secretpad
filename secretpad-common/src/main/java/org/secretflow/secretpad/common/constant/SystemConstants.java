@@ -36,4 +36,6 @@ public class SystemConstants {
     public static final String SKIP_P2P = "!p2p";
 
     public static final String USER_ADMIN = "admin";
+
+    public static final String USER_OWNER_ID_FILE = "./config/ownerId";
 }

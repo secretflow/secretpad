@@ -73,8 +73,8 @@ public class TeeDownLoadMessageHandler extends AbstractVoteTypeHandler {
 
     private final EnvService envService;
 
-    public TeeDownLoadMessageHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, EnvService envService, TeeDownLoadAuditConfigRepository teeDownLoadAuditConfigRepository, ProjectDatatableRepository projectDatatableRepository, ProjectRepository projectRepository, ProjectNodeRepository projectNodeRepository, ProjectJobTaskRepository jobTaskRepository, ProjectService projectService, DatatableService datatableService, CertificateService certificateService) {
-        super(voteInviteRepository, voteRequestRepository, nodeRepository, envService, certificateService, projectRepository);
+    public TeeDownLoadMessageHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, InstRepository instRepository, EnvService envService, TeeDownLoadAuditConfigRepository teeDownLoadAuditConfigRepository, ProjectDatatableRepository projectDatatableRepository, ProjectRepository projectRepository, ProjectNodeRepository projectNodeRepository, ProjectJobTaskRepository jobTaskRepository, ProjectService projectService, DatatableService datatableService, CertificateService certificateService) {
+        super(voteInviteRepository, voteRequestRepository, nodeRepository, instRepository, envService, certificateService, projectRepository);
         this.teeDownLoadAuditConfigRepository = teeDownLoadAuditConfigRepository;
         this.projectDatatableRepository = projectDatatableRepository;
         this.projectNodeRepository = projectNodeRepository;
@@ -232,6 +232,11 @@ public class TeeDownLoadMessageHandler extends AbstractVoteTypeHandler {
     @Override
     protected String getInviteDesc(String nodeID, AbstractVoteConfig voteConfig) {
         return getRequestDesc(nodeID, voteConfig);
+    }
+
+    @Override
+    public String getVoter(String nodeId) {
+        return nodeId;
     }
 
     @Override

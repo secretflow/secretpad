@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.manager.integration.datatablegrant;
 
+import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
@@ -26,6 +27,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.secretflow.v1alpha1.kusciaapi.Domaindatagrant;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.util.CollectionUtils;
 
@@ -45,13 +47,15 @@ import java.util.stream.Collectors;
 public class DatatableGrantManager extends AbstractDatatableGrantManager {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(DatatableGrantManager.class);
-
     private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
+    @Value("${secretpad.platform-type}")
+    private String plaformType;
 
     @Override
     public DatatableGrantDTO queryDomainGrant(String nodeId, String domainDataGrantId) {
-        Domaindatagrant.QueryDomainDataGrantResponse response = kusciaGrpcClientAdapter.queryDomainDataGrant(
-                Domaindatagrant.QueryDomainDataGrantRequest.newBuilder().setDomainId(nodeId).setDomaindatagrantId(domainDataGrantId).build());
+        Domaindatagrant.QueryDomainDataGrantResponse response = PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))
+                ? kusciaGrpcClientAdapter.queryDomainDataGrant(Domaindatagrant.QueryDomainDataGrantRequest.newBuilder().setDomainId(nodeId).setDomaindatagrantId(domainDataGrantId).build(), nodeId)
+                : kusciaGrpcClientAdapter.queryDomainDataGrant(Domaindatagrant.QueryDomainDataGrantRequest.newBuilder().setDomainId(nodeId).setDomaindatagrantId(domainDataGrantId).build());
         if (response.getStatus().getCode() != 0) {
             LOGGER.error("query domain grant from kusciaapi failed: code={}, message={}, nodeId={}, domainDataGrantId={}",
                     response.getStatus().getCode(), response.getStatus().getMessage(), nodeId, domainDataGrantId);
@@ -88,8 +92,9 @@ public class DatatableGrantManager extends AbstractDatatableGrantManager {
         if (StringUtils.isNotBlank(domainDataGrantId)) {
             builder.setDomaindatagrantId(domainDataGrantId);
         }
-        Domaindatagrant.CreateDomainDataGrantResponse response = kusciaGrpcClientAdapter.createDomainDataGrant(
-                builder.build());
+        Domaindatagrant.CreateDomainDataGrantResponse response = PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))
+                ? kusciaGrpcClientAdapter.createDomainDataGrant(builder.build(), nodeId)
+                : kusciaGrpcClientAdapter.createDomainDataGrant(builder.build());
         if (response.getStatus().getCode() != 0) {
             LOGGER.error("create domain grant from kusciaapi failed: code={}, message={}, nodeId={}, grantNodeId={}, domainDataId={}",
                     response.getStatus().getCode(), response.getStatus().getMessage(), nodeId, grantNodeId, domainDataId);

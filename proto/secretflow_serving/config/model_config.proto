@@ -17,6 +17,8 @@ syntax = "proto3";
 
 package secretflow.serving;
 
+import "secretflow_serving/config/tls_config.proto";
+
 // Supported model source type
 enum SourceType {
   // Placeholder for proto3 default value, do not use it.
@@ -26,10 +28,35 @@ enum SourceType {
   ST_FILE = 1;
   // OSS/AWS S3
   ST_OSS = 2;
+  // Http source
+  ST_HTTP = 3;
+  // DataProxy source
+  ST_DP = 4;
 }
 
 message FileSourceMeta {
   // empty by design
+}
+
+message HttpSourceMeta {
+  // Max duration for a connect. -1 means wait indefinitely.
+  // Default: 60 * 1000 (ms)
+  int32 connect_timeout_ms = 1;
+
+  // Max duration of http request. -1 means wait indefinitely.
+  // Default: 120 * 1000 (ms)
+  int32 timeout_ms = 2;
+
+  // TLS related config.
+  TlsConfig tls_config = 3;
+}
+
+message DPSourceMeta {
+  // datamesh host.
+  string dm_host = 1;
+
+  // TLS related config.
+  TlsConfig tls_config = 2;
 }
 
 // Options for a Oss model source. Serving accesses data services using the AWS
@@ -41,8 +68,9 @@ message OSSSourceMeta {
   // Bucket secret key
   string secret_key = 2;
 
-  // Whether to use virtual host mode,
+  // Whether to use virtual host mode, ref:
   // https://docs.aws.amazon.com/AmazonS3/latest/userguide/VirtualHosting.html
+  // Defalut: False
   bool virtual_hosted = 3;
 
   string endpoint = 4;
@@ -58,7 +86,8 @@ message ModelConfig {
   // Path used to cache and load model package
   string base_path = 2;
 
-  // Represent the path of the model package in the model source
+  // The path to the model package in the data source, where the content format
+  // may vary depending on the `source_type`
   string source_path = 3;
 
   // Optional.
@@ -69,5 +98,7 @@ message ModelConfig {
   oneof kind {
     FileSourceMeta file_source_meta = 6;
     OSSSourceMeta oss_source_meta = 7;
+    HttpSourceMeta http_source_meta = 8;
+    DPSourceMeta dp_source_meta = 9;
   }
 }

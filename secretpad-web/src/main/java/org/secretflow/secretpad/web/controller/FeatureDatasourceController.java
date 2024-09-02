@@ -45,7 +45,7 @@ public class FeatureDatasourceController {
     private FeatureTableService featureTableService;
 
     @PostMapping(value = "/create", consumes = "application/json")
-    @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
+    @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     public SecretPadResponse createFeatureDatasource(@RequestBody @Valid CreateFeatureDatasourceRequest createFeatureDatasourceRequest) {
         featureTableService.createFeatureTable(createFeatureDatasourceRequest);
         return SecretPadResponse.success();

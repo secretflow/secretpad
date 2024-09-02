@@ -82,6 +82,7 @@ public class NodeUserServiceImpl implements NodeUserService {
         accountRequest.setOwnerId(request.getNodeId());
         accountRequest.setName(request.getName());
         accountRequest.setPasswordHash(request.getPasswordHash());
+        accountRequest.setInstId("");
         userAccountsRepository.saveAndFlush(accountRequest);
 
         SysUserPermissionRelDO sysUserPermission = new SysUserPermissionRelDO();

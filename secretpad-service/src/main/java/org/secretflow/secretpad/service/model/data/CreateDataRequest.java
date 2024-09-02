@@ -84,5 +84,9 @@ public class CreateDataRequest {
     @Schema(description = "datatable schema")
     private List<DatatableSchema> datatableSchema;
 
+    /**
+     * When registering a table, users can specify certain specific values to be treated as nulls.
+     */
+    private List<String> nullStrs;
 
 }

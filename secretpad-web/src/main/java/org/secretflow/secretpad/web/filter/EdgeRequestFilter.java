@@ -50,13 +50,13 @@ import org.springframework.web.client.RestTemplate;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.io.PrintWriter;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 
@@ -73,6 +73,15 @@ import java.util.Optional;
 @Data
 @RequiredArgsConstructor
 public class EdgeRequestFilter implements Filter, Ordered {
+    /**
+     * Expiration time
+     * one hour
+     */
+    private static final long EXPIRE = 60 * 60 * 24;
+    private final UserTokensRepository userTokensRepository;
+    private final ObjectMapper jacksonObjectMapper;
+    private final RestTemplate restTemplate = new RestTemplate();
+    private final EnvService envService;
     @Value("${secretpad.gateway}")
     private String kusciaLiteGateway;
     @Value("${secretpad.center-platform-service}")
@@ -81,16 +90,6 @@ public class EdgeRequestFilter implements Filter, Ordered {
     private String nodeId;
     private List<String> forward;
     private List<String> include;
-    private final UserTokensRepository userTokensRepository;
-    private final ObjectMapper jacksonObjectMapper;
-    private final RestTemplate restTemplate = new RestTemplate();
-    private final EnvService envService;
-
-    /**
-     * Expiration time
-     * one hour
-     */
-    private static final long EXPIRE = 60 * 60 * 24;
 
     @Override
     public void doFilter(ServletRequest request, ServletResponse response, FilterChain chain) throws IOException, ServletException {
@@ -105,7 +104,7 @@ public class EdgeRequestFilter implements Filter, Ordered {
                 SecretPadResponse<Object> objectSecretPadResponse =
                         new SecretPadResponse<>(new SecretPadResponse.SecretPadResponseStatus(e.getErrorCode().getCode(), e.getMessage()), null);
 
-                response.setContentType("application/json; charset=utf-8");
+                response.setContentType("application/json");
                 response.setCharacterEncoding("UTF-8");
                 String s = convertObjectToJson(objectSecretPadResponse);
                 OutputStream out = response.getOutputStream();
@@ -121,20 +120,18 @@ public class EdgeRequestFilter implements Filter, Ordered {
             RequestEntity requestEntity = new RequestEntity(body, headers, HttpMethod.POST, URI.create(redirectUrl));
             restTemplate.getMessageConverters().set(1, new StringHttpMessageConverter(StandardCharsets.UTF_8));
             ResponseEntity<String> result = restTemplate.exchange(requestEntity, String.class);
-            String resultBody = result.getBody();
             HttpHeaders resultHeaders = result.getHeaders();
+            log.info("resultHeaders {}", resultHeaders);
             MediaType contentType = resultHeaders.getContentType();
             if (contentType != null) {
                 resp.setContentType(contentType.toString());
             }
             resp.setCharacterEncoding("UTF-8");
-            PrintWriter writer = resp.getWriter();
-            assert resultBody != null;
-            writer.write(resultBody);
-            writer.flush();
+            resp.setStatus(result.getStatusCode().value());
+            resp.getWriter().write(Objects.requireNonNull(result.getBody()));
         } else {
             if (uri.startsWith("/api/v1alpha1") && !include.contains(uri)) {
-                response.setContentType("application/json; charset=utf-8");
+                response.setContentType("application/json");
                 response.setCharacterEncoding("UTF-8");
                 ((HttpServletResponse) response).setStatus(HttpServletResponse.SC_NOT_FOUND);
                 response.getOutputStream().flush();
@@ -171,6 +168,8 @@ public class EdgeRequestFilter implements Filter, Ordered {
         httpHeaders.remove("host");
         httpHeaders.add("host", routeHeader);
         httpHeaders.add("kuscia-origin-source", nodeId);
+        httpHeaders.remove("accept-encoding");
+        log.info("httpHeaders {}", httpHeaders);
         return httpHeaders;
     }
 
@@ -194,7 +193,7 @@ public class EdgeRequestFilter implements Filter, Ordered {
 
     public String convertObjectToJson(Object object) throws JsonProcessingException {
         if (object == null) {
-            return null;
+            object = SecretPadResponse.success();
         }
         return jacksonObjectMapper.writeValueAsString(object);
     }

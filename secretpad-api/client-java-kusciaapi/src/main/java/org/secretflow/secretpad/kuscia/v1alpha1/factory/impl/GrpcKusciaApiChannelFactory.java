@@ -49,12 +49,12 @@ import java.util.concurrent.atomic.AtomicReference;
 public class GrpcKusciaApiChannelFactory implements KusciaApiChannelFactory {
 
 
+    private final static int MAX_INBOUND_MESSAGE_SIZE = 256 * 1024 * 1024;
     private final AtomicReference<ConnectivityState> state = new AtomicReference<>(ConnectivityState.SHUTDOWN);
     private final KusciaGrpcConfig kusciaGrpcConfig;
     private final ClientInterceptor loggingInterceptor;
     private final ClientInterceptor tokenAuthClientInterceptor;
     private ManagedChannel channel;
-    private final static int MAX_INBOUND_MESSAGE_SIZE = 256 * 1024 * 1024;
 
 
     public GrpcKusciaApiChannelFactory(KusciaGrpcConfig kusciaGrpcConfig) {

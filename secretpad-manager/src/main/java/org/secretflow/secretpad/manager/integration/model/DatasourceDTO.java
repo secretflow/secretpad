@@ -100,6 +100,9 @@ public class DatasourceDTO {
     @Getter
     @EqualsAndHashCode
     @ToString
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
     public static class NodeDatasourceId {
 
         /**
@@ -111,12 +114,6 @@ public class DatasourceDTO {
          * Datasource id
          */
         private String datasourceId;
-
-        private NodeDatasourceId(String nodeId, String datasourceId) {
-            this.nodeId = nodeId;
-            this.datasourceId = datasourceId;
-        }
-
 
         /**
          * Create a new NodeDatatableId class by nodeId and datatableId

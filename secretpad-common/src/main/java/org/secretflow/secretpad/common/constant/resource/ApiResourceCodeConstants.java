@@ -35,6 +35,9 @@ public class ApiResourceCodeConstants {
     public static final String NODE_LIST = "NODE_LIST";
     public static final String NODE_RESULT_LIST = "NODE_RESULT_LIST";
     public static final String NODE_RESULT_DETAIL = "NODE_RESULT_DETAIL";
+    public static final String NODE_REGISTER = "NODE_REGISTER";
+    public static final String INST_GET = "INST_GET";
+
     public static final String AUTH_LOGIN = "AUTH_LOGIN";
     public static final String AUTH_LOGOUT = "AUTH_LOGOUT";
     public static final String DATA_CREATE = "DATA_CREATE";
@@ -84,6 +87,7 @@ public class ApiResourceCodeConstants {
     public static final String PRJ_GET = "PRJ_GET";
     public static final String PRJ_UPDATE = "PRJ_UPDATE";
     public static final String PRJ_DELETE = "PRJ_DELETE";
+    public static final String PRJ_PARTICIPANTS = "PRJ_PARTICIPANTS";
     public static final String PRJ_ARCHIVE = "PRJ_ARCHIVE";
     public static final String PRJ_ADD_INST = "PRJ_ADD_INST";
     public static final String PRJ_ADD_NODE = "PRJ_ADD_NODE";

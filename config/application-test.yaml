@@ -18,6 +18,8 @@ secretpad:
     max-request-size: -1 # -1 means not limit, e.g.  200MB, 1GB
   data:
     dir-path: ../tmp/data/
+  certs:
+    dir-path: ../tmp/certs/
   datasync:
     center: true
     p2p: false

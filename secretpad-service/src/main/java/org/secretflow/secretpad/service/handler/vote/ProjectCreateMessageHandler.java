@@ -21,16 +21,14 @@ import org.secretflow.secretpad.common.enums.ProjectStatusEnum;
 import org.secretflow.secretpad.common.util.Base64Utils;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.manager.integration.node.NodeManager;
-import org.secretflow.secretpad.persistence.entity.ProjectApprovalConfigDO;
-import org.secretflow.secretpad.persistence.entity.ProjectDO;
-import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
-import org.secretflow.secretpad.persistence.entity.VoteRequestDO;
+import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.ParticipantNodeInstVO;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.CertificateService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
+import org.secretflow.secretpad.service.impl.InstServiceImpl;
 import org.secretflow.secretpad.service.model.approval.*;
-
 import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -54,13 +52,15 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
 
 
     private final ProjectNodeRepository projectNodeRepository;
+    private final ProjectInstRepository projectInstRepository;
 
     private final CacheManager cacheManager;
 
 
-    public ProjectCreateMessageHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, EnvService envService, ProjectApprovalConfigRepository projectApprovalConfigRepository, ProjectRepository projectRepository, CertificateService certificateService, NodeManager nodeManager, ProjectNodeRepository projectNodeRepository, CacheManager cacheManager) {
-        super(voteInviteRepository, voteRequestRepository, nodeRepository, envService, projectRepository, projectApprovalConfigRepository, nodeManager, certificateService);
+    public ProjectCreateMessageHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, InstRepository instRepository, EnvService envService, ProjectApprovalConfigRepository projectApprovalConfigRepository, ProjectRepository projectRepository, CertificateService certificateService, NodeManager nodeManager, ProjectNodeRepository projectNodeRepository, ProjectInstRepository projectInstRepository, CacheManager cacheManager) {
+        super(voteInviteRepository, voteRequestRepository, nodeRepository, instRepository, envService, projectRepository, projectApprovalConfigRepository, nodeManager, certificateService);
         this.projectNodeRepository = projectNodeRepository;
+        this.projectInstRepository = projectInstRepository;
         this.cacheManager = cacheManager;
     }
 
@@ -71,18 +71,20 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
     }
 
     @Override
-    protected void preCheck(String nodeID, AbstractVoteConfig voteConfig) {
+    protected void preCheck(String initiatorId, AbstractVoteConfig voteConfig) {
 
     }
 
     @Override
-    protected void createVoteConfig(String voteID, String nodeID, AbstractVoteConfig voteConfig) {
+    protected void createVoteConfig(String voteID, String initiatorId, AbstractVoteConfig voteConfig) {
         ProjectCreateApprovalConfig projectCreateApprovalConfig = (ProjectCreateApprovalConfig) voteConfig;
         String projectId = projectCreateApprovalConfig.getProjectId();
-        List<String> allParties = projectCreateApprovalConfig.getNodes();
+        List<String> allParties = projectCreateApprovalConfig.getParticipants();
+        List<ParticipantNodeInstVO> participantNodeInstVOS = projectCreateApprovalConfig.getParticipantNodeInstVOS();
         cacheProjectParties(projectId, allParties);
         ProjectApprovalConfigDO projectApprovalConfigDO = ProjectApprovalConfigDO.builder()
-                .initiator(nodeID)
+                .initiator(initiatorId)
+                .participantNodeInfo(participantNodeInstVOS)
                 .projectId(projectId)
                 .parties(allParties)
                 .type(getVoteType())
@@ -97,13 +99,13 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
     }
 
     @Override
-    protected String getApprovedAction(String nodeID, AbstractVoteConfig voteConfig) {
+    protected String getApprovedAction(String initiatorId, AbstractVoteConfig voteConfig) {
         ProjectCallBackAction approvedCallBackAction = getApprovedCallBackAction(voteConfig);
         return VoteTypeEnum.PROJECT_CREATE.name() + "," + JsonUtils.toJSONString(approvedCallBackAction);
     }
 
     @Override
-    protected String getRejectAction(String nodeID, AbstractVoteConfig voteConfig) {
+    protected String getRejectAction(String initiatorId, AbstractVoteConfig voteConfig) {
         ProjectCallBackAction projectRejectedCallbackAction = getApprovedCallBackAction(voteConfig);
         projectRejectedCallbackAction.getProjectDO().setStatus(ProjectStatusEnum.ARCHIVED.getCode());
         return VoteTypeEnum.PROJECT_ARCHIVE.name() + "," + JsonUtils.toJSONString(projectRejectedCallbackAction);
@@ -124,21 +126,36 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
         ProjectDO approvedProjectDO = JsonUtils.deepCopy(projectDO, ProjectDO.class);
         approvedProjectDO.setStatus(ProjectStatusEnum.APPROVED.getCode());
         projectApprovalCallBackAction.setProjectDO(approvedProjectDO);
+        List<ProjectInstDO> projectInstDOS = new ArrayList<>();
+        for (String inviteParty : projectCreateApprovalConfig.getParticipants()) {
+            ProjectInstDO projectInstDO = ProjectInstDO.builder()
+                    .upk(new ProjectInstDO.UPK(projectId, inviteParty))
+                    .build();
+            projectInstDOS.add(projectInstDO);
+        }
+        List<String> nodeIds = new ArrayList<>();
         List<ProjectNodeDO> projectNodeDOS = new ArrayList<>();
-        for (String inviteParty : projectCreateApprovalConfig.getNodes()) {
+        for (ParticipantNodeInstVO participantNodeInstVO : projectCreateApprovalConfig.getParticipantNodeInstVOS()) {
+            nodeIds.add(participantNodeInstVO.getInitiatorNodeId());
+            for (ParticipantNodeInstVO.NodeInstVO invitee : participantNodeInstVO.getInvitees()) {
+                nodeIds.add(invitee.getInviteeId());
+            }
+        }
+        for (String inviteParty : nodeIds) {
             ProjectNodeDO inviteProjectNodeDO = ProjectNodeDO.builder()
                     .upk(new ProjectNodeDO.UPK(projectId, inviteParty))
                     .build();
             projectNodeDOS.add(inviteProjectNodeDO);
         }
         projectApprovalCallBackAction.setProjectNodeDOS(projectNodeDOS);
+        projectApprovalCallBackAction.setProjectInstDOS(projectInstDOS);
         return projectApprovalCallBackAction;
     }
 
     @Override
     @Transactional
     public void doCallBackApproved(VoteRequestDO voteRequestDO) {
-        if (!envService.isCurrentNodeEnvironment(voteRequestDO.getInitiator())) {
+        if (!envService.isCurrentInstEnvironment(voteRequestDO.getInitiator())) {
             LOGGER.info("you may not initiator return");
             return;
         }
@@ -149,9 +166,11 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
         ProjectDO projectApprovalDO = projectCallBackAction.getProjectDO();
         //create project_node
         List<ProjectNodeDO> projectNodeDOS = projectCallBackAction.getProjectNodeDOS();
-        Map<String, String> projectNodeMap = projectNodeDOS.stream().collect(Collectors.toMap(ProjectNodeDO::getNodeId, ProjectNodeDO::getProjectId));
-        String platformNodeId = envService.getPlatformNodeId();
-        if (projectNodeMap.containsKey(platformNodeId)) {
+        //create project_inst
+        List<ProjectInstDO> projectInstDOS = projectCallBackAction.getProjectInstDOS();
+        Map<String, String> projectInstMap = projectInstDOS.stream().collect(Collectors.toMap(ProjectInstDO::getNodeId, ProjectInstDO::getProjectId));
+        String instId = InstServiceImpl.INST_ID;
+        if (projectInstMap.containsKey(instId)) {
             //recheck project status,maybe while do this vote,another user may try to archive this project and it may be archive success
             Optional<ProjectDO> projectDOOptional = projectRepository.findById(projectApprovalDO.getProjectId());
             if (!projectDOOptional.isPresent()) {
@@ -163,17 +182,18 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
             }
             ProjectDO currentDBprojectDO = projectDOOptional.get();
             if (!ProjectStatusEnum.REVIEWING.getCode().equals(currentDBprojectDO.getStatus())) {
-                String errorMsg = String.format("project [%s] status is not reviewing,status is [%s]", projectApprovalDO.getName(), ProjectStatusEnum.parse(currentDBprojectDO.getStatus()));
+                String errorMsg = String.format("project [%s] status Is not reviewing,status Is [%s]", projectApprovalDO.getName(), ProjectStatusEnum.parse(currentDBprojectDO.getStatus()));
                 voteRequestDO.setMsg(errorMsg);
                 failed(voteRequestDO);
                 return;
             }
+            projectInstRepository.saveAllAndFlush(projectInstDOS);
             projectNodeRepository.saveAllAndFlush(projectNodeDOS);
             projectRepository.save(projectApprovalDO);
             success(voteRequestDO);
         } else {
-            String err = String.format("doCallBackApproved error,voters does not has party : %s", platformNodeId);
-            LOGGER.error("doCallBackApproved error,voters does not has party : {}", platformNodeId);
+            String err = String.format("doCallBackApproved error,voters does not has party : %s", instId);
+            LOGGER.error("doCallBackApproved error,voters does not has party : {}", instId);
             voteRequestDO.setMsg(err);
             failed(voteRequestDO);
         }
@@ -191,7 +211,7 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
     @Override
     @Transactional
     public void doCallBackRejected(VoteRequestDO voteRequestDO) {
-        if (!envService.isCurrentNodeEnvironment(voteRequestDO.getInitiator())) {
+        if (!envService.isCurrentInstEnvironment(voteRequestDO.getInitiator())) {
             LOGGER.info("not initiator return");
             return;
         }
@@ -201,22 +221,22 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
         LOGGER.info("rejectedAction = {}", rejectedAction);
         ProjectCallBackAction projectCallBackAction = JsonUtils.toJavaObject(rejectedAction, ProjectCallBackAction.class);
         ProjectDO projectDO = projectCallBackAction.getProjectDO();
+        List<ProjectInstDO> projectInstDOS = projectCallBackAction.getProjectInstDOS();
+        Map<String, String> projectInstMap = projectInstDOS.stream().collect(Collectors.toMap(ProjectInstDO::getNodeId, ProjectInstDO::getProjectId));
         List<ProjectNodeDO> projectNodeDOS = projectCallBackAction.getProjectNodeDOS();
-        Map<String, String> projectNodeMap = projectNodeDOS.stream().collect(Collectors.toMap(ProjectNodeDO::getNodeId, ProjectNodeDO::getProjectId));
-        String platformNodeId = envService.getPlatformNodeId();
-        if (projectNodeMap.containsKey(platformNodeId)) {
+        String inst_id = InstServiceImpl.INST_ID;
+        if (projectInstMap.containsKey(inst_id)) {
             projectRepository.save(projectDO);
             projectDO.setStatus(ProjectStatusEnum.ARCHIVED.getCode());
+            projectInstRepository.deleteAll(projectInstDOS);
             projectNodeRepository.deleteAll(projectNodeDOS);
             success(voteRequestDO);
             LOGGER.info("doCallBackRejected success, project {} ARCHIVED", projectDO.getName());
         } else {
-            String err = String.format("doCallBackRejected error,voters does not has party : %s", platformNodeId);
-            LOGGER.error("doCallBackRejected error,voters does not has party : {}", platformNodeId);
+            String err = String.format("doCallBackRejected error,voters does not has party : %s", inst_id);
+            LOGGER.error("doCallBackRejected error,voters does not has party : {}", inst_id);
             voteRequestDO.setMsg(err);
             failed(voteRequestDO);
         }
     }
-
-
 }

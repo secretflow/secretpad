@@ -23,6 +23,7 @@ import jakarta.annotation.Resource;
 import lombok.Getter;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.secretflow.v1alpha1.kusciaapi.*;
 import org.springframework.stereotype.Service;
 
@@ -44,6 +45,24 @@ public class KusciaGrpcClientAdapter implements
 
     @Resource
     private DynamicKusciaChannelProvider dynamicKusciaChannelProvider;
+
+    /**
+     *
+     */
+    public boolean isDomainRegistered(String domainId) {
+        if (StringUtils.isEmpty(domainId)) {
+            return false;
+        }
+        return dynamicKusciaChannelProvider.isChannelExist(domainId);
+    }
+
+    /**
+     *
+     */
+    public void unregisterDomain(String domainId) {
+        dynamicKusciaChannelProvider.unRegisterKuscia(domainId);
+    }
+
 
     @Override
     public Certificate.GenerateKeyCertsResponse generateKeyCerts(Certificate.GenerateKeyCertsRequest request) {

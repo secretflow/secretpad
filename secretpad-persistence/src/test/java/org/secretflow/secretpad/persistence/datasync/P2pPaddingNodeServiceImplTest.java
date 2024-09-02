@@ -46,14 +46,14 @@ public class P2pPaddingNodeServiceImplTest {
 
     @Test
     public void testCompensate_NotVoteInviteDO() {
-        P2pPaddingNodeServiceImpl p2pPaddingNodeServiceImpl = new P2pPaddingNodeServiceImpl(null, null, voteRequestRepository, null);
+        P2pPaddingNodeServiceImpl p2pPaddingNodeServiceImpl = new P2pPaddingNodeServiceImpl(null, null, voteRequestRepository, null, null);
         VoteInviteDO source = new VoteInviteDO();
         source.setUpk(VoteInviteDO.UPK.builder().voteID("1").votePartitionID("alice").build());
 
         EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event = new EntityChangeListener.DbChangeEvent<>();
         event.setSource(source);
         VoteRequestDO build = VoteRequestDO.builder()
-                .partyVoteInfos(Set.of(VoteRequestDO.PartyVoteInfo.builder().nodeId("alice").build()))
+                .partyVoteInfos(Set.of(VoteRequestDO.PartyVoteInfo.builder().partyId("alice").build()))
                 .build();
         Optional<VoteRequestDO> voteRequestDOOptional = Optional.of(build);
         Mockito.when(voteRequestRepository.findById(Mockito.any())).thenReturn(voteRequestDOOptional);

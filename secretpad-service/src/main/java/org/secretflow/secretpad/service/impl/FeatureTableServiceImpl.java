@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service.impl;
 
+import org.secretflow.secretpad.common.constant.Constants;
 import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.common.errorcode.FeatureTableErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
@@ -65,17 +66,19 @@ public class FeatureTableServiceImpl implements FeatureTableService {
             throw SecretpadException.of(FeatureTableErrorCode.FEATURE_TABLE_IP_FILTER, createFeatureDatasourceRequest.getUrl());
         }
         verifyRate();
-        String status = "Unavailable";
-        FeatureTableDO featureTableDO = FeatureTableDO.builder()
-                .upk(new FeatureTableDO.UPK(UUIDUtils.random(8), createFeatureDatasourceRequest.getNodeId(), StringUtils.isBlank(createFeatureDatasourceRequest.getDatasourceId()) ? DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID : createFeatureDatasourceRequest.getDatasourceId()))
-                .featureTableName(createFeatureDatasourceRequest.getFeatureTableName())
-                .type(createFeatureDatasourceRequest.getType())
-                .desc(createFeatureDatasourceRequest.getDesc())
-                .url(createFeatureDatasourceRequest.getUrl())
-                .columns(createFeatureDatasourceRequest.getColumns().stream().map(e -> FeatureTableDO.TableColumn.builder().colName(e.getColName()).colType(e.getColType()).colComment(e.getColComment()).build()).collect(Collectors.toList()))
-                .status(status)
-                .build();
-        featureTableRepository.save(featureTableDO);
+        String status = Constants.STATUS_UNAVAILABLE;
+        createFeatureDatasourceRequest.getNodeIds().forEach(nodeId -> {
+            FeatureTableDO featureTableDO = FeatureTableDO.builder()
+                    .upk(new FeatureTableDO.UPK(UUIDUtils.random(8), nodeId, StringUtils.isBlank(createFeatureDatasourceRequest.getDatasourceId()) ? DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID : createFeatureDatasourceRequest.getDatasourceId()))
+                    .featureTableName(createFeatureDatasourceRequest.getFeatureTableName())
+                    .type(createFeatureDatasourceRequest.getType())
+                    .desc(createFeatureDatasourceRequest.getDesc())
+                    .url(createFeatureDatasourceRequest.getUrl())
+                    .columns(createFeatureDatasourceRequest.getColumns().stream().map(e -> FeatureTableDO.TableColumn.builder().colName(e.getColName()).colType(e.getColType()).colComment(e.getColComment()).build()).collect(Collectors.toList()))
+                    .status(status)
+                    .build();
+            featureTableRepository.save(featureTableDO);
+        });
     }
 
 

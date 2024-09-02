@@ -41,12 +41,12 @@ public class StartGraphRequest {
     @NotBlank
     public String graphId;
     /**
+     * breakpoint resuming training flag true：yes，false：no
+     */
+    public Boolean breakpoint = false;
+    /**
      * Graph node id list, it can not be empty
      */
     @NotEmpty
     private List<String> nodes;
-    /**
-     * breakpoint resuming training flag true：yes，false：no
-     */
-    public Boolean breakpoint = false;
 }

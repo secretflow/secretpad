@@ -23,9 +23,13 @@ import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import lombok.Getter;
 import lombok.Setter;
+
+import java.util.List;
 
 /**
  * @author chenmingliang
@@ -35,14 +39,18 @@ import lombok.Setter;
 @Setter
 public class CreateDatasourceRequest {
 
-    @NotBlank(message = "node id can not be empty")
-    private String nodeId;
+    @NotBlank(message = "ownerId id cannot be blank")
+    private String ownerId;
+
+    @NotEmpty(message = "nodes can not be empty, you should select at least one node")
+    private List<String> nodeIds;
 
     @NotBlank(message = "type cannot be blank")
-    @OneOfType(types = {DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE})
+    @OneOfType(types = {DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE, DomainDatasourceConstants.DEFAULT_ODPS_DATASOURCE_TYPE})
     private String type;
 
     @NotBlank(message = "name can not be empty")
+    @Size(max = 32, message = "name length cannot exceed 32 characters")
     private String name;
 
     @NotNull
@@ -53,7 +61,8 @@ public class CreateDatasourceRequest {
             defaultImpl = OssDatasourceInfo.class
     )
     @JsonSubTypes({
-            @JsonSubTypes.Type(value = OssDatasourceInfo.class, name = DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE)
+            @JsonSubTypes.Type(value = OssDatasourceInfo.class, name = DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE),
+            @JsonSubTypes.Type(value = OdpsDatasourceInfo.class, name = DomainDatasourceConstants.DEFAULT_ODPS_DATASOURCE_TYPE)
     })
     private @Valid DataSourceInfo dataSourceInfo;
 }

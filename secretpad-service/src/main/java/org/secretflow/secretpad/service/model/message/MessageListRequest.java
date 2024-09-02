@@ -42,7 +42,7 @@ public class MessageListRequest extends SecretPadPageRequest {
      * requester nodeID
      */
     @NotBlank
-    private String nodeID;
+    private String ownerId;
 
     /**
      * if the message has been processed

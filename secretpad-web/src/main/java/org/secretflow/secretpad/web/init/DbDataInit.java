@@ -16,11 +16,14 @@
 package org.secretflow.secretpad.web.init;
 
 import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
+import org.secretflow.secretpad.common.util.FileUtils;
 import org.secretflow.secretpad.common.util.Sha256Utils;
 import org.secretflow.secretpad.persistence.entity.AccountsDO;
 import org.secretflow.secretpad.persistence.repository.UserAccountsRepository;
+import org.secretflow.secretpad.service.dataproxy.DataProxyService;
 import org.secretflow.secretpad.web.constant.AuthConstants;
 
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
@@ -31,6 +34,8 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
+
+import java.util.Optional;
 
 /**
  * Initialize db init resource
@@ -43,6 +48,8 @@ import org.springframework.stereotype.Service;
 @Service
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class DbDataInit implements CommandLineRunner {
+    private final UserAccountsRepository userAccountsRepository;
+    private final Flyway flyway;
     @Autowired
     private Environment environment;
     @Value("${secretpad.platform-type}")
@@ -50,13 +57,14 @@ public class DbDataInit implements CommandLineRunner {
     @Value("${secretpad.node-id}")
     private String nodeId;
 
-    private final UserAccountsRepository userAccountsRepository;
-    private final Flyway flyway;
+    @Resource
+    private DataProxyService dataProxyService;
 
     @Override
     public void run(String... args) throws Exception {
         flyway.migrate();
         initUserAndPwd();
+        dataProxyService.updateDataSourceUseDataProxyInMaster();
     }
 
     public void initUserAndPwd() {
@@ -82,8 +90,12 @@ public class DbDataInit implements CommandLineRunner {
                 .passwordHash(Sha256Utils.hash(password))
                 .ownerType(UserOwnerTypeEnum.fromString(platformType))
                 .ownerId(nodeId)
+                .instId("")
                 .build();
-        userAccountsRepository.findByName(accountsDO.getName());
-        userAccountsRepository.save(accountsDO);
+        Optional<AccountsDO> accountsDOOptional = userAccountsRepository.findByName(accountsDO.getName());
+        if (accountsDOOptional.isEmpty()) {
+            userAccountsRepository.save(accountsDO);
+        }
+        FileUtils.writeToFile(accountsDO.getOwnerId());
     }
 }

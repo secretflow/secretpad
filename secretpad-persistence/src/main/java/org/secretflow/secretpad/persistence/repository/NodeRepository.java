@@ -18,9 +18,11 @@
 package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.NodeDO;
+import org.secretflow.secretpad.persistence.model.NodeInstDTO;
 
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,7 +54,7 @@ public interface NodeRepository extends BaseRepository<NodeDO, String> {
      * @param nodeId target nodeId
      * @return node result optional
      */
-    @Query(value = "select id,node_id,name,auth,description,control_node_id,net_address,token,type,mode,master_node_id,is_deleted,gmt_create,gmt_modified from node " +
+    @Query(value = "select id,node_id,name,auth,description,control_node_id,net_address,token,type,mode,master_node_id,is_deleted,gmt_create,gmt_modified,inst_id,inst_token,protocol from node " +
             "where node_id=:nodeId and is_deleted = 1", nativeQuery = true)
     Optional<NodeDO> findDeletedRecordByNodeId(String nodeId);
 
@@ -75,4 +77,27 @@ public interface NodeRepository extends BaseRepository<NodeDO, String> {
     @Transactional
     void deleteAuthentic(String nodeId);
 
+    /**
+     * Query node results by instId
+     *
+     * @param instId target instId
+     * @return node results
+     */
+    @Query("from NodeDO nd where nd.instId=:instId")
+    List<NodeDO> findByInstId(String instId);
+
+    @Query("select count(*) from NodeDO nd where nd.instId=:instId")
+    Integer countByInstId(@Param("instId") String instId);
+
+
+    @Query("from NodeDO nd where nd.instId=:instId and nodeId=:nodeId")
+    NodeDO findOneByInstId(String instId, String nodeId);
+
+    @Query(value = "select distinct inst_id AS instId, master_node_id AS masterNodeId  from node where is_deleted = 0", nativeQuery = true)
+    List<NodeInstDTO> findInstMasterNodeId();
+
+    @Modifying
+    @Transactional
+    @Query(value = "update node set master_node_id = :masterNodeId where inst_id =:instId", nativeQuery = true)
+    void updateMasterNodeIdByInstid(String instId, String masterNodeId);
 }

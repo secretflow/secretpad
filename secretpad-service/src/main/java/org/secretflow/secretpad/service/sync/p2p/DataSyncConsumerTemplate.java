@@ -23,6 +23,7 @@ import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
 import org.secretflow.secretpad.persistence.entity.BaseAggregationRoot;
 import org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO;
 import org.secretflow.secretpad.persistence.model.DbChangeAction;
@@ -33,6 +34,9 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * @author yutu
@@ -45,11 +49,17 @@ public class DataSyncConsumerTemplate {
     @Value("${secretpad.node-id}")
     private String nodeId;
 
+    @Value("${secretpad.platform-type}")
+    private String platformType;
+
     @Resource
     private JpaSyncDataService jpaSyncDataService;
 
     @Resource
     private ProjectGraphDomainDatasourceServiceImpl projectGraphDomainDatasourceService;
+
+    @Resource
+    private AbstractNodeManager nodeManager;
 
     public SyncDataDTO consumer(String nodeId, SyncDataDTO syncDataDTO) {
         checkSourceNodeId(nodeId, syncDataDTO);
@@ -65,19 +75,26 @@ public class DataSyncConsumerTemplate {
             log.debug("consumer data instanceof BaseAggregationRoot");
             if (data instanceof ProjectGraphDomainDatasourceDO datasourceDO && syncDataDTO.getAction().equalsIgnoreCase(DbChangeAction.CREATE.getVal())) {
                 log.info("consumer data instanceof ProjectGraphDomainDatasourceDO {}", datasourceDO);
-                ProjectGraphDomainDatasourceDO newDatasourceDO = new ProjectGraphDomainDatasourceDO();
-                newDatasourceDO.setUpk(ProjectGraphDomainDatasourceDO.UPK.builder()
-                        .graphId(datasourceDO.getUpk().getGraphId())
-                        .projectId(datasourceDO.getUpk().getProjectId())
-                        .domainId(this.nodeId)
-                        .build());
-                newDatasourceDO.setDataSourceId(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE);
-                newDatasourceDO.setDataSourceName(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE);
-                newDatasourceDO.setEditEnable(Boolean.TRUE);
-                log.info("consumer data ProjectGraphDomainDatasourceDO event handle {}", newDatasourceDO);
-                projectGraphDomainDatasourceService.save(newDatasourceDO);
+                Set<String> nodeIdSet = new HashSet<>();
+                nodeIdSet.add(this.nodeId);
+                if (PlatformTypeEnum.AUTONOMY.name().equals(this.platformType)){
+                    Set<String> targetNodeIds = nodeManager.getTargetNodeIds(datasourceDO.getNodeId(), datasourceDO.getProjectId());
+                    nodeIdSet.addAll(targetNodeIds);
+                }
+                nodeIdSet.forEach(targetNodeId -> {
+                    ProjectGraphDomainDatasourceDO newDatasourceDO = new ProjectGraphDomainDatasourceDO();
+                    newDatasourceDO.setUpk(ProjectGraphDomainDatasourceDO.UPK.builder()
+                            .graphId(datasourceDO.getUpk().getGraphId())
+                            .projectId(datasourceDO.getUpk().getProjectId())
+                            .domainId(targetNodeId)
+                            .build());
+                    newDatasourceDO.setDataSourceId(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE);
+                    newDatasourceDO.setDataSourceName(KusciaDataSourceConstants.DEFAULT_DATA_SOURCE);
+                    newDatasourceDO.setEditEnable(Boolean.TRUE);
+                    log.info("consumer data ProjectGraphDomainDatasourceDO event handle {}", newDatasourceDO);
+                    projectGraphDomainDatasourceService.save(newDatasourceDO);
+                });
             }
-
         }
         UserContext.remove();
         return syncDataDTO;

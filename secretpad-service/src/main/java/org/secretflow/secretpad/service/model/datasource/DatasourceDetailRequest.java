@@ -31,13 +31,13 @@ import lombok.Setter;
 @Setter
 public class DatasourceDetailRequest {
 
-    @NotBlank(message = "nodeId can not be empty")
-    private String nodeId;
+    @NotBlank(message = "ownerId can not be empty")
+    private String ownerId;
 
     @NotBlank(message = "datasourceId can not be empty")
     private String datasourceId;
 
     @NotBlank(message = "type cannot be blank")
-    @OneOfType(types = {DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE, DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_TYPE})
+    @OneOfType(types = {DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE, DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_TYPE, DomainDatasourceConstants.DEFAULT_ODPS_DATASOURCE_TYPE})
     private String type;
 }

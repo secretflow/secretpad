@@ -67,6 +67,24 @@ public class ProjectGraphDomainDatasourceDO extends BaseAggregationRoot<ProjectG
     @Column(name = "edit_enable", nullable = false)
     private Boolean editEnable;
 
+    @JsonIgnore
+    @Override
+    public String getNodeId() {
+        return this.upk.getDomainId();
+    }
+
+    @JsonIgnore
+    @Override
+    public List<String> getNodeIds() {
+        return super.getNodeIds();
+    }
+
+    @JsonIgnore
+    @Override
+    public String getProjectId() {
+        return this.upk.getProjectId();
+    }
+
     /**
      * A composite primary key class that is used to combine primary keys into one
      */
@@ -98,23 +116,5 @@ public class ProjectGraphDomainDatasourceDO extends BaseAggregationRoot<ProjectG
          */
         @Column(name = "domain_id", nullable = false)
         private String domainId;
-    }
-
-    @JsonIgnore
-    @Override
-    public String getNodeId() {
-        return this.upk.getDomainId();
-    }
-
-    @JsonIgnore
-    @Override
-    public List<String> getNodeIds() {
-        return super.getNodeIds();
-    }
-
-    @JsonIgnore
-    @Override
-    public String getProjectId() {
-        return this.upk.getProjectId();
     }
 }

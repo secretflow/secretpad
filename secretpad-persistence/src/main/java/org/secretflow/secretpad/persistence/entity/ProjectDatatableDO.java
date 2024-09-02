@@ -98,6 +98,27 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
         return this.getTableConfig().stream().filter(TableColumnConfig::isLabelKey).map(TableColumn::getColName).collect(Collectors.toList());
     }
 
+    @Override
+    @JsonIgnore
+    public String getProjectId() {
+        return this.upk.projectId;
+    }
+
+    @Override
+    @JsonIgnore
+    public String getNodeId() {
+        if (StringUtils.equals(DomainConstants.DomainEmbeddedNodeEnum.tee.name(), this.upk.nodeId)) {
+            return null;
+        }
+        return this.upk.nodeId;
+    }
+
+    @Override
+    @JsonIgnore
+    public List<String> getNodeIds() {
+        return super.getNodeIds();
+    }
+
     /**
      * Project datatable source class
      */
@@ -242,26 +263,5 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
         public TableConfigConverter() {
             super(TableColumnConfig.class);
         }
-    }
-
-    @Override
-    @JsonIgnore
-    public String getProjectId() {
-        return this.upk.projectId;
-    }
-
-    @Override
-    @JsonIgnore
-    public String getNodeId() {
-        if (StringUtils.equals(DomainConstants.DomainEmbeddedNodeEnum.tee.name(), this.upk.nodeId)) {
-            return null;
-        }
-        return this.upk.nodeId;
-    }
-
-    @Override
-    @JsonIgnore
-    public List<String> getNodeIds() {
-        return super.getNodeIds();
     }
 }

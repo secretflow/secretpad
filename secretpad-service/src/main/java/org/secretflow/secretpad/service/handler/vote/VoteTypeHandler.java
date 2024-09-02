@@ -39,7 +39,7 @@ public interface VoteTypeHandler {
 
     AbstractVoteTypeMessage getMessageListNecessaryInfo(String voteID);
 
-    void createApproval(String nodeID, AbstractVoteConfig voteConfig);
+    void createApproval(String initiatorID, AbstractVoteConfig voteConfig);
 
     List<? extends PartyVoteStatus> getPartyStatusByVoteID(String voteID);
 
@@ -48,4 +48,6 @@ public interface VoteTypeHandler {
     void doCallBackRejected(VoteRequestDO voteRequestDO);
 
     void flushVoteStatus(String voteID);
+
+    String getVoter(String nodeId);
 }

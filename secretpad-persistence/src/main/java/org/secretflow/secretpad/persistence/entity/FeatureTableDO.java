@@ -64,6 +64,12 @@ public class FeatureTableDO extends BaseAggregationRoot<FeatureTableDO> {
     @Column(name = "status", nullable = false, length = 16)
     private String status;
 
+    @Override
+    @JsonIgnore
+    public List<String> getNodeIds() {
+        return Lists.newArrayList(this.getUpk().getNodeId());
+    }
+
     @Converter
     public static class TableConfigConverter extends BaseObjectListJsonConverter<FeatureTableDO.TableColumn> {
         public TableConfigConverter() {
@@ -123,11 +129,5 @@ public class FeatureTableDO extends BaseAggregationRoot<FeatureTableDO> {
          * Column comment
          */
         private String colComment;
-    }
-
-    @Override
-    @JsonIgnore
-    public List<String> getNodeIds() {
-        return Lists.newArrayList(this.getUpk().getNodeId());
     }
 }

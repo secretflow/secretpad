@@ -25,10 +25,7 @@ import org.secretflow.secretpad.common.enums.ProjectStatusEnum;
 import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.errorcode.*;
 import org.secretflow.secretpad.common.exception.SecretpadException;
-import org.secretflow.secretpad.common.util.DateTimes;
-import org.secretflow.secretpad.common.util.JsonUtils;
-import org.secretflow.secretpad.common.util.UUIDUtils;
-import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.common.util.*;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.datatablegrant.AbstractDatatableGrantManager;
@@ -38,11 +35,9 @@ import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
 import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
 import org.secretflow.secretpad.persistence.entity.*;
-import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
-import org.secretflow.secretpad.persistence.model.ResultKind;
-import org.secretflow.secretpad.persistence.model.TeeJobKind;
-import org.secretflow.secretpad.persistence.model.TeeJobStatus;
+import org.secretflow.secretpad.persistence.model.*;
 import org.secretflow.secretpad.persistence.projection.CountProjection;
+import org.secretflow.secretpad.persistence.projection.ProjectInstProjection;
 import org.secretflow.secretpad.persistence.projection.ProjectNodeProjection;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.DatatableService;
@@ -51,6 +46,8 @@ import org.secretflow.secretpad.service.constant.DemoConstants;
 import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.graph.converter.KusciaTeeDataManagerConverter;
+import org.secretflow.secretpad.service.model.approval.VoteRequestBody;
+import org.secretflow.secretpad.service.model.approval.VoteRequestMessage;
 import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
 import org.secretflow.secretpad.service.model.datasync.vote.TeeNodeDatatableManagementSyncRequest;
 import org.secretflow.secretpad.service.model.datatable.PushDatatableToTeeRequest;
@@ -60,10 +57,10 @@ import org.secretflow.secretpad.service.model.graph.GraphDetailVO;
 import org.secretflow.secretpad.service.model.graph.GraphEdge;
 import org.secretflow.secretpad.service.model.graph.GraphNodeDetail;
 import org.secretflow.secretpad.service.model.graph.GraphNodeTaskLogsVO;
+import org.secretflow.secretpad.service.model.message.PartyVoteStatus;
 import org.secretflow.secretpad.service.model.node.NodeSimpleInfo;
 import org.secretflow.secretpad.service.model.project.*;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
-
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -107,98 +104,68 @@ import static org.secretflow.secretpad.service.constant.DomainDataConstants.SYST
 public class ProjectServiceImpl implements ProjectService {
 
     private final static Logger LOGGER = LoggerFactory.getLogger(JobManager.class);
-
+    @Resource
+    ProjectGraphDomainDatasourceServiceImpl projectGraphDomainDatasourceService;
     @Autowired
     private InstRepository instRepository;
-
     @Autowired
     private NodeRepository nodeRepository;
-
     @Autowired
     private ProjectRepository projectRepository;
-
     @Autowired
     private ProjectInstRepository projectInstRepository;
-
     @Autowired
     private ProjectNodeRepository projectNodeRepository;
-
     @Autowired
     private ProjectDatatableRepository projectDatatableRepository;
-
     @Autowired
     private ProjectJobTaskLogRepository jobTaskLogRepository;
-
     @Autowired
     private AbstractDatatableManager datatableManager;
-
     @Autowired
     private AbstractNodeManager nodeManager;
-
     @Autowired
     private AbstractNodeRouteManager nodeRouteManager;
-
     @Autowired
     private AbstractJobManager jobManager;
-
     @Autowired
     private KusciaTeeDataManagerConverter teeJobConverter;
-
     @Autowired
     private AbstractDatatableGrantManager datatableGrantManager;
-
     @Autowired
     private ProjectJobRepository projectJobRepository;
-
     @Autowired
     private ProjectResultRepository projectResultRepository;
-
     @Autowired
     private ProjectGraphRepository projectGraphDORepository;
-
     @Autowired
     private ProjectGraphRepository graphRepository;
-
     @Autowired
     private TeeNodeDatatableManagementRepository teeNodeDatatableManagementRepository;
-
     @Autowired
     private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
-
     @Autowired
     private DatatableService datatableService;
-
     @Resource
     private ProjectApprovalConfigRepository projectApprovalConfigRepository;
-
     @Resource
     private VoteRequestRepository voteRequestRepository;
-
     @Resource
     private ProjectFeatureTableRepository projectFeatureTableRepository;
-
     @Resource
     private FeatureTableRepository featureTableRepository;
-
     @Value("${tee.domain-id:tee}")
     private String teeNodeId;
-
     @Value("${secretpad.gateway}")
     private String kusciaLiteGateway;
     @Value("${secretpad.center-platform-service}")
     private String routeHeader;
-
     @Value("${secretpad.node-id}")
     private String nodeId;
-
     @Value("${secretpad.platform-type}")
     private String plaformType;
-
     @Autowired
     private ProjectGraphNodeRepository projectGraphNodeRepository;
-
-    @Resource
-    ProjectGraphDomainDatasourceServiceImpl projectGraphDomainDatasourceService;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -237,7 +204,6 @@ public class ProjectServiceImpl implements ProjectService {
         } else {
             projects = projectRepository.findAll();
         }
-
         // TODO: merge find.
         return projects.stream().map(projectDO -> {
             List<ProjectNodeProjection> pnps =
@@ -330,11 +296,12 @@ public class ProjectServiceImpl implements ProjectService {
     private Map<DatatableDTO.NodeDatatableId, DatatableDTO> getProjectDatatableDtos(String projectId) {
         List<ProjectDatatableDO.UPK> pdUpks = projectDatatableRepository.findUpkByProjectId(projectId,
                 ProjectDatatableDO.ProjectDatatableSource.IMPORTED);
-        log.debug("getProjectDatatableDtos pdUpks {}", pdUpks);
-        List<DatatableDTO.NodeDatatableId> nodeDatatableIds = pdUpks.stream().map(upk -> DatatableDTO.NodeDatatableId.from(upk.getNodeId(), upk.getDatatableId()))
-                .collect(Collectors.toList());
-        log.debug("getProjectDatatableDtos nodeDatatableIds {}", nodeDatatableIds);
-        return datatableManager.findByIds(nodeDatatableIds);
+        log.info("getProjectDatatableDtos pdUpks {}", pdUpks);
+        List<DatatableDTO.NodeDatatableId> nodeDatatableIds = pdUpks.stream()
+                .map(upk -> DatatableDTO.NodeDatatableId.from(upk.getNodeId(),upk.getDatatableId()))
+               .collect(Collectors.toList());
+        log.info("getProjectDatatableDtos nodeDatatableIds {}", nodeDatatableIds);
+        return datatableManager.findByIdsFromProjectConfig(nodeDatatableIds, (currentNodeId, extra) -> nodeManager.getTargetNodeId(currentNodeId,projectId));
     }
 
     @Override
@@ -407,8 +374,8 @@ public class ProjectServiceImpl implements ProjectService {
             // teeNodeId and datasourceId maybe blank
             String teeDomainId = StringUtils.isBlank(request.getTeeNodeId()) ? teeNodeId : request.getTeeNodeId();
             // check node route
-            nodeRouteManager.checkRouteNotExist(request.getNodeId(), teeDomainId);
-            nodeRouteManager.checkRouteNotExist(teeDomainId, request.getNodeId());
+            nodeRouteManager.checkRouteNotExistInDB(request.getNodeId(), teeDomainId);
+            nodeRouteManager.checkRouteNotExistInDB(teeDomainId, request.getNodeId());
             String datatableId = teeJobConverter.buildTeeDatatableId(teeDomainId, request.getDatatableId());
             // check if the file is pushed to tee
             // query last push to tee job
@@ -455,7 +422,7 @@ public class ProjectServiceImpl implements ProjectService {
         }
 
         // for column that not exist in table, just ignore
-        LOGGER.info("add datatable, configs={}, datatable={}", JsonUtils.toJSONString(configs), JsonUtils.toJSONString(datatable));
+        // TODO: LOGGER.info("add datatable, configs={}, datatable={}", JsonUtils.toJSONString(configs), JsonUtils.toJSONString(datatable));
         ProjectDatatableDO projectDatatable = ProjectDatatableDO.Factory.newProjectDatatable(
                 request.getProjectId(), request.getNodeId(), request.getDatatableId(),
                 datatable.getSchema().stream().map(c ->
@@ -500,7 +467,7 @@ public class ProjectServiceImpl implements ProjectService {
                     projectFeatureTableDO.getTableConfig().stream().map(TableColumnConfigVO::from).collect(Collectors.toList()));
         }
         ProjectDatatableDO projectDatatable = openProjectDatatable(request.getProjectId(), request.getNodeId(), request.getDatatableId());
-        DatatableDTO datatableDto = openDatatable(request.getNodeId(), request.getDatatableId());
+        DatatableDTO datatableDto = openDatatable(request.getNodeId(), request.getDatatableId(), request.getProjectId());
         return new ProjectDatatableVO(datatableDto.getDatatableId(), datatableDto.getDatatableName(),
                 projectDatatable.getTableConfig().stream().map(TableColumnConfigVO::from).collect(Collectors.toList()));
     }
@@ -612,8 +579,12 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     @Override
-    public boolean checkNodeInProject(String projectId, String nodeId) {
-        return projectNodeRepository.findById(new ProjectNodeDO.UPK(projectId, nodeId)).isPresent();
+    public boolean checkOwnerInProject(String projectId, String ownerId) {
+        if (PlatformTypeEnum.AUTONOMY.name().equals(plaformType)) {
+            return projectInstRepository.findById(new ProjectInstDO.UPK(projectId, ownerId)).isPresent();
+        } else {
+            return projectNodeRepository.findById(new ProjectNodeDO.UPK(projectId, ownerId)).isPresent();
+        }
     }
 
     @Override
@@ -634,10 +605,10 @@ public class ProjectServiceImpl implements ProjectService {
     @Override
     public List<ProjectVO> listP2PProject() {
         //approved project
-        List<ProjectNodeDO> projectNodeDOList = projectNodeRepository.findByNodeId(UserContext.getUser().getOwnerId());
+        List<ProjectInstDO> projectInstDOList = projectInstRepository.findByInstId(UserContext.getUser().getOwnerId());
         Set<String> approvedProjectIds = new HashSet<>();
-        if (!CollectionUtils.isEmpty(projectNodeDOList)) {
-            approvedProjectIds.addAll(projectNodeDOList.stream().map(pn -> pn.getUpk().getProjectId()).collect(Collectors.toSet()));
+        if (!CollectionUtils.isEmpty(projectInstDOList)) {
+            approvedProjectIds.addAll(projectInstDOList.stream().map(pi -> pi.getUpk().getProjectId()).collect(Collectors.toSet()));
         }
         //archived and reviewing project
         List<ProjectApprovalConfigDO> projectApprovalConfigDOS = projectApprovalConfigRepository.listProjectApprovalConfigByType(VoteTypeEnum.PROJECT_CREATE.name());
@@ -653,6 +624,8 @@ public class ProjectServiceImpl implements ProjectService {
             String projectId = projectDO.getProjectId();
             List<ProjectNodeProjection> pnps =
                     projectNodeRepository.findProjectionByProjectId(projectId);
+            List<ProjectInstProjection> pips =
+                    projectInstRepository.findProjectionByProjectId(projectDO.getProjectId());
             Integer graphCount = projectGraphDORepository.countByProjectId(projectId);
             Integer jobCount = projectJobRepository.countByProjectId(projectId);
             if (!projectIdVoteId.containsKey(projectId)) {
@@ -660,18 +633,19 @@ public class ProjectServiceImpl implements ProjectService {
             }
             Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = voteIdPartyInfoMap.get(projectIdVoteId.get(projectId));
             Set<PartyVoteInfoVO> partyVoteInfoVOS = JsonUtils.toJavaSet(partyVoteInfos, PartyVoteInfoVO.class);
-            List<String> nodeIds = partyVoteInfoVOS.stream().map(PartyVoteInfoVO::getNodeId).collect(Collectors.toList());
-            Map<String, String> nodeMap = nodeRepository.findByNodeIdIn(nodeIds).stream().collect(Collectors.toMap(NodeDO::getNodeId, NodeDO::getName));
-            partyVoteInfoVOS = partyVoteInfoVOS.stream().filter(e -> !StringUtils.equals(e.getNodeId(), projectDO.getOwnerId())).collect(Collectors.toSet());
-            partyVoteInfoVOS.forEach(e -> e.setNodeName(nodeMap.get(e.getNodeId())));
+            List<String> instIds = partyVoteInfoVOS.stream().map(PartyVoteInfoVO::getPartyId).collect(Collectors.toList());
+            Map<String, String> instMap = instRepository.findByInstIdIn(instIds).stream().collect(Collectors.toMap(InstDO::getInstId, InstDO::getName));
+            partyVoteInfoVOS = partyVoteInfoVOS.stream().filter(e -> !StringUtils.equals(e.getPartyId(), projectDO.getOwnerId())).collect(Collectors.toSet());
+            partyVoteInfoVOS.forEach(e -> e.setPartyName(instMap.get(e.getPartyId())));
             return ProjectVO.builder().projectId(projectId).projectName(projectDO.getName())
                     .description(projectDO.getDescription()).computeMode(projectDO.getComputeMode())
                     .teeNodeId(ObjectUtils.isEmpty(projectDO.getProjectInfo()) ? null : projectDO.getProjectInfo().getTeeDomainId())
                     .nodes(pnps.stream().map(it -> ProjectNodeVO.from(it, null)).collect(Collectors.toList()))
+                    .insts(pips.stream().map(ProjectInstVO::from).collect(Collectors.toList()))
                     .graphCount(graphCount).jobCount(jobCount).gmtCreate(DateTimes.toRfc3339(projectDO.getGmtCreate()))
                     .status(ProjectStatusEnum.parse(projectDO.getStatus()))
                     .initiator(projectDO.getOwnerId())
-                    .initiatorName(nodeMap.get(projectDO.getOwnerId()))
+                    .initiatorName(instMap.get(projectDO.getOwnerId()))
                     .partyVoteInfos(partyVoteInfoVOS)
                     .computeFunc(projectDO.getComputeFunc())
                     .voteId(projectIdVoteId.get(projectId))
@@ -693,6 +667,7 @@ public class ProjectServiceImpl implements ProjectService {
         if (!ProjectStatusEnum.REVIEWING.getCode().equals(projectDOOptional.get().getStatus())) {
             throw SecretpadException.of(ProjectErrorCode.PROJECT_CAN_NOT_ARCHIVE);
         }
+        projectInstRepository.deleteByProjectId(archiveProjectRequest.getProjectId());
         projectNodeRepository.deleteByProjectId(archiveProjectRequest.getProjectId());
         ProjectDO projectDO = projectDOOptional.get();
         projectDO.setStatus(ProjectStatusEnum.ARCHIVED.getCode());
@@ -837,6 +812,19 @@ public class ProjectServiceImpl implements ProjectService {
     }
 
     /**
+     * if input node is not local inst , find a related local node
+     */
+    private DatatableDTO openDatatable(String nodeId, String datatableId, String projectId) {
+        DatatableDTO.NodeDatatableId query = DatatableDTO.NodeDatatableId.from(nodeManager.getTargetNodeId(nodeId,projectId),datatableId);
+        Optional<DatatableDTO> datatableOpt = datatableManager.findById(query);
+        if (datatableOpt.isEmpty()) {
+            throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
+        }
+        return datatableOpt.get();
+    }
+
+
+    /**
      * project_graph_node  outputs fix derived fields for chexian
      *
      * @param projectId project resource ID
@@ -934,6 +922,68 @@ public class ProjectServiceImpl implements ProjectService {
             });
         }
         return result;
+    }
+
+    @Override
+    public ProjectParticipantsDetailVO getProjectParticipants(ProjectParticipantsRequest request) {
+        String voteId = request.getVoteId();
+        Optional<VoteRequestDO> voteRequestDOOptional = voteRequestRepository.findById(voteId);
+        if (voteRequestDOOptional.isEmpty()) {
+            throw SecretpadException.of(VoteErrorCode.VOTE_NOT_EXISTS);
+        }
+        VoteRequestDO voteRequestDO = voteRequestDOOptional.get();
+        String requestMsg = voteRequestDO.getRequestMsg();
+        VoteRequestMessage voteRequestMessage = JsonUtils.toJavaObject(requestMsg, VoteRequestMessage.class);
+        String voteRequestMessageBodyBase64 = voteRequestMessage.getBody();
+        VoteRequestBody voteRequestBody = JsonUtils.toJavaObject(new String(Base64Utils.decode(voteRequestMessageBodyBase64)), VoteRequestBody.class);
+        Set<VoteRequestDO.PartyVoteInfo> partyVoteInfos = voteRequestDO.getPartyVoteInfos();
+        List<PartyVoteStatus> partyVoteStatusList = new ArrayList<>();
+        List<InstDO> instDOS = instRepository.findByInstIdIn(partyVoteInfos.stream().map(VoteRequestDO.PartyVoteInfo::getPartyId).collect(Collectors.toList()));
+        Map<String, String> instMap = instDOS.stream().collect(Collectors.toMap(InstDO::getInstId, InstDO::getName));
+        for (VoteRequestDO.PartyVoteInfo partyVoteInfo : partyVoteInfos) {
+            PartyVoteStatus partyVoteStatus = PartyVoteStatus.builder()
+                    .reason(partyVoteInfo.getReason())
+                    .action(partyVoteInfo.getAction())
+                    .participantID(partyVoteInfo.getPartyId())
+                    .participantName(instMap.get(partyVoteInfo.getPartyId()))
+                    .build();
+            partyVoteStatusList.add(partyVoteStatus);
+        }
+        Optional<ProjectApprovalConfigDO> projectApprovalConfigDOOptional = projectApprovalConfigRepository.findById(voteId);
+        if (projectApprovalConfigDOOptional.isEmpty()) {
+            throw SecretpadException.of(VoteErrorCode.VOTE_NOT_EXISTS);
+        }
+        ProjectApprovalConfigDO projectApprovalConfigDO = projectApprovalConfigDOOptional.get();
+        //Obtain the corresponding relationship between each node of the created project
+        List<ParticipantNodeInstVO> participantNodeInstVOS = projectApprovalConfigDO.getParticipantNodeInfo();
+        for (ParticipantNodeInstVO participantNodeInstVO : participantNodeInstVOS) {
+            participantNodeInstVO.setInitiatorNodeName(nodeRepository.findByNodeId(participantNodeInstVO.getInitiatorNodeId()).getName());
+            for (ParticipantNodeInstVO.NodeInstVO invitee : participantNodeInstVO.getInvitees()) {
+                NodeDO nodeDO = nodeRepository.findByNodeId(invitee.getInviteeId());
+                InstDO instDO = instRepository.findByInstId(nodeDO.getInstId());
+                invitee.setInstId(instDO.getInstId());
+                invitee.setInstName(instDO.getName());
+                invitee.setInviteeName(nodeDO.getName());
+            }
+        }
+        String projectId = projectApprovalConfigDO.getProjectId();
+        Optional<ProjectDO> projectDOOptional = projectRepository.findById(projectId);
+        if (projectDOOptional.isEmpty()) {
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_NOT_EXISTS);
+        }
+        ProjectDO projectDO = projectDOOptional.get();
+        String projectName = projectDO.getName();
+        return ProjectParticipantsDetailVO.builder()
+                .initiatorId(voteRequestBody.getInitiator())
+                .initiatorName(instRepository.findByInstId(voteRequestBody.getInitiator()).getName())
+                .projectName(projectName)
+                .partyVoteStatuses(partyVoteStatusList)
+                .participantNodeInstVOS(participantNodeInstVOS)
+                .computeFunc(projectDO.getComputeFunc())
+                .computeMode(projectDO.getComputeMode())
+                .projectDesc(projectDO.getDescription())
+                .gmtCreated(DateTimes.toRfc3339(projectDO.getGmtCreate()))
+                .build();
     }
 
 }

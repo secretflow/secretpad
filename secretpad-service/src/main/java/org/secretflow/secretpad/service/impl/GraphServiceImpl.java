@@ -24,22 +24,22 @@ import org.secretflow.secretpad.common.errorcode.JobErrorCode;
 import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.*;
-import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.data.DataManager;
+import org.secretflow.secretpad.manager.integration.datasource.DatasourceManager;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
+import org.secretflow.secretpad.manager.integration.model.DatasourceDTO;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
 import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
+import org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pDataSyncProducerTemplate;
 import org.secretflow.secretpad.persistence.entity.*;
-import org.secretflow.secretpad.persistence.model.GraphEdgeDO;
-import org.secretflow.secretpad.persistence.model.GraphJobStatus;
-import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
-import org.secretflow.secretpad.persistence.model.ResultKind;
+import org.secretflow.secretpad.persistence.model.*;
 import org.secretflow.secretpad.persistence.projection.ProjectJobStatus;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.ComponentService;
 import org.secretflow.secretpad.service.GraphService;
 import org.secretflow.secretpad.service.ProjectService;
+import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.graph.ComponentTools;
 import org.secretflow.secretpad.service.graph.GraphContext;
 import org.secretflow.secretpad.service.graph.JobChain;
@@ -47,8 +47,9 @@ import org.secretflow.secretpad.service.model.graph.*;
 import org.secretflow.secretpad.service.model.node.NodeSimpleInfo;
 import org.secretflow.secretpad.service.model.project.GetProjectJobTaskOutputRequest;
 import org.secretflow.secretpad.service.model.project.StopProjectJobTaskRequest;
+import org.secretflow.secretpad.service.util.AutonomyNodeRouteUtil;
+import org.secretflow.secretpad.persistence.model.ParticipantNodeInstVO;
 import org.secretflow.secretpad.service.util.GraphUtils;
-
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.base.Strings;
 import com.google.gson.Gson;
@@ -62,7 +63,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
-import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -89,81 +89,61 @@ import static org.secretflow.secretpad.service.util.JobUtils.genTaskOutputId;
 @Service
 public class GraphServiceImpl implements GraphService {
 
+    private static final Integer DEFAULT_INITIAL_INDEX = 32;
     @Autowired
     private ProjectGraphRepository graphRepository;
-
     @Autowired
     private ProjectGraphNodeRepository graphNodeRepository;
-
     @Autowired
     private ProjectJobTaskRepository taskRepository;
-
     @Autowired
     private ComponentService componentService;
-
     @Autowired
     private ProjectResultRepository resultRepository;
-
     @Autowired
     private ProjectReportRepository reportRepository;
-
     @Autowired
     private ProjectDatatableRepository datatableRepository;
-
     @Autowired
     private AbstractDatatableManager datatableManager;
-
     @Autowired
     private ProjectJobTaskLogRepository jobTaskLogRepository;
-
     @Autowired
     private ProjectJobRepository jobRepository;
-
     @Autowired
     private ProjectService projectService;
-
     @Autowired
     private JobChain jobChain;
-
     @Autowired
     private AbstractNodeManager nodeManager;
-
     @Autowired
     private AbstractNodeRouteManager nodeRouteManager;
-
     @Autowired
     private NodeRepository nodeRepository;
-
     @Autowired
     private ProjectRepository projectRepository;
-
     @Resource
     private ProjectReadDtaRepository projectReadDtaRepository;
-
     @Autowired
     private ProjectReadDtaRepository readDtaRepository;
-
     @Resource
     private ProjectGraphDomainDatasourceServiceImpl projectGraphDomainDatasourceService;
-
     @Resource
     private DataManager dataManager;
-
     @Resource
-    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
-
-
+    private ProjectApprovalConfigRepository projectApprovalConfigRepository;
     @Value("${tee.domain-id:tee}")
     private String teeNodeId;
-
     @Value("${secretpad.platform-type}")
     private String plaformType;
     @Value("${secretpad.node-id}")
     private String localNodeId;
-
-    private static final Integer DEFAULT_INITIAL_INDEX = 32;
     @Autowired
     private EnvServiceImpl envServiceImpl;
+    @Resource
+    private DatasourceManager datasourceManager;
+    @Resource
+    private ProjectNodeRepository projectNodeRepository;
 
     @Override
     public Map<String, CompListVO> listComponents() {
@@ -391,7 +371,7 @@ public class GraphServiceImpl implements GraphService {
                 String latestOutputId = genTaskOutputId(jobId, outputId);
                 List<ProjectResultDO> resultDOS = resultRepository.findByOutputId(projectId, taskId, latestOutputId);
                 //task file compensation binning modifications and model param modifications
-                compensationSecertPadComponent(taskDO, outputId, outputVO);
+                compensationSecretPadComponent(taskDO, outputId, outputVO);
                 if (!CollectionUtils.isEmpty(resultDOS)) {
                     for (ProjectResultDO resultDO : resultDOS) {
                         ResultKind resultKind = resultDO.getUpk().getKind();
@@ -402,12 +382,25 @@ public class GraphServiceImpl implements GraphService {
                         String nodeId = resultDO.getUpk().getNodeId();
                         String refId = resultDO.getUpk().getRefId();
                         GraphNodeOutputVO.OutputResult outputResult;
-                        String content;
-                        Domaindata.DomainData domainData = dataManager.queryDomainData(nodeId, refId);
+                        String content; //TODO:not sure
+                        String targetNodeId = nodeId;
+                        if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType)) && !P2pDataSyncProducerTemplate.nodeIds.contains(targetNodeId)) {
+                            List<ProjectNodeDO> projectNodeDOList = projectNodeRepository.findByProjectId(projectId);
+                            if (!CollectionUtils.isEmpty(projectNodeDOList)) {
+                                List<String> list = projectNodeDOList.stream().map(ProjectNodeDO::getUpk)
+                                        .map(ProjectNodeDO.UPK::getNodeId).filter(n -> !taskDO.getParties().contains(n)).toList();
+                                if (!CollectionUtils.isEmpty(list)) {
+                                    targetNodeId = list.get(0);
+                                }
+                            }
+                        }
+                        Domaindata.DomainData domainData = dataManager.queryDomainData(nodeId, refId, targetNodeId);
                         String datasourceId = domainData.getDatasourceId();
-                        Domaindatasource.QueryDomainDataSourceResponse queryDomainDataSourceResponse = kusciaGrpcClientAdapter.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
-                                .setDomainId(nodeId).setDatasourceId(datasourceId).build());
-                        String datasourceType = DataSourceTypeEnum.kuscia2platform(queryDomainDataSourceResponse.getData().getType());
+                        Optional<DatasourceDTO> datasourceOpt = datasourceManager.findById(DatasourceDTO.NodeDatasourceId.from(targetNodeId, datasourceId));
+//                                kusciaGrpcClientAdapter.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder()
+//                                .setDomainId(nodeId).setDatasourceId(datasourceId).build());
+                        String datasourceType = DataSourceTypeEnum.kuscia2platform(datasourceOpt.get().getType());
+
                         switch (resultKind) {
                             case Report:
                                 Optional<ProjectReportDO> reportDOOptional = reportRepository.findById(new ProjectReportDO.UPK(projectId, latestOutputId));
@@ -473,16 +466,23 @@ public class GraphServiceImpl implements GraphService {
                 }
             }
         }
+        if (!CollectionUtils.isEmpty(outputResults)) {
+            for (GraphNodeOutputVO.OutputResult outputResult : outputResults) {
+                NodeDO nodeDO = nodeRepository.findByNodeId(outputResult.getNodeId());
+                String nodeName = ObjectUtils.isEmpty(nodeDO) ? outputResult.getNodeId() : nodeDO.getName();
+                outputResult.setNodeName(nodeName);
+            }
+        }
         GraphNodeOutputVO.FileMeta fileMeta = GraphNodeOutputVO.FileMeta.builder().headers(ProtoUtils.protosToListMap(List.of(fileHeader))).rows(outputResults).build();
         outputVO.setMeta(fileMeta);
         return outputVO;
     }
 
-    private void compensationSecertPadComponent(ProjectTaskDO taskDO, String outputId, GraphNodeOutputVO outputVO) {
+    private void compensationSecretPadComponent(ProjectTaskDO taskDO, String outputId, GraphNodeOutputVO outputVO) {
         String projectId = taskDO.getUpk().getProjectId();
         ProjectGraphNodeDO graphNode = taskDO.getGraphNode();
         String type = outputId.substring(outputId.length() - 1);
-        log.debug("CodeName:{} -------> outputId:{}  --------> type：{} --------> Label:{}", graphNode.getCodeName(), outputId, type, graphNode.getLabel());
+        log.debug("compensationSecretPadComponent CodeName:{}  outputId:{}  type：{}  Label:{}", graphNode.getCodeName(), outputId, type, graphNode.getLabel());
         if ((BINNING_MODIFICATIONS_CODENAME.equals(graphNode.getCodeName()) && "1".equals(type)) || (MODEL_PARAM_MODIFICATIONS_CODENAME.equals(graphNode.getCodeName()) && "1".equals(type))) {
             String inputId = taskDO.getGraphNode().getInputs().get(0);
             String graphNodeId = inputId;
@@ -589,6 +589,7 @@ public class GraphServiceImpl implements GraphService {
                 types.add(config.getColType());
             });
         }
+        String projectId = datatableDO.getProjectId();
         String nodeId = datatableDO.getUpk().getNodeId();
         String tableId = datatableDO.getUpk().getDatatableId();
         GraphNodeOutputVO.OutputResult outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(nodeId).type(nodeRepository.findByNodeId(nodeId).getType()).fields(String.join(",", fields)).fieldTypes(String.join(",", types)).tableId(tableId).build();
@@ -596,8 +597,10 @@ public class GraphServiceImpl implements GraphService {
         if (projectOpt.isEmpty()) {
             throw SecretpadException.of(ProjectErrorCode.PROJECT_NOT_EXISTS);
         }
-        Optional<DatatableDTO> datatableDTOOptional = datatableManager.findById(DatatableDTO.NodeDatatableId.from(StringUtils.isNotBlank(edgeNodeId) ? edgeNodeId : nodeId,
-                StringUtils.isNotBlank(edgeTableId) ? edgeTableId : tableId));
+        log.warn("recode  edgeNodeId={} graphNodeId={} , datatableDO={}", edgeNodeId, edgeTableId, JsonUtils.toJSONString(datatableDO));
+        DatatableDTO.NodeDatatableId query = DatatableDTO.NodeDatatableId.from(nodeManager.getTargetNodeId(nodeId, projectId), tableId);
+        Optional<DatatableDTO> datatableDTOOptional = datatableManager.findById(query);
+
         if (datatableDTOOptional.isPresent()) {
             DatatableDTO datatableDTO = datatableDTOOptional.get();
             outputResult.setPath(datatableDTO.getRelativeUri());
@@ -637,7 +640,8 @@ public class GraphServiceImpl implements GraphService {
                 parties.put(entry.getKey(), partyNodes);
             }
         }
-        verifyNodeAndRouteHealthy(parties.values().stream().flatMap(Set::stream).collect(Collectors.toSet()));
+
+        verifyNodeAndRouteHealthy(parties.values().stream().flatMap(Set::stream).collect(Collectors.toSet()), request.getProjectId());
         ProjectJob projectJob = ProjectJob.genProjectJob(graphDO, selectedNodes, parties);
         jobChain.proceed(projectJob);
         GraphContext.remove();
@@ -779,13 +783,62 @@ public class GraphServiceImpl implements GraphService {
     }
 
 
-    public void verifyNodeAndRouteHealthy(Set<String> parties) {
+    public void verifyNodeAndRouteHealthy(Set<String> parties, String projectId) {
         log.info("before graph run healthy check: {}", parties);
         if (PlatformTypeEnum.AUTONOMY.equals(PlatformTypeEnum.valueOf(plaformType))) {
+            // unilateral mission
+            if (parties.size() == 1) {
+                return;
+            }
+            Set<String> instNodeIds = nodeRepository.findByInstId(UserContext.getUser().getOwnerId()).stream().map(NodeDO::getNodeId).collect(Collectors.toSet());
+            instNodeIds.retainAll(parties);
+            Map<String, List<AutonomyNodeRouteUtil.AutonomySourceNodeRouteInfo>> autonomySelfDstNodeRouteInfoMap = AutonomyNodeRouteUtil.getAutonomySelfDstNodeRouteInfoMap();
+
+            Map<String, List<AutonomyNodeRouteUtil.AutonomySourceNodeRouteInfo>> filterAutonomySelfDstNodeRouteInfoMap = autonomySelfDstNodeRouteInfoMap.entrySet().stream()
+                    .filter(entry -> instNodeIds.contains(entry.getKey()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+
+            Optional<ProjectApprovalConfigDO> projectApprovalConfigDOOptional = projectApprovalConfigRepository.findByProjectIdAndType(projectId, VoteTypeEnum.PROJECT_CREATE.name());
+            if (projectApprovalConfigDOOptional.isEmpty()) {
+                throw SecretpadException.of(ProjectErrorCode.PROJECT_NOT_EXISTS, "project approval config not exists");
+            }
+            List<ParticipantNodeInstVO> participantNodeInstVOS = projectApprovalConfigDOOptional.get().getParticipantNodeInfo();
+            for (String party : parties) {
+                if (!filterAutonomySelfDstNodeRouteInfoMap.containsKey(party)) {
+                    boolean find = false;
+                    for (Map.Entry<String, List<AutonomyNodeRouteUtil.AutonomySourceNodeRouteInfo>> entry : filterAutonomySelfDstNodeRouteInfoMap.entrySet()) {
+                        Optional<AutonomyNodeRouteUtil.AutonomySourceNodeRouteInfo> nodeRouteInfoOptional = entry.getValue().stream().filter(e -> StringUtils.equals(e.getSourceNodeId(), party)).findAny();
+                        if (nodeRouteInfoOptional.isPresent()) {
+                            find = true;
+                            if (!nodeRouteInfoOptional.get().isSourceToDstIsAvailable()) {
+                                for (ParticipantNodeInstVO vo : participantNodeInstVOS) {
+                                    if (vo.getInitiatorNodeId().equals(nodeRouteInfoOptional.get().getSourceNodeId())) {
+                                        if (vo.getInvitees().contains(entry.getKey())) {
+                                            throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_ROUTE_NOT_EXISTS, party + "->" + entry.getKey());
+                                        }
+                                    } else if (vo.getInvitees().contains(nodeRouteInfoOptional.get().getSourceNodeId())) {
+                                        String initiatorNodeId = vo.getInitiatorNodeId();
+                                        if (StringUtils.equals(initiatorNodeId, entry.getKey())) {
+                                            throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_ROUTE_NOT_EXISTS, party + "-> " + entry.getKey());
+                                        }
+                                    }
+                                }
+                            }
+                            break;
+                        }
+                    }
+                    if (!find) {
+                        throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_ROUTE_NOT_EXISTS, party + "-> " + parties);
+                    }
+                }
+            }
+
+
             // now allow The Initiator Not parties
             /*if (!parties.contains(localNodeId)) {
                 throw SecretpadException.of(GraphErrorCode.GRAPH_JOB_INVALID, "parties must contains " + localNodeId);
-            }*/
+            }
+
             for (String party : parties) {
                 if (StringUtils.equals(party, localNodeId)) {
                     continue;
@@ -793,7 +846,9 @@ public class GraphServiceImpl implements GraphService {
                 if (!nodeRouteManager.checkNodeRouteReady(party, localNodeId)) {
                     throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_ROUTE_NOT_EXISTS, party + "->" + localNodeId);
                 }
-            }
+            }*/
+
+
             return;
         }
         parties.forEach(node -> {
@@ -805,7 +860,7 @@ public class GraphServiceImpl implements GraphService {
         });
         for (String partySrc : parties) {
             for (String partyDst : parties) {
-                if (!partySrc.equals(partyDst) && !nodeRouteManager.checkNodeRouteReady(partySrc, partyDst)) {
+                if (!partySrc.equals(partyDst) && !nodeRouteManager.checkNodeRouteReady(partySrc, partyDst, localNodeId)) {
                     NodeDO partySrcNodeDO = nodeRepository.findByNodeId(partySrc);
                     NodeDO partyDstNodeDO = nodeRepository.findByNodeId(partyDst);
                     String msg1 = ObjectUtils.isEmpty(partySrcNodeDO) ? partySrc : partySrcNodeDO.getName();

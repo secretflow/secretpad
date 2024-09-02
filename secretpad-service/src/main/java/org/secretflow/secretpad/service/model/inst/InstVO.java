@@ -16,11 +16,24 @@
 
 package org.secretflow.secretpad.service.model.inst;
 
-/**
- * Institution view object
- *
- * @author yansi
- * @date 2023/2/24
- */
+import io.swagger.v3.oas.annotations.media.Schema;
+import lombok.*;
+
+@Builder
+@Setter
+@Getter
+@ToString
+@AllArgsConstructor
+@NoArgsConstructor
 public class InstVO {
+
+    @Schema(description = "instId")
+    private String instId;
+
+    @Schema(description = "instName")
+    private String instName;
+
+    @Schema(description = "localNodeId")
+    private String localNodeId;
+
 }

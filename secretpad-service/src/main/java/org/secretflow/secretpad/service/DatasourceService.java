@@ -28,7 +28,9 @@ public interface DatasourceService {
 
     void deleteDatasource(DeleteDatasourceRequest deleteDatasourceRequest);
 
-    DatasourceDetailVO datasourceDetail(DatasourceDetailRequest datasourceDetailRequest);
+    DatasourceDetailAggregateVO datasourceDetail(DatasourceDetailRequest datasourceDetailRequest);
 
     DatasourceListVO listDatasource(DatasourceListRequest datasourceListRequest);
+
+    DatasourceNodesVO datasourceNodes(DatasourceNodesRequest datasourceNodesRequest);
 }

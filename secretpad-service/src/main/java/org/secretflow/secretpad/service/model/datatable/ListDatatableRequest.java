@@ -45,6 +45,12 @@ public class ListDatatableRequest {
     @Schema(description = "page number")
     Integer pageNumber;
     /**
+     * Filter the list by nodeName
+     */
+    @Schema(description = "node name filter rule")
+    @Nullable
+    List<String> nodeNamesFilter;
+    /**
      * Filter the list by status
      * Available：Datatables that filter available status
      * Unavailable：Datatables that filter unavailable status
@@ -66,10 +72,10 @@ public class ListDatatableRequest {
     @Schema(description = "table types filter rule")
     List<String> types;
     /**
-     * Node Id
+     * Owner Id
      */
     @Schema(description = "node id")
-    private String nodeId;
+    private String ownerId;
     /**
      * Tee node id, it can be blank and has default value
      */

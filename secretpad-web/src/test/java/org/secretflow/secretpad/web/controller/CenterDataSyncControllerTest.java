@@ -56,6 +56,13 @@ import java.util.Set;
 @ActiveProfiles({SystemConstants.TEST})
 @SpringBootTest(classes = SecretPadApplication.class, webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
 public class CenterDataSyncControllerTest {
+    @Resource
+    private EdgeDataSyncServiceImpl edgeDataSyncService;
+    @Resource
+    private NodeRepository nodeRepository;
+    @Resource
+    private ProjectFeatureTableRepository projectFeatureTableRepository;
+
     @BeforeAll
     public static void setup() throws IOException, InterruptedException {
         log.info("start to setup");
@@ -72,21 +79,12 @@ public class CenterDataSyncControllerTest {
                 .projectIds(Set.of("test")).build());
     }
 
-
-    @Resource
-    private EdgeDataSyncServiceImpl edgeDataSyncService;
-    @Resource
-    private NodeRepository nodeRepository;
-
-    @Resource
-    private ProjectFeatureTableRepository projectFeatureTableRepository;
-
     @Test
     void testStart() {
         edgeDataSyncService.start();
         nodeRepository.deleteAuthentic("test");
-        nodeRepository.save(NodeDO.builder().name("test").nodeId("test").controlNodeId("test").mode(0).build());
-        nodeRepository.delete(NodeDO.builder().name("test").nodeId("test").controlNodeId("test").mode(0).build());
+        nodeRepository.save(NodeDO.builder().name("test").nodeId("test").controlNodeId("test").mode(0).instId("inst").build());
+        nodeRepository.delete(NodeDO.builder().name("test").nodeId("test").controlNodeId("test").mode(0).instId("inst").build());
         ProjectFeatureTableDO.UPK upk = new ProjectFeatureTableDO.UPK("project", "node", "featuretable", "datasourceId");
         projectFeatureTableRepository.saveAndFlush(ProjectFeatureTableDO.builder()
                 .upk(upk)

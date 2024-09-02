@@ -26,9 +26,8 @@ import lombok.Setter;
 @Getter
 @Setter
 public class PartyVoteInfoVO {
-    private String nodeId;
-
-    private String nodeName;
+    private String partyId;
+    private String partyName;
     private String action;
     private String reason;
 }

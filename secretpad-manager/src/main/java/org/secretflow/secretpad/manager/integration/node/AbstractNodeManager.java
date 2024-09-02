@@ -19,6 +19,7 @@ package org.secretflow.secretpad.manager.integration.node;
 import org.secretflow.secretpad.manager.integration.model.*;
 
 import java.util.List;
+import java.util.Set;
 
 /**
  * @author xiaonan
@@ -32,6 +33,28 @@ public abstract class AbstractNodeManager {
      * @return NodeDTO list
      */
     public abstract List<NodeDTO> listNode();
+
+
+    /**
+     * List all nodes by instId
+     *
+     * @return NodeDTO list
+     */
+    public abstract List<NodeDTO> listNode(String instId);
+
+
+    /**
+     * List all ready nodes by instId
+     *
+     * @return NodeDTO list
+     */
+    public abstract List<NodeDTO> listReadyNode(String instId);
+
+
+    public abstract List<NodeDTO> listReadyNodeByNames(String instId, List<String> nodeNames);
+
+    public abstract List<String> listReadyNodeByIds(String instId, List<String> nodeIds);
+
 
     /**
      * List Cooperating Node
@@ -57,12 +80,28 @@ public abstract class AbstractNodeManager {
      */
     public abstract String createP2pNode(CreateNodeParam param);
 
+
+    /**
+     * Create node for p2p mode in multi nodes
+     *
+     * @param param create parma
+     * @return nodeId
+     */
+    public abstract NodeDTO createP2PNodeForInst(CreateNodeParam param);
+
     /**
      * Delete node
      *
      * @param nodeId nodeId
      */
     public abstract void deleteNode(String nodeId);
+
+
+    /**
+     * Delete node
+     */
+    public abstract void deleteNode(String inst, String nodeId);
+
 
     /**
      * Lists all node routes that target this node
@@ -130,6 +169,16 @@ public abstract class AbstractNodeManager {
      */
     public abstract boolean checkNodeExists(String nodeId);
 
+
+    /**
+     * Check if node exists
+     *
+     * @param nodeId
+     * @param channelNodeId
+     * @return boolean true exist false no exist
+     */
+    public abstract boolean checkNodeExists(String nodeId, String channelNodeId);
+
     /**
      * Check nodeReady grpc code and node status
      *
@@ -162,9 +211,23 @@ public abstract class AbstractNodeManager {
     public abstract void checkNodeCert(String nodeId, CreateNodeParam request);
 
     /**
+     * token base on node
+     */
+    public abstract String generateInstToken(String instId, String nodeId);
+
+    /**
      * Initial node for p2p mode
      *
-     * @param nodeId target nodeId
+     * @param nodeId   target nodeId
+     * @param instName
      */
-    public abstract void initialNode(String nodeId);
+    public abstract void initialNode(String nodeId, String instName);
+
+
+    /** find node to local inst node   */
+    public abstract String getTargetNodeId(String nodeId,String projectId);
+
+    /** find all nodes to local inst node for init global datasource */
+    public abstract Set<String> getTargetNodeIds(String nodeId, String projectId);
+
 }

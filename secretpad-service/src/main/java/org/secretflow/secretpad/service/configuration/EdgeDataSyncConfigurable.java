@@ -29,10 +29,7 @@ import org.secretflow.secretpad.persistence.datasync.retry.DataSyncRetryTemplate
 import org.secretflow.secretpad.persistence.datasync.retry.impl.ThrowDataSyncRetry;
 import org.secretflow.secretpad.persistence.datasync.retry.impl.TryDataSyncRetry;
 import org.secretflow.secretpad.persistence.model.DataSyncConfig;
-import org.secretflow.secretpad.persistence.repository.FeatureTableRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectApprovalConfigRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
-import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
+import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.listener.DbChangeEventListener;
 
 import io.netty.channel.ChannelOption;
@@ -70,9 +67,9 @@ public class EdgeDataSyncConfigurable {
     @Value("${secretpad.datasync.retry:fastFailedPolicy}")
     private String retry;
 
-    @Bean
-    public PaddingNodeService p2pPaddingNodeServiceImpl(ProjectNodeRepository projectNodeRepository, ProjectApprovalConfigRepository projectApprovalConfigRepository, VoteRequestRepository voteRequestRepository, CacheManager cacheManager) {
-        return new P2pPaddingNodeServiceImpl(projectNodeRepository, projectApprovalConfigRepository, voteRequestRepository, cacheManager);
+    @Bean("p2pPaddingNodeService")
+    public PaddingNodeService p2pPaddingNodeServiceImpl(ProjectInstRepository projectInstRepository, ProjectApprovalConfigRepository projectApprovalConfigRepository, VoteRequestRepository voteRequestRepository, CacheManager cacheManager, NodeRepository nodeRepository) {
+        return new P2pPaddingNodeServiceImpl(projectInstRepository, projectApprovalConfigRepository, voteRequestRepository, cacheManager, nodeRepository);
     }
 
     @Bean("dataSyncProducerTemplate")
@@ -94,12 +91,10 @@ public class EdgeDataSyncConfigurable {
 
     @Bean
     public DataSyncRetryTemplate dataSyncRetryTemplate() {
-        switch (retry) {
-            case "retryPolicy":
-                return new TryDataSyncRetry();
-            default:
-                return new ThrowDataSyncRetry();
+        if ("retryPolicy".equals(retry)) {
+            return new TryDataSyncRetry();
         }
+        return new ThrowDataSyncRetry();
     }
 
     @Bean
@@ -124,11 +119,11 @@ public class EdgeDataSyncConfigurable {
                 //error callback
                 .defaultStatusHandler(HttpStatusCode::isError, clientResponse -> {
                     log.info("p2pDataSyncRestService error,{}", clientResponse.statusCode().value());
-                    return Mono.error(new RuntimeException("请求异常" + clientResponse.statusCode().value()));
+                    return Mono.error(new RuntimeException("p2pDataSyncRestService error " + clientResponse.statusCode().value()));
                 }).build();
         HttpServiceProxyFactory proxyFactory
-                = HttpServiceProxyFactory.builder(
-                WebClientAdapter.forClient(webClient)).build();
+                = HttpServiceProxyFactory.builderFor(
+                WebClientAdapter.create(webClient)).build();
         return proxyFactory.createClient(P2pDataSyncRestService.class);
     }
 

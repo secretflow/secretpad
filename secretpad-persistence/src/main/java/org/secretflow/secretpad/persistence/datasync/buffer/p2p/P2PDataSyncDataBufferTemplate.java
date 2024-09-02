@@ -20,16 +20,17 @@ import org.secretflow.secretpad.common.util.UniqueLinkedBlockingQueue;
 import org.secretflow.secretpad.persistence.datasync.buffer.DataSyncDataBufferTemplate;
 import org.secretflow.secretpad.persistence.datasync.event.P2pDataSyncSendEvent;
 import org.secretflow.secretpad.persistence.datasync.listener.EntityChangeListener;
+import org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pDataSyncProducerTemplate;
 import org.secretflow.secretpad.persistence.entity.BaseAggregationRoot;
 import org.secretflow.secretpad.persistence.model.DbChangeAction;
 
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.compress.utils.IOUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.ObjectUtils;
 import org.springframework.util.ResourceUtils;
@@ -46,13 +47,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
 
-    @Value("${secretpad.node-id}")
-    private String localNodeId;
-    @Value("${secretpad.sync-path:./config/sync/}")
-    private String syncPath;
     private final Object lock = new Object();
-
     private final ApplicationEventPublisher applicationEventPublisher;
+    @Value("${secretpad.sync-path:./config/sync/}")
+    @Setter
+    private String syncPath;
 
     /**
      * push data at end of buffer
@@ -66,7 +65,7 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
             return;
         }
         nodeIds.forEach(nodeId -> {
-            if (nodeId.equals(localNodeId)) {
+            if (nodeId.equals(P2pDataSyncProducerTemplate.instId)) {
                 return;
             }
             event.setDstNode(nodeId);
@@ -85,7 +84,11 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
                     log.debug("data sync queue remove some update db action {}", iterator);
                 }
             }
-            queue.add(event);
+            try {
+                queue.put(event);
+            } catch (InterruptedException e) {
+                log.error("p2pDayaSyncDataBufferTemplate push data error", e);
+            }
             QUEUE_MAP.put(nodeId, queue);
             endurance(nodeId);
             applicationEventPublisher.publishEvent(new P2pDataSyncSendEvent(this, nodeId));
@@ -102,6 +105,18 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
         return ObjectUtils.isEmpty(queue) ? null : queue.peek();
     }
 
+    /**
+     * pop data at first of buffer
+     *
+     * @param nodeId
+     */
+    @Override
+    public EntityChangeListener.DbChangeEvent<BaseAggregationRoot> pool(String nodeId) throws InterruptedException {
+        UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> queue =
+                QUEUE_MAP.getOrDefault(nodeId, null);
+        return ObjectUtils.isEmpty(queue) ? null : queue.poll();
+    }
+
     @Override
     public int size(String nodeId) {
         UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> queue =
@@ -113,13 +128,11 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
     public void commit(String nodeId, EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> queue =
                 QUEUE_MAP.getOrDefault(nodeId, null);
-        if (queue.remove(event)) {
-            endurance(nodeId);
-            log.info("{} commit {}", nodeId, event);
-        }
+        queue.remove(event);
+        endurance(nodeId);
+        log.info("{} commit {}", nodeId, event);
     }
 
-    @Async
     @Override
     public void endurance(String nodeId) {
         UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> queue =
@@ -146,6 +159,7 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
             if (f.isFile()) {
                 String nodeId = f.getName();
                 QUEUE_MAP.put(nodeId, serializableRead(nodeId));
+                applicationEventPublisher.publishEvent(new P2pDataSyncSendEvent(this, nodeId));
             }
         }
     }
@@ -183,4 +197,5 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
         log.info("serializableRead ---{} {}", nodeId, queue.size());
         return queue;
     }
+
 }

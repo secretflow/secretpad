@@ -98,5 +98,10 @@ public class AccountsDO extends BaseAggregationRoot<AccountsDO> {
     @Convert(converter = SqliteLocalDateTimeConverter.class)
     private LocalDateTime gmtPasswdResetRelease;
 
+    /**
+     * node instId
+     */
+    @Column(name = "instId")
+    private String instId;
 
 }

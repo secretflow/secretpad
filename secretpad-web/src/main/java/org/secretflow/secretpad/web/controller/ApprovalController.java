@@ -54,9 +54,9 @@ public class ApprovalController {
      * @return
      */
     @PostMapping(value = "/create", consumes = "application/json")
-    @DataResource(field = "nodeID", resourceType = DataResourceTypeEnum.NODE_ID)
+    @DataResource(field = "initiatorId", resourceType = DataResourceTypeEnum.NODE_ID)
     public SecretPadResponse<Object> create(@Valid @RequestBody CreateApprovalRequest createApprovalRequest) {
-        approvalService.createApproval(createApprovalRequest.getNodeID(), createApprovalRequest.getVoteConfig(), createApprovalRequest.getVoteType());
+        approvalService.createApproval(createApprovalRequest.getInitiatorId(), createApprovalRequest.getVoteConfig(), createApprovalRequest.getVoteType());
         return SecretPadResponse.success();
     }
 
