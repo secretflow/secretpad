@@ -19,10 +19,12 @@ package org.secretflow.secretpad.persistence.datasync.job;
 import org.secretflow.secretpad.persistence.datasync.event.P2pDataSyncSendEvent;
 import org.secretflow.secretpad.persistence.datasync.rest.DataSyncRestTemplate;
 
-import lombok.RequiredArgsConstructor;
+import jakarta.annotation.Resource;
+import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
@@ -37,12 +39,14 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 @ConditionalOnProperty(prefix = "secretpad.datasync", value = "p2p", matchIfMissing = false, havingValue = "true")
 public class DataSyncJob implements ApplicationListener<P2pDataSyncSendEvent> {
 
     private static final Map<String, String> NODE_WORK_THREAD_NAME = new ConcurrentHashMap<>();
-    private final DataSyncRestTemplate dataSyncRestTemplate;
+    @Lazy
+    @Resource
+    @Setter
+    private DataSyncRestTemplate dataSyncRestTemplate;
 
     /**
      * Perform data synchronization tasks

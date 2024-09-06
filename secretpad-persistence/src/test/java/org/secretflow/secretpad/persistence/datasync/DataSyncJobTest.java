@@ -82,7 +82,8 @@ public class DataSyncJobTest {
         DataSyncRestTemplate dataSyncRestTemplate = new P2pDataSyncRestTemplate();
         P2PDataSyncDataBufferTemplate dataSyncDataBufferTemplate = new P2PDataSyncDataBufferTemplate(applicationEventPublisher);
         dataSyncRestTemplate.setDataSyncDataBufferTemplate(dataSyncDataBufferTemplate);
-        DataSyncJob dataSyncJob = new DataSyncJob(dataSyncRestTemplate);
+        DataSyncJob dataSyncJob = new DataSyncJob();
+        dataSyncJob.setDataSyncRestTemplate(dataSyncRestTemplate);
         dataSyncJob.onApplicationEvent(new P2pDataSyncSendEvent(this, "alice"));
     }
 
@@ -163,7 +164,8 @@ public class DataSyncJobTest {
         dataSyncRestTemplate.setDataSyncDataBufferTemplate(dataSyncDataBufferTemplate);
         dataSyncRestTemplate.setP2pPaddingNodeService(p2pPaddingNodeService);
         dataSyncRestTemplate.setP2pDataSyncRestService(p2pDataSyncRestService);
-        DataSyncJob dataSyncJob = new DataSyncJob(dataSyncRestTemplate);
+        DataSyncJob dataSyncJob = new DataSyncJob();
+        dataSyncJob.setDataSyncRestTemplate(dataSyncRestTemplate);
         dataSyncJob.onApplicationEvent(new P2pDataSyncSendEvent(this, "alice"));
     }
 
@@ -260,7 +262,8 @@ public class DataSyncJobTest {
         dataSyncRestTemplate.setDataSyncDataBufferTemplate(dataSyncDataBufferTemplate);
         dataSyncRestTemplate.setP2pPaddingNodeService(p2pPaddingNodeService);
         dataSyncRestTemplate.setP2pDataSyncRestService(p2pDataSyncRestService);
-        DataSyncJob dataSyncJob = new DataSyncJob(dataSyncRestTemplate);
+        DataSyncJob dataSyncJob = new DataSyncJob();
+        dataSyncJob.setDataSyncRestTemplate(dataSyncRestTemplate);
         dataSyncJob.onApplicationEvent(new P2pDataSyncSendEvent(this, "alice"));
     }
 

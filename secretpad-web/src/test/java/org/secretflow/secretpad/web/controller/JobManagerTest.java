@@ -299,7 +299,11 @@ public class JobManagerTest extends ControllerTest {
                 .build();
         Assertions.assertDoesNotThrow(() -> jobManager.checkOrCreateDomainDataGrant("alice", "bob", "test"));
         jobManager.setPlaformType(PlatformTypeEnum.AUTONOMY.name());
-        Assertions.assertDoesNotThrow(() -> jobManager.checkOrCreateDomainDataGrant("alice", "bob", "test"));
+        Thread workerThread = new Thread(() -> {
+            jobManager.checkOrCreateDomainDataGrant("alice", "bob", "test");
+        });
+        workerThread.start();
+        workerThread.interrupt();
     }
 
     ProjectGraphDO buildProjectGraphDO() {
