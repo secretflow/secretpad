@@ -62,8 +62,8 @@ import javax.annotation.Nonnull;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.secretflow.secretpad.common.constant.ComponentConstants.DATA_PREP_UNION;
 import static org.secretflow.secretpad.common.constant.ComponentConstants.DATA_FILTER_EXPR_CONDITION_FILTER;
+import static org.secretflow.secretpad.common.constant.ComponentConstants.DATA_PREP_UNION;
 import static org.secretflow.secretpad.common.constant.Constants.*;
 
 /**
@@ -725,6 +725,13 @@ public class JobManager extends AbstractJobManager {
             }
         } catch (Exception ex) {
             LOGGER.error("create domain data grant failed, nodeId = {}, domainDataGrantId = {}", nodeId, domainDataId, ex);
+        } finally {
+            //TODO: Unilateral tasks, data synchronization time difference, currently simply blocking 800ms to improve success rate
+            try {
+                Thread.sleep(600);
+            } catch (InterruptedException e) {
+                LOGGER.error("create domain data grant failed, nodeId = {}, domainDataGrantId = {}", nodeId, domainDataId, e);
+            }
         }
         return false;
     }

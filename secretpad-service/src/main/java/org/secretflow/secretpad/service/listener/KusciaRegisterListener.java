@@ -21,7 +21,9 @@ import org.secretflow.secretpad.kuscia.v1alpha1.event.RegisterKusciaEvent;
 import org.secretflow.secretpad.kuscia.v1alpha1.model.KusciaGrpcConfig;
 import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
 import org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pDataSyncProducerTemplate;
+import org.secretflow.secretpad.service.dataproxy.DataProxyService;
 
+import jakarta.annotation.Resource;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.IOUtils;
@@ -29,6 +31,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationListener;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 import org.springframework.util.ResourceUtils;
@@ -66,6 +69,10 @@ public class KusciaRegisterListener implements ApplicationListener<RegisterKusci
     @Autowired
     private ApplicationContext applicationContext;
 
+    @Lazy
+    @Resource
+    private DataProxyService dataProxyService;
+
     /**
      * Handle an application event.
      *
@@ -85,6 +92,8 @@ public class KusciaRegisterListener implements ApplicationListener<RegisterKusci
             case AUTONOMY:
                 P2pDataSyncProducerTemplate.nodeIds.add(config.getDomainId());
                 jobManager.startSync(config.getDomainId());
+                // For newly registered nodes, modify the data source to dp proxy
+                dataProxyService.updateDataSourceUseDataProxyByDomainId(config.getDomainId(), config.getDomainId());
                 break;
         }
         try {
