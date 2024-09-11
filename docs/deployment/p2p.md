@@ -12,24 +12,29 @@
 # 进入install.sh所在目录
 cd 进入 install.sh 所在目录
 
-bash install.sh autonomy -n point-one -s 8080 -g 40803 -k 40802 -p 18080 -q 13081 -P notls
+bash install.sh autonomy -n point-one -s 8080 -g 40803 -k 40802 -p 18080 -q 13081 -x 13084 -P notls
 ```
 命令参数可以参考[install.sh参数说明](./guide.md#installsh参数详解)
 
-## 第3步：设置登录web页面的用户名和密码
+## 第3步：设置P2P模式下机构名称
+机构名称长度要求大于 4 位字符 ，密码不低于 16 位字符。空格将会被忽略。
+
+![](../imgs/deployment/p2p/create_inst.png)
+
+## 第4步：设置登录web页面的用户名和密码
 用户名长度要求大于 4 位字符 ，密码不低于 8 位字符。需包含大小写及数字。
 
 ![](../imgs/username_password.jpg)
 
-## 第4步：安装完成
+## 第5步：安装完成
 看到 “web server started successfully” 则代表部署成功
 
 ![](../imgs/install_success.jpg)
 
-## 第5步：部署验证
+## 第6步：部署验证
 请参考部署文档[验证部署](./guide.md#验证部署)
 
-## 第6步：操作体验
+## 第7步：操作体验
 请参考p2p模式部署[操作文档](../operation/p2p.md)
 
 

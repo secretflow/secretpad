@@ -40,7 +40,7 @@ logStore不是可选项,由于不同的部署模式下有不同的查询权限,�
 
 ## 给logstore配置logtail
 
-选择正则-文本日志
+选择正则—文本日志
 ![image.png](../imgs/sls/logstore0.png)
 创建机器组
 ![image.png](../imgs/sls/create_machines.png)

@@ -8,6 +8,6 @@
     guide
     request
     center
-    p2p
     edge
+    autonomy
     log
