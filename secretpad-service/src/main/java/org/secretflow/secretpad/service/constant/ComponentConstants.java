@@ -16,6 +16,9 @@
 
 package org.secretflow.secretpad.service.constant;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * Component Constants
  *
@@ -25,9 +28,15 @@ package org.secretflow.secretpad.service.constant;
 public class ComponentConstants {
     public static final String READ_DATA = "read_data";
     public static final String DATA_TABLE = "datatable";
+    public static final String COMP_READ_DATA_DATATABLE_ID = "read_data/datatable";
+    public static final String COMP_READ_MODEL_ID = "ml.predict/read_model";
+    public static final String COMP_ID_DELIMITER = "/";
 
-    public static final String READ_DATA_DATATABLE = "read_data/datatable";
-
+    public static final List<String> PAD_COMP = new ArrayList<>();
+    static {
+        PAD_COMP.add(COMP_READ_DATA_DATATABLE_ID);
+        PAD_COMP.add(COMP_READ_MODEL_ID);
+    }
 
     public static final String SECRETPAD = "secretpad";
     public static final String SECRETPAD_TEE = "secretpad_tee";

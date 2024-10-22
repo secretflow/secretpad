@@ -23,13 +23,12 @@ import org.springframework.util.Assert;
 import org.springframework.util.FileCopyUtils;
 import org.springframework.util.ResourceUtils;
 
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileReader;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.UUID;
 
 /**
  * File utils
@@ -147,4 +146,35 @@ public class FileUtils {
         }
     }
 
+    public static void removeBOMFromFile(String filePath) throws IOException {
+        File inputFile = new File(filePath);
+        File tempFile = new File(inputFile.getParent(), UUID.randomUUID().toString());
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(inputFile), StandardCharsets.UTF_8));
+             BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(tempFile), StandardCharsets.UTF_8))) {
+            String line;
+            boolean isFirstLine = true;
+            while ((line = reader.readLine()) != null) {
+                if (isFirstLine) {
+                    line = removeBOM(line);
+                    isFirstLine = false;
+                }
+                writer.write(line);
+                writer.newLine();
+            }
+        }
+        if (inputFile.delete()) {
+            if (!tempFile.renameTo(inputFile)) {
+                throw new IOException("Could not rename temp file to original file");
+            }
+        } else {
+            throw new IOException("Could not delete original file");
+        }
+    }
+
+    private static String removeBOM(String line) {
+        if (line.startsWith("\uFEFF")) {
+            return line.substring(1);
+        }
+        return line;
+    }
 }

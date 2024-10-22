@@ -42,3 +42,6 @@ data:
     - org.secretflow.secretpad.persistence.entity.ProjectModelPackDO
     - org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO
     - org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO
+    - org.secretflow.secretpad.persistence.entity.ProjectScheduleDO
+    - org.secretflow.secretpad.persistence.entity.ProjectScheduleJobDO
+    - org.secretflow.secretpad.persistence.entity.ProjectScheduleTaskDO

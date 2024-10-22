@@ -53,6 +53,10 @@ public class JobTaskLogEventListener {
      */
     @EventListener
     public void onApplicationEvent(ProjectJobDO.TaskStatusTransformEvent event) {
+        addTaskLog(event);
+    }
+
+    private void addTaskLog(ProjectJobDO.TaskStatusTransformEvent event) {
         log.info("*** JobTaskLogEventListener {} {} {}", event.getTaskId(), event.getFromStatus(), event.getToStatus());
         List<ProjectJobTaskLogDO> logs = Lists.newArrayList();
         ProjectTaskDO task = event.getSource().getTasks().get(event.getTaskId());
@@ -73,7 +77,7 @@ public class JobTaskLogEventListener {
                     case FAILED:
                         logs.add(ProjectJobTaskLogDO.taskStartLog(task));
                         // when failed: we catch the party error msg to logs
-                        logs.addAll(event.getReasons().stream().map(r -> ProjectJobTaskLogDO.taskFailedLog(task, r)).collect(Collectors.toList()));
+                        logs.addAll(event.getReasons().stream().map(r -> ProjectJobTaskLogDO.taskFailedLog(task, r)).toList());
                         break;
                     default:
                         // do nothing
@@ -102,5 +106,4 @@ public class JobTaskLogEventListener {
         logs = new ArrayList<>(setWithoutDuplicates);
         logRepository.saveAll(logs);
     }
-
 }

@@ -52,7 +52,7 @@ public class AsyncTaskExecutionUtils {
                 .handle((response, ex) -> {
                     if (ex != null) {
                         String errorMsg = String.format("nodeId:%s execute async operation failed, error:%s", nodeId, ex.getMessage());
-                        log.error("nodeId:{} execute async operation failed, error:{}", nodeId, ex.getMessage());
+                        log.error("nodeId:{} execute async operation failed, error:{}", nodeId, ex.getMessage(), ex);
                         failedRecords.put(nodeId, errorMsg);
                         return KusciaResponse.of(null, nodeId);
                     } else if (response == null) {
@@ -75,7 +75,7 @@ public class AsyncTaskExecutionUtils {
                 .handle((response, ex) -> {
                     if (ex != null) {
                         String errorMsg = String.format("nodeId:%s execute async operation failed, error:%s", nodeId, ex.getMessage());
-                        log.error("nodeId:{} execute async operation failed, error:{}", nodeId, ex.getMessage());
+                        log.error("nodeId:{} execute async operation failed, error:{}", nodeId, ex.getMessage(), ex);
                         failedRecords.put(nodeId, errorMsg);
                         return null;
                     } else if (response == null) {
@@ -98,7 +98,7 @@ public class AsyncTaskExecutionUtils {
                 .handle((Void unused, Throwable ex) -> {
                     if (ex != null) {
                         String errorMsg = String.format("nodeId:%s execute async operation failed, error:%s", nodeId, ex.getMessage());
-                        log.error("nodeId:{} execute async operation failed, error:{}", nodeId, ex.getMessage());
+                        log.error("nodeId:{} execute async operation failed, error:{}", nodeId, ex.getMessage(), ex);
                         failedRecords.put(nodeId, errorMsg);
                     }
                     return null;

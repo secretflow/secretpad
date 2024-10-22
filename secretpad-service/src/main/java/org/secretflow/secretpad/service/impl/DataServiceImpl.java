@@ -48,6 +48,7 @@ import java.io.InputStream;
 import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.List;
+
 import static org.secretflow.secretpad.common.constant.DomainDatasourceConstants.DEFAULT_DATASOURCE;
 import static org.secretflow.secretpad.common.constant.DomainDatasourceConstants.DEFAULT_DATASOURCE_TYPE;
 
@@ -104,6 +105,7 @@ public class DataServiceImpl implements DataService {
         createDirIfNotExist(dirPath);
         try {
             file.transferTo(target);
+            FileUtils.removeBOMFromFile(dirPath + randomFileName);
         } catch (IOException e) {
             LOGGER.error("IOException: {}", e.getMessage());
             throw SecretpadException.of(SystemErrorCode.UNKNOWN_ERROR, e);
@@ -176,11 +178,11 @@ public class DataServiceImpl implements DataService {
                 fileLength = (int) new File(dir + fileName).length();
             } else {
                 ResultKind kind = ResultKind.fromDatatable(nodeResult.getResultKind());
-                switch (kind){
+                switch (kind) {
                     case Model:
                     case Rule: {
                         //model and rule
-                        CompressUtils.compressTar(List.of(new File(filePath)),filePath,dir,relativeUri);
+                        CompressUtils.compressTar(List.of(new File(filePath)), filePath, dir, relativeUri);
                         // a new compressed file, add a suffix
                         fileName = relativeUri + ".tar.gz";
                         inputStream = new FileInputStream(dir + fileName);

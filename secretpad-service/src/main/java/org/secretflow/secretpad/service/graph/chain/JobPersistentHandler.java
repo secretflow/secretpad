@@ -16,13 +16,13 @@
 
 package org.secretflow.secretpad.service.graph.chain;
 
-import org.secretflow.secretpad.manager.integration.job.JobManager;
 import org.secretflow.secretpad.persistence.entity.ProjectJobDO;
 import org.secretflow.secretpad.persistence.entity.ProjectJobTaskLogDO;
 import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
 import org.secretflow.secretpad.persistence.repository.ProjectJobRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectJobTaskLogRepository;
 import org.secretflow.secretpad.service.ComponentService;
+import org.secretflow.secretpad.service.graph.GraphContext;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
 
 import com.google.common.collect.Lists;
@@ -41,7 +41,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class JobPersistentHandler extends AbstractJobHandler<ProjectJob> {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(JobManager.class);
+    private final static Logger LOGGER = LoggerFactory.getLogger(JobPersistentHandler.class);
     @Autowired
     private ComponentService componentService;
     @Autowired
@@ -79,7 +79,11 @@ public class JobPersistentHandler extends AbstractJobHandler<ProjectJob> {
                     }
                 }
         );
-        projectJobRepository.save(jobDO);
+        if (!GraphContext.isScheduled()) {
+            projectJobRepository.save(jobDO);
+        } else {
+            GraphContext.setProjectJobDO(jobDO);
+        }
         if (next != null) {
             next.doHandler(job);
         }

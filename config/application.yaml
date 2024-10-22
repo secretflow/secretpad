@@ -26,6 +26,13 @@ server:
     min-response-size: 1024
 
 spring:
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: never
+    properties:
+      org.quartz.scheduler.instanceName: secretpadScheduler
+      org.quartz.jobStore.isClustered: false
   task:
     scheduling:
       pool:
@@ -40,17 +47,14 @@ spring:
         format_sql: false
     open-in-view: false
   datasource:
-    driver-class-name: org.sqlite.JDBC
-    url: jdbc:sqlite:./db/secretpad.sqlite
-    hikari:
-      idle-timeout: 60000
-      maximum-pool-size: 1
-      connection-timeout: 6000
-  flyway:
-    baseline-on-migrate: true
-    locations:
-      - filesystem:./config/schema/center
-
+    default:
+      driver-class-name: org.sqlite.JDBC
+      jdbc-url: jdbc:sqlite:./db/secretpad.sqlite
+    quartz:
+      driver-class-name: org.h2.Driver
+      jdbc-url: jdbc:h2:./db/secretpadQuartz.mv.db;DB_CLOSE_ON_EXIT=FALSE
+      username: sa
+      password: password
   #datasource used for mysql
   #spring:
   #  task:
@@ -87,6 +91,20 @@ spring:
     jcache:
       config:
         classpath:ehcache.xml
+
+flyway:
+  default:
+    locations:
+      - filesystem:./config/schema/center
+    baseline-on-migrate: true
+    encoding: UTF-8
+  quartz:
+    baseline-on-migrate: true
+    encoding: UTF-8
+    locations:
+      - filesystem:./config/schema/quartz
+
+
 springdoc:
   api-docs:
     enabled: false
@@ -100,7 +118,8 @@ management:
     web:
       exposure:
         include:
-          - prometheus
+          # prometheus monitoring indicator interface does not have security protection. If you need to use it, please inject security protection. It is best to use an intranet environment.
+          #          - prometheus
           - health
   metrics:
     tags:
@@ -177,10 +196,10 @@ secretpad:
 
   component:
     hide:
-      - secretflow/io/read_data:0.0.1
-      - secretflow/io/write_data:0.0.1
-      - secretflow/io/identity:0.0.1
-      - secretflow/model/model_export:0.0.1
+      - secretflow/io/read_data:1.0.0
+      - secretflow/io/write_data:1.0.0
+      - secretflow/io/identity:1.0.0
+      - secretflow/model/model_export:1.0.0
       - secretflow/ml.train/slnn_train:0.0.1
       - secretflow/ml.predict/slnn_predict:0.0.2
   data-proxy:
@@ -216,6 +235,10 @@ data:
     - org.secretflow.secretpad.persistence.entity.FeatureTableDO
     - org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO
     - org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO
+    - org.secretflow.secretpad.persistence.entity.ProjectScheduleDO
+    - org.secretflow.secretpad.persistence.entity.ProjectScheduleJobDO
+    - org.secretflow.secretpad.persistence.entity.ProjectScheduleTaskDO
+
 
 inner-port:
   path:

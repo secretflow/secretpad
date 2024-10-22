@@ -71,3 +71,10 @@ docs/_build
 /secretpad-persistence/config/
 /secretpad-common/output.orc
 /config/ehcache-data/
+/config/kuscia/
+/secretpad-service/config/
+/secretpad-persistence/config/
+/secretpad-common/output.orc
+/config/ehcache-data/
+/db/secretpadQuartz.mv.db.mv.db
+/.cloudide/

@@ -64,7 +64,11 @@ public class JobSubmittedHandler extends AbstractJobHandler<ProjectJob> {
         if (CollectionUtils.isEmpty(job.getTasks())) {
             ProjectJobDO projectJobDO = ProjectJob.toDO(job);
             projectJobDO.setStatus(GraphJobStatus.SUCCEED);
-            jobRepository.save(projectJobDO);
+            if (!GraphContext.isScheduled()) {
+                jobRepository.save(projectJobDO);
+            } else {
+                GraphContext.setProjectJobDO(projectJobDO);
+            }
             return;
         }
         Job.CreateJobRequest request;
@@ -73,8 +77,12 @@ public class JobSubmittedHandler extends AbstractJobHandler<ProjectJob> {
         } else {
             request = jobConverter.converter(job);
         }
-        log.info("kuscia job  request :{}", request);
-        jobManager.createJob(request);
+        log.info("kuscia job  request :{} isScheduled:{}", request, GraphContext.isScheduled());
+        if (!GraphContext.isScheduled()) {
+            jobManager.createJob(request);
+        } else {
+            GraphContext.setRequest(request);
+        }
         if (next != null) {
             next.doHandler(job);
         }

@@ -14,8 +14,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `Fixed` for any bug fixes.
 `Security` in case of vulnerabilities.
 
-## [0.10.0b0] - 2024-08-15
+## [0.11.0b0] - 2024-10-15
+
 ### Added
+
+- [Feature]  Data Source Support for MySQL Database (Structured data tables only).
+- [Feature]  io_read_data/io_write_data Support for sgb, glm, New Read Model, and Model Backtesting Component.
+- [Feature]  Support for Reading ODPS Data Table Partitions.
+- [Feature]  Support for Scheduled Periodic Tasks: Including configuration, task list, and result viewing.
+- [Feature]  New Prometheus Monitoring Metrics.
+- [Feature]  Specify Field Types When Granting Sample Tables to Projects.
+
+### Changed
+
+- [Compatible] Partial Code Refactoring Optimization.
+
+## [0.10.0b0] - 2024-08-15
+
+### Added
+
 - [Feature]  Supports multi-node management in P2P deploy mode
 - [Feature]  Added a data source management module with ODPS(MaxCompute) data source
 - [Feature]  Supports self-define NUll value at data table registration
@@ -28,8 +45,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - [Documentation] Supplemental documentation for Secretpad incompatible change (incompatible_statement_cn.md)
 
 ### Changed
-- [Incompatible] Refactor VoteRequestDO  [incompatible statement](./docs/development/incompatible_statement_cn.md)
 
+- [Incompatible] Refactor VoteRequestDO  [incompatible statement](./docs/development/incompatible_statement_cn.md)
 
 ## [0.9.0b0] - 2024-07-15
 

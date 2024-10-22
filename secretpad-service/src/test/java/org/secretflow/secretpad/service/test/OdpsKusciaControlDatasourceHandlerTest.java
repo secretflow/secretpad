@@ -20,7 +20,7 @@ import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
-import org.secretflow.secretpad.manager.integration.odps.OdpsManager;
+import org.secretflow.secretpad.manager.integration.datasource.odps.OdpsManager;
 import org.secretflow.secretpad.service.DatatableService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.handler.datasource.OdpsKusciaControlDatasourceHandler;

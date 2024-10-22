@@ -28,6 +28,7 @@ import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.ParticipantNodeInstVO;
 import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.persistence.repository.*;
+import org.secretflow.secretpad.service.constant.ComponentConstants;
 import org.secretflow.secretpad.service.model.project.*;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 import com.google.common.collect.Lists;
@@ -88,6 +89,9 @@ class ProjectControllerTest extends ControllerTest {
     @Resource
     private NodeManager nodeManager;
 
+    @MockBean
+    private ProjectModelPackRepository projectModelPackRepository;
+
 
     private ProjectDO buildProjectDO() {
         return ProjectDO.builder().projectId(PROJECT_ID).ownerId(UserContext.getUser().getOwnerId()).build();
@@ -143,6 +147,13 @@ class ProjectControllerTest extends ControllerTest {
         return projectJobDO;
     }
 
+
+    private ProjectJobDO buildProjectJobDO(boolean isTaskEmpty,String codeName,String domainId,String name) {
+        ProjectJobDO projectJobDO = buildProjectJobDO(isTaskEmpty);
+        projectJobDO.getTasks().get(TASK_ID).setGraphNode(buildProjectGraphNodeDO(codeName,domainId,name));
+        return projectJobDO;
+    }
+
     private List<ProjectDatatableDO.UPK> buildProjectDatatableDOUPK() {
         List<ProjectDatatableDO.UPK> upkList = new ArrayList<>();
         ProjectDatatableDO.UPK upk = new ProjectDatatableDO.UPK();
@@ -157,6 +168,21 @@ class ProjectControllerTest extends ControllerTest {
         ProjectGraphNodeDO.UPK upk = new ProjectGraphNodeDO.UPK();
         upk.setGraphNodeId("alice");
         return ProjectGraphNodeDO.builder().upk(upk).nodeDef(Pipeline.NodeDef.getDefaultInstance()).build();
+    }
+
+    private ProjectGraphNodeDO buildProjectGraphNodeDO(String codeName,String domainId,String name) {
+        ProjectGraphNodeDO projectGraphNodeDO = buildProjectGraphNodeDO();
+        Pipeline.NodeDef build = Pipeline.NodeDef.newBuilder().setDomain(domainId).setName(name).build();
+        projectGraphNodeDO.setNodeDef(build);
+        projectGraphNodeDO.setCodeName(codeName);
+        return projectGraphNodeDO;
+    }
+
+
+    private Optional buildProjectModelPackDO() {
+        return Optional.of(ProjectModelPackDO.builder().projectId(PROJECT_ID)
+                        .modelId("").modelName("modelName").initiator("alice").partyDataSources(Lists.newArrayList()).
+                build());
     }
 
     private List<ProjectResultDO> buildProjectResultDOList() {
@@ -797,6 +823,37 @@ class ProjectControllerTest extends ControllerTest {
             Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
             Mockito.when(projectResultRepository.findByOutputId(Mockito.anyString(), Mockito.anyString(), Mockito.anyString())).thenReturn(buildProjectResultDOList());
 
+            Mockito.when(projectDatatableRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectDatatableDO()));
+
+            Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainData(Mockito.any())).thenReturn(queryDomainDataResponse);
+
+            Mockito.when(kusciaGrpcClientAdapter.queryDomainDataSource(Mockito.any())).thenReturn(buildQueryDomainResponse(0));
+
+            return MockMvcRequestBuilders.post(getMappingUrl(ProjectController.class, "getJobTaskOutput", GetProjectJobTaskOutputRequest.class)).
+                    content(JsonUtils.toJSONString(request));
+        });
+    }
+
+    @Test
+    void getReadModelJobTaskOutput() throws Exception {
+        assertResponse(() -> {
+            GetProjectJobTaskOutputRequest request = FakerUtils.fake(GetProjectJobTaskOutputRequest.class);
+            request.setTaskId(TASK_ID);
+            request.setProjectId(PROJECT_ID);
+
+            UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.PRJ_TASK_OUTPUT));
+            Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(buildNodeDO());
+            Mockito.when(projectRepository.findById(Mockito.anyString())).thenReturn(Optional.of(buildProjectDO()));
+            Mockito.when(projectNodeRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectNodeDO()));
+
+            Mockito.when(projectJobRepository.findByJobId(Mockito.anyString())).thenReturn(Optional.of(buildProjectJobDO(false,ComponentConstants.COMP_READ_MODEL_ID,"ml.predict","read_model")));
+            Mockito.when(projectJobRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectJobDO(false)));
+
+            Mockito.when(projectResultRepository.findByOutputId(Mockito.anyString(), Mockito.anyString(), Mockito.anyString())).thenReturn(buildProjectResultDOList());
+
+
+            Mockito.when(projectModelPackRepository.findById(Mockito.anyString())).thenReturn(buildProjectModelPackDO());
             Mockito.when(projectDatatableRepository.findById(Mockito.any())).thenReturn(Optional.of(buildProjectDatatableDO()));
 
             Domaindata.QueryDomainDataResponse queryDomainDataResponse = buildQueryDomainDataResponse(0);

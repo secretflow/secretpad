@@ -252,7 +252,11 @@ public class ProjectDatatableDO extends BaseAggregationRoot<ProjectDatatableDO> 
             configVO.setColComment(column.getColComment());
             configVO.isAssociateKey = isAssociateKey;
             configVO.isGroupKey = isGroupKey;
-            configVO.isLabelKey = isLabelKey;
+            if (isProtection && !isGroupKey && !isAssociateKey) {
+                configVO.isLabelKey = true;
+            } else {
+                configVO.isLabelKey = isLabelKey;
+            }
             configVO.isProtection = isProtection;
             return configVO;
         }

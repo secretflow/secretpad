@@ -16,7 +16,6 @@
 
 package org.secretflow.secretpad.common.constant;
 
-import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 
 /**
  * @author chenmingliang
@@ -25,11 +24,12 @@ import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 public class DomainDatasourceConstants {
     public final static String DEFAULT_HTTP_DATASOURCE_ID = "http-data-source";
     public final static String DEFAULT_HTTP_DATASOURCE_NAME = "http-data-source";
-    public final static String DEFAULT_LOCAL_DATASOURCE_TYPE = DataSourceTypeEnum.LOCAL.name();
+    public final static String DEFAULT_LOCAL_DATASOURCE_TYPE = "LOCAL";
     public final static String DEFAULT_DATASOURCE = "default-data-source";
     public final static String DEFAULT_DATASOURCE_TYPE = "localfs";
     public static final String DEFAULT_OSS_DATASOURCE_TYPE = "OSS";
     public static final String DEFAULT_ODPS_DATASOURCE_TYPE = "ODPS";
+    public static final String DEFAULT_MYSQL_DATASOURCE_TYPE = "MYSQL";
     public static final String DEFAULT_HTTP_DATASOURCE_TYPE = "HTTP";
 
     public static final String ODPS_DATASOURCE_PARTITION_TYPE_ODPS = "odps";
@@ -40,4 +40,5 @@ public class DomainDatasourceConstants {
 
     public final static String DATASOURCE_ID_PREFIX = "oss-";
     public final static String DATASOURCE_ODPS_ID_PREFIX = "odps-";
+    public final static String DATASOURCE_MYSQL_ID_PREFIX = "mysql-";
 }

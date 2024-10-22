@@ -54,7 +54,11 @@ public enum DatatableErrorCode implements ErrorCode {
     /**
      * Failed to create the data table grant in ApiLite
      */
-    CREATE_TEE_JOB_FAILED(202011308);
+    CREATE_TEE_JOB_FAILED(202011308),
+    /**
+     * Failed to create the data table
+     */
+    DATATABLE_CREATE_FAILED(202011309);
 
 
     private final int code;

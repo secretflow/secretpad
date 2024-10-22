@@ -21,14 +21,18 @@ import org.secretflow.secretpad.common.constant.DomainConstants;
 import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.util.UserContext;
+import org.secretflow.secretpad.kuscia.v1alpha1.DynamicKusciaChannelProvider;
+import org.secretflow.secretpad.kuscia.v1alpha1.constant.KusciaModeEnum;
+import org.secretflow.secretpad.kuscia.v1alpha1.constant.KusciaProtocolEnum;
+import org.secretflow.secretpad.kuscia.v1alpha1.model.KusciaGrpcConfig;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
 import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.NodeRouteRepository;
 import org.secretflow.secretpad.service.DatatableService;
-import org.secretflow.secretpad.service.model.datatable.PushDatatableToTeeRequest;
 
+import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
@@ -41,7 +45,6 @@ import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.secretflow.secretpad.common.constant.DomainConstants.*;
 import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_P2P;
 
 /**
@@ -69,6 +72,14 @@ public class TeeResourceInit implements CommandLineRunner {
     private boolean teeEnabled;
     @Value("${secretpad.node-id}")
     private String nodeId;
+    @Value("${KUSCIA_API_LITE_TEE_ADDRESS:root-kuscia-lite-tee}")
+    private String teeAddress;
+    @Value("${KUSCIA_API_PORT:8083}")
+    private int teePort;
+    @Value("${KUSCIA_PROTOCOL:tls}")
+    private String teeProtocol;
+    @Resource
+    private DynamicKusciaChannelProvider dynamicKusciaChannelProvider;
 
     @Override
     public void run(String... args) throws Exception {
@@ -82,7 +93,17 @@ public class TeeResourceInit implements CommandLineRunner {
         ) {
             initTeeNodeInKuscia(initTeeNodeInDb());
             initTeeNodeRouteInDb();
-            initAliceBobDatableToTee();
+            dynamicKusciaChannelProvider.registerKuscia(
+                    KusciaGrpcConfig.builder()
+                            .domainId("tee")
+                            .mode(KusciaModeEnum.LITE)
+                            .host(teeAddress)
+                            .port(teePort)
+                            .protocol(KusciaProtocolEnum.getByName(teeProtocol))
+                            .certFile("config/certs/tee/client.crt")
+                            .keyFile("config/certs/tee/client.pem")
+                            .token("config/certs/tee/token")
+                            .build());
         }
     }
 
@@ -133,20 +154,5 @@ public class TeeResourceInit implements CommandLineRunner {
         // Create a route from TEE to BOB
         NodeRouteDO teeBob = NodeRouteDO.builder().routeId("6").srcNodeId("tee").dstNodeId("bob").srcNetAddress("127.0.0.1:48080").dstNetAddress("127.0.0.1:38080").build();
         nodeRouteRepository.save(teeBob);
-    }
-
-    public void initAliceBobDatableToTee() {
-        PushDatatableToTeeRequest aliceTableRequest = PushDatatableToTeeRequest.builder()
-                .nodeId(ALICE)
-                .datatableId(ALICE_TABLE)
-                .build();
-        PushDatatableToTeeRequest bobTableRequest = PushDatatableToTeeRequest.builder()
-                .nodeId(BOB)
-                .datatableId(BOB_TABLE)
-                .build();
-        log.info("push {} datatable to tee node", ALICE_TABLE);
-        datatableService.pushDatatableToTeeNode(aliceTableRequest);
-        log.info("push {} datatable to tee node", BOB_TABLE);
-        datatableService.pushDatatableToTeeNode(bobTableRequest);
     }
 }

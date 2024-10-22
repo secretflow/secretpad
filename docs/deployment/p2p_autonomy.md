@@ -29,7 +29,7 @@
 
 ```shell
 # ./install.sh autonomy-node -n ①平台的节点id -m ③ secretpad 的页面入口地址 -t ② 部署token
-bash install.sh autonomy-node -n alice2 -g 18083 -k 18082 -p 18080 -q 13081 -P mtls  -m 'https://secretpad:8080' -t xdeploy-tokenx -x 13086
+bash install.sh autonomy-node -n alice2 -g 18083 -k 18082 -p 18080 -q 13081 -P mtls  -m 'http://secretpad:8080' -t xdeploy-tokenx -x 13086
 # 安装后可以到平台节点详情查看节点注册状态
 ```
 命令参数可以参考[install.sh参数说明](./guide.md#installsh参数详解)

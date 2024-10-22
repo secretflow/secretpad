@@ -21,6 +21,7 @@ import org.secretflow.secretpad.persistence.entity.ProjectResultDO;
 import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.persistence.projection.CountProjection;
 
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -126,4 +127,7 @@ public interface ProjectResultRepository extends BaseRepository<ProjectResultDO,
     @Query("from ProjectResultDO d where d.upk.projectId=:projectId and d.upk.refId=:refId")
     List<ProjectResultDO> findByProjectIdAndRefId(@Param("projectId") String projectId, @Param("refId") String refId);
 
+    @Modifying
+    @Query(nativeQuery = true, value = "delete from project_result where job_id=:jobId and project_id=:projectId")
+    void deleteByJobId(@Param("projectId") String projectId, @Param("jobId") String jobId);
 }

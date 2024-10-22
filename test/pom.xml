@@ -36,6 +36,10 @@
             <groupId>org.secretflow</groupId>
             <artifactId>client-java-kusciaapi</artifactId>
         </dependency>
+        <dependency>
+            <groupId>org.secretflow</groupId>
+            <artifactId>secretpad-scheduled</artifactId>
+        </dependency>
     </dependencies>
 
     <build>
@@ -79,6 +83,16 @@
                         <exclude>org/secretflow/secretpad/manager/integration/job/event/**</exclude>
                         <exclude>org/secretflow/secretpad/web/filter/**</exclude>
                         <exclude>org/secretflow/secretpad/web/init/**</exclude>
+                        <exclude>org/secretflow/secretpad/service/listener/**</exclude>
+                        <exclude>org/secretflow/secretpad/web/aop/**</exclude>
+                        <exclude>org/secretflow/secretpad/scheduled/config/**</exclude>
+                        <exclude>org/secretflow/secretpad/persistence/configuration/**</exclude>
+                        <exclude>org/secretflow/secretpad/common/util/AsyncTaskExecutionUtils.*</exclude>
+                        <exclude>org/secretflow/secretpad/service/graph/adapter/impl/BinningModificationsAdapter.*
+                        </exclude>
+                        <exclude>
+                            org/secretflow/secretpad/service/handler/datatable/LocalKusciaControlDatatableHandler.*
+                        </exclude>
                     </excludes>
                 </configuration>
                 <executions>

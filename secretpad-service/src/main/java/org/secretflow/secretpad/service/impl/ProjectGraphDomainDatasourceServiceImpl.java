@@ -19,22 +19,19 @@ package org.secretflow.secretpad.service.impl;
 import org.secretflow.secretpad.common.constant.KusciaDataSourceConstants;
 import org.secretflow.secretpad.common.constant.ProjectConstants;
 import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
+import org.secretflow.secretpad.common.enums.ProjectStatusEnum;
 import org.secretflow.secretpad.common.enums.UserOwnerTypeEnum;
 import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pDataSyncProducerTemplate;
-import org.secretflow.secretpad.persistence.entity.NodeDO;
-import org.secretflow.secretpad.persistence.entity.ProjectDO;
-import org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO;
-import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
-import org.secretflow.secretpad.persistence.repository.NodeRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectGraphDomainDatasourceRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
-import org.secretflow.secretpad.persistence.repository.ProjectRepository;
+import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.model.ParticipantNodeInstVO;
+import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.ProjectGraphDomainDatasourceService;
+import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.model.graph.CreateGraphRequest;
 import org.secretflow.secretpad.service.model.graph.FullUpdateGraphRequest;
 import org.secretflow.secretpad.service.model.graph.GetGraphRequest;
@@ -55,7 +52,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
-
 import static org.secretflow.secretpad.common.enums.DataSourceTypeEnum.LOCAL;
 import static org.secretflow.secretpad.common.enums.DataSourceTypeEnum.OSS;
 
@@ -74,6 +70,8 @@ public class ProjectGraphDomainDatasourceServiceImpl implements ProjectGraphDoma
     private final EnvService envService;
     private final ProjectNodeRepository projectNodeRepository;
     private final ProjectRepository projectRepository;
+
+    private final ProjectApprovalConfigRepository projectApprovalConfigRepository;
 
     @Override
     public ProjectGraphDomainDatasourceDO getById(String projectId, String graphId, String domainId) {
@@ -112,8 +110,8 @@ public class ProjectGraphDomainDatasourceServiceImpl implements ProjectGraphDoma
     }
 
     public Domaindatasource.ListDomainDataSourceResponse findDomainDataSourceByNodeId(String nodeId) {
-        if(envService.isAutonomy()){
-           return  kusciaGrpcClientAdapter.listDomainDataSource(Domaindatasource.ListDomainDataSourceRequest.newBuilder().setDomainId(nodeId).build(),nodeId);
+        if (envService.isAutonomy()) {
+            return kusciaGrpcClientAdapter.listDomainDataSource(Domaindatasource.ListDomainDataSourceRequest.newBuilder().setDomainId(nodeId).build(), nodeId);
         }
         return kusciaGrpcClientAdapter.listDomainDataSource(Domaindatasource.ListDomainDataSourceRequest.newBuilder().setDomainId(nodeId).build());
     }
@@ -175,13 +173,34 @@ public class ProjectGraphDomainDatasourceServiceImpl implements ProjectGraphDoma
         String ownerId = UserContext.getUser().getOwnerId();
         Set<String> controlNodeIds = Sets.newHashSet(ownerId);
         Set<String> projectNodes = new HashSet<>();
+        Optional<ProjectDO> projectDOOptional = projectRepository.findById(projectId);
+        boolean isArchived = false;
+        if (projectDOOptional.isPresent()) {
+            ProjectDO projectDO = projectDOOptional.get();
+            if (ProjectStatusEnum.ARCHIVED.getCode().equals(projectDO.getStatus())) {
+                isArchived = true;
+                Optional<ProjectApprovalConfigDO> projectApprovalConfigDOOptional = projectApprovalConfigRepository.findByProjectIdAndType(projectId, VoteTypeEnum.PROJECT_CREATE.name());
+                if (projectApprovalConfigDOOptional.isPresent()) {
+                    ProjectApprovalConfigDO projectApprovalConfigDO = projectApprovalConfigDOOptional.get();
+                    List<ParticipantNodeInstVO> participantNodeInfo = projectApprovalConfigDO.getParticipantNodeInfo();
+                    participantNodeInfo.forEach(pn -> {
+                        projectNodes.add(pn.getInitiatorNodeId());
+                        projectNodes.addAll(pn.getInvitees().stream().map(e -> e.getInviteeId()).collect(Collectors.toSet()));
+                    });
+                }
+
+            }
+        }
         List<ProjectNodeDO> projectNodeDOList = projectNodeRepository.findByProjectId(projectId);
-        if (CollectionUtils.isEmpty(projectNodeDOList)) {
+        if (CollectionUtils.isEmpty(projectNodeDOList) && !isArchived) {
             throw SecretpadException.of(SystemErrorCode.VALIDATION_ERROR, "can't find any nodes in project:" + projectId);
         }
-        projectNodeDOList.forEach(n -> {
-            projectNodes.add(n.getUpk().getNodeId());
-        });
+        if (!isArchived) {
+            projectNodeDOList.forEach(n -> {
+                projectNodes.add(n.getUpk().getNodeId());
+            });
+        }
+
         if (CollectionUtils.isEmpty(projectNodes)) {
             throw SecretpadException.of(SystemErrorCode.VALIDATION_ERROR, "can't find any nodes in project:" + projectId);
         }

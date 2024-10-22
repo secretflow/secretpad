@@ -165,12 +165,15 @@ public class ProjectJobDO extends BaseAggregationRoot<ProjectJobDO> {
      * @param currentStatus
      * @param reason
      */
-    public void transformTaskStatus(@Nonnull String taskId, @Nonnull GraphNodeTaskStatus currentStatus, @Nullable List<String> reason) {
+    public TaskStatusTransformEvent transformTaskStatus(@Nonnull String taskId, @Nonnull GraphNodeTaskStatus currentStatus, @Nullable List<String> reason) {
         if (this.getTasks().containsKey(taskId)) {
             ProjectTaskDO task = this.getTasks().get(taskId);
-            registerEvent(TaskStatusTransformEvent.of(this, taskId, task.getStatus(), currentStatus, reason));
+            TaskStatusTransformEvent taskStatusTransformEvent = TaskStatusTransformEvent.of(this, taskId, task.getStatus(), currentStatus, reason);
+            registerEvent(taskStatusTransformEvent);
             this.getTasks().get(taskId).setStatus(currentStatus);
+            return taskStatusTransformEvent;
         }
+        return null;
     }
 
     @Override

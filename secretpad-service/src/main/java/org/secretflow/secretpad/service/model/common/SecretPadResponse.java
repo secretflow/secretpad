@@ -29,6 +29,7 @@ import lombok.*;
 @Getter
 @AllArgsConstructor
 @NoArgsConstructor
+@ToString
 public class SecretPadResponse<T> {
     @Schema(description = "status information")
     private SecretPadResponseStatus status;

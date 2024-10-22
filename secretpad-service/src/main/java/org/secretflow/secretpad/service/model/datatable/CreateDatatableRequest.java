@@ -72,7 +72,11 @@ public class CreateDatatableRequest {
      * datatable type
      */
     @NotBlank
-    @OneOfType(types = {DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE, DomainDatasourceConstants.DEFAULT_ODPS_DATASOURCE_TYPE})
+    @OneOfType(types = {DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE,
+            DomainDatasourceConstants.DEFAULT_ODPS_DATASOURCE_TYPE,
+            DomainDatasourceConstants.DEFAULT_MYSQL_DATASOURCE_TYPE,
+    DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_TYPE,
+    DomainDatasourceConstants.DEFAULT_LOCAL_DATASOURCE_TYPE})
     private String datasourceType;
 
     /**

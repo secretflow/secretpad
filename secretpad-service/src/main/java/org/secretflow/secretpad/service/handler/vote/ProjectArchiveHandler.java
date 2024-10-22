@@ -33,6 +33,7 @@ import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.impl.InstServiceImpl;
 import org.secretflow.secretpad.service.model.approval.*;
 import org.secretflow.secretpad.service.model.message.ProjectArchivePartyVoteStatus;
+
 import com.google.common.collect.Lists;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -99,7 +100,7 @@ public class ProjectArchiveHandler extends AbstractAutonomyVoteTypeHandler {
     protected void createVoteConfig(String voteID, String initiatorId, AbstractVoteConfig voteConfig) {
         ProjectArchiveConfig projectArchiveConfig = (ProjectArchiveConfig) voteConfig;
         String projectId = projectArchiveConfig.getProjectId();
-        Optional<ProjectApprovalConfigDO> approvalConfigDO = projectApprovalConfigRepository.findByProjectId(projectId);
+        Optional<ProjectApprovalConfigDO> approvalConfigDO = projectApprovalConfigRepository.findByProjectIdAndType(projectId, "PROJECT_CREATE");
         List<ParticipantNodeInstVO> participantNodeInstVOS = approvalConfigDO.get().getParticipantNodeInfo();
         Map<String, NodeDO> nodeInfoMap = nodeRepository.findAll()
                 .stream()

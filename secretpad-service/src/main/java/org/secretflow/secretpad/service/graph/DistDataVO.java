@@ -61,4 +61,5 @@ public class DistDataVO {
 
         return distDataBuilder.build();
     }
+
 }

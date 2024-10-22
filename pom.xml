@@ -27,11 +27,12 @@
         <module>secretpad-api</module>
         <module>secretpad-service</module>
         <module>test</module>
+        <module>secretpad-scheduled</module>
     </modules>
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.8</version>
+        <version>3.2.10</version>
     </parent>
     <groupId>org.secretflow</groupId>
     <artifactId>secretpad-parent</artifactId>
@@ -40,12 +41,10 @@
     <description>secretpad parent</description>
     <properties>
         <java.version>17</java.version>
-        <tomcat.version>10.1.26</tomcat.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <lombok.version>1.18.24</lombok.version>
-        <protobuf.version>3.22.2</protobuf.version>
+        <protobuf.version>3.25.5</protobuf.version>
         <grpc.version>1.62.2</grpc.version>
         <jackson.version>2.17.2</jackson.version>
         <swagger.version>2.1.6</swagger.version>
@@ -54,7 +53,6 @@
         <commons-lang3.version>3.12.0</commons-lang3.version>
         <snakeyaml.version>2.0</snakeyaml.version>
         <javatuples.version>1.2</javatuples.version>
-        <jakarta.version>2.1.1</jakarta.version>
         <javax.version>1.3.2</javax.version>
         <okio-jvm.version>3.4.0</okio-jvm.version>
         <guava.version>32.1.1-jre</guava.version>
@@ -64,11 +62,9 @@
         <springdoc-openapi-ui.version>2.1.0</springdoc-openapi-ui.version>
         <plugin.os.version>1.7.1</plugin.os.version>
         <plugin.protobuf.version>0.6.1</plugin.protobuf.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <logback.version>1.4.14</logback.version>
         <jacoco.version>0.8.11</jacoco.version>
         <surefire.version>3.0.0-M4</surefire.version>
-        <mysql-connector.version>8.0.28</mysql-connector.version>
+        <mysql-connector.version>8.0.32</mysql-connector.version>
         <sls-version>0.6.104</sls-version>
         <aws-sdk-java.version>1.12.725</aws-sdk-java.version>
         <client-version>4.5.13</client-version>
@@ -76,6 +72,7 @@
         <build-helper-maven-plugin.version>3.0.0</build-helper-maven-plugin.version>
         <java-jwt.version>4.3.0</java-jwt.version>
         <odps-code.version>0.48.8-public</odps-code.version>
+        <antlr4.version>4.13.0</antlr4.version>
     </properties>
 
     <dependencyManagement>
@@ -103,6 +100,11 @@
             <dependency>
                 <groupId>org.secretflow</groupId>
                 <artifactId>secretpad-web</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.secretflow</groupId>
+                <artifactId>secretpad-scheduled</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
@@ -160,11 +162,6 @@
                 <artifactId>grpc-testing</artifactId>
                 <version>${grpc.version}</version>
                 <scope>test</scope>
-            </dependency>
-            <dependency>
-                <groupId>jakarta.annotation</groupId>
-                <artifactId>jakarta.annotation-api</artifactId>
-                <version>${jakarta.version}</version>
             </dependency>
             <dependency>
                 <groupId>javax.annotation</groupId>
@@ -267,6 +264,16 @@
                 <artifactId>odps-sdk-core</artifactId>
                 <version>${odps-code.version}</version>
             </dependency>
+            <dependency>
+                <groupId>org.quartz-scheduler</groupId>
+                <artifactId>quartz</artifactId>
+                <version>${quartz.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>org.antlr</groupId>
+                <artifactId>antlr4-runtime</artifactId>
+                <version>${antlr4.version}</version>
+            </dependency>
 
         </dependencies>
     </dependencyManagement>
@@ -303,6 +310,10 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.antlr</groupId>
+            <artifactId>antlr4-runtime</artifactId>
         </dependency>
     </dependencies>
 
@@ -438,6 +449,15 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-clean-plugin</artifactId>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>17</source>
+                    <target>17</target>
+                </configuration>
             </plugin>
         </plugins>
     </build>

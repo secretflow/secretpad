@@ -16,14 +16,14 @@
 #
 
 # shellcheck disable=SC2223
-: ${KUSCIA_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.11.0b0"}
-: ${SECRETPAD_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.10.1b0"}
-: ${SECRETFLOW_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.9.0b2"}
-: ${SECRETFLOW_SERVING_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.6.0b0"}
-: ${TEE_APP_IMAGE:="secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"}
-: ${TEE_DM_IMAGE:="secretflow/sf-tee-dm-sim:0.1.0b0"}
-: ${CAPSULE_MANAGER_SIM_IMAGE:="secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"}
-: ${DATAPROXY_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/dataproxy:0.1.0b1"}
+: ${KUSCIA_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.12.0b0"}
+: ${SECRETPAD_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.11.0b0"}
+: ${SECRETFLOW_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.10.0b0"}
+: ${SECRETFLOW_SERVING_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.7.0b0"}
+: ${TEE_APP_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"}
+: ${TEE_DM_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/sf-tee-dm-sim:0.1.0b0"}
+: ${CAPSULE_MANAGER_SIM_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"}
+: ${DATAPROXY_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/dataproxy:0.2.0b0"}
 
 GREEN='\033[0;32m'
 NC='\033[0m'

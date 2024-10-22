@@ -43,23 +43,21 @@ public class DatasourceDTO {
      */
     private String type;
 
+    /**
+     * OSS data source info dto
+     */
     private OssDataSourceInfoDTO ossDataSourceInfoDTO;
 
-    public static DatasourceDTO fromDomainDatasource(Domaindatasource.DomainDataSource domainDataSource) {
-        return DatasourceDTO.builder()
-                .nodeId(domainDataSource.getDomainId())
-                .datasourceId(domainDataSource.getDatasourceId())
-                .datasourceName(domainDataSource.getName())
-                .ossDataSourceInfoDTO(OssDataSourceInfoDTO.builder()
-                        .endpoint(domainDataSource.getInfo().getOss().getEndpoint())
-                        .accessKeyId(domainDataSource.getInfo().getOss().getAccessKeyId())
-                        .secretAccessKey(domainDataSource.getInfo().getOss().getAccessKeySecret())
-                        .bucket(domainDataSource.getInfo().getOss().getBucket())
-                        .prefix(domainDataSource.getInfo().getOss().getPrefix())
-                        .build())
-                .type(domainDataSource.getType())
-                .build();
-    }
+    /**
+     * Database data source info
+     */
+    private DatabaseDataSourceInfo databaseDataSourceInfo;
+
+    /**
+     * odps data source info dto
+     */
+    private OdpsDataSourceInfoDTO odpsDataSourceInfo;
+
 
     @Getter
     @Setter
@@ -92,8 +90,104 @@ public class DatasourceDTO {
          * OSS virtual host
          */
         private String virtualHost;
+    }
+    public static DatasourceDTO fromOssDomainDatasource(Domaindatasource.DomainDataSource domainDataSource) {
+        return DatasourceDTO.builder()
+                .nodeId(domainDataSource.getDomainId())
+                .datasourceId(domainDataSource.getDatasourceId())
+                .datasourceName(domainDataSource.getName())
+                .ossDataSourceInfoDTO(OssDataSourceInfoDTO.builder()
+                        .endpoint(domainDataSource.getInfo().getOss().getEndpoint())
+                        .accessKeyId(domainDataSource.getInfo().getOss().getAccessKeyId())
+                        .secretAccessKey(domainDataSource.getInfo().getOss().getAccessKeySecret())
+                        .bucket(domainDataSource.getInfo().getOss().getBucket())
+                        .prefix(domainDataSource.getInfo().getOss().getPrefix())
+                        .build())
+                .type(domainDataSource.getType())
+                .build();
+    }
+
+    /**
+     * A data transfer object (DTO) for storing information about an ODPS (Alibaba Cloud MaxCompute) data source.
+     */
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class OdpsDataSourceInfoDTO {
 
 
+        /**
+         * The access ID for the ODPS data source.
+         */
+        private String accessId;
+        /**
+         * The access key for the ODPS data source.
+         */
+        private String accessKey;
+        /**
+         * The project name for the ODPS data source.
+         */
+        private String project;
+        /**
+         * The endpoint for the ODPS data source.
+         */
+        private String endpoint;
+
+    }
+    public static DatasourceDTO fromOdpsDomainDatasource(Domaindatasource.DomainDataSource domainDataSource) {
+        return DatasourceDTO.builder()
+                .nodeId(domainDataSource.getDomainId())
+                .datasourceId(domainDataSource.getDatasourceId())
+                .datasourceName(domainDataSource.getName())
+                .odpsDataSourceInfo(OdpsDataSourceInfoDTO.builder()
+                        .accessId(domainDataSource.getInfo().getOdps().getAccessKeyId())
+                        .accessKey(domainDataSource.getInfo().getOdps().getAccessKeySecret())
+                        .project(domainDataSource.getInfo().getOdps().getProject())
+                        .endpoint(domainDataSource.getInfo().getOdps().getEndpoint())
+                        .build())
+                .type(domainDataSource.getType())
+                .build();
+    }
+
+    @Getter
+    @Setter
+    @Builder
+    @NoArgsConstructor
+    @AllArgsConstructor
+    public static class DatabaseDataSourceInfo {
+
+        /**
+         * The name of the database.
+         */
+        private String database;
+        /**
+         * The username used to connect to the database.
+         */
+        private String user;
+        /**
+         * The password used to connect to the database.
+         */
+        private String password;
+        /**
+         * The endpoint of the database server.
+         */
+        private String endpoint;
+    }
+    public static DatasourceDTO fromDatabaseDomainDatasource(Domaindatasource.DomainDataSource domainDataSource) {
+        return DatasourceDTO.builder()
+                .nodeId(domainDataSource.getDomainId())
+                .datasourceId(domainDataSource.getDatasourceId())
+                .datasourceName(domainDataSource.getName())
+                .databaseDataSourceInfo(DatabaseDataSourceInfo.builder()
+                        .database(domainDataSource.getInfo().getDatabase().getDatabase())
+                        .user(domainDataSource.getInfo().getDatabase().getUser())
+                        .password(domainDataSource.getInfo().getDatabase().getPassword())
+                        .endpoint(domainDataSource.getInfo().getDatabase().getEndpoint())
+                        .build())
+                .type(domainDataSource.getType())
+                .build();
     }
 
     @Setter

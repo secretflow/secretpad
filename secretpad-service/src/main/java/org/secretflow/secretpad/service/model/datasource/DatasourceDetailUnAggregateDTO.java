@@ -66,6 +66,10 @@ public class DatasourceDetailUnAggregateDTO {
                 Domaindatasource.OdpsDataSourceInfo odps = info.getOdps();
                 datasourceDetailUnAggregateDTO.setInfo(OdpsDatasourceInfo.builder().accessId(DesensitizationUtils.akSkDesensitize(odps.getAccessKeyId())).accessKey(DesensitizationUtils.akSkDesensitize(odps.getAccessKeySecret())).endpoint(odps.getEndpoint()).project(odps.getProject()).build());
                 break;
+            case DomainDatasourceConstants.DEFAULT_MYSQL_DATASOURCE_TYPE:
+                Domaindatasource.DatabaseDataSourceInfo mysql = info.getDatabase();
+                datasourceDetailUnAggregateDTO.setInfo(MysqlDatasourceInfo.builder().endpoint(mysql.getEndpoint()).user(mysql.getUser()).password(DesensitizationUtils.akSkDesensitize(mysql.getPassword())).database(mysql.getDatabase()).build());
+                break;
             default:
                 break;
         }

@@ -47,7 +47,7 @@ import java.util.List;
         "secretpad.node-id=test",
         "secretpad.inst-name=test",
         "spring.flyway.locations=filesystem:./config/schema/p2p",
-        "spring.datasource.url=jdbc:sqlite:./db/secretpad_p2p.sqlite"
+        "spring.datasource.default.jdbc-url=jdbc:sqlite:./db/secretpad_p2p.sqlite"
 
 })
 public class P2pDataSyncControllerTest extends ControllerTest {

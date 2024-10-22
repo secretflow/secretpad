@@ -17,8 +17,8 @@
 package org.secretflow.secretpad.manager.integration.node;
 
 import org.secretflow.secretpad.common.exception.SecretpadException;
-import org.secretflow.secretpad.manager.integration.odps.OdpsConfig;
-import org.secretflow.secretpad.manager.integration.odps.OdpsManager;
+import org.secretflow.secretpad.manager.integration.datasource.odps.OdpsConfig;
+import org.secretflow.secretpad.manager.integration.datasource.odps.OdpsManager;
 
 import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;

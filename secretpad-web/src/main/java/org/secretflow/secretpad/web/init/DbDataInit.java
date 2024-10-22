@@ -26,7 +26,6 @@ import org.secretflow.secretpad.web.constant.AuthConstants;
 import jakarta.annotation.Resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -49,7 +48,6 @@ import java.util.Optional;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class DbDataInit implements CommandLineRunner {
     private final UserAccountsRepository userAccountsRepository;
-    private final Flyway flyway;
     @Autowired
     private Environment environment;
     @Value("${secretpad.platform-type}")
@@ -62,7 +60,6 @@ public class DbDataInit implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
-        flyway.migrate();
         initUserAndPwd();
         dataProxyService.updateDataSourceUseDataProxyInMaster();
     }

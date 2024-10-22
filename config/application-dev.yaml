@@ -1,11 +1,6 @@
 spring:
   jpa:
     show-sql: false
-    properties:
-      hibernate:
-        format_sql: false
-  datasource:
-    url: jdbc:sqlite:./db/secretpad.sqlite
 
 springdoc:
   api-docs:
@@ -24,7 +19,7 @@ kuscia:
     - domainId: ${NODE_ID:kuscia-system}
       mode: master
       host: ${KUSCIA_API_ADDRESS:root-kuscia-master}
-      port: ${KUSCIA_API_PORT:8083}
+      port: ${KUSCIA_API_PORT:18083}
       protocol: ${KUSCIA_PROTOCOL:tls}
       cert-file: config/certs/client.crt
       key-file: config/certs/client.pem
@@ -32,8 +27,8 @@ kuscia:
 
     - domainId: alice
       mode: lite
-      host: ${KUSCIA_API_LITE_ALICE_ADDRESS:root-kuscia-lite-alice}
-      port: ${KUSCIA_API_PORT:8083}
+      host: ${KUSCIA_API_ADDRESS:root-kuscia-lite-alice}
+      port: ${KUSCIA_API_PORT:28083}
       protocol: ${KUSCIA_PROTOCOL:tls}
       cert-file: config/certs/alice/client.crt
       key-file: config/certs/alice/client.pem
@@ -41,8 +36,8 @@ kuscia:
 
     - domainId: bob
       mode: lite
-      host: ${KUSCIA_API_LITE_BOB_ADDRESS:root-kuscia-lite-bob}
-      port: ${KUSCIA_API_PORT:8083}
+      host: ${KUSCIA_API_ADDRESS:root-kuscia-lite-bob}
+      port: ${KUSCIA_API_PORT:38083}
       protocol: ${KUSCIA_PROTOCOL:tls}
       cert-file: config/certs/bob/client.crt
       key-file: config/certs/bob/client.pem

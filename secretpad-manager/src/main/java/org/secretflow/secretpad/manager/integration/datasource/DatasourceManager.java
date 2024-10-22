@@ -64,6 +64,6 @@ public class DatasourceManager extends AbstractDatasourceManager {
                     response.getStatus().getCode(), response.getStatus().getMessage(), JsonUtils.toJSONString(nodeDatasourceId));
             throw SecretpadException.of(DatasourceErrorCode.QUERY_DATASOURCE_FAILED, response.getStatus().getMessage());
         }
-        return Optional.of(DatasourceDTO.fromDomainDatasource(response.getData()));
+        return Optional.of(DatasourceDTO.fromOssDomainDatasource(response.getData()));
     }
 }

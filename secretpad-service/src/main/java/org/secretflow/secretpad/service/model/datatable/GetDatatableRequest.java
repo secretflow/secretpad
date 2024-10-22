@@ -46,6 +46,12 @@ public class GetDatatableRequest {
     @Schema(description = "datatable id")
     private String datatableId;
 
+    /**
+     * Datasource type
+     */
+    @Schema(description = "datasource type")
+    private String datasourceType;
+
     @Schema(description = "table type")
     @OneOfType(types = {DomainDataConstants.HTTP_DATATABLE_TYPE, DomainDataConstants.DEFAULT_DATATABLE_TYPE})
     private String type = DataTableTypeEnum.CSV.name();

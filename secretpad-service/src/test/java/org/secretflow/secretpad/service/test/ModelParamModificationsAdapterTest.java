@@ -21,7 +21,7 @@ import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.persistence.entity.ProjectReadDataDO;
 import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
-import org.secretflow.secretpad.persistence.repository.ProjectReadDtaRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectReadDataRepository;
 import org.secretflow.secretpad.service.ComponentService;
 import org.secretflow.secretpad.service.graph.adapter.impl.ModelParamModificationsAdapter;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
@@ -100,7 +100,7 @@ public class ModelParamModificationsAdapterTest {
     @InjectMocks
     private ModelParamModificationsAdapter modelParamModificationsAdapter;
     @Mock
-    private ProjectReadDtaRepository readDtaRepository;
+    private ProjectReadDataRepository readDataRepository;
 
     @Test
     void adapterWriteTest() {
@@ -114,7 +114,7 @@ public class ModelParamModificationsAdapterTest {
                 .setDomain("io")
                 .setName("write_data")
                 .setVersion("0.0.1").build());
-        when(readDtaRepository.findByHashAndGrapNodeId(anyString(), anyString()))
+        when(readDataRepository.findByHashAndGrapNodeId(anyString(), anyString()))
                 .thenReturn(buildProjectNodeDO());
 
         if (nodeDef instanceof Pipeline.NodeDef) {
