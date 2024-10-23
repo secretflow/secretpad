@@ -84,6 +84,7 @@ public class DataController {
      * @return successful SecretPadResponse with domain data id in apiLite
      */
     @ResponseBody
+    @Deprecated(forRemoval = true)
     @PostMapping(value = "/create", consumes = "application/json")
     @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
     @ApiResource(code = ApiResourceCodeConstants.DATA_CREATE)
@@ -111,12 +112,18 @@ public class DataController {
         try {
             ServletOutputStream outputStream = response.getOutputStream();
             InputStream inputStream = downloadInfo.getInputStream();
-            byte[] buf = new byte[1024];
-            int len;
-            while ((len = inputStream.read(buf)) > 0) {
-                outputStream.write(buf, 0, len);
+            if(downloadInfo.getFileLength() == 0){
+                response.setContentLength("No data".getBytes().length);
+                outputStream.write("No data".getBytes());
+            }else{
+                byte[] buf = new byte[1024];
+                int len;
+                while ((len = inputStream.read(buf)) > 0) {
+                    outputStream.write(buf, 0, len);
+                }
             }
             inputStream.close();
+            outputStream.close();
         } catch (Exception e) {
             LOGGER.error(e.getMessage());
             throw SecretpadException.of(SystemErrorCode.UNKNOWN_ERROR, e);

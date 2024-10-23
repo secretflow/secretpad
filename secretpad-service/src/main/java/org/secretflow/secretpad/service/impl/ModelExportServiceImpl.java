@@ -270,14 +270,7 @@ public class ModelExportServiceImpl implements ModelExportService {
         }
         List<String> readTables = new LinkedList<>();
         readTableByProjectIdAndGraphId.forEach(table -> {
-            Object nodeDef = table.getNodeDef();
-            Pipeline.NodeDef pipelineNodeDef;
-            if (nodeDef instanceof Pipeline.NodeDef) {
-                pipelineNodeDef = (Pipeline.NodeDef) nodeDef;
-            } else {
-                Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
-                pipelineNodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeDef, nodeDefBuilder);
-            }
+            Pipeline.NodeDef pipelineNodeDef = ComponentTools.getNodeDef(table.getNodeDef());
             if (topNodes.contains(table.getUpk().getGraphNodeId())) {
                 readTables.add(pipelineNodeDef.getAttrs(0).getFieldsOrThrow("s").getStringValue());
             }
@@ -366,14 +359,15 @@ public class ModelExportServiceImpl implements ModelExportService {
         Map<String, Object> nodeEvalParam = Map.of(
                 "domain", "model",
                 "name", "model_export",
-                "version", "0.0.1",
-                "attr_paths", List.of("model_name", "model_desc", "input_datasets", "output_datasets", "component_eval_params"),
+                "version", "1.0.0",
+                "attr_paths", List.of("model_name", "model_desc", "input_datasets", "output_datasets", "component_eval_params","he_mode"),
                 "attrs", List.of(
                         Map.of("s", request.getModelName()),
                         Map.of("s", StringUtils.isEmpty(request.getModelDesc()) ? "" : request.getModelDesc()),
                         Map.of("ss", inputs),
                         Map.of("ss", outputs),
-                        Map.of("ss", params)
+                        Map.of("ss", params),
+                        Map.of("b", false)
                 )
         );
         Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();

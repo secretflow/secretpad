@@ -430,6 +430,9 @@ function applySfServingAppImage() {
 	if is_p2p; then
 		container_id=${KUSCIA_CTR}
 	fi
+	if is_p2p_node; then
+	container_id=${KUSCIA_CTR}
+  fi
 	log "apply sf serving appImage"
 	# shellcheck disable=SC2046
 	docker run --rm --entrypoint /bin/bash -v $(pwd):/tmp/secretpad "$SECRETPAD_IMAGE" -c 'cp -R /app/scripts/templates/sf-serving.yaml /tmp/secretpad/'
@@ -500,7 +503,11 @@ function init_kuscia_config() {
 	fi
 	if [ -n "$domainKeyData" ]; then
 		echo "domainKeyData is not empty, cover kuscia.yaml"
-		sed -i "s/^domainKeyData: .*/domainKeyData: ${domainKeyData}/" "${kuscia_config_file}"
+		if [[ "$OSTYPE" == "darwin"* ]]; then
+			sed -i '' "s/^domainKeyData: .*/domainKeyData: ${domainKeyData}/" "${kuscia_config_file}"
+		else
+			sed -i "s/^domainKeyData: .*/domainKeyData: ${domainKeyData}/" "${kuscia_config_file}"
+		fi
 	fi
 }
 

@@ -626,3 +626,66 @@ create unique index `upk_project_graph_domain` on project_graph_domain_datasourc
 -- todo mysql table column if not exists
 alter table project_feature_table add column `datasource_id` varchar(64) not null default "http-data-source";
 alter table feature_table add column `datasource_id` varchar(64) not null default "http-data-source";
+
+create table if not exists `project_schedule`
+(
+    id            integer primary key autoincrement,
+    schedule_id   varchar(64)                          not null,
+    schedule_desc varchar(200),
+    cron          varchar(64)                          not null,
+    request       text                                 not null,
+    graph_info    text                                 not null,
+    graph_job_id  varchar(64)                          not null,
+    job_info      text                                 not null,
+    owner         varchar(64)                          not null,
+    creator       varchar(64)                          not null,
+    status        varchar(32)                          not null,
+    project_id    varchar(64)                          not null,
+    graph_id      varchar(64)                          not null,
+    create_time   datetime   default CURRENT_TIMESTAMP not null,
+    is_deleted    tinyint(1) default '0'               not null, -- delete flag
+    gmt_create    datetime   default CURRENT_TIMESTAMP not null, -- create time
+    gmt_modified  datetime   default CURRENT_TIMESTAMP not null  -- modified time
+);
+
+create table if not exists `project_schedule_task`
+(
+    id                              integer primary key autoincrement,
+    project_id                      varchar(64)                          not null,
+    graph_id                        varchar(64)                          not null,
+    schedule_job_id                 varchar(64)                          not null,
+    schedule_id                     varchar(64)                          not null,
+    schedule_task_id                varchar(64)                          not null,
+    cron                            varchar(64)                          not null,
+    schedule_task_expect_start_time datetime                             not null,
+    schedule_task_start_time        datetime,
+    schedule_task_end_time          datetime,
+    status                          varchar(32)                          not null,
+    owner                           varchar(64)                          not null,
+    creator                         varchar(64)                          not null,
+    job_request                     text                                 not null,
+    all_re_run                      tinyint(1) default '0'               not null,
+    is_deleted                      tinyint(1) default '0'               not null, -- delete flag
+    gmt_create                      datetime   default CURRENT_TIMESTAMP not null, -- create time
+    gmt_modified                    datetime   default CURRENT_TIMESTAMP not null  -- modified time
+);
+
+create table if not exists `project_schedule_job`
+(
+    id               integer primary key autoincrement,
+    project_id       varchar(64)                          not null,
+    graph_id         varchar(64),                                   -- uniq graph id
+    job_id           varchar(64)                          not null,
+    `name`           varchar(40)                          not null, -- Job name
+    status           varchar(32)                          not null, -- Job status
+    err_msg          text,                                          -- err_msg
+    edges            text,                                          -- create by graph edges
+    finished_time    datetime   default null,                       -- finished_time
+    owner            varchar(64)                          not null,
+    schedule_task_id varchar(64)                          not null,
+    is_deleted       tinyint(1) default '0'               not null, -- delete flag
+    gmt_create       datetime   default CURRENT_TIMESTAMP not null, -- create time
+    gmt_modified     datetime   default CURRENT_TIMESTAMP not null  -- modified time
+);
+create unique index if not exists `upk_project_schedule_job_id` on project_schedule_job (`project_id`, `job_id`);
+create unique index if not exists `upk_schedule_job_id` on project_schedule_job (`job_id`); -- Kuscia，Job unique

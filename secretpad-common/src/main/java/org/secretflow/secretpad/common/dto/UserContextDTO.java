@@ -43,6 +43,7 @@ public class UserContextDTO {
     private String platformNodeId;
     private UserOwnerTypeEnum ownerType;
     private String ownerId;
+    private String ownerName;
 
     private Set<String> projectIds;
     private Set<String> apiResources;

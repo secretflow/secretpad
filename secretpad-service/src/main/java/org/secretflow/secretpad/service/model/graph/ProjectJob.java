@@ -109,8 +109,9 @@ public class ProjectJob implements Serializable {
             List<JobTask> tasks = new ArrayList<>();
             for (ProjectGraphNodeDO graphNodeDO : selectedNodes) {
                 String graphNodeId = graphNodeDO.getUpk().getGraphNodeId();
+                String taskId = JobUtils.genTaskId(jobId, graphNodeId);
                 JobTask task = JobTask.builder()
-                        .taskId(JobUtils.genTaskId(jobId, graphNodeId))
+                        .taskId(taskId)
                         .parties(new ArrayList<>(parties.get(graphNodeId)))
                         .node(GraphNodeInfo.fromDO(graphNodeDO))
                         .build();

@@ -53,8 +53,8 @@
             <artifactId>secretpad-service</artifactId>
         </dependency>
         <dependency>
-            <groupId>org.flywaydb</groupId>
-            <artifactId>flyway-core</artifactId>
+            <groupId>org.secretflow</groupId>
+            <artifactId>secretpad-scheduled</artifactId>
         </dependency>
     </dependencies>
 
@@ -103,6 +103,9 @@
             <testResource>
                 <directory>../scripts/test</directory>
                 <targetPath>${project.basedir}/config</targetPath>
+            </testResource>
+            <testResource>
+                <directory>../secretpad-web/src/test/resources</directory>
             </testResource>
         </testResources>
     </build>

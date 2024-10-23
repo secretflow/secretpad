@@ -22,10 +22,13 @@ import org.secretflow.secretpad.persistence.datasync.listener.EntityChangeListen
 import org.secretflow.secretpad.persistence.datasync.rest.DataSyncRestTemplate;
 import org.secretflow.secretpad.persistence.entity.BaseAggregationRoot;
 
+import io.micrometer.core.instrument.Tags;
+import io.micrometer.core.instrument.Timer;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.util.ObjectUtils;
 
+import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -46,29 +49,37 @@ public class P2pDataSyncRestTemplate extends DataSyncRestTemplate {
         int size = dataSyncDataBufferTemplate.size(node);
         EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event = null;
         while (size > 0) {
+            long startTime = System.currentTimeMillis();
             log.debug("data sync start to send {}, now size {}", node, size);
             event = dataSyncDataBufferTemplate.pool(node);
             if (!ObjectUtils.isEmpty(event)) {
                 SecretPadResponse<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> syncResp;
+                String routeId = "";
+                SyncDataDTO<Object> syncDataDTO = SyncDataDTO.builder()
+                        .tableName(event.getDType())
+                        .action(event.getAction())
+                        .data(event.getSource()).build();
                 try {
-                    SyncDataDTO<Object> syncDataDTO = SyncDataDTO.builder()
-                            .tableName(event.getDType())
-                            .action(event.getAction())
-                            .data(event.getSource()).build();
-                    String routeId = p2pPaddingNodeService.turnInstToRouteId(node);
+                    routeId = p2pPaddingNodeService.turnInstToRouteId(node);
                     log.info("P2pDataSyncRestTemplate send, routeId:{} instId:{}", routeId, node);
                     syncResp = p2pDataSyncRestService.sync(node, "secretpad." + routeId + ".svc", syncDataDTO.toJson());
                     if (0 == syncResp.getStatus().getCode()) {
                         onSuccess(node, event);
+                        long duration = System.currentTimeMillis() - startTime;
+                        recordMetrics(routeId, syncDataDTO.getTableName(), duration, "success", size);
                     } else {
                         log.error("P2pDataSyncRestTemplate send error,{} {}"
                                 , syncResp.getStatus().getCode()
                                 , syncResp.getStatus().getMsg());
                         onError(node, event);
+                        long duration = System.currentTimeMillis() - startTime;
+                        recordMetrics(routeId, syncDataDTO.getTableName(), duration, syncResp.getStatus().getMsg(), size);
                     }
                 } catch (Exception e) {
                     log.error("P2pDataSyncRestTemplate send error", e);
                     onError(node, event);
+                    long duration = System.currentTimeMillis() - startTime;
+                    recordMetrics(routeId, syncDataDTO.getTableName(), duration, e.getMessage(), size);
                 }
                 size = dataSyncDataBufferTemplate.size(node);
                 log.debug("data sync end to send {}, now size {}", node, size);
@@ -102,5 +113,12 @@ public class P2pDataSyncRestTemplate extends DataSyncRestTemplate {
     @Override
     public void onSuccess(String node, EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
         dataSyncDataBufferTemplate.commit(node, event);
+    }
+
+    private void recordMetrics(String target, String tableName, long duration, String status, int size) {
+        Timer timer = Timer.builder("p2p.data.sync.duration")
+                .tags(Tags.of("target", target, "tableName", tableName, "status", status, "size", String.valueOf(size)))
+                .register(meterRegistry);
+        timer.record(Duration.ofMillis(duration));
     }
 }

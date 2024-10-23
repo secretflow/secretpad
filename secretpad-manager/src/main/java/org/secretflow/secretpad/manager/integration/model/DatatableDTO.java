@@ -40,6 +40,7 @@ import java.util.stream.Collectors;
 @Getter
 @Setter
 @Builder
+@ToString
 public class DatatableDTO {
 
     /**

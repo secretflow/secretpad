@@ -16,27 +16,21 @@
 
 package org.secretflow.secretpad.service.impl;
 
-import org.secretflow.secretpad.common.constant.Constants;
-import org.secretflow.secretpad.common.constant.DomainDatasourceConstants;
 import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.enums.DataTableTypeEnum;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.ConcurrentErrorCode;
-import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
-import org.secretflow.secretpad.common.errorcode.FeatureTableErrorCode;
-import org.secretflow.secretpad.common.errorcode.SystemErrorCode;
+import org.secretflow.secretpad.common.errorcode.InstErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.PageUtils;
 import org.secretflow.secretpad.common.util.UUIDUtils;
-import org.secretflow.secretpad.common.util.UserContext;
-import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
-import org.secretflow.secretpad.manager.integration.data.AbstractDataManager;
-import org.secretflow.secretpad.manager.integration.datasource.AbstractDatasourceManager;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.datatablegrant.AbstractDatatableGrantManager;
 import org.secretflow.secretpad.manager.integration.job.AbstractJobManager;
-import org.secretflow.secretpad.manager.integration.model.*;
+import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
+import org.secretflow.secretpad.manager.integration.model.DatatableListDTO;
+import org.secretflow.secretpad.manager.integration.model.NodeDTO;
 import org.secretflow.secretpad.manager.integration.node.NodeManager;
 import org.secretflow.secretpad.manager.integration.noderoute.AbstractNodeRouteManager;
 import org.secretflow.secretpad.persistence.entity.*;
@@ -45,24 +39,19 @@ import org.secretflow.secretpad.persistence.model.TeeJobStatus;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.DatatableService;
 import org.secretflow.secretpad.service.EnvService;
-import org.secretflow.secretpad.service.OssService;
-import org.secretflow.secretpad.service.decorator.awsoss.AwsOssConfig;
+import org.secretflow.secretpad.service.InstService;
 import org.secretflow.secretpad.service.enums.VoteSyncTypeEnum;
 import org.secretflow.secretpad.service.graph.converter.KusciaTeeDataManagerConverter;
+import org.secretflow.secretpad.service.handler.datatable.DatatableHandler;
 import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
 import org.secretflow.secretpad.service.model.datasync.vote.TeeNodeDatatableManagementSyncRequest;
 import org.secretflow.secretpad.service.model.datatable.*;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
-import org.secretflow.secretpad.service.util.HttpUtils;
 
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.RateLimiter;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.javatuples.Pair;
-import org.secretflow.v1alpha1.kusciaapi.Domaindatasource;
 import org.secretflow.v1alpha1.kusciaapi.Job;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,9 +69,9 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.secretflow.secretpad.common.constant.Constants.PUSH_TO_TEE_JOB_ID;
 import static org.secretflow.secretpad.common.constant.DomainDatasourceConstants.DEFAULT_DATASOURCE;
 import static org.secretflow.secretpad.service.constant.TeeJobConstants.MOCK_VOTE_RESULT;
+import static org.secretflow.secretpad.service.util.RateLimitUtil.verifyRate;
 
 /**
  * Datatable service implementation class
@@ -96,20 +85,15 @@ public class DatatableServiceImpl implements DatatableService {
     private final static Logger LOGGER = LoggerFactory.getLogger(DatatableServiceImpl.class);
 
     private static final String DOMAIN_DATA_GRANT_ID = "domaindatagrant_id";
-    private final Cache<String, RateLimiter> rateLimiters = CacheBuilder.newBuilder().expireAfterAccess(1, TimeUnit.HOURS).build();
     @Autowired
     @Qualifier("kusciaApiFutureTaskThreadPool")
     private Executor kusciaApiFutureThreadPool;
     @Autowired
     private AbstractDatatableManager datatableManager;
-    @Autowired
-    private AbstractDataManager dataManager;
+
     @Autowired
     private NodeManager nodeManager;
-    @Autowired
-    private OssService ossService;
-    @Autowired
-    private AbstractDatasourceManager datasourceManager;
+
     @Autowired
     private AbstractDatatableGrantManager datatableGrantManager;
     @Autowired
@@ -124,20 +108,24 @@ public class DatatableServiceImpl implements DatatableService {
     private ProjectDatatableRepository projectDatatableRepository;
     @Autowired
     private TeeNodeDatatableManagementRepository teeNodeDatatableManagementRepository;
-    @Autowired
-    private FeatureTableRepository featureTableRepository;
+
     @Autowired
     private ProjectFeatureTableRepository projectFeatureTableRepository;
     @Autowired
     private NodeRepository nodeRepository;
-    @Resource
-    private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
+
+
+    @Autowired
+    private InstService instService;
+
     @Resource
     private EnvService envService;
     @Value("${tee.domain-id:tee}")
     private String teeNodeId;
     @Value("${secretpad.platform-type}")
     private String plaformType;
+    @Autowired
+    private Map<DataSourceTypeEnum, DatatableHandler> datatableHandlerMap;
 
 
     private List<String> getNodeIds(String instId, List<String> nodeNameFilter) {
@@ -244,99 +232,14 @@ public class DatatableServiceImpl implements DatatableService {
     @Transactional(rollbackFor = Exception.class)
     public DatatableNodeVO getDatatable(GetDatatableRequest request) {
         LOGGER.info("Get datatable detail with nodeID = {}, datatable id = {}", request.getNodeId(), request.getDatatableId());
-        if (DataTableTypeEnum.HTTP.name().equals(request.getType())) {
-            Optional<FeatureTableDO> featureTableDOOptional = featureTableRepository.findById(new FeatureTableDO.UPK(request.getDatatableId(), request.getNodeId(), DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID));
-            if (featureTableDOOptional.isEmpty()) {
-                throw SecretpadException.of(FeatureTableErrorCode.FEATURE_TABLE_NOT_EXIST);
-            }
-            FeatureTableDO featureTableDO = featureTableDOOptional.get();
-            Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> datatableAuthPairs = getHttpFeatureAuthProjectPairs(request.getNodeId(), Lists.newArrayList(featureTableDO.getUpk().getFeatureTableId()));
-            boolean success = HttpUtils.detection(featureTableDO.getUrl());
-            String status = success ? Constants.STATUS_AVAILABLE : Constants.STATUS_UNAVAILABLE;
-            featureTableDO.setStatus(status);
-            featureTableRepository.save(featureTableDO);
-            DatatableDTO datatableDTO = DatatableDTO.builder().datatableId(featureTableDO.getUpk().getFeatureTableId()).datatableName(featureTableDO.getFeatureTableName()).nodeId(featureTableDO.getNodeId()).relativeUri(featureTableDO.getUrl()).datasourceId(DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID).status(status).datasourceType(DataSourceTypeEnum.HTTP.name()).type(DataTableTypeEnum.HTTP.name()).schema(featureTableDO.getColumns().stream().map(it -> new DatatableDTO.TableColumnDTO(it.getColName(), it.getColType(), it.getColComment())).collect(Collectors.toList())).build();
-            DatatableVO datatableVO = DatatableVO.from(datatableDTO, datatableAuthPairs.containsKey(datatableDTO.getDatatableId()) ? AuthProjectVO.fromPairs(datatableAuthPairs.get(datatableDTO.getDatatableId())) : null, null);
-            return DatatableNodeVO.builder().datatableVO(datatableVO).nodeId(request.getNodeId()).nodeName(nodeRepository.findByNodeId(request.getNodeId()).getName()).build();
-        }
-        Optional<DatatableDTO> datatableOpt = datatableManager.findById(DatatableDTO.NodeDatatableId.from(request.getNodeId(), request.getDatatableId()));
-        if (datatableOpt.isEmpty()) {
-            LOGGER.error("Datatable not exists when get datatable detail.");
-            throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
-        }
-        if (DataSourceTypeEnum.OSS.name().equals(datatableOpt.get().getDatasourceType())) {
-            Optional<DatasourceDTO> datasourceOpt;
-            if (envService.isCenter() && envService.isEmbeddedNode(datatableOpt.get().getNodeId())) {
-                Domaindatasource.QueryDomainDataSourceResponse response = kusciaGrpcClientAdapter.queryDomainDataSource(Domaindatasource.QueryDomainDataSourceRequest.newBuilder().setDomainId(datatableOpt.get().getNodeId()).setDatasourceId(datatableOpt.get().getDatasourceId()).build(), datatableOpt.get().getNodeId());
-                datasourceOpt = Optional.of(DatasourceDTO.fromDomainDatasource(response.getData()));
-            } else {
-                datasourceOpt = datasourceManager.findById(DatasourceDTO.NodeDatasourceId.from(datatableOpt.get().getNodeId(), datatableOpt.get().getDatasourceId()));
-            }
-            DatasourceDTO.OssDataSourceInfoDTO ossDataSourceInfoDTO = datasourceOpt.get().getOssDataSourceInfoDTO();
-            AwsOssConfig awsOssConfig = AwsOssConfig.builder().accessKeyId(ossDataSourceInfoDTO.getAccessKeyId()).secretAccessKey(ossDataSourceInfoDTO.getSecretAccessKey()).endpoint(ossDataSourceInfoDTO.getEndpoint()).build();
-            if (!ossService.checkObjectExists(awsOssConfig, ossDataSourceInfoDTO.getBucket(), datatableOpt.get().getRelativeUri())) {
-                datatableOpt.get().setStatus(Constants.STATUS_UNAVAILABLE);
-            }
-        }
-        DatatableDTO dto = datatableOpt.get();
-
-        Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> datatableAuthPairs = getAuthProjectPairs(request.getNodeId(), Lists.newArrayList(dto.getDatatableId()));
-        // teeNodeId maybe blank
-        String teeDomainId = StringUtils.isBlank(request.getTeeNodeId()) ? teeNodeId : request.getTeeNodeId();
-        // query push to tee map
-        Map<String, List<TeeNodeDatatableManagementDO>> pushToTeeInfoMap = getPushToTeeInfos(request.getNodeId(), teeDomainId, Lists.newArrayList(dto.getDatatableId()));
-        // query management data object
-        List<TeeNodeDatatableManagementDO> pushToTeeInfos = pushToTeeInfoMap.get(teeJobConverter.buildTeeDatatableId(teeDomainId, dto.getDatatableId()));
-        TeeNodeDatatableManagementDO managementDO = CollectionUtils.isEmpty(pushToTeeInfos) ? null : pushToTeeInfos.stream().sorted(Comparator.comparing(TeeNodeDatatableManagementDO::getGmtCreate).reversed()).toList().get(0);
-        DatatableVO datatableVO = DatatableVO.from(dto, datatableAuthPairs.containsKey(dto.getDatatableId()) ? AuthProjectVO.fromPairs(datatableAuthPairs.get(dto.getDatatableId())) : null, managementDO);
-        return DatatableNodeVO.builder()
-                .datatableVO(datatableVO)
-                .nodeId(request.getNodeId())
-                .nodeName(nodeRepository.findByNodeId(request.getNodeId()).getName())
-                .build();
+        return datatableHandlerMap.get(DataSourceTypeEnum.valueOf(request.getDatasourceType())).queryDatatable(request);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void deleteDatatable(DeleteDatatableRequest request) {
         LOGGER.info("Delete datatable with node id = {}, datatable id = {}", request.getNodeId(), request.getDatatableId());
-        if (DataTableTypeEnum.HTTP.name().equals(request.getType())) {
-            Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> featureAuthProjectPairs = getHttpFeatureAuthProjectPairs(request.getNodeId(), Collections.singletonList(request.getDatatableId()));
-            if (!CollectionUtils.isEmpty(featureAuthProjectPairs)) {
-                throw SecretpadException.of(DatatableErrorCode.DATATABLE_DUPLICATED_AUTHORIZED);
-            }
-            featureTableRepository.deleteById(new FeatureTableDO.UPK(request.getDatatableId(), request.getNodeId(), DomainDatasourceConstants.DEFAULT_HTTP_DATASOURCE_ID));
-            return;
-        }
-        // check if it has auth projects
-        Map<String, List<Pair<ProjectDatatableDO, ProjectDO>>> authProjectPairs = getAuthProjectPairs(request.getNodeId(), Collections.singletonList(request.getDatatableId()));
-        if (!CollectionUtils.isEmpty(authProjectPairs)) {
-            throw SecretpadException.of(DatatableErrorCode.DATATABLE_DUPLICATED_AUTHORIZED);
-        }
-        // teeNodeId maybe blank
-        String teeDomainId = StringUtils.isBlank(request.getTeeNodeId()) ? teeNodeId : request.getTeeNodeId();
-        String datatableId = teeJobConverter.buildTeeDatatableId(teeNodeId, request.getDatatableId());
-        // query last push to tee job
-        Optional<TeeNodeDatatableManagementDO> pushOptional = teeNodeDatatableManagementRepository.findFirstByNodeIdAndTeeNodeIdAndDatatableIdAndKind(request.getNodeId(), teeDomainId, datatableId, TeeJobKind.Push);
-        // delete tee node datatable if status is success
-        if (pushOptional.isPresent() && pushOptional.get().getStatus().equals(TeeJobStatus.SUCCESS)) {
-            // datasourceId and relativeUri maybe blank
-            String datasourceId = StringUtils.isBlank(request.getDatasourceId()) ? DEFAULT_DATASOURCE : request.getDatasourceId();
-            String relativeUri = StringUtils.isBlank(request.getRelativeUri()) ? "" : request.getRelativeUri();
-            Map<String, String> deleteFromTeeMap = new HashMap<>(2);
-            deleteFromTeeMap.put(PUSH_TO_TEE_JOB_ID, pushOptional.get().getUpk().getJobId());
-            deleteFromTeeMap.put(TeeJob.RELATIVE_URI, relativeUri);
-            // save delete datatable from Tee node job
-            TeeNodeDatatableManagementDO deleteFromDO = TeeNodeDatatableManagementDO.builder().upk(TeeNodeDatatableManagementDO.UPK.builder().nodeId(request.getNodeId()).datatableId(datatableId).teeNodeId(teeDomainId).jobId(UUIDUtils.random(4)).build()).datasourceId(datasourceId).status(TeeJobStatus.RUNNING).kind(TeeJobKind.Delete).operateInfo(JsonUtils.toJSONString(deleteFromTeeMap)).build();
-            saveTeeNodeDatatableManagementOrPush(deleteFromDO);
-            // build tee job model
-            TeeJob teeJob = TeeJob.genTeeJob(deleteFromDO, List.of(request.getNodeId()), "", Collections.emptyList(), Collections.emptyList());
-            // build push datatable to Tee node input config
-            Job.CreateJobRequest createJobRequest = teeJobConverter.converter(teeJob);
-            // create job
-            jobManager.createJob(createJobRequest);
-        }
-        datatableManager.deleteDataTable(DatatableDTO.NodeDatatableId.from(request.getNodeId(), request.getDatatableId()));
+        datatableHandlerMap.get(DataSourceTypeEnum.valueOf(request.getDatasourceType())).deleteDatatable(request);
     }
 
     @Override
@@ -426,104 +329,21 @@ public class DatatableServiceImpl implements DatatableService {
     }
 
     @Override
-    public OssDatatableVO createDataTable(CreateDatatableRequest createDatatableRequest) {
+    public CreateDatatableVO createDataTable(CreateDatatableRequest createDatatableRequest) {
         verifyRate();
-        String domainDataId = genDomainDataId();
-        Map<String, String> failedCreatedNodes = new ConcurrentHashMap<>();
-
-        if (envService.isAutonomy()) {
-            createDatatableRequest.getNodeIds().forEach(nodeId -> {
-                datasourceManager.findById(
-                        DatasourceDTO.NodeDatasourceId.builder()
-                                .nodeId(nodeId)
-                                .datasourceId(createDatatableRequest.getDatasourceId())
-                                .build()
-                );
-            });
-            List<CompletableFuture<Void>> futures = createDatatableRequest.getNodeIds().stream()
-                    .map(nodeId -> CompletableFuture.supplyAsync(() -> dataManager.createDatatable(
-                                    genDomainDataId(),
-                                    nodeId,
-                                    createDatatableRequest.getDatatableName(),
-                                    createDatatableRequest.getRelativeUri(),
-                                    createDatatableRequest.getDatasourceId(),
-                                    createDatatableRequest.getDesc(),
-                                    createDatatableRequest.getDatasourceType(),
-                                    createDatatableRequest.getDatasourceName(),
-                                    createDatatableRequest.getNullStrs(),
-                                    createDatatableRequest.getColumns().stream().map(column -> {
-                                        DatatableSchema schema = new DatatableSchema();
-                                        schema.setFeatureName(column.getColName());
-                                        schema.setFeatureType(column.getColType());
-                                        schema.setFeatureDescription(StringUtils.isNotEmpty(column.getColComment()) ? column.getColComment() : "");
-                                        return schema;
-                                    }).toList(),
-                                    ObjectUtils.isEmpty(createDatatableRequest.getPartition()) ? null : createDatatableRequest.getPartition().toPartition()
-                            ), kusciaApiFutureThreadPool)
-                            .handle((result, ex) -> {
-                                if (ex != null) {
-                                    LOGGER.error("Failed to create data for nodeId {}", nodeId, ex);
-                                    failedCreatedNodes.put(nodeId, ex.getMessage());
-                                } else {
-                                    LOGGER.info("record domainDataId for nodeId {}: result={}", nodeId, result);
-                                }
-                                return null;
-                            }).thenAccept(result -> {
-                            })).toList();
-
-            try {
-                CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).get(5, TimeUnit.SECONDS);
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                throw SecretpadException.of(ConcurrentErrorCode.TASK_INTERRUPTED_ERROR, e);
-            } catch (TimeoutException e) {
-                throw SecretpadException.of(ConcurrentErrorCode.TASK_TIME_OUT_ERROR, e);
-            } catch (ExecutionException e) {
-                throw SecretpadException.of(ConcurrentErrorCode.TASK_EXECUTION_ERROR, e);
-            }
-
-            return OssDatatableVO.builder()
-                    .domainDataId(domainDataId)
-                    .failedCreatedNodes(failedCreatedNodes)
-                    .build();
-        }
-        datasourceManager.findById(
-                DatasourceDTO.NodeDatasourceId.builder()
-                        .nodeId(createDatatableRequest.getOwnerId())
-                        .datasourceId(createDatatableRequest.getDatasourceId())
-                        .build()
-        );
-        String result = dataManager.createDatatable(
-                domainDataId,
-                createDatatableRequest.getOwnerId(),
-                createDatatableRequest.getDatatableName(),
-                createDatatableRequest.getRelativeUri(),
-                createDatatableRequest.getDatasourceId(),
-                createDatatableRequest.getDesc(),
-                createDatatableRequest.getDatasourceType(),
-                createDatatableRequest.getDatasourceName(),
-                createDatatableRequest.getNullStrs(),
-                createDatatableRequest.getColumns().stream().map(column -> {
-                    DatatableSchema schema = new DatatableSchema();
-                    schema.setFeatureName(column.getColName());
-                    schema.setFeatureType(column.getColType());
-                    schema.setFeatureDescription(column.getColComment());
-                    return schema;
-                }).collect(Collectors.toList()),
-                ObjectUtils.isEmpty(createDatatableRequest.getPartition()) ? null : createDatatableRequest.getPartition().toPartition()
-        );
-
-        if (!domainDataId.equals(result)) {
-            LOGGER.warn("Inconsistent domainDataId for ownerId {}: Expected {}, Got {}", createDatatableRequest.getOwnerId(), domainDataId, result);
-            failedCreatedNodes.put(createDatatableRequest.getOwnerId(), "Inconsistent domainDataId");
-        }
-
-        return OssDatatableVO.builder()
-                .domainDataId(domainDataId)
-                .failedCreatedNodes(failedCreatedNodes)
-                .build();
+        verifyNodes(createDatatableRequest);
+        return datatableHandlerMap.get(DataSourceTypeEnum.valueOf(createDatatableRequest.getDatasourceType())).createDatatable(createDatatableRequest);
     }
 
+    public void verifyNodes(CreateDatatableRequest createDatatableRequest) {
+        if (!CollectionUtils.isEmpty(createDatatableRequest.getNodeIds()) && envService.isAutonomy()) {
+            List<String> distinctNodes = createDatatableRequest.getNodeIds().stream().distinct().collect(Collectors.toList());
+            if (!instService.checkNodesInInst(createDatatableRequest.getOwnerId(), distinctNodes)) {
+                throw SecretpadException.of(InstErrorCode.INST_NOT_MATCH_NODE);
+            }
+            createDatatableRequest.setNodeIds(distinctNodes);
+        }
+    }
 
     @Override
     public List<DatatableVO> findDatatableByNodeId(String nodeId) {
@@ -589,25 +409,6 @@ public class DatatableServiceImpl implements DatatableService {
         } else {
             teeNodeDatatableManagementRepository.save(saveDO);
         }
-    }
-
-    private void verifyRate() {
-        try {
-            RateLimiter rateLimiter = getRateLimiter(UserContext.getUserName());
-            if (!rateLimiter.tryAcquire()) {
-                throw SecretpadException.of(SystemErrorCode.REQUEST_FREQUENCY_ERROR);
-            }
-        } catch (ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private RateLimiter getRateLimiter(String userName) throws ExecutionException {
-        return rateLimiters.get(userName, () -> RateLimiter.create(5.0 / 60));
-    }
-
-    private String genDomainDataId() {
-        return UUIDUtils.random(8);
     }
 
     /**

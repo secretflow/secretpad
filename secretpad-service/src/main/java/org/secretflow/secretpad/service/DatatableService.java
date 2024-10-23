@@ -90,7 +90,7 @@ public interface DatatableService {
      * @param createDatatableRequest
      * @return
      */
-    OssDatatableVO createDataTable(CreateDatatableRequest createDatatableRequest);
+    CreateDatatableVO createDataTable(CreateDatatableRequest createDatatableRequest);
 
 
     List<DatatableVO> findDatatableByNodeId(String nodeId);

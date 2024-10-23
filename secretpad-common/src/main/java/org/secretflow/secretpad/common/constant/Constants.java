@@ -36,4 +36,9 @@ public class Constants {
     public static final String KUSCIA_PROTOCOL = "notls";
     public static final String HTTP_PREFIX = "http";
 
+    public static final String COL_TYPE_ID = "id";
+    public static final String COL_TYPE_LABEL = "label";
+    public static final String COL_TYPE_BIN = "binned";
+    public static final String COL_TYPE_FEATURE = "feature";
+
 }

@@ -16,6 +16,7 @@
 
 package org.secretflow.secretpad.service.graph.converter;
 
+import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.ProtoUtils;
@@ -26,8 +27,10 @@ import org.secretflow.secretpad.persistence.repository.ProjectGraphNodeKusciaPar
 import org.secretflow.secretpad.persistence.repository.ProjectJobTaskRepository;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.ProjectGraphDomainDatasourceService;
+import org.secretflow.secretpad.service.ReadPartitionRuleAnalysisService;
 import org.secretflow.secretpad.service.constant.ComponentConstants;
 import org.secretflow.secretpad.service.constant.JobConstants;
+import org.secretflow.secretpad.service.graph.ComponentTools;
 import org.secretflow.secretpad.service.graph.GraphContext;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
@@ -83,6 +86,8 @@ public class KusciaJobConverter implements JobConverter {
     private ProjectGraphDomainDatasourceService projectGraphDomainDatasourceService;
     @Resource
     private EnvService envService;
+    @Resource
+    private ReadPartitionRuleAnalysisService readPartitionRuleAnalysisService;
 
     @SuppressWarnings("unused")
     @Value("${sfcluster-desc.ray-fed-config.cross-silo-comm-backend:brpc_link}")
@@ -155,13 +160,8 @@ public class KusciaJobConverter implements JobConverter {
         List<String> outputs = graphNode.getOutputs();
         List<String> parties = task.getParties();
         JsonFormat.TypeRegistry typeRegistry = JsonFormat.TypeRegistry.newBuilder().add(IndividualTable.getDescriptor()).build();
-        Pipeline.NodeDef pipelineNodeDef;
-        if (nodeDef instanceof Pipeline.NodeDef) {
-            pipelineNodeDef = (Pipeline.NodeDef) nodeDef;
-        } else {
-            Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
-            pipelineNodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeDef, nodeDefBuilder);
-        }
+        Pipeline.NodeDef pipelineNodeDef = ComponentTools.getNodeDef(nodeDef);
+
         if (GraphContext.isBreakpoint()) {
             String checkpointUri = "";
             List<ProjectTaskDO> latestTasks = taskRepository.findLastTimeTasks(Objects.requireNonNull(GraphContext.getProject()).getProjectId(), task.getNode().graphNodeId);
@@ -180,11 +180,16 @@ public class KusciaJobConverter implements JobConverter {
             }
         }
         List<String> outputUris = outputs.stream().map(output -> output.replace(ComponentConstants.DOMAIN_DATA_TABLE_DELIMITER, ComponentConstants.DATA_TABLE_DELIMITER)).toList();
+        if (GraphContext.isScheduled()) {
+            outputUris = outputUris.stream().map(output -> output + ComponentConstants.DATA_TABLE_DELIMITER + GraphContext.getScheduleExpectStartDate()).toList();
+        }
         Map<String, TaskConfig.DatasourceConfig> stringDatasourceConfigMap = buildDatasourceConfig(parties, job.getProjectId(), job.getGraphId());
         Cluster.SFClusterDesc sfClusterDesc = buildSfClusterDesc(parties);
+        List<TaskConfig.TableAttr> tableAttrs = GraphContext.getTableAttrs();
         TaskConfig.TaskInputConfig taskInputConfig = TaskConfig.TaskInputConfig.newBuilder()
                 .putAllSfDatasourceConfig(stringDatasourceConfigMap)
                 .addAllSfInputIds(inputs)
+                .addAllTableAttrs(CollectionUtils.isEmpty(tableAttrs) ? new ArrayList<>() : tableAttrs)
                 .addAllSfInputPartitionsSpec(buildSfInputPartitions(inputs))
                 .addAllSfOutputIds(outputs)
                 .addAllSfOutputUris(outputUris)
@@ -264,11 +269,16 @@ public class KusciaJobConverter implements JobConverter {
     public List<String> buildSfInputPartitions(List<String> inputs) {
         List<String> sf_input_partitions_spec = new ArrayList<>(inputs.size());
         for (String input : inputs) {
-            String tablePartitionRule = GraphContext.getTablePartitionRule(input);
+            Map<String, GraphContext.PartitionInfo> tablePartitionMap = ObjectUtils.isEmpty(GraphContext.getTablePartitionRule()) ? new HashMap<>() : GraphContext.getTablePartitionRule();
+            GraphContext.PartitionInfo partitionInfo = tablePartitionMap.getOrDefault(input, new GraphContext.PartitionInfo());
+            String tablePartitionRule = partitionInfo.getReadRule();
             tablePartitionRule = StringUtils.isNotEmpty(tablePartitionRule)
                     ? tablePartitionRule.replace(ComponentConstants.DATA_TABLE_PARTITION_DELIMITER, ComponentConstants.DOMAIN_DATA_TABLE_PARTITION_DELIMITER)
                     : "";
-            sf_input_partitions_spec.add(tablePartitionRule);
+            String tableName = partitionInfo.getTableName();
+            String scheduleExpectStartDate = GraphContext.getScheduleExpectStartDate();
+            Set<String> partitionColumns = partitionInfo.getPartitionColumns();
+            sf_input_partitions_spec.add(readPartitionRuleAnalysisService.readPartitionRuleAnalysis(tableName, DataSourceTypeEnum.ODPS, tablePartitionRule, scheduleExpectStartDate, partitionColumns));
         }
         return sf_input_partitions_spec;
     }

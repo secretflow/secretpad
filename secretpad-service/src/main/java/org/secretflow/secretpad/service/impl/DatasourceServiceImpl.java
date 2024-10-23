@@ -81,7 +81,7 @@ public class DatasourceServiceImpl implements DatasourceService {
     @NotNull
     private static List<DataSourceTypeEnum> filterKusciaType(List<String> searchTypes) {
         if (CollectionUtils.isEmpty(searchTypes)) {
-            return Lists.newArrayList(DataSourceTypeEnum.OSS, DataSourceTypeEnum.HTTP, DataSourceTypeEnum.ODPS);
+            return Lists.newArrayList(DataSourceTypeEnum.OSS, DataSourceTypeEnum.HTTP, DataSourceTypeEnum.ODPS, DataSourceTypeEnum.MYSQL);
         }
         return searchTypes.stream()
                 .map(DataSourceTypeEnum::valueOf)
@@ -227,7 +227,7 @@ public class DatasourceServiceImpl implements DatasourceService {
     @Override
     public DatasourceNodesVO datasourceNodes(DatasourceNodesRequest datasourceNodesRequest) {
 
-        List<DatasourceListInfoAggregate> datasourceListInfoAggregates = findAllDatasourceByOwnerId(datasourceNodesRequest.getOwnerId(), Lists.newArrayList(DataSourceTypeEnum.HTTP.name(), DataSourceTypeEnum.OSS.name(), DataSourceTypeEnum.ODPS.name())).getInfos();
+        List<DatasourceListInfoAggregate> datasourceListInfoAggregates = findAllDatasourceByOwnerId(datasourceNodesRequest.getOwnerId(), Lists.newArrayList(DataSourceTypeEnum.HTTP.name(), DataSourceTypeEnum.OSS.name(), DataSourceTypeEnum.ODPS.name(), DataSourceTypeEnum.MYSQL.name())).getInfos();
 
         DatasourceListInfoAggregate datasourceListInfoAggregate = datasourceListInfoAggregates.stream().filter(e -> StringUtils.equals(e.getDatasourceId(), datasourceNodesRequest.getDatasourceId())).findAny().orElse(null);
         if (datasourceListInfoAggregate == null) {

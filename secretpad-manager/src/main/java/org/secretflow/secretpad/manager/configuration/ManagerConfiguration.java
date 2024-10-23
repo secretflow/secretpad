@@ -80,10 +80,10 @@ public class ManagerConfiguration {
             ProjectModelRepository modelRepository,
             ProjectReportRepository reportRepository,
             TeeNodeDatatableManagementRepository managementRepository,
-            ProjectReadDtaRepository readDtaRepository,
+            ProjectReadDataRepository readDataRepository,
             ProjectJobTaskRepository taskRepository
     ) {
-        return new JobManager(projectJobRepository, datatableManager, resultRepository, fedTableRepository, datatableRepository, ruleRepository, modelRepository, reportRepository, managementRepository, readDtaRepository, taskRepository);
+        return new JobManager(projectJobRepository, datatableManager, resultRepository, fedTableRepository, datatableRepository, ruleRepository, modelRepository, reportRepository, managementRepository, readDataRepository, taskRepository);
     }
 
     /**

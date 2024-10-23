@@ -16,7 +16,6 @@
 
 package org.secretflow.secretpad.manager.integration.node;
 
-import org.mockito.Mockito;
 import org.secretflow.secretpad.common.constant.DomainConstants;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
@@ -25,15 +24,16 @@ import org.secretflow.secretpad.persistence.entity.*;
 import org.secretflow.secretpad.persistence.model.ParticipantNodeInstVO;
 import org.secretflow.secretpad.persistence.model.ResultKind;
 import org.secretflow.secretpad.persistence.repository.*;
+
 import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.secretflow.v1alpha1.common.Common;
 import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
-import static org.springframework.test.util.ReflectionTestUtils.invokeMethod;
 
 import java.util.*;
 
@@ -42,6 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.util.ReflectionTestUtils.invokeMethod;
 
 /**
  * @author beiwei
@@ -85,6 +86,7 @@ class NodeManagerTest {
 
         nodeManager.initialNode("testNodeId", "testInstName");
     }
+
     /**
      * test InitialNode_nodeDOIsNull
      */
@@ -93,7 +95,7 @@ class NodeManagerTest {
         when(nodeRepository.existsById(anyString())).thenReturn(true);
         NodeDO mockNodeDO = new NodeDO();
         mockNodeDO.setInstId("testInstId");
-        when(nodeRepository.findByNodeId(anyString())).thenReturn(null);
+        when(nodeRepository.findByNodeId(anyString())).thenReturn(mockNodeDO);
 
         nodeManager.initialNode("testNodeId", "testInstName");
     }
@@ -101,7 +103,7 @@ class NodeManagerTest {
     private DomainOuterClass.QueryDomainResponse buildQueryDomainResponse(Integer code) {
         return DomainOuterClass.QueryDomainResponse.newBuilder()
                 .setStatus(Common.Status.newBuilder().setCode(code)
-                .build()).setData(DomainOuterClass.QueryDomainResponseData.newBuilder()
+                        .build()).setData(DomainOuterClass.QueryDomainResponseData.newBuilder()
                         .addNodeStatuses(DomainOuterClass.NodeStatus.newBuilder().setStatus(DomainConstants.DomainStatusEnum.Ready.name()).build())
                         .build()).build();
     }
@@ -126,16 +128,14 @@ class NodeManagerTest {
         when(nodeRouteRepository.findBySrcNodeIdOrDstNodeId(anyString())).thenReturn(new HashSet<>());
         when(kusciaGrpcClientAdapter.isDomainRegistered(anyString())).thenReturn(true);
         DomainOuterClass.QueryDomainResponse queryDomainResponse = buildQueryDomainResponse(0);
-        when(kusciaGrpcClientAdapter.queryDomain(Mockito.any(),Mockito.any())).thenReturn(queryDomainResponse);
+        when(kusciaGrpcClientAdapter.queryDomain(Mockito.any(), Mockito.any())).thenReturn(queryDomainResponse);
 
         List<String> result = nodeManager.listReadyNodeByIds("inst1", Arrays.asList("node1", "node2"));
         assertNotNull(result);
-        assertEquals(2,result.size());
+        assertEquals(2, result.size());
         assertTrue(result.contains("node1"));
         assertTrue(result.contains("node2"));
     }
-
-
 
 
     @Mock
@@ -160,7 +160,7 @@ class NodeManagerTest {
 
         ProjectResultDO projectResultDO = new ProjectResultDO();
         projectResultDO.setJobId("jobId");
-        projectResultDO.setUpk(new ProjectResultDO.UPK("projectId", ResultKind.FedTable,"nodeId", "jobId"));
+        projectResultDO.setUpk(new ProjectResultDO.UPK("projectId", ResultKind.FedTable, "nodeId", "jobId"));
         NodeResultDTO result = invokeMethod(nodeManager, "mergeNodeResult", projectResultDO);
 
         assertEquals("jobId", result.getJobId());
@@ -170,6 +170,7 @@ class NodeManagerTest {
     }
 
     /**
+     *
      */
     @Test
     public void testMergeNodeResult_ProjectExistButJobNotExist() {
@@ -183,7 +184,7 @@ class NodeManagerTest {
 
         ProjectResultDO projectResultDO = new ProjectResultDO();
         projectResultDO.setJobId("jobId");
-        projectResultDO.setUpk(new ProjectResultDO.UPK("projectId", ResultKind.FedTable,"nodeId", "jobId"));
+        projectResultDO.setUpk(new ProjectResultDO.UPK("projectId", ResultKind.FedTable, "nodeId", "jobId"));
         NodeResultDTO result = invokeMethod(nodeManager, "mergeNodeResult", projectResultDO);
 
         assertEquals("jobId", result.getJobId());
@@ -193,6 +194,7 @@ class NodeManagerTest {
     }
 
     /**
+     *
      */
     @Test
     public void testMergeNodeResult_ProjectNotExist() {
@@ -200,7 +202,7 @@ class NodeManagerTest {
 
         ProjectResultDO projectResultDO = new ProjectResultDO();
         projectResultDO.setJobId("jobId");
-        projectResultDO.setUpk(new ProjectResultDO.UPK("projectId", ResultKind.FedTable,"nodeId", "jobId"));
+        projectResultDO.setUpk(new ProjectResultDO.UPK("projectId", ResultKind.FedTable, "nodeId", "jobId"));
         NodeResultDTO result = invokeMethod(nodeManager, "mergeNodeResult", projectResultDO);
 
         assertEquals("jobId", result.getJobId());
@@ -215,7 +217,7 @@ class NodeManagerTest {
 
         ProjectResultDO projectResultDO = new ProjectResultDO();
         projectResultDO.setJobId("jobId");
-        projectResultDO.setUpk(new ProjectResultDO.UPK("projectId", ResultKind.FedTable,"nodeId", "jobId"));
+        projectResultDO.setUpk(new ProjectResultDO.UPK("projectId", ResultKind.FedTable, "nodeId", "jobId"));
         NodeResultDTO result = invokeMethod(nodeManager, "mergeNodeResult", projectResultDO);
 
         assertEquals("jobId", result.getJobId());
@@ -225,22 +227,24 @@ class NodeManagerTest {
     }
 
     /**
+     *
      */
     @Test
     public void testSearchAllTargetNodeFromInitiator() {
         String ss = "[{\"initiatorNodeId\":\"b1\",\"invitees\":[{\"inviteeId\":\"a1\"},{\"inviteeId\":\"a2\"}]}]";
         List<ParticipantNodeInstVO> participantNodeInstVOS = JsonUtils.toJavaList(ss, ParticipantNodeInstVO.class);
-        List<String> result = invokeMethod(nodeManager, "searchAllTargetNode","b1", participantNodeInstVOS.get(0));
+        List<String> result = invokeMethod(nodeManager, "searchAllTargetNode", "b1", participantNodeInstVOS.get(0));
         assertEquals(2, result.size());
     }
 
     /**
+     *
      */
     @Test
     public void testSearchAllTargetNodeFromInvitee() {
         String ss = "[{\"initiatorNodeId\":\"b1\",\"invitees\":[{\"inviteeId\":\"a1\"},{\"inviteeId\":\"a2\"}]}]";
         List<ParticipantNodeInstVO> participantNodeInstVOS = JsonUtils.toJavaList(ss, ParticipantNodeInstVO.class);
-        List<String> result = invokeMethod(nodeManager, "searchAllTargetNode","a1", participantNodeInstVOS.get(0));
+        List<String> result = invokeMethod(nodeManager, "searchAllTargetNode", "a1", participantNodeInstVOS.get(0));
         assertEquals(1, result.size());
     }
 

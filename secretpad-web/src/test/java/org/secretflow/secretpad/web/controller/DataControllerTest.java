@@ -143,7 +143,7 @@ class DataControllerTest extends ControllerTest {
 
     @Test
     void downloadFileExists() throws Exception {
-        assertResponseWithEmptyContent(() -> {
+        assertResponseWithContent(() -> {
             String userAgent = FakerUtils.fake(String.class);
             DownloadDataRequest request = FakerUtils.fake(DownloadDataRequest.class);
             request.setNodeId("mockMvcNodeId");
@@ -292,7 +292,7 @@ class DataControllerTest extends ControllerTest {
      */
     @Test
     void downloadFiLeNotExists() throws Exception {
-        assertResponseWithEmptyContent(() -> {
+        assertResponseWithContent(() -> {
             String userAgent = FakerUtils.fake(String.class);
             DownloadDataRequest request = FakerUtils.fake(DownloadDataRequest.class);
             request.setNodeId("mockMvcNodeId");

@@ -26,10 +26,10 @@ import org.secretflow.secretpad.common.util.AsyncTaskExecutionUtils;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
+import org.secretflow.secretpad.manager.integration.datasource.oss.AwsOssConfig;
 import org.secretflow.secretpad.service.DatatableService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.OssService;
-import org.secretflow.secretpad.service.decorator.awsoss.AwsOssConfig;
 import org.secretflow.secretpad.service.model.datasource.*;
 import org.secretflow.secretpad.service.model.datatable.DatatableVO;
 

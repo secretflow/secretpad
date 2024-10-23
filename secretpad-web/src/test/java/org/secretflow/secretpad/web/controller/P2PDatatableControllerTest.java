@@ -18,6 +18,7 @@ package org.secretflow.secretpad.web.controller;
 
 import org.secretflow.secretpad.common.constant.DomainConstants;
 import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
+import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
@@ -32,7 +33,6 @@ import org.secretflow.secretpad.persistence.repository.ProjectFeatureTableReposi
 import org.secretflow.secretpad.service.model.datatable.CreateDatatableRequest;
 import org.secretflow.secretpad.service.model.datatable.ListDatatableRequest;
 import org.secretflow.secretpad.web.utils.FakerUtils;
-
 import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -45,6 +45,9 @@ import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.*;
+
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 /**
  * @author guanxi
@@ -84,18 +87,39 @@ public class P2PDatatableControllerTest extends ControllerTest {
         CreateDatatableRequest request = FakerUtils.fake(CreateDatatableRequest.class);
         request.setDatasourceType("OSS");
         request.setDatasourceName("ossDatasource");
-        request.setNodeIds(Collections.singletonList("alice"));
+        request.setNodeIds(Collections.singletonList("nodeId"));
         request.setOwnerId("nodeId");
-        Mockito.when(nodeRepository.findByNodeId("nodeId")).thenReturn(FakerUtils.fake(NodeDO.class));
+        UserContextDTO user = UserContext.getUser();
+        user.setName("name");
+        Mockito.when(UserContext.getUserName()).thenReturn("user");
+        when(nodeRepository.findByNodeId("nodeId")).thenReturn(FakerUtils.fake(NodeDO.class));
+        when(nodeRepository.findByInstId("nodeId")).thenReturn(List.of(NodeDO.builder().nodeId("nodeId").build()));
         UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_CREATE));
+
         Domaindata.CreateDomainDataResponse response = Domaindata.CreateDomainDataResponse.newBuilder()
                 .setData(Domaindata.CreateDomainDataResponseData.newBuilder()
                         .setDomaindataId(request.getOwnerId())
                         .build())
+                .setStatus(Common.Status.newBuilder().setCode(0).build())
                 .build();
-        Mockito.when(kusciaGrpcClientAdapter.createDomainData(
-                Mockito.any())).thenReturn(response);
-        Mockito.when(kusciaGrpcClientAdapter.queryDomainDataSource(Mockito.any(), Mockito.any())).thenReturn(Domaindatasource.QueryDomainDataSourceResponse.newBuilder().setStatus(Common.Status.newBuilder().setCode(0).build()).build());
+        when(kusciaGrpcClientAdapter.createDomainData(
+                Mockito.any(),Mockito.any())).thenReturn(response);
+        when(kusciaGrpcClientAdapter.queryDomainDataSource(Mockito.any())).thenReturn(Domaindatasource.QueryDomainDataSourceResponse.newBuilder()
+                .setData(Domaindatasource.DomainDataSource.newBuilder()
+                        .setDatasourceId("datasourceId")
+                        .setName("name")
+                        .setType("type")
+                        .setInfo(Domaindatasource.DataSourceInfo.newBuilder()
+                                .setOss(Domaindatasource.OssDataSourceInfo.newBuilder()
+                                        .setAccessKeyId("ak")
+                                        .setAccessKeySecret("sk")
+                                        .setEndpoint("endpoint")
+                                        .setPrefix("prefix")
+                                        .setBucket("bucket")
+                                        .build())
+                                .build())
+                        .build())
+                .setStatus(Common.Status.newBuilder().setCode(0).build()).build());
         // Act & Assert
         assertResponse(() -> {
             return MockMvcRequestBuilders.post(getMappingUrl(DatatableController.class, "createDataTable", CreateDatatableRequest.class))
@@ -103,6 +127,12 @@ public class P2PDatatableControllerTest extends ControllerTest {
         });
     }
 
+
+
+    /**
+     * listDatatables test in p2p
+     * @throws Exception
+     */
     @Test
     void listDatatables() throws Exception {
         assertResponse(() -> {
@@ -115,25 +145,25 @@ public class P2PDatatableControllerTest extends ControllerTest {
 
             Domaindata.ListDomainDataResponse response = Domaindata.ListDomainDataResponse.newBuilder()
                     .setData(Domaindata.DomainDataList.newBuilder().build()).build();
-            Mockito.when(kusciaGrpcClientAdapter.listDomainData(Mockito.any())).thenReturn(response);
+            when(kusciaGrpcClientAdapter.listDomainData(Mockito.any())).thenReturn(response);
             FeatureTableDO featureTableDO = FakerUtils.fake(FeatureTableDO.class);
             ProjectFeatureTableDO projectFeatureTableDO = FakerUtils.fake(ProjectFeatureTableDO.class);
-            Mockito.when(projectFeatureTableRepository.findByNodeIdAndFeatureTableIds(request.getOwnerId(), Lists.newArrayList(featureTableDO.getUpk().getFeatureTableId()))).thenReturn(Collections.singletonList(projectFeatureTableDO));
-            Mockito.when(featureTableRepository.findByNodeId(request.getOwnerId())).thenReturn(Collections.singletonList(featureTableDO));
+            when(projectFeatureTableRepository.findByNodeIdAndFeatureTableIds(request.getOwnerId(), Lists.newArrayList(featureTableDO.getUpk().getFeatureTableId()))).thenReturn(Collections.singletonList(projectFeatureTableDO));
+            when(featureTableRepository.findByNodeId(request.getOwnerId())).thenReturn(Collections.singletonList(featureTableDO));
             NodeDO node = FakerUtils.fake(NodeDO.class);
             node.setInstId("nodeId");
-            Mockito.when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(node);
+            when(nodeRepository.findByNodeId(Mockito.any())).thenReturn(node);
 
-            Mockito.when(kusciaGrpcClientAdapter.isDomainRegistered(Mockito.any())).thenReturn(true);
+            when(kusciaGrpcClientAdapter.isDomainRegistered(Mockito.any())).thenReturn(true);
 
-            Mockito.when(kusciaGrpcClientAdapter.queryDomain(Mockito.any(), Mockito.any())).thenReturn(buildQueryDomainResponse(0));
+            when(kusciaGrpcClientAdapter.queryDomain(Mockito.any(), Mockito.any())).thenReturn(buildQueryDomainResponse(0));
 
             InstDO instDO = new InstDO();
-            Mockito.when(instRepository.findById(Mockito.any())).thenReturn(Optional.of(instDO));
+            when(instRepository.findById(Mockito.any())).thenReturn(Optional.of(instDO));
             NodeDO alice = NodeDO.builder().nodeId("alice").build();
             List<NodeDO> list = new ArrayList<>();
             list.add(alice);
-            Mockito.when(nodeRepository.findByInstId(Mockito.any())).thenReturn(list);
+            when(nodeRepository.findByInstId(Mockito.any())).thenReturn(list);
 
             return MockMvcRequestBuilders.post(getMappingUrl(DatatableController.class, "listDatatables", ListDatatableRequest.class))
                     .content(JsonUtils.toJSONString(request));

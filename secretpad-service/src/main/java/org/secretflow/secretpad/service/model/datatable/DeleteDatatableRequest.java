@@ -56,6 +56,11 @@ public class DeleteDatatableRequest {
     @Schema(description = "datasource id")
     private String datasourceId;
     /**
+     * Datasource type
+     */
+    @Schema(description = "datasource type")
+    private String datasourceType;
+    /**
      * Relative uri
      */
     @Schema(description = "relative uri")

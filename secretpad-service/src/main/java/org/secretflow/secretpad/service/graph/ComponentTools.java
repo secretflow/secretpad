@@ -39,6 +39,26 @@ import java.util.List;
  */
 @Slf4j
 public class ComponentTools {
+
+    /**
+     *  background: check uniform or self-define node description
+     *
+     *  make sure nodeDef is not null
+     *  common use like :
+     *  GraphNodeInfo graphNodeInfo = task.getNode();
+     *  Object nodeDef = graphNodeInfo.getNodeDef();
+     */
+    public static Pipeline.NodeDef getNodeDef(Object nodeDef){
+        Pipeline.NodeDef pipelineNodeDef;
+        if(nodeDef instanceof Pipeline.NodeDef){
+            pipelineNodeDef = (Pipeline.NodeDef) nodeDef;
+        } else{
+            Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
+            pipelineNodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeDef, nodeDefBuilder);
+        }
+        return pipelineNodeDef;
+    }
+
     /**
      * Get datatableId from graph node information
      *
@@ -46,13 +66,7 @@ public class ComponentTools {
      * @return datatableId
      */
     public static String getDataTableId(GraphNodeInfo nodeInfo) {
-        Pipeline.NodeDef nodeDef;
-        if (nodeInfo.getNodeDef() instanceof Pipeline.NodeDef) {
-            nodeDef = (Pipeline.NodeDef) nodeInfo.getNodeDef();
-        } else {
-            Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
-            nodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeInfo.getNodeDef(), nodeDefBuilder);
-        }
+        Pipeline.NodeDef nodeDef = getNodeDef(nodeInfo.getNodeDef());
         List<Struct> attrsList = nodeDef.getAttrsList();
         String tableId = "";
         if (!CollectionUtils.isEmpty(attrsList)) {
@@ -62,13 +76,7 @@ public class ComponentTools {
     }
 
     public static String getDataTablePartition(GraphNodeInfo nodeInfo) {
-        Pipeline.NodeDef nodeDef;
-        if (nodeInfo.getNodeDef() instanceof Pipeline.NodeDef) {
-            nodeDef = (Pipeline.NodeDef) nodeInfo.getNodeDef();
-        } else {
-            Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
-            nodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeInfo.getNodeDef(), nodeDefBuilder);
-        }
+        Pipeline.NodeDef nodeDef = getNodeDef(nodeInfo.getNodeDef());
         List<Struct> attrsList = nodeDef.getAttrsList();
         String datatable_partition = "";
         if (!CollectionUtils.isEmpty(attrsList) && attrsList.size() == 2) {
@@ -79,11 +87,13 @@ public class ComponentTools {
 
     /**
      * cover
-     *
-     * @param nodeDef nodeDef
      * @return nodeDef
      */
-    public static Pipeline.NodeDef coverAttrByCustomAttr(Pipeline.NodeDef nodeDef) {
+    public static Pipeline.NodeDef coverAttrByCustomAttr(GraphNodeInfo graphNodeInfo) {
+        Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
+        ProtoUtils.fromObject(graphNodeInfo.getNodeDef(), nodeDefBuilder);
+        Pipeline.NodeDef nodeDef = nodeDefBuilder.build();
+
         List<Struct> attrsList = new ArrayList<>(nodeDef.getAttrsList());
         if (!attrsList.isEmpty()) {
             for (int i = 0; i < attrsList.size(); i++) {

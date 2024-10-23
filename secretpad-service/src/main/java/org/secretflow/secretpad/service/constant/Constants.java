@@ -33,6 +33,9 @@ public class Constants {
 
     public static final String IP_PREFIX_REG = "^(http|https)://.*";
 
+    public static final String MYSQL_ENDPOINT_PATTEN = "^(?:\\b(?:\\d{1,3}\\.){3}\\d{1,3}\\b|localhost):(\\d{1,5})$";
+
+
     /**
      * domain patten:
      * https://xxx.xxx.cn-xxx.com  or http://127.0.0.1:9000

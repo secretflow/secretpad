@@ -16,7 +16,8 @@
 
 package org.secretflow.secretpad.service;
 
-import org.secretflow.secretpad.service.decorator.awsoss.AwsOssConfig;
+
+import org.secretflow.secretpad.manager.integration.datasource.oss.AwsOssConfig;
 
 /**
  * @author chenmingliang

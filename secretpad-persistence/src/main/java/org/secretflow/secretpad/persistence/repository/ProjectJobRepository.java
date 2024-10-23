@@ -147,4 +147,24 @@ public interface ProjectJobRepository extends BaseRepository<ProjectJobDO, Proje
     @Modifying
     @Transactional
     void deleteAllAuthentic();
+
+    /**
+     * Query latest project job results by projectId, graphId
+     *
+     * @param projectId target projectId
+     * @param graphId   target graphId
+     * @return project job results
+     */
+    @Query("from ProjectJobDO pj where pj.upk.projectId=:projectId and pj.graphId=:graphId ORDER BY pj.id DESC limit  1")
+    Optional<ProjectJobDO> findByProjectIdAndGraphIdOrderByIdDesc(@Param("projectId") String projectId, @Param("graphId") String graphId);
+
+    /**
+     * Query the latest project job task result by projectId and graphNodeId
+     *
+     * @param projectId target projectId
+     * @param graphId   target graphId
+     * @return the latest project job  result
+     */
+    @Query(value = "select * from project_job where project_id=:projectId and graph_id=:graphId order by id desc limit 1", nativeQuery = true)
+    Optional<ProjectJobDO> findLatestJob(@Param("projectId") String projectId, @Param("graphId") String graphId);
 }

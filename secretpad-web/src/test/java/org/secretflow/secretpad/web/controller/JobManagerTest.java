@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.web.controller;
 
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
+import org.secretflow.secretpad.kuscia.v1alpha1.DynamicKusciaChannelProvider;
 import org.secretflow.secretpad.manager.integration.datatablegrant.DatatableGrantManager;
 import org.secretflow.secretpad.manager.integration.job.JobManager;
 import org.secretflow.secretpad.persistence.entity.*;
@@ -71,11 +72,27 @@ public class JobManagerTest extends ControllerTest {
     private ManagedChannel inProcessChannel;
     @MockBean
     private DatatableGrantManager datatableGrantManager;
+    @Resource
+    private ProjectScheduleJobRepository projectScheduleJobRepository;
+    @MockBean
+    private DynamicKusciaChannelProvider dynamicKusciaChannelProvider;
 
     static Job.WatchJobEventResponse buildTaskEmptyJobSuccessWatchJobEventResponse() {
         return Job.WatchJobEventResponse.newBuilder().setType(Job.EventType.MODIFIED)
                 .setObject(Job.JobStatus.newBuilder()
                         .setJobId("test")
+                        .setStatus(Job.JobStatusDetail.newBuilder()
+                                .setState("Succeeded")
+                                .setCreateTime("2024-02-23T15:35:00Z")
+                                .setStartTime("2024-02-23T15:35:00Z")
+                                .build()).build())
+                .build();
+    }
+
+    static Job.WatchJobEventResponse buildTaskEmptyProjectScheduleJobSuccessWatchJobEventResponse() {
+        return Job.WatchJobEventResponse.newBuilder().setType(Job.EventType.MODIFIED)
+                .setObject(Job.JobStatus.newBuilder()
+                        .setJobId("test1")
                         .setStatus(Job.JobStatusDetail.newBuilder()
                                 .setState("Succeeded")
                                 .setCreateTime("2024-02-23T15:35:00Z")
@@ -107,6 +124,54 @@ public class JobManagerTest extends ControllerTest {
                 .build();
     }
 
+    static Job.WatchJobEventResponse buildTaskRuningProjectScheduleJobSuccessJobSuccessButDbJobIsFinishWatchJobEventResponse() {
+        return Job.WatchJobEventResponse.newBuilder().setType(Job.EventType.MODIFIED)
+                .setObject(Job.JobStatus.newBuilder()
+                        .setJobId("test2")
+                        .setStatus(Job.JobStatusDetail.newBuilder()
+                                .setState("Succeeded")
+                                .setCreateTime("2024-02-23T15:35:00Z")
+                                .setStartTime("2024-02-23T15:35:00Z")
+                                .addTasks(Job.TaskStatus.newBuilder().setTaskId("test-atxtxxwc-node-1")
+                                        .setState("Pending")
+                                        .addParties(Job.PartyStatus.newBuilder()
+                                                .setDomainId("bob")
+                                                .setState("Pending")
+                                                .build())
+                                        .addParties(Job.PartyStatus.newBuilder()
+                                                .setDomainId("alice")
+                                                .setState("Pending")
+                                                .build())
+                                        .build())
+                                .build()).build())
+                .build();
+    }
+
+
+    static Job.WatchJobEventResponse buildTaskRuningProjectScheduleJobSuccessJobSuccessWatchJobEventResponse() {
+        return Job.WatchJobEventResponse.newBuilder().setType(Job.EventType.MODIFIED)
+                .setObject(Job.JobStatus.newBuilder()
+                        .setJobId("test1")
+                        .setStatus(Job.JobStatusDetail.newBuilder()
+                                .setState("Succeeded")
+                                .setCreateTime("2024-02-23T15:35:00Z")
+                                .setStartTime("2024-02-23T15:35:00Z")
+                                .addTasks(Job.TaskStatus.newBuilder().setTaskId("test-atxtxxwc-node-1")
+                                        .setState("Pending")
+                                        .addParties(Job.PartyStatus.newBuilder()
+                                                .setDomainId("bob")
+                                                .setState("Pending")
+                                                .build())
+                                        .addParties(Job.PartyStatus.newBuilder()
+                                                .setDomainId("alice")
+                                                .setState("Pending")
+                                                .build())
+                                        .build())
+                                .build()).build())
+                .build();
+    }
+
+
     static Job.WatchJobEventResponse buildTaskWatchJobEventResponse() {
         return Job.WatchJobEventResponse.newBuilder().setType(Job.EventType.MODIFIED)
                 .setObject(Job.JobStatus.newBuilder()
@@ -131,6 +196,18 @@ public class JobManagerTest extends ControllerTest {
     }
 
     static Job.WatchJobEventResponse buildTaskEmptyWatchJobEventResponse() {
+        return Job.WatchJobEventResponse.newBuilder().setType(Job.EventType.MODIFIED)
+                .setObject(Job.JobStatus.newBuilder()
+                        .setJobId("test")
+                        .setStatus(Job.JobStatusDetail.newBuilder()
+                                .setState("Running")
+                                .setCreateTime("2024-02-23T15:35:00Z")
+                                .setStartTime("2024-02-23T15:35:00Z")
+                                .build()).build())
+                .build();
+    }
+
+    static Job.WatchJobEventResponse buildTaskEmptyNotExistWatchJobEventResponse() {
         return Job.WatchJobEventResponse.newBuilder().setType(Job.EventType.MODIFIED)
                 .setObject(Job.JobStatus.newBuilder()
                         .setJobId("test")
@@ -257,12 +334,15 @@ public class JobManagerTest extends ControllerTest {
         projectGraphNodeRepository.deleteAll();
         projectJobRepository.deleteAllAuthentic();
         projectJobTaskRepository.deleteAllAuthentic();
+        projectScheduleJobRepository.deleteAllAuthentic();
 
         projectRepository.saveAndFlush(buildProjectDO());
         projectGraphNodeRepository.saveAllAndFlush(buildProjectGraphNodeDOs());
         projectGraphRepository.saveAndFlush(buildProjectGraphDO());
         projectJobTaskRepository.saveAndFlush(buildProjectTaskDO());
         projectJobRepository.saveAndFlush(buildProjectJobDO());
+        projectScheduleJobRepository.saveAndFlush(buildProjectScheduleJobDO());
+        projectScheduleJobRepository.saveAndFlush(buildProjectScheduleJob2DO());
     }
 
     @AfterEach
@@ -274,11 +354,13 @@ public class JobManagerTest extends ControllerTest {
         projectGraphNodeRepository.deleteAll();
         projectJobRepository.deleteAllAuthentic();
         projectJobTaskRepository.deleteAllAuthentic();
+        projectScheduleJobRepository.deleteAllAuthentic();
     }
 
     @Test
     void testJobAsyncStub() {
         jobServiceAsyncStub = JobServiceGrpc.newStub(inProcessChannel);
+        Mockito.when(dynamicKusciaChannelProvider.createStub("kuscia-system", JobServiceGrpc.JobServiceStub.class)).thenReturn(jobServiceAsyncStub);
         Assertions.assertDoesNotThrow(() -> jobManager.startSync());
         index++;
         Assertions.assertDoesNotThrow(() -> jobManager.startSync());
@@ -304,6 +386,46 @@ public class JobManagerTest extends ControllerTest {
         });
         workerThread.start();
         workerThread.interrupt();
+        String distData = """
+                {
+                      "name": "ouel_uzcbxztr_node_13_output_0",
+                      "type": "sf.table.individual",
+                      "meta": {
+                      "@type": "type.googleapis.com/secretflow.spec.v1.IndividualTable",
+                      "schema": {
+                      "ids": [
+                      "id2"
+                      ],
+                      "features": [
+                      "y"
+                      ],
+                      "labels": [
+                      "pred"
+                      ],
+                      "idTypes": [
+                      "str"
+                      ],
+                      "featureTypes": [
+                      "int"
+                      ],
+                      "labelTypes": [
+                      "float32"
+                      ]
+                      },
+                      "lineCount": "2473"
+                      },
+                      "dataRefs": [
+                      {
+                      "uri": "ouel_uzcbxztr_node_13_output_0",
+                      "party": "bob",
+                      "format": "orc",
+                      "nullStrs": []
+                      }
+                      ]
+                      }
+                """;
+        jobManager.parse(distData);
+        jobManager.parse("{\"a\":\"ouel_uzcbxztr_node_13_output_0\",\"b\":\"sf.table");
     }
 
     ProjectGraphDO buildProjectGraphDO() {
@@ -379,6 +501,59 @@ public class JobManagerTest extends ControllerTest {
                 .build();
     }
 
+    ProjectScheduleJobDO buildProjectScheduleJobDO() {
+        Map<String, ProjectTaskDO> taskMap = new HashMap<>();
+        taskMap.put("test-atxtxxwc-node-1", ProjectTaskDO.builder()
+                .upk(new ProjectTaskDO.UPK("test", "test1", "test-atxtxxwc-node-1"))
+                .parties(List.of("bob", "alice"))
+                .graphNodeId("atxtxxwc-node-1")
+                .graphNode(buildProjectGraphNodeDOs().get(0))
+                .build());
+        taskMap.put("test-atxtxxwc-node-2", ProjectTaskDO.builder()
+                .upk(new ProjectTaskDO.UPK("test", "test1", "test-atxtxxwc-node-2"))
+                .parties(List.of("bob", "alice"))
+                .graphNodeId("atxtxxwc-node-2")
+                .graphNode(buildProjectGraphNodeDOs().get(1))
+                .build());
+        return ProjectScheduleJobDO.builder()
+                .upk(new ProjectScheduleJobDO.UPK("test", "test1"))
+                .graphId("atxtxxwc")
+                .edges(List.of())
+                .name("test")
+                .tasks(taskMap)
+                .owner("kuscia-system")
+                .scheduleTaskId("test2")
+                .status(GraphJobStatus.RUNNING)
+                .build();
+    }
+
+    ProjectScheduleJobDO buildProjectScheduleJob2DO() {
+        Map<String, ProjectTaskDO> taskMap = new HashMap<>();
+        taskMap.put("test-atxtxxwc-node-1", ProjectTaskDO.builder()
+                .upk(new ProjectTaskDO.UPK("test", "test2", "test-atxtxxwc-node-1"))
+                .parties(List.of("bob", "alice"))
+                .graphNodeId("atxtxxwc-node-1")
+                .graphNode(buildProjectGraphNodeDOs().get(0))
+                .build());
+        taskMap.put("test-atxtxxwc-node-2", ProjectTaskDO.builder()
+                .upk(new ProjectTaskDO.UPK("test", "test2", "test-atxtxxwc-node-2"))
+                .parties(List.of("bob", "alice"))
+                .graphNodeId("atxtxxwc-node-2")
+                .graphNode(buildProjectGraphNodeDOs().get(1))
+                .build());
+        return ProjectScheduleJobDO.builder()
+                .upk(new ProjectScheduleJobDO.UPK("test", "test2"))
+                .graphId("atxtxxwc")
+                .edges(List.of())
+                .name("test")
+                .tasks(taskMap)
+                .owner("kuscia-system")
+                .scheduleTaskId("test2")
+                .status(GraphJobStatus.SUCCEED)
+                .build();
+    }
+
+
     public static class JobServiceStubService extends JobServiceGrpc.JobServiceImplBase {
         @Override
         public void watchJob(Job.WatchJobRequest request, StreamObserver<Job.WatchJobEventResponse> responseObserver) {
@@ -392,6 +567,9 @@ public class JobManagerTest extends ControllerTest {
             responseObserver.onNext(buildTaskRuningJobSuccessJobSuccessWatchJobEventResponse());
             responseObserver.onNext(buildTaskRuningJobSuccessJobSuccessWatchJobEventResponse());
             responseObserver.onNext(buildTaskEmptyJobSuccessWatchJobEventResponse());
+            responseObserver.onNext(buildTaskEmptyProjectScheduleJobSuccessWatchJobEventResponse());
+            responseObserver.onNext(buildTaskRuningProjectScheduleJobSuccessJobSuccessWatchJobEventResponse());
+            responseObserver.onNext(buildTaskRuningProjectScheduleJobSuccessJobSuccessButDbJobIsFinishWatchJobEventResponse());
             if (index % 2 == 0) {
                 responseObserver.onError(new RuntimeException());
             } else {

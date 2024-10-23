@@ -18,6 +18,7 @@ package org.secretflow.secretpad.manager.integration.job;
 
 import org.secretflow.secretpad.common.constant.CacheConstants;
 import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
+import org.secretflow.secretpad.common.enums.ScheduledStatus;
 import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.JobErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
@@ -40,6 +41,11 @@ import com.google.common.base.Strings;
 import com.google.gson.Gson;
 import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.protobuf.ProtocolStringList;
+import com.google.protobuf.util.JsonFormat;
+import com.secretflow.spec.v1.DistData;
+import com.secretflow.spec.v1.IndividualTable;
+import com.secretflow.spec.v1.TableSchema;
 import io.grpc.stub.StreamObserver;
 import jakarta.annotation.Resource;
 import lombok.Setter;
@@ -59,6 +65,7 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.util.CollectionUtils;
 
 import javax.annotation.Nonnull;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -91,7 +98,7 @@ public class JobManager extends AbstractJobManager {
     private final ProjectModelRepository modelRepository;
     private final ProjectReportRepository reportRepository;
     private final TeeNodeDatatableManagementRepository managementRepository;
-    private final ProjectReadDtaRepository readDtaRepository;
+    private final ProjectReadDataRepository readDataRepository;
     private final ProjectJobTaskRepository taskRepository;
 
     @Value("${secretpad.platform-type}")
@@ -113,7 +120,11 @@ public class JobManager extends AbstractJobManager {
     private KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
     @Resource
     private DynamicKusciaChannelProvider dynamicKusciaChannelProvider;
-
+    @Resource
+    private ProjectScheduleJobRepository projectScheduleJobRepository;
+    @Resource
+    private ProjectScheduleTaskRepository projectScheduleTaskRepository;
+    private volatile boolean scheduleJob = false;
 
     public JobManager(ProjectJobRepository projectJobRepository,
                       AbstractDatatableManager datatableManager,
@@ -124,7 +135,7 @@ public class JobManager extends AbstractJobManager {
                       ProjectModelRepository modelRepository,
                       ProjectReportRepository reportRepository,
                       TeeNodeDatatableManagementRepository managementRepository,
-                      ProjectReadDtaRepository readDtaRepository,
+                      ProjectReadDataRepository readDataRepository,
                       ProjectJobTaskRepository taskRepository
     ) {
         this.projectJobRepository = projectJobRepository;
@@ -136,7 +147,7 @@ public class JobManager extends AbstractJobManager {
         this.modelRepository = modelRepository;
         this.reportRepository = reportRepository;
         this.managementRepository = managementRepository;
-        this.readDtaRepository = readDtaRepository;
+        this.readDataRepository = readDataRepository;
         this.taskRepository = taskRepository;
     }
 
@@ -210,7 +221,11 @@ public class JobManager extends AbstractJobManager {
                         @Override
                         public void onNext(Job.WatchJobEventResponse responses) {
                             LOGGER.info("starter jobEvent ... {},nodeId={}", responses, nodeId);
-                            syncJob(responses);
+                            try {
+                                syncJob(responses);
+                            } catch (Exception e) {
+                                LOGGER.error("syncJob exception: {} {}", responses, e.getMessage(), e);
+                            }
                         }
 
                         @Override
@@ -221,13 +236,14 @@ public class JobManager extends AbstractJobManager {
 
                         @Override
                         public void onCompleted() {
-                            LOGGER.info("======================================================== watchJob onCompleted");
+                            LOGGER.info("watchJob onCompleted nodeId={}", nodeId);
                             applicationEventPublisher.publishEvent(new JobSyncErrorOrCompletedEvent(this, nodeId));
                         }
                     }
             );
         } catch (Exception e) {
             LOGGER.error("startSync exception: {}, while restart", e.getMessage(), e);
+            applicationEventPublisher.publishEvent(new JobSyncErrorOrCompletedEvent(this, nodeId));
         }
     }
 
@@ -254,17 +270,49 @@ public class JobManager extends AbstractJobManager {
             LOGGER.debug("model export job exist, sync model export job status");
             return;
         }
+        scheduleJob = false;
+        ProjectScheduleJobDO projectScheduleJob = null;
         Optional<ProjectJobDO> projectJobOpt = projectJobRepository.findByJobId(it.getObject().getJobId());
         if (projectJobOpt.isEmpty()) {
-            LOGGER.info("watched jobEvent: jobId={}, but project job not exist, skip", it.getObject().getJobId());
-            return;
+            Optional<ProjectScheduleJobDO> projectScheduleJobDO = projectScheduleJobRepository.findByJobId(it.getObject().getJobId());
+            if (projectScheduleJobDO.isEmpty()) {
+                LOGGER.info("watched jobEvent: jobId={}, but project job not exist, skip", it.getObject().getJobId());
+                return;
+            } else {
+                projectScheduleJob = projectScheduleJobDO.get();
+                projectJobOpt = Optional.of(ProjectScheduleJobDO.convertToProjectJobDO(projectScheduleJobDO.get()));
+                scheduleJob = true;
+            }
         }
         if (projectJobOpt.get().isFinished()) {
-            LOGGER.warn("watched jobEvent: jobId={}, but project job all task  finished, skip", it.getObject().getJobId());
-            return;
+            if (!scheduleJob) {
+                LOGGER.warn("watched jobEvent: jobId={}, but project job all task  finished, skip", it.getObject().getJobId());
+                return;
+            } else {
+                if (GraphJobStatus.SUCCEED.equals(projectJobOpt.get().getStatus())) {
+                    LOGGER.info("watched jobEvent: jobId={}, but project job all task  finished, skip", it.getObject().getJobId());
+                    return;
+                }
+            }
         }
         ProjectJobDO job = updateJob(it, projectJobOpt.get());
-        projectJobRepository.save(job);
+        if (scheduleJob) {
+            ProjectScheduleJobDO projectScheduleJobDO = ProjectScheduleJobDO.convertFromProjectJobDO(job);
+            projectScheduleJobDO.setOwner(projectScheduleJob.getOwner());
+            projectScheduleJobDO.setScheduleTaskId(projectScheduleJob.getScheduleTaskId());
+            projectScheduleJobRepository.save(projectScheduleJobDO);
+            GraphJobStatus status = job.getStatus();
+            List<ProjectScheduleTaskDO> byScheduleJobIds = projectScheduleTaskRepository.findByScheduleJobId(job.getUpk().getJobId());
+            byScheduleJobIds.forEach(byScheduleJobId -> {
+                byScheduleJobId.setStatus(ScheduledStatus.from(status.name()));
+                if (isFinishedState(status)) {
+                    byScheduleJobId.setScheduleTaskEndTime(LocalDateTime.now());
+                }
+                projectScheduleTaskRepository.save(byScheduleJobId);
+            });
+        } else {
+            projectJobRepository.save(job);
+        }
     }
 
 
@@ -354,10 +402,11 @@ public class JobManager extends AbstractJobManager {
                                 .upk(new ProjectFedTableDO.UPK(projectId, datatableId))
                                 .joins(joins)
                                 .build();
+                        List<DatatableDTO.TableColumnDTO> schema = CollectionUtils.isEmpty(val.getSchema()) ? parse(distData) : val.getSchema();
                         ProjectDatatableDO datatableDO = ProjectDatatableDO.builder()
                                 .upk(new ProjectDatatableDO.UPK(projectId, nodeId, datatableId))
                                 .source(ProjectDatatableDO.ProjectDatatableSource.CREATED)
-                                .tableConfig(DatatableDTO.toTableConfig(val.getSchema()))
+                                .tableConfig(DatatableDTO.toTableConfig(schema))
                                 .build();
                         datatableRepository.save(datatableDO);
                         fedTableRepository.save(fedTableDO);
@@ -397,7 +446,7 @@ public class JobManager extends AbstractJobManager {
                         String taskId = projectTaskDOOptional.get().getUpk().getJobId();
                         String taskOutputId = genTaskOutputId(taskId, inputId);
 
-                        ProjectReadDataDO projectReadDataDO = readDtaRepository.findByProjectIdAndOutputIdLaste(projectId, taskOutputId);
+                        ProjectReadDataDO projectReadDataDO = readDataRepository.findByProjectIdAndOutputIdLaste(projectId, taskOutputId);
                         LOGGER.debug("readDataOptional aleady exist {} ", ObjectUtils.isEmpty(projectReadDataDO));
                         String raw = ObjectUtils.isEmpty(projectReadDataDO) ? null : projectReadDataDO.getRaw();
                         LOGGER.debug("projectReadDataDO.raw is {}", raw);
@@ -440,7 +489,7 @@ public class JobManager extends AbstractJobManager {
                             readDataDO.setContent(gson.toJson(jsonArray));
                         }
 
-                        readDtaRepository.save(readDataDO);
+                        readDataRepository.save(readDataDO);
                         break;
                     default:
                         throw SecretpadException.of(DatatableErrorCode.UNSUPPORTED_DATATABLE_TYPE);
@@ -487,7 +536,10 @@ public class JobManager extends AbstractJobManager {
                             kusciaTaskStatus = mergeKusciaTaskStatus(rawTaskId, taskId, map, kusciaTaskStatus);
                             GraphNodeTaskStatus currentTaskStatus = GraphNodeTaskStatus.formKusciaTaskStatus(kusciaTaskStatus.getState());
                             LOGGER.info("watched jobEvent: kuscia status {} {} {}", taskId, currentTaskStatus, kusciaTaskStatus);
-                            projectJob.transformTaskStatus(taskId, currentTaskStatus, currentTaskStatus == GraphNodeTaskStatus.FAILED ? taskFailedReason(kusciaTaskStatus) : null);
+                            ProjectJobDO.TaskStatusTransformEvent taskStatusTransformEvent = projectJob.transformTaskStatus(taskId, currentTaskStatus, currentTaskStatus == GraphNodeTaskStatus.FAILED ? taskFailedReason(kusciaTaskStatus) : null);
+                            if (scheduleJob) {
+                                applicationEventPublisher.publishEvent(taskStatusTransformEvent);
+                            }
                             task.setStatus(GraphNodeTaskStatus.formKusciaTaskStatus(kusciaTaskStatus.getState()));
                             task.setErrMsg(kusciaTaskStatus.getErrMsg());
                             syncResult(task);
@@ -605,6 +657,10 @@ public class JobManager extends AbstractJobManager {
      */
     private boolean isFinishedState(String state) {
         return "Failed".equals(state) || "Succeeded".equals(state);
+    }
+
+    private boolean isFinishedState(GraphJobStatus state) {
+        return GraphJobStatus.FAILED.equals(state) || GraphJobStatus.SUCCEED.equals(state);
     }
 
     /**
@@ -734,5 +790,47 @@ public class JobManager extends AbstractJobManager {
             }
         }
         return false;
+    }
+
+    public List<DatatableDTO.TableColumnDTO> parse(String distData) {
+        List<DatatableDTO.TableColumnDTO> schema = new ArrayList<>();
+        try {
+            if (StringUtils.isNotEmpty(distData)) {
+                DistData.Builder distDtaBuild = DistData.newBuilder();
+                JsonFormat.TypeRegistry typeRegistry = JsonFormat.TypeRegistry.newBuilder().add(IndividualTable.getDescriptor()).build();
+                JsonFormat.Parser parser = JsonFormat.parser().usingTypeRegistry(typeRegistry);
+                parser.merge(distData, distDtaBuild);
+                DistData distDataInfo = distDtaBuild.build();
+                if ("sf.table.individual".equals(distDataInfo.getType())) {
+                    IndividualTable individualTable = IndividualTable.parseFrom(distDataInfo.getMeta().getValue());
+                    DistData.DataRef dataRef = distDataInfo.getDataRefsList().get(0);
+                    TableSchema tableSchema = individualTable.getSchema();
+                    ProtocolStringList idsList = tableSchema.getIdsList();
+                    ProtocolStringList idTypesList = tableSchema.getIdTypesList();
+                    for (int i = 0; i < idsList.size(); i++) {
+                        schema.add(DatatableDTO.TableColumnDTO.builder().colName(idsList.get(i)).colType(idTypesList.get(i))
+                                .colComment("individual:" + dataRef.getParty())
+                                .build());
+                    }
+                    ProtocolStringList featuresList = tableSchema.getFeaturesList();
+                    ProtocolStringList featureTypesList = tableSchema.getFeatureTypesList();
+                    for (int i = 0; i < featuresList.size(); i++) {
+                        schema.add(DatatableDTO.TableColumnDTO.builder().colName(featuresList.get(i)).colType(featureTypesList.get(i))
+                                .colComment("individual:" + dataRef.getParty())
+                                .build());
+                    }
+                    ProtocolStringList labelsList = tableSchema.getLabelsList();
+                    ProtocolStringList labelTypesList = tableSchema.getLabelTypesList();
+                    for (int i = 0; i < labelsList.size(); i++) {
+                        schema.add(DatatableDTO.TableColumnDTO.builder().colName(labelsList.get(i)).colType(labelTypesList.get(i))
+                                .colComment("individual:" + dataRef.getParty())
+                                .build());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            LOGGER.error("parse dist data error, {}", e.getMessage());
+        }
+        return schema;
     }
 }

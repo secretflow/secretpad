@@ -22,13 +22,13 @@ import org.secretflow.secretpad.common.enums.DataSourceTypeEnum;
 import org.secretflow.secretpad.common.errorcode.DatasourceErrorCode;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
+import org.secretflow.secretpad.manager.integration.datasource.oss.OssClientFactory;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
 import org.secretflow.secretpad.persistence.entity.FeatureTableDO;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.repository.FeatureTableRepository;
 import org.secretflow.secretpad.persistence.repository.NodeRepository;
-import org.secretflow.secretpad.service.factory.OssClientFactory;
 import org.secretflow.secretpad.service.model.datasource.DatasourceDetailRequest;
 import org.secretflow.secretpad.service.model.datasource.DatasourceListRequest;
 import org.secretflow.secretpad.service.model.datasource.DatasourceNodesRequest;
@@ -134,48 +134,29 @@ public class DatasourceControllerTest extends ControllerTest {
                     .content(JsonUtils.toJSONString(listRequest));
         });
     }
-
+    /**
+     * test list mysql datasource
+     * @throws Exception
+     */
     @Test
-    public void detail() throws Exception {
+    public void listMysql() throws Exception {
         assertResponse(() -> {
-            DatasourceDetailRequest datasourceDetailRequest = new DatasourceDetailRequest();
-            datasourceDetailRequest.setDatasourceId("datasourceId");
-            datasourceDetailRequest.setOwnerId("nodeId");
-            datasourceDetailRequest.setType(DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE);
+            DatasourceListRequest listRequest = new DatasourceListRequest();
+            listRequest.setName("name");
+            listRequest.setOwnerId("nodeId");
+            listRequest.setStatus(Constants.STATUS_AVAILABLE);
+            listRequest.setTypes(List.of(DomainDatasourceConstants.DEFAULT_MYSQL_DATASOURCE_TYPE));
+
+            Mockito.when(kusciaGrpcClientAdapter.listDomainDataSource(Mockito.any()))
+                    .thenReturn(Domaindatasource.ListDomainDataSourceResponse.newBuilder()
+                            .setData(Domaindatasource.DomainDataSourceList.newBuilder().addAllDatasourceList(List.of())
+                                    .build()).build());
             Mockito.when(nodeRepository.findByNodeId(Mockito.anyString())).thenReturn(NodeDO.builder().nodeId("nodeId").build());
-
-            Mockito.when(kusciaGrpcClientAdapter.queryDomainDataSource(Mockito.any(), Mockito.eq("nodeId")))
-                    .thenReturn(Domaindatasource.QueryDomainDataSourceResponse.newBuilder()
-                            .setData(Domaindatasource.DomainDataSource.newBuilder()
-                                    .setDatasourceId("datasourceId")
-                                    .setName("name")
-                                    .setType("type")
-                                    .setInfo(Domaindatasource.DataSourceInfo.newBuilder()
-                                            .setOss(Domaindatasource.OssDataSourceInfo.newBuilder()
-                                                    .setAccessKeyId("ak")
-                                                    .setAccessKeySecret("sk")
-                                                    .setEndpoint("endpoint")
-                                                    .setPrefix("prefix")
-                                                    .setBucket("bucket")
-                                                    .build())
-                                            .build())
-                                    .build())
-                            .build());
-
-            Mockito.when(kusciaGrpcClientAdapter.listDomainDataSource(Mockito.any(), Mockito.anyString())).thenReturn(Domaindatasource.ListDomainDataSourceResponse.newBuilder()
-                    .setData(Domaindatasource.DomainDataSourceList.newBuilder().
-                            addAllDatasourceList(Lists.newArrayList(Domaindatasource.DomainDataSource.newBuilder()
-                                    .setDatasourceId("datasourceId")
-                                    .setDomainId("nodeId")
-                                    .setType("oss")
-                                    .setName("oss")
-                                    .build()))
-                            .build())
-                    .build());
-            return MockMvcRequestBuilders.post(getMappingUrl(DataSourceController.class, "detail", DatasourceDetailRequest.class))
-                    .content(JsonUtils.toJSONString(datasourceDetailRequest));
+            return MockMvcRequestBuilders.post(getMappingUrl(DataSourceController.class, "list", DatasourceListRequest.class))
+                    .content(JsonUtils.toJSONString(listRequest));
         });
     }
+
 
 
     @Test

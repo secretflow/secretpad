@@ -24,12 +24,8 @@ import org.secretflow.secretpad.common.errorcode.AuthErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.UUIDUtils;
 import org.secretflow.secretpad.common.util.UserContext;
-import org.secretflow.secretpad.persistence.entity.AccountsDO;
-import org.secretflow.secretpad.persistence.entity.ProjectNodeDO;
-import org.secretflow.secretpad.persistence.entity.TokensDO;
-import org.secretflow.secretpad.persistence.repository.ProjectNodeRepository;
-import org.secretflow.secretpad.persistence.repository.UserAccountsRepository;
-import org.secretflow.secretpad.persistence.repository.UserTokensRepository;
+import org.secretflow.secretpad.persistence.entity.*;
+import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.AuthService;
 import org.secretflow.secretpad.service.EnvService;
 import org.secretflow.secretpad.service.SysResourcesBizService;
@@ -90,6 +86,10 @@ public class AuthServiceImpl implements AuthService {
 
     @Resource
     private CacheManager cacheManager;
+    @Resource
+    private InstRepository instRepository;
+    @Resource
+    private NodeRepository nodeRepository;
 
     @Override
     @Transactional(rollbackFor = Exception.class, noRollbackFor = SecretpadException.class)
@@ -116,6 +116,15 @@ public class AuthServiceImpl implements AuthService {
         }
 
         userContextDTO.setDeployMode(deployMode);
+        InstDO instDO = instRepository.findByInstId(user.getOwnerId());
+        if (Objects.nonNull(instDO)) {
+            userContextDTO.setOwnerName(instDO.getName());
+        } else {
+            NodeDO nodeDO = nodeRepository.findByNodeId(user.getOwnerId());
+            if (Objects.nonNull(nodeDO)) {
+                userContextDTO.setOwnerName(nodeDO.getName());
+            }
+        }
         TokensDO tokensDO = TokensDO.builder().name(user.getName()).token(token).gmtToken(LocalDateTime.now()).sessionData(userContextDTO.toJsonStr()).build();
         userTokensRepository.saveAndFlush(tokensDO);
         UserContext.setBaseUser(userContextDTO);

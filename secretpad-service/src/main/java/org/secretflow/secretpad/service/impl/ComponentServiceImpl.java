@@ -20,11 +20,11 @@ import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.FileUtils;
 import org.secretflow.secretpad.common.util.JsonUtils;
-import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.service.ComponentService;
 import org.secretflow.secretpad.service.configuration.SecretFlowVersionConfig;
 import org.secretflow.secretpad.service.configuration.SecretpadComponentConfig;
 import org.secretflow.secretpad.service.constant.ComponentConstants;
+import org.secretflow.secretpad.service.graph.ComponentTools;
 import org.secretflow.secretpad.service.model.component.ComponentVersion;
 import org.secretflow.secretpad.service.model.graph.CompListVO;
 import org.secretflow.secretpad.service.model.graph.ComponentKey;
@@ -168,17 +168,9 @@ public class ComponentServiceImpl implements ComponentService {
 
     @Override
     public boolean isSecretpadComponent(GraphNodeInfo node) {
-        String domain, name;
-        Pipeline.NodeDef pipelineNodeDef;
-        if (node.getNodeDef() instanceof Pipeline.NodeDef) {
-            pipelineNodeDef = (Pipeline.NodeDef) node.getNodeDef();
-        } else {
-            Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
-            pipelineNodeDef = (Pipeline.NodeDef) ProtoUtils.fromJsonString(JsonUtils.toJSONString(node.getNodeDef()), nodeDefBuilder);
-        }
-        domain = pipelineNodeDef.getDomain();
-        name = pipelineNodeDef.getName();
-        return ComponentConstants.READ_DATA.equals(domain) && ComponentConstants.DATA_TABLE.equals(name);
+        Pipeline.NodeDef pipelineNodeDef = ComponentTools.getNodeDef(node.getNodeDef());
+        String componentId = pipelineNodeDef.getDomain() + ComponentConstants.COMP_ID_DELIMITER + pipelineNodeDef.getName();
+        return ComponentConstants.PAD_COMP.contains(componentId);
     }
 
     @Override

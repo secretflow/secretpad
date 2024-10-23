@@ -31,8 +31,21 @@ message TaskInputConfig {
   repeated string sf_input_partitions_spec = 6;
   repeated string sf_output_ids = 7;
   secretflow.pipeline.TaskConfig tee_task_config = 8;
+  repeated TableAttr table_attrs = 9;
 }
 
 message DatasourceConfig {
   string id = 1;
+}
+
+message TableAttr {
+  string table_id = 1;
+  repeated ColumnAttr column_attrs = 2;
+
+}
+
+message ColumnAttr {
+  string col_name = 1;
+  //id,label,feature
+  string col_type = 2;
 }

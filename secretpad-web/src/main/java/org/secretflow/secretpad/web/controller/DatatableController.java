@@ -52,7 +52,7 @@ public class DatatableController {
     @PostMapping(value = "/create")
     @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     @ApiResource(code = ApiResourceCodeConstants.DATATABLE_CREATE)
-    public SecretPadResponse<OssDatatableVO> createDataTable(@RequestBody @Valid CreateDatatableRequest request) {
+    public SecretPadResponse<CreateDatatableVO> createDataTable(@RequestBody @Valid CreateDatatableRequest request) {
         return SecretPadResponse.success(datatableService.createDataTable(request));
     }
 

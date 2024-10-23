@@ -121,7 +121,7 @@ public class GraphNodeInfo implements Serializable {
      */
     public static List<GraphNodeInfo> fromDOList(List<ProjectGraphNodeDO> graphNodeDOS) {
         if (!CollectionUtils.isEmpty(graphNodeDOS)) {
-            return graphNodeDOS.stream().map(graphNodeDO -> fromDO(graphNodeDO)).collect(Collectors.toList());
+            return graphNodeDOS.stream().map(GraphNodeInfo::fromDO).collect(Collectors.toList());
         }
         return new ArrayList<>();
     }
@@ -131,5 +131,18 @@ public class GraphNodeInfo implements Serializable {
             return nodeInfos.stream().map(nodeInfo -> toDO(projectId, graphId, nodeInfo)).collect(Collectors.toList());
         }
         return new ArrayList<>();
+    }
+
+    public GraphNodeInfo toGraphNodeInfo() {
+        return GraphNodeInfo.builder()
+                .codeName(this.codeName)
+                .graphNodeId(this.graphNodeId)
+                .label(this.label)
+                .x(this.x)
+                .y(this.y)
+                .inputs(this.inputs)
+                .outputs(this.outputs)
+                .nodeDef(this.nodeDef)
+                .build();
     }
 }

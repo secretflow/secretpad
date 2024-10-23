@@ -22,8 +22,10 @@ import org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pPaddingNode
 import org.secretflow.secretpad.persistence.datasync.rest.p2p.P2pDataSyncRestService;
 import org.secretflow.secretpad.persistence.entity.BaseAggregationRoot;
 
+import io.micrometer.core.instrument.MeterRegistry;
 import jakarta.annotation.Resource;
 import lombok.Setter;
+import org.springframework.context.annotation.Lazy;
 
 /**
  * @author yutu
@@ -33,12 +35,17 @@ public abstract class DataSyncRestTemplate {
     @Resource
     @Setter
     protected P2pDataSyncRestService p2pDataSyncRestService;
+
+    @Lazy
     @Resource
     @Setter
     protected DataSyncDataBufferTemplate dataSyncDataBufferTemplate;
     @Resource
     @Setter
     protected P2pPaddingNodeServiceImpl p2pPaddingNodeService;
+    @Resource
+    @Setter
+    protected MeterRegistry meterRegistry;
 
     public abstract EntityChangeListener.DbChangeEvent<BaseAggregationRoot> send(String node) throws InterruptedException;
 

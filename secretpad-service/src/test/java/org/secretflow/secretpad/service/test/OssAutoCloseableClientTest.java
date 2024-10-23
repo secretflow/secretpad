@@ -16,8 +16,9 @@
 
 package org.secretflow.secretpad.service.test;
 
-import org.secretflow.secretpad.service.decorator.awsoss.AwsOssConfig;
-import org.secretflow.secretpad.service.decorator.awsoss.OssAutoCloseableClient;
+
+import org.secretflow.secretpad.manager.integration.datasource.oss.AwsOssConfig;
+import org.secretflow.secretpad.manager.integration.datasource.oss.OssAutoCloseableClient;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;

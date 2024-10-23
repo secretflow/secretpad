@@ -61,6 +61,7 @@ import org.secretflow.secretpad.service.model.message.PartyVoteStatus;
 import org.secretflow.secretpad.service.model.node.NodeSimpleInfo;
 import org.secretflow.secretpad.service.model.project.*;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
+
 import com.google.common.base.Strings;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
@@ -166,6 +167,8 @@ public class ProjectServiceImpl implements ProjectService {
     private String plaformType;
     @Autowired
     private ProjectGraphNodeRepository projectGraphNodeRepository;
+    @Autowired
+    private ProjectScheduleJobRepository projectScheduleJobRepository;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -298,10 +301,10 @@ public class ProjectServiceImpl implements ProjectService {
                 ProjectDatatableDO.ProjectDatatableSource.IMPORTED);
         log.info("getProjectDatatableDtos pdUpks {}", pdUpks);
         List<DatatableDTO.NodeDatatableId> nodeDatatableIds = pdUpks.stream()
-                .map(upk -> DatatableDTO.NodeDatatableId.from(upk.getNodeId(),upk.getDatatableId()))
-               .collect(Collectors.toList());
+                .map(upk -> DatatableDTO.NodeDatatableId.from(upk.getNodeId(), upk.getDatatableId()))
+                .collect(Collectors.toList());
         log.info("getProjectDatatableDtos nodeDatatableIds {}", nodeDatatableIds);
-        return datatableManager.findByIdsFromProjectConfig(nodeDatatableIds, (currentNodeId, extra) -> nodeManager.getTargetNodeId(currentNodeId,projectId));
+        return datatableManager.findByIdsFromProjectConfig(nodeDatatableIds, (currentNodeId, extra) -> nodeManager.getTargetNodeId(currentNodeId, projectId));
     }
 
     @Override
@@ -791,7 +794,13 @@ public class ProjectServiceImpl implements ProjectService {
     private ProjectJobDO openProjectJob(String projectId, String jobId) {
         Optional<ProjectJobDO> jobOpt = projectJobRepository.findById(new ProjectJobDO.UPK(projectId, jobId));
         if (jobOpt.isEmpty()) {
-            throw SecretpadException.of(JobErrorCode.PROJECT_JOB_NOT_EXISTS);
+            Optional<ProjectScheduleJobDO> projectScheduleJobDOOptional = projectScheduleJobRepository.findById(new ProjectScheduleJobDO.UPK(projectId, jobId));
+            if (projectScheduleJobDOOptional.isEmpty()) {
+                throw SecretpadException.of(JobErrorCode.PROJECT_JOB_NOT_EXISTS);
+            } else {
+                jobOpt = Optional.of(ProjectScheduleJobDO.convertToProjectJobDO(projectScheduleJobDOOptional.get()));
+            }
+
         }
         return jobOpt.get();
     }
@@ -815,7 +824,7 @@ public class ProjectServiceImpl implements ProjectService {
      * if input node is not local inst , find a related local node
      */
     private DatatableDTO openDatatable(String nodeId, String datatableId, String projectId) {
-        DatatableDTO.NodeDatatableId query = DatatableDTO.NodeDatatableId.from(nodeManager.getTargetNodeId(nodeId,projectId),datatableId);
+        DatatableDTO.NodeDatatableId query = DatatableDTO.NodeDatatableId.from(nodeManager.getTargetNodeId(nodeId, projectId), datatableId);
         Optional<DatatableDTO> datatableOpt = datatableManager.findById(query);
         if (datatableOpt.isEmpty()) {
             throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);

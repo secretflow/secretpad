@@ -20,15 +20,16 @@ import org.secretflow.secretpad.common.errorcode.DatatableErrorCode;
 import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.JsonUtils;
-import org.secretflow.secretpad.common.util.ProtoUtils;
 import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.model.DatatableDTO;
+import org.secretflow.secretpad.manager.integration.model.OdpsPartitionParam;
 import org.secretflow.secretpad.persistence.entity.ProjectDatatableDO;
 import org.secretflow.secretpad.persistence.entity.ProjectTaskDO;
 import org.secretflow.secretpad.persistence.repository.ProjectDatatableRepository;
 import org.secretflow.secretpad.persistence.repository.ProjectJobTaskRepository;
 import org.secretflow.secretpad.service.ComponentService;
 import org.secretflow.secretpad.service.EnvService;
+import org.secretflow.secretpad.service.constant.ComponentConstants;
 import org.secretflow.secretpad.service.graph.ComponentTools;
 import org.secretflow.secretpad.service.graph.DistDataVO;
 import org.secretflow.secretpad.service.graph.GraphBuilder;
@@ -72,6 +73,7 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
     @Resource
     private EnvService envService;
 
+
     /**
      * Render job inputs, outputs and prune the secretpad component job
      *
@@ -101,21 +103,23 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
         List<String> selectedNodes = jobTasks.stream().map(task -> task.getNode().getGraphNodeId()).toList();
         for (ProjectJob.JobTask task : jobTasks) {
             GraphNodeInfo graphNodeInfo = task.getNode();
-            List<String> newInputs = new ArrayList<>();
-            List<String> inputs = graphNodeInfo.getInputs();
-            List<String> dependencies = new ArrayList<>();
             if (componentService.isSecretpadComponent(graphNodeInfo)) {
+                String datatableId = ComponentTools.getDataTableId(graphNodeInfo);
+                if (StringUtils.isEmpty(datatableId)) {
+                    throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS, graphNodeInfo.getGraphNodeId());
+                }
                 continue;
             }
+            Pipeline.NodeDef.Builder nodeDefBuilder = ComponentTools.coverAttrByCustomAttr(graphNodeInfo).toBuilder();
 
-            Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
-            ProtoUtils.fromObject(graphNodeInfo.getNodeDef(), nodeDefBuilder);
-            nodeDefBuilder = ComponentTools.coverAttrByCustomAttr(nodeDefBuilder.build()).toBuilder();
+            List<String> dependencies = new ArrayList<>();
+            List<String> newInputs = new ArrayList<>();
+            List<String> inputs = graphNodeInfo.getInputs();
+
             if (!CollectionUtils.isEmpty(inputs)) {
                 for (String input : inputs) {
                     GraphNodeInfo dependencyGraphNode = graphBuilder.getNodeByInputId(input);
                     String dependencyGraphNodeId = dependencyGraphNode.getGraphNodeId();
-
                     if (componentService.isSecretpadComponent(dependencyGraphNode)) {
                         // dependency graph node is read data
                         if (!selectedNodes.contains(dependencyGraphNodeId)) {
@@ -126,25 +130,43 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
                             }
                         }
                         String datatableId = ComponentTools.getDataTableId(dependencyGraphNode);
-                        String datatable_partition = ComponentTools.getDataTablePartition(dependencyGraphNode);
-                        GraphContext.set(new HashMap<>(Map.of(datatableId, datatable_partition)));
-                        List<ProjectDatatableDO> datatableDOS = datatableRepository.findByDatableId(projectId, datatableId);
-                        if (CollectionUtils.isEmpty(datatableDOS)) {
-                            throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
-                        }
-                        for (ProjectDatatableDO projectDatatableDO : datatableDOS) {
-                            // domain data grant query , in p2p should be one of project node in local inst
-                            String localNodeId = envService.findLocalNodeId(task);
-                            String nodeId = projectDatatableDO.getUpk().getNodeId();
-                            nodeId = StringUtils.isBlank(localNodeId) ? nodeId : localNodeId;
-                            log.warn("[JobRenderHandler] find datatable, nodeId:{}, datatableId:{}", nodeId, datatableId);
-                            Optional<DatatableDTO> datatableDTOOptional = datatableManager.findById(DatatableDTO.NodeDatatableId.from(nodeId, datatableId));
-                            if (datatableDTOOptional.isEmpty()) {
-                                throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS, "nodeId=" + nodeId, "tableId=" + datatableId);
+                        /* read data  */
+                        if (ComponentConstants.COMP_READ_DATA_DATATABLE_ID.equals(dependencyGraphNode.codeName)) {
+                            List<ProjectDatatableDO> datatableDOS = datatableRepository.findByDatableId(projectId, datatableId);
+                            if (CollectionUtils.isEmpty(datatableDOS)) {
+                                throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS);
                             }
-                            DistData distData = DistDataVO.fromDatatable(projectDatatableDO, datatableDTOOptional.get());
-                            nodeDefBuilder.addInputs(distData);
+                            Optional<DatatableDTO> datatableDTOOptional = Optional.empty();
+                            for (ProjectDatatableDO projectDatatableDO : datatableDOS) {
+                                // domain data grant query , in p2p should be one of project node in local inst
+                                String localNodeId = envService.findLocalNodeId(task);
+                                String nodeId = projectDatatableDO.getUpk().getNodeId();
+                                nodeId = StringUtils.isBlank(localNodeId) ? nodeId : localNodeId;
+                                log.warn("[JobRenderHandler] find datatable, nodeId:{}, datatableId:{}", nodeId, datatableId);
+                                datatableDTOOptional = datatableManager.findById(DatatableDTO.NodeDatatableId.from(nodeId, datatableId));
+                                if (datatableDTOOptional.isEmpty()) {
+                                    throw SecretpadException.of(DatatableErrorCode.DATATABLE_NOT_EXISTS, "nodeId=" + nodeId, "tableId=" + datatableId);
+                                }
+                                DistData distData = DistDataVO.fromDatatable(projectDatatableDO, datatableDTOOptional.get());
+                                nodeDefBuilder.addInputs(distData);
+                            }
+
+                            String datatable_partition = ComponentTools.getDataTablePartition(dependencyGraphNode);
+                            OdpsPartitionParam partition = datatableDTOOptional.get().getPartition();
+                            Set<String> fieldNames = new HashSet<>();
+                            if (org.apache.commons.lang3.ObjectUtils.isNotEmpty(partition)) {
+                                List<OdpsPartitionParam.Field> fields = partition.getFields();
+                                if (!CollectionUtils.isEmpty(fields)) {
+                                    fieldNames = fields.stream().map(OdpsPartitionParam.Field::getName).collect(Collectors.toSet());
+                                }
+                            }
+                            GraphContext.set(new HashMap<>(Map.of(datatableId, GraphContext.PartitionInfo.builder()
+                                    .partitionColumns(fieldNames)
+                                    .tableName(datatableDTOOptional.get().getRelativeUri())
+                                    .readRule(datatable_partition)
+                                    .build())));
                         }
+                        /* common use */
                         if (GraphContext.isTee()) {
                             newInputs.add(GraphContext.getTeeNodeId() + "-" + datatableId);
                         } else {
@@ -235,14 +257,7 @@ public class JobRenderHandler extends AbstractJobHandler<ProjectJob> {
         for (int i = 0; i < tasks.size(); i++) {
             ProjectJob.JobTask task = tasks.get(i);
             GraphNodeInfo graphNodeInfo = task.getNode();
-            Object nodeDef = graphNodeInfo.getNodeDef();
-            Pipeline.NodeDef pipelineNodeDef;
-            if (nodeDef instanceof Pipeline.NodeDef) {
-                pipelineNodeDef = (Pipeline.NodeDef) nodeDef;
-            } else {
-                Pipeline.NodeDef.Builder nodeDefBuilder = Pipeline.NodeDef.newBuilder();
-                pipelineNodeDef = (Pipeline.NodeDef) ProtoUtils.fromObject(nodeDef, nodeDefBuilder);
-            }
+            Pipeline.NodeDef pipelineNodeDef = ComponentTools.getNodeDef(graphNodeInfo.getNodeDef());
             ProjectJob.JobTask process = nodeDefAdapterFactory.process(pipelineNodeDef, graphNodeInfo, task);
             if (!ObjectUtils.isEmpty(process)) {
                 log.info("extendTask tasks :{} ", process);

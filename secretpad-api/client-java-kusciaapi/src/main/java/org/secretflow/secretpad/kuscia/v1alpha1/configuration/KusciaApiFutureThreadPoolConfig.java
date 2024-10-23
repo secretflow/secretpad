@@ -16,15 +16,18 @@
 
 package org.secretflow.secretpad.kuscia.v1alpha1.configuration;
 
+
 import org.secretflow.secretpad.common.dto.UserContextDTO;
 import org.secretflow.secretpad.common.util.UserContext;
 
 import lombok.extern.slf4j.Slf4j;
+import org.slf4j.MDC;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.task.TaskDecorator;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+import java.util.Map;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
@@ -67,25 +70,27 @@ public class KusciaApiFutureThreadPoolConfig {
         executor.setKeepAliveSeconds(keepAliveTime);
         executor.setThreadFactory(Executors.defaultThreadFactory());
         executor.setRejectedExecutionHandler(new ThreadPoolExecutor.AbortPolicy());
-        executor.setTaskDecorator(userContextTaskDecorator());
+        executor.setTaskDecorator(logTaskDecorator());
         executor.initialize();
         return executor;
     }
 
     @Bean
-    public TaskDecorator userContextTaskDecorator() {
+    public TaskDecorator logTaskDecorator() {
         return runnable -> {
             UserContextDTO user = UserContext.getUserOrNotExist();
             if (user == null) {
                 log.info("KusciaApiFutureThreadPoolConfig user is null");
                 return runnable;
             }
+            Map<String, String> map = MDC.getCopyOfContextMap();
             return () -> {
                 try {
                     UserContext.setBaseUser(user);
-
+                    MDC.setContextMap(map);
                     runnable.run();
                 } finally {
+                    MDC.clear();
                     UserContext.remove();
                 }
             };

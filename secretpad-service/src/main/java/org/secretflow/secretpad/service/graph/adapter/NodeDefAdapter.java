@@ -47,7 +47,7 @@ public interface NodeDefAdapter {
             ComponentService.SF_HIDE_COMPONENTS.put(ComponentConstants.IO_READ_DATA, ComponentDef.newBuilder()
                     .setDomain("io")
                     .setName("read_data")
-                    .setVersion("0.0.1").build());
+                    .setVersion("1.0.0").build());
             componentDef = ComponentService.SF_HIDE_COMPONENTS.get(ComponentConstants.IO_READ_DATA);
         }
         return componentDef;
@@ -59,7 +59,7 @@ public interface NodeDefAdapter {
             ComponentService.SF_HIDE_COMPONENTS.put(ComponentConstants.IO_WRITE_DATA, ComponentDef.newBuilder()
                     .setDomain("io")
                     .setName("write_data")
-                    .setVersion("0.0.1").build());
+                    .setVersion("1.0.0").build());
             componentDef = ComponentService.SF_HIDE_COMPONENTS.get(ComponentConstants.IO_WRITE_DATA);
         }
         return componentDef;
@@ -71,7 +71,7 @@ public interface NodeDefAdapter {
             ComponentService.SF_HIDE_COMPONENTS.put(ComponentConstants.IO_IDENTITY, ComponentDef.newBuilder()
                     .setDomain("io")
                     .setName("identity")
-                    .setVersion("0.0.1").build());
+                    .setVersion("1.0.0").build());
             componentDef = ComponentService.SF_HIDE_COMPONENTS.get(ComponentConstants.IO_IDENTITY);
         }
         return componentDef;

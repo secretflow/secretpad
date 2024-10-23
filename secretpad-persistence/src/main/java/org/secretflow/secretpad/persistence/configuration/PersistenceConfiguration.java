@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.persistence.configuration;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.domain.EntityScan;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -40,7 +41,7 @@ import java.sql.Statement;
 public class PersistenceConfiguration {
 
     @Bean
-    public DataSourceInitializer dataSourceInitializer(final DataSource dataSource) {
+    public DataSourceInitializer dataSourceInitializer(@Qualifier("defaultDataSource") DataSource dataSource) {
         log.info("making sure database is WAL mode");
         DataSourceInitializer initializer = new DataSourceInitializer();
         initializer.setDataSource(dataSource);

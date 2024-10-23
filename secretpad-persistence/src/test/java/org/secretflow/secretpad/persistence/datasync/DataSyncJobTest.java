@@ -117,6 +117,10 @@ public class DataSyncJobTest {
          * case "ProjectFeatureTableDO"
          * case "ProjectGraphDomainDatasourceDO"
          * case "ProjectInstDO"
+         *
+         * case "ProjectScheduleDO"
+         * case "ProjectScheduleJobDO"
+         * case "ProjectScheduleTaskDO"
          */
         dataSyncDataBufferTemplate.push(buildProjectDO());
         Mockito.when(p2pDataSyncRestService.sync(Mockito.any(), Mockito.any(), Mockito.any())).thenReturn(error);
@@ -139,6 +143,9 @@ public class DataSyncJobTest {
         list.add("org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO");
         list.add("org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO");
         list.add("org.secretflow.secretpad.persistence.entity.ProjectInstDO");
+        list.add("org.secretflow.secretpad.persistence.entity.ProjectScheduleDO");
+        list.add("org.secretflow.secretpad.persistence.entity.ProjectScheduleJobDO");
+        list.add("org.secretflow.secretpad.persistence.entity.ProjectScheduleTaskDO");
         dataSyncConfig.setSync(list);
         P2pDataSyncProducerTemplate p2pDataSyncProducerTemplate = new P2pDataSyncProducerTemplate(dataSyncConfig, dataSyncDataBufferTemplate, p2pPaddingNodeService);
         p2pDataSyncProducerTemplate.setPlatformType(PlatformTypeEnum.AUTONOMY.name());
@@ -158,8 +165,9 @@ public class DataSyncJobTest {
         p2pDataSyncProducerTemplate.push(buildProjectFeatureTableDO());
         p2pDataSyncProducerTemplate.push(buildProjectGraphDomainDatasourceDO());
         p2pDataSyncProducerTemplate.push(buildProjectInstDO());
-        p2pDataSyncProducerTemplate.push(buildProjectInstDO());
-        p2pDataSyncProducerTemplate.push(buildProjectInstDO());
+        p2pDataSyncProducerTemplate.push(buildProjectScheduleDO());
+        p2pDataSyncProducerTemplate.push(buildProjectScheduleJobDO());
+        p2pDataSyncProducerTemplate.push(buildProjectScheduleTaskDO());
 
         dataSyncRestTemplate.setDataSyncDataBufferTemplate(dataSyncDataBufferTemplate);
         dataSyncRestTemplate.setP2pPaddingNodeService(p2pPaddingNodeService);
@@ -237,6 +245,9 @@ public class DataSyncJobTest {
         list.add("org.secretflow.secretpad.persistence.entity.ProjectFeatureTableDO");
         list.add("org.secretflow.secretpad.persistence.entity.ProjectGraphDomainDatasourceDO");
         list.add("org.secretflow.secretpad.persistence.entity.ProjectInstDO");
+        list.add("org.secretflow.secretpad.persistence.entity.ProjectScheduleDO");
+        list.add("org.secretflow.secretpad.persistence.entity.ProjectScheduleJobDO");
+        list.add("org.secretflow.secretpad.persistence.entity.ProjectScheduleTaskDO");
         dataSyncConfig.setSync(list);
         P2pDataSyncProducerTemplate p2pDataSyncProducerTemplate = new P2pDataSyncProducerTemplate(dataSyncConfig, dataSyncDataBufferTemplate, p2pPaddingNodeService);
         p2pDataSyncProducerTemplate.setPlatformType(PlatformTypeEnum.AUTONOMY.name());
@@ -256,8 +267,10 @@ public class DataSyncJobTest {
         p2pDataSyncProducerTemplate.push(buildProjectFeatureTableDO());
         p2pDataSyncProducerTemplate.push(buildProjectGraphDomainDatasourceDO());
         p2pDataSyncProducerTemplate.push(buildProjectInstDO());
-        p2pDataSyncProducerTemplate.push(buildProjectInstDO());
-        p2pDataSyncProducerTemplate.push(buildProjectInstDO());
+        p2pDataSyncProducerTemplate.push(buildProjectScheduleDO());
+        p2pDataSyncProducerTemplate.push(buildProjectScheduleJobDO());
+        p2pDataSyncProducerTemplate.push(buildProjectScheduleTaskDO());
+
 
         dataSyncRestTemplate.setDataSyncDataBufferTemplate(dataSyncDataBufferTemplate);
         dataSyncRestTemplate.setP2pPaddingNodeService(p2pPaddingNodeService);
@@ -453,6 +466,9 @@ public class DataSyncJobTest {
      * case "ProjectFeatureTableDO"
      * case "ProjectGraphDomainDatasourceDO"
      * case "ProjectInstDO"
+     * ProjectScheduleDO
+     * ProjectScheduleJobDO
+     * ProjectScheduleTaskDO
      */
 
     private EntityChangeListener.DbChangeEvent<BaseAggregationRoot> buildProjectInstDO() {
@@ -463,6 +479,48 @@ public class DataSyncJobTest {
         projectInstDO.setUpk(new ProjectInstDO.UPK("projectId", "instId"));
         event.setSource(projectInstDO);
         event.setDType(ProjectInstDO.class.getTypeName());
+        event.setNodeIds(List.of("alice", "bob", "test"));
+        return event;
+    }
+
+    private EntityChangeListener.DbChangeEvent<BaseAggregationRoot> buildProjectScheduleDO() {
+        EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event = new EntityChangeListener.DbChangeEvent<>();
+        event.setAction(DbChangeAction.CREATE.val);
+        ProjectScheduleDO projectScheduleDO = ProjectScheduleDO.builder().build();
+        projectScheduleDO.setId(1L);
+        projectScheduleDO.setScheduleId("scheduleId");
+        projectScheduleDO.setProjectId("projectId");
+        projectScheduleDO.setCreator("alice");
+        projectScheduleDO.setOwner("alice");
+        event.setSource(projectScheduleDO);
+        event.setDType(ProjectScheduleDO.class.getTypeName());
+        event.setNodeIds(List.of("alice", "bob", "test"));
+        return event;
+    }
+
+    private EntityChangeListener.DbChangeEvent<BaseAggregationRoot> buildProjectScheduleJobDO() {
+        EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event = new EntityChangeListener.DbChangeEvent<>();
+        event.setAction(DbChangeAction.CREATE.val);
+        ProjectScheduleJobDO projectScheduleJobDO = ProjectScheduleJobDO.builder().build();
+        projectScheduleJobDO.setId(1L);
+        projectScheduleJobDO.setUpk(new ProjectScheduleJobDO.UPK("projectId", "jobId"));
+        event.setSource(projectScheduleJobDO);
+        event.setDType(ProjectScheduleJobDO.class.getTypeName());
+        event.setNodeIds(List.of("alice", "bob", "test"));
+        return event;
+    }
+
+    private EntityChangeListener.DbChangeEvent<BaseAggregationRoot> buildProjectScheduleTaskDO() {
+        EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event = new EntityChangeListener.DbChangeEvent<>();
+        event.setAction(DbChangeAction.CREATE.val);
+        ProjectScheduleTaskDO projectScheduleTaskDO = ProjectScheduleTaskDO.builder().build();
+        projectScheduleTaskDO.setId(1L);
+        projectScheduleTaskDO.setScheduleId("scheduleId");
+        projectScheduleTaskDO.setProjectId("projectId");
+        projectScheduleTaskDO.setCreator("alice");
+        projectScheduleTaskDO.setOwner("alice");
+        event.setSource(projectScheduleTaskDO);
+        event.setDType(ProjectScheduleTaskDO.class.getTypeName());
         event.setNodeIds(List.of("alice", "bob", "test"));
         return event;
     }

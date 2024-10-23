@@ -16,12 +16,15 @@
 
 package org.secretflow.secretpad.persistence.model;
 
+import lombok.Getter;
+
 /**
  * Graph job status enum
  *
  * @author yansi
  * @date 2023/5/30
  */
+@Getter
 public enum GraphJobStatus {
 
     /**

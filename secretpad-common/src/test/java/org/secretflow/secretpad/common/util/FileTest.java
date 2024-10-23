@@ -18,12 +18,19 @@ package org.secretflow.secretpad.common.util;
 
 import org.secretflow.secretpad.common.constant.SystemConstants;
 
+import lombok.extern.slf4j.Slf4j;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStreamWriter;
+import java.net.URL;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.Paths;
 
 /**
  * File test
@@ -31,6 +38,7 @@ import java.nio.file.Path;
  * @author yansi
  * @date 2023/5/9
  */
+@Slf4j
 public class FileTest {
     @Test
     public void testLoadFile() throws FileNotFoundException {
@@ -50,5 +58,35 @@ public class FileTest {
         Assertions.assertEquals("test2", FileUtils.readFile2String(SystemConstants.USER_OWNER_ID_FILE));
         FileUtils.delFile(SystemConstants.USER_OWNER_ID_FILE);
         FileUtils.delFile(Path.of(SystemConstants.USER_OWNER_ID_FILE).getParent().toString());
+    }
+
+    @Test
+    public void testRmBom() throws IOException {
+        URL resource = FileTest.class.getClassLoader().getResource("b.txt");
+        String filePath = resource.getPath();
+        writeBOM(filePath, "test");
+        Assertions.assertTrue(isBom(filePath));
+        FileUtils.removeBOMFromFile(filePath);
+        Assertions.assertFalse(isBom(filePath));
+    }
+
+    private boolean isBom(String filename) {
+        Path path = Paths.get(filename);
+        byte[] bom;
+        try {
+            bom = Files.readAllBytes(path);
+        } catch (IOException e) {
+            log.error("read file error", e);
+            return false;
+        }
+        return bom[0] == (byte) 0xEF && bom[1] == (byte) 0xBB && bom[2] == (byte) 0xBF;
+    }
+
+    public static void writeBOM(String filePath, String content) throws IOException {
+        try (FileOutputStream fos = new FileOutputStream(filePath);
+             OutputStreamWriter writer = new OutputStreamWriter(fos, StandardCharsets.UTF_8)) {
+            fos.write(new byte[]{(byte) 0xEF, (byte) 0xBB, (byte) 0xBF});
+            writer.write(content);
+        }
     }
 }

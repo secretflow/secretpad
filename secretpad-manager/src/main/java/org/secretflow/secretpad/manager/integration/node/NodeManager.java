@@ -789,9 +789,13 @@ public class NodeManager extends AbstractNodeManager {
     @Override
     public void initialNode(String nodeId, String instName) {
         String instId;
+        String netAddr = "127.0.0.1:28080";
         if (nodeRepository.existsById(nodeId)) {
             log.info("node {} exists", nodeId);
             NodeDO nodeDO = nodeRepository.findByNodeId(nodeId);
+            if (StringUtils.isNotBlank(nodeDO.getNetAddress())) {
+                netAddr = nodeDO.getNetAddress();
+            }
             if (Objects.nonNull(nodeDO) && StringUtils.isNotBlank(nodeDO.getInstId())) {
                 log.info("instId replace");
                 //new version,reinstall
@@ -803,12 +807,12 @@ public class NodeManager extends AbstractNodeManager {
             nodeRepository.deleteAuthentic(nodeId);
         } else {
             //new version,install a new node,create inst
-            log.info("instId create,instName={}",instName);
+            log.info("instId create,instName={}", instName);
             instId = createInst(instName);
         }
         NodeDO nodeBuild = NodeDO.builder().nodeId(nodeId).instId(instId)
                 .description(nodeId).type(DomainConstants.DomainTypeEnum.primary.name())
-                .mode(1).name(nodeId).netAddress("127.0.0.1:28080").controlNodeId(nodeId)
+                .mode(1).name(nodeId).netAddress(netAddr).controlNodeId(nodeId)
                 .instId(instId).protocol(protocol)
                 .masterNodeId(localNodeId).build();
         nodeRepository.saveAndFlush(nodeBuild);
@@ -872,10 +876,11 @@ public class NodeManager extends AbstractNodeManager {
 
     /**
      * do not query domain data at beginning ,do it at last
+     *
      * @param projectResultDO
      * @return
      */
-    private   NodeResultDTO mergeNodeResult(ProjectResultDO projectResultDO) {
+    private NodeResultDTO mergeNodeResult(ProjectResultDO projectResultDO) {
         Optional<ProjectDO> projectDO = projectRepository.findById(projectResultDO.getUpk().getProjectId());
         if (projectDO.isEmpty()) {
             // the results are displayed normally even after the item has been deleted
@@ -917,13 +922,13 @@ public class NodeManager extends AbstractNodeManager {
     }
 
 
-        /**
-         * Find NodeResultDTO by domainData and projectResultDO
-         *
-         * @param domainData
-         * @param projectResultDO
-         * @return NodeResultDTO
-         */
+    /**
+     * Find NodeResultDTO by domainData and projectResultDO
+     *
+     * @param domainData
+     * @param projectResultDO
+     * @return NodeResultDTO
+     */
     private NodeResultDTO findNodeResult(Domaindata.DomainData domainData, ProjectResultDO projectResultDO) {
 
         DatasourceDTO.NodeDatasourceId from = DatasourceDTO.NodeDatasourceId.from(domainData.getDomainId(), domainData.getDatasourceId());
@@ -1026,7 +1031,7 @@ public class NodeManager extends AbstractNodeManager {
      * vo:relationship
      * match one
      */
-    private static String  searchTargetNode(String nodeId, ParticipantNodeInstVO bo) {
+    private static String searchTargetNode(String nodeId, ParticipantNodeInstVO bo) {
         /** search from initiator*/
         if (StringUtils.equals(nodeId, bo.getInitiatorNodeId())) {
             return bo.getInvitees().get(0).getInviteeId();
@@ -1041,7 +1046,9 @@ public class NodeManager extends AbstractNodeManager {
         return null;
     }
 
-    /** match all */
+    /**
+     * match all
+     */
     private static List<String> searchAllTargetNode(String nodeId, ParticipantNodeInstVO bo) {
         /** search from initiator*/
         if (StringUtils.equals(nodeId, bo.getInitiatorNodeId())) {

@@ -16,7 +16,7 @@
 
 package org.secretflow.secretpad.service.model.datasource;
 
-import org.secretflow.secretpad.manager.integration.odps.OdpsConfig;
+import org.secretflow.secretpad.manager.integration.datasource.odps.OdpsConfig;
 import org.secretflow.secretpad.service.constant.Constants;
 
 import jakarta.validation.constraints.NotBlank;

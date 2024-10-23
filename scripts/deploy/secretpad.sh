@@ -148,6 +148,7 @@ function check_user_passwd() {
 }
 
 function instName_settings() {
+  export LANG=C.UTF-8
 	if ! is_p2p; then
 		return 0
 	fi
@@ -324,6 +325,9 @@ function start() {
 		# copy alice/bob lite certs
 		copy_kuscia_api_lite_client_certs alice "${volume_path}"
 		copy_kuscia_api_lite_client_certs bob "${volume_path}"
+		if need_tee; then
+			copy_kuscia_api_lite_client_certs tee "${volume_path}"
+		fi
 		# render secretpad config
 		log "render secretpad config ..."
 		render_secretpad_config "${volume_path}" ${secretpad_key_pass}
@@ -355,6 +359,7 @@ function start() {
 			-e KUSCIA_API_ADDRESS="${KUSCIA_API_ADDRESS}" \
 			-e KUSCIA_API_LITE_ALICE_ADDRESS="${KUSCIA_API_LITE_ALICE_ADDRESS}" \
 			-e KUSCIA_API_LITE_BOB_ADDRESS="${KUSCIA_API_LITE_BOB_ADDRESS}" \
+			-e KUSCIA_API_LITE_TEE_ADDRESS="${KUSCIA_API_LITE_TEE_ADDRESS}" \
 			-e SECRETPAD_USER_NAME="${SECRETPAD_USER_NAME}" \
 			-e SECRETPAD_PASSWORD="${SECRETPAD_PASSWORD}" \
 			-e INST_NAME="${INST_NAME}" \

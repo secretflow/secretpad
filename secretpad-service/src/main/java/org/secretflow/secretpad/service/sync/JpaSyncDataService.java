@@ -95,6 +95,10 @@ public class JpaSyncDataService {
     private final ProjectFeatureTableRepository projectFeatureTableRepository;
     private final FeatureTableRepository featureTableRepository;
     private final ProjectGraphDomainDatasourceRepository projectGraphDomainDatasourceRepository;
+
+    private final ProjectScheduleRepository projectScheduleRepository;
+    private final ProjectScheduleJobRepository projectScheduleJobRepository;
+    private final ProjectScheduleTaskRepository projectScheduleTaskRepository;
     @PersistenceContext
     private final EntityManager entityManager;
 
@@ -132,6 +136,9 @@ public class JpaSyncDataService {
         doAndRepository.put(ProjectFeatureTableDO.class.getTypeName(), projectFeatureTableRepository);
         doAndRepository.put(FeatureTableDO.class.getTypeName(), featureTableRepository);
         doAndRepository.put(ProjectGraphDomainDatasourceDO.class.getTypeName(), projectGraphDomainDatasourceRepository);
+        doAndRepository.put(ProjectScheduleDO.class.getTypeName(), projectScheduleRepository);
+        doAndRepository.put(ProjectScheduleJobDO.class.getTypeName(), projectScheduleJobRepository);
+        doAndRepository.put(ProjectScheduleTaskDO.class.getTypeName(), projectScheduleTaskRepository);
     }
 
     @SuppressWarnings(value = {"rawtypes"})

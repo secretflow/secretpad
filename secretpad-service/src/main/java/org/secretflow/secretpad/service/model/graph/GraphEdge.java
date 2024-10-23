@@ -82,7 +82,7 @@ public class GraphEdge implements Serializable {
      */
     public static List<GraphEdge> fromDOList(List<GraphEdgeDO> edgeDOList) {
         if (!CollectionUtils.isEmpty(edgeDOList)) {
-            return edgeDOList.stream().map(edgeDO -> GraphEdge.fromDO(edgeDO)).collect(Collectors.toList());
+            return edgeDOList.stream().map(GraphEdge::fromDO).collect(Collectors.toList());
         }
         return new ArrayList<>();
     }
@@ -110,7 +110,7 @@ public class GraphEdge implements Serializable {
      */
     public static List<GraphEdgeDO> toDOList(List<GraphEdge> edges) {
         if (!CollectionUtils.isEmpty(edges)) {
-            return edges.stream().map(edge -> GraphEdge.toDO(edge)).collect(Collectors.toList());
+            return edges.stream().map(GraphEdge::toDO).collect(Collectors.toList());
         }
         return new ArrayList<>();
     }

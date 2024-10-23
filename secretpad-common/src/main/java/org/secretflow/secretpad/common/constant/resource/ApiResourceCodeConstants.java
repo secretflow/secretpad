@@ -115,6 +115,11 @@ public class ApiResourceCodeConstants {
     public static final String SERV_CREATE = "SERV_CREATE";
     public static final String SERV_DELETE = "SERV_DELETE";
     public static final String COMPONENT_VERSION_LIST = "COMPONENT_VERSION_LIST";
+
+    public static final String SCHEDULED_ID = "SCHEDULED_ID";
+    public static final String SCHEDULED_CREATE = "SCHEDULED_CREATE";
+    public static final String SCHEDULED_PAGE = "SCHEDULED_PAGE";
+    public static final String SCHEDULED_OFFLINE = "SCHEDULED_OFFLINE";
 }
 
 

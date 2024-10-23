@@ -24,6 +24,7 @@ import org.secretflow.secretpad.service.factory.JsonProtobufSourceFactory;
 import org.secretflow.secretpad.service.graph.JobChain;
 import org.secretflow.secretpad.service.graph.chain.AbstractJobHandler;
 import org.secretflow.secretpad.service.handler.datasource.DatasourceHandler;
+import org.secretflow.secretpad.service.handler.datatable.DatatableHandler;
 import org.secretflow.secretpad.service.handler.vote.VoteTypeHandler;
 
 import com.secretflow.spec.v1.CompListDef;
@@ -100,5 +101,17 @@ public class ServiceConfiguration {
         });
         return datasourceHandlerMap;
     }
+    @Bean
+    public Map<DataSourceTypeEnum, DatatableHandler> kusciaControlDatatableHandlerMap(List<DatatableHandler> datatableHandlers) {
+        Map<DataSourceTypeEnum, DatatableHandler> datatableHandlerMap = new HashMap<>();
+        datatableHandlers.forEach(handler -> {
+            List<DataSourceTypeEnum> supports = handler.supports();
+            if (!CollectionUtils.isEmpty(supports)) {
+                supports.forEach(enm -> datatableHandlerMap.put(enm, handler));
+            }
+        });
+        return datatableHandlerMap;
+    }
+
 
 }

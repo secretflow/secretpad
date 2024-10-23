@@ -101,8 +101,14 @@ message DistData {
     // The owner party.
     string party = 2;
 
-    // The storage format, i.e. csv.
+    // The storage format, support:
+    // - csv   represent a comma-separated value format file
+    // - orc   represent a apache orc format file
     string format = 3;
+
+    // A list of strings that represent NULL value.
+    // Only take effect when format is csv
+    repeated string null_strs = 4;
   }
 
   // Remote data references.

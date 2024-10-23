@@ -60,7 +60,7 @@ public class OdpsPartitionRequest implements Serializable {
                     fields.stream().map(field -> Common.DataColumn.newBuilder()
                             .setName(field.getName())
                             .setType(field.getType())
-                            .setComment(field.getComment())
+                            .setComment(StringUtils.isEmpty(field.getComment()) ? "" : field.getComment())
                             .build()).toList());
         }
         return builder.build();

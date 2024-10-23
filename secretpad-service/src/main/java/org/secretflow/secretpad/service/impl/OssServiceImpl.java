@@ -18,9 +18,9 @@ package org.secretflow.secretpad.service.impl;
 
 import org.secretflow.secretpad.common.errorcode.DatasourceErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
+import org.secretflow.secretpad.manager.integration.datasource.oss.AwsOssConfig;
+import org.secretflow.secretpad.manager.integration.datasource.oss.OssClientFactory;
 import org.secretflow.secretpad.service.OssService;
-import org.secretflow.secretpad.service.decorator.awsoss.AwsOssConfig;
-import org.secretflow.secretpad.service.factory.OssClientFactory;
 
 import com.amazonaws.services.s3.model.AmazonS3Exception;
 import lombok.AllArgsConstructor;

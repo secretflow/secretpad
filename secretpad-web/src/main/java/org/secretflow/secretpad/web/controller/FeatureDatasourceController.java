@@ -44,6 +44,7 @@ public class FeatureDatasourceController {
     @Resource
     private FeatureTableService featureTableService;
 
+    @Deprecated(forRemoval = true)
     @PostMapping(value = "/create", consumes = "application/json")
     @DataResource(field = "ownerId", resourceType = DataResourceTypeEnum.NODE_ID)
     public SecretPadResponse createFeatureDatasource(@RequestBody @Valid CreateFeatureDatasourceRequest createFeatureDatasourceRequest) {

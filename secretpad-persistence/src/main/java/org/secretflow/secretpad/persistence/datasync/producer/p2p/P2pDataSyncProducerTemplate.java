@@ -66,6 +66,9 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
             case "ProjectFeatureTableDO" -> filterProjectFeatureTableDO(event);
             case "ProjectGraphDomainDatasourceDO" -> filterProjectGraphDomainDatasourceDO(event);
             case "ProjectInstDO" -> filterProjectInstDO(event);
+            case "ProjectScheduleDO" -> filterProjectScheduleDO(event);
+            case "ProjectScheduleJobDO" -> filterProjectScheduleJobDO(event);
+            case "ProjectScheduleTaskDO" -> filterProjectScheduleTaskDO(event);
             default -> false;
         };
     }
@@ -223,6 +226,24 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
             return true;
         }
         return false;
+    }
+
+    private boolean filterProjectScheduleTaskDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
+        ProjectScheduleTaskDO source = (ProjectScheduleTaskDO) event.getSource();
+        String owner = source.getOwner();
+        return !StringUtils.equals(owner, instId);
+    }
+
+    private boolean filterProjectScheduleJobDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
+        ProjectScheduleJobDO source = (ProjectScheduleJobDO) event.getSource();
+        String owner = source.getOwner();
+        return !StringUtils.equals(owner, instId);
+    }
+
+    private boolean filterProjectScheduleDO(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
+        ProjectScheduleDO source = (ProjectScheduleDO) event.getSource();
+        String owner = source.getOwner();
+        return !StringUtils.equals(owner, instId);
     }
 
 

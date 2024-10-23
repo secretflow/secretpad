@@ -20,7 +20,7 @@ package org.secretflow.secretpad.service.graph.adapter.impl;
 
 import org.secretflow.secretpad.common.constant.ComponentConstants;
 import org.secretflow.secretpad.persistence.entity.ProjectReadDataDO;
-import org.secretflow.secretpad.persistence.repository.ProjectReadDtaRepository;
+import org.secretflow.secretpad.persistence.repository.ProjectReadDataRepository;
 import org.secretflow.secretpad.service.graph.adapter.NodeDefAdapter;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
 import org.secretflow.secretpad.service.model.graph.ProjectJob;
@@ -33,15 +33,10 @@ import com.google.protobuf.Value;
 import com.secretflow.spec.v1.ComponentDef;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.commons.compress.utils.IOUtils;
 import org.secretflow.proto.pipeline.Pipeline;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -55,31 +50,7 @@ import java.util.List;
 @Service(ComponentConstants.MODEL_PARAM_MODIFICATIONS)
 public class ModelParamModificationsAdapter implements NodeDefAdapter {
     @Resource
-    private ProjectReadDtaRepository readDtaRepository;
-
-    public static Object deepCopy(Object object) {
-        ByteArrayOutputStream baos = null;
-        ObjectOutputStream oos = null;
-        ByteArrayInputStream bais = null;
-        ObjectInputStream ois = null;
-        try {
-            baos = new ByteArrayOutputStream();
-            oos = new ObjectOutputStream(baos);
-            oos.writeObject(object);
-            oos.close();
-            bais = new ByteArrayInputStream(baos.toByteArray());
-            ois = new ObjectInputStream(bais);
-            return ois.readObject();
-        } catch (Exception e) {
-            log.error("deepCopy error", e);
-            return null;
-        } finally {
-            IOUtils.closeQuietly(baos);
-            IOUtils.closeQuietly(oos);
-            IOUtils.closeQuietly(bais);
-            IOUtils.closeQuietly(ois);
-        }
-    }
+    private ProjectReadDataRepository readDataRepository;
 
     @Override
     public ProjectJob.JobTask adapter(Pipeline.NodeDef nodeDef, GraphNodeInfo graphNodeInfo, ProjectJob.JobTask task) {
@@ -106,7 +77,7 @@ public class ModelParamModificationsAdapter implements NodeDefAdapter {
                 .setName(componentDef.getName())
                 .setVersion(componentDef.getVersion())
                 .build();
-        GraphNodeInfo readGraphNodeInfo = (GraphNodeInfo) deepCopy(graphNodeInfo);
+        GraphNodeInfo readGraphNodeInfo = graphNodeInfo.toGraphNodeInfo();
         readGraphNodeInfo.setNodeDef(build);
         readGraphNodeInfo.setInputs(List.of(outputs.get(0)));
         readGraphNodeInfo.setOutputs(List.of(outputs.get(1)));
@@ -133,7 +104,7 @@ public class ModelParamModificationsAdapter implements NodeDefAdapter {
                         Value.newBuilder().setStringValue("sf.model.ss_glm").build()
                 ).build())
                 .build();
-        GraphNodeInfo writeGraphNodeInfo = (GraphNodeInfo) deepCopy(graphNodeInfo);
+        GraphNodeInfo writeGraphNodeInfo = graphNodeInfo.toGraphNodeInfo();
         Struct struct = build.getAttrsList().get(0);
         String stringValue = struct.getFieldsOrDefault(ComponentConstants.ATTRIBUTE_S, Value.newBuilder().setStringValue("").build()).getStringValue();
         Gson gson = new Gson();
@@ -148,10 +119,10 @@ public class ModelParamModificationsAdapter implements NodeDefAdapter {
             String asString = jsonElement.toString();
             struct = struct.toBuilder().putFields(ComponentConstants.ATTRIBUTE_S, Value.newBuilder().setStringValue(asString).build()).build();
             build = build.toBuilder().setAttrs(0, struct).build();
-            log.debug("------- modelHash build {} ", build);
+            log.debug("modelHash build {} ", build);
         }
         String new_outPut_id = outputs.get(0);
-        List<ProjectReadDataDO> byHash = readDtaRepository.findByHashAndGrapNodeId(modelHash, graphNodeId);
+        List<ProjectReadDataDO> byHash = readDataRepository.findByHashAndGrapNodeId(modelHash, graphNodeId);
         if (!CollectionUtils.isEmpty(byHash) && !byHash.isEmpty()) {
             new_outPut_id = byHash.get(0).getUpk().getReportId();
             new_outPut_id = new_outPut_id.substring(0, new_outPut_id.lastIndexOf('-'));
@@ -162,7 +133,7 @@ public class ModelParamModificationsAdapter implements NodeDefAdapter {
     }
 
     private ProjectJob.JobTask getJobTask(Pipeline.NodeDef nodeDef, GraphNodeInfo graphNodeInfo, ProjectJob.JobTask task, List<String> outputs) {
-        GraphNodeInfo cpGraphNodeInfo = (GraphNodeInfo) deepCopy(graphNodeInfo);
+        GraphNodeInfo cpGraphNodeInfo = graphNodeInfo.toGraphNodeInfo();
         cpGraphNodeInfo.setNodeDef(nodeDef);
         // outputs must contain one element, and it's the same as input
         cpGraphNodeInfo.setOutputs(List.of(outputs.get(0)));

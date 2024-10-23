@@ -39,10 +39,11 @@ public class DateTimes {
 
     private static final DateTimeFormatter LOCAL_DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
+    private static final DateTimeFormatter LOCAL_DATE_TIME_FORMATTER_NO_DELIMITER = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
+
     /**
      * Convert localDateTime to string with GMT+8
      *
-     * @param ldt
      * @return String
      */
     public static String toRfc3339(LocalDateTime ldt) {
@@ -50,6 +51,15 @@ public class DateTimes {
             return null;
         }
         return RFC_3339_FORMATTER.format(ldt);
+    }
+
+    /**
+     * Return string from now localDateTime with GMT+8
+     *
+     * @return String yyyyMMddHHmmss
+     */
+    public static String localTimeNoDelimiter() {
+        return LOCAL_DATE_TIME_FORMATTER_NO_DELIMITER.format(LocalDateTime.now());
     }
 
     /**
@@ -122,5 +132,17 @@ public class DateTimes {
      */
     public static String rfc3339ToGmt8(String rfc3339) {
         return rfc3339.replace("Z", "+08:00");
+    }
+
+    public static LocalDateTime toLocalDateTime(String time) {
+        return LocalDateTime.parse(time, LOCAL_DATE_TIME_FORMATTER);
+    }
+
+    public static String toLocalDateTimeString(LocalDateTime localDateTime) {
+        if (localDateTime == null) {
+            return null;
+        }
+        localDateTime = localDateTime.minusHours(8);
+        return LOCAL_DATE_TIME_FORMATTER.format(localDateTime);
     }
 }
