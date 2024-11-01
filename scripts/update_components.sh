@@ -15,7 +15,7 @@
 # limitations under the License.
 #
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-SF_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.10.0b0
+SF_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.10.0b1
 
 PULL_FLAG=$2
 if [[ $1 != "" ]]; then
