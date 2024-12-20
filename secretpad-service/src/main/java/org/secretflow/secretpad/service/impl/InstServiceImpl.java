@@ -17,9 +17,11 @@
 package org.secretflow.secretpad.service.impl;
 
 import org.secretflow.secretpad.common.constant.InstConstants;
+import org.secretflow.secretpad.common.enums.NodeInstTokenStateEnum;
 import org.secretflow.secretpad.common.errorcode.InstErrorCode;
 import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
+import org.secretflow.secretpad.common.util.CertUtils;
 import org.secretflow.secretpad.common.util.FileUtils;
 import org.secretflow.secretpad.common.util.TokenUtil;
 import org.secretflow.secretpad.common.util.UserContext;
@@ -158,11 +160,21 @@ public class InstServiceImpl implements InstService {
             LOGGER.error("node not find by nodeId={}", request.getNodeId());
             throw SecretpadException.of(NodeErrorCode.NODE_NOT_EXIST_ERROR);
         }
+        String instToken = nodeDO.getInstToken();
+        try {
+            if (StringUtils.isNotBlank(instToken)) {
+                instToken = FileUtils.readFile2String(nodeDO.getInstToken());
+            }
+        } catch (Exception e) {
+            LOGGER.error("read instToken error, nodeId={}", request.getNodeId(), e);
+            throw SecretpadException.of(InstErrorCode.INST_TOKEN_MISMATCH, e, "token is missing");
+        }
 
         return InstTokenVO.builder().
                 nodeId(nodeDO.getNodeId()).
                 nodeName(nodeDO.getName()).
-                instToken(nodeDO.getInstToken()).
+                instToken(instToken).
+                instTokenState(nodeDO.getInstTokenState()).
                 build();
     }
 
@@ -172,7 +184,12 @@ public class InstServiceImpl implements InstService {
         String instId = UserContext.getUser().getOwnerId();
         String nodeId = request.getNodeId();
         String newToken = nodeManager.generateInstToken(instId, nodeId);
-
+        try {
+            newToken = FileUtils.readFile2String(newToken);
+        } catch (IOException e) {
+            LOGGER.error("read instToken error, nodeId={}", request.getNodeId(), e);
+            throw SecretpadException.of(InstErrorCode.INST_TOKEN_MISMATCH, e, "token is missing");
+        }
         return InstTokenVO.builder().
                 nodeId(nodeId).
                 instToken(newToken).
@@ -243,9 +260,18 @@ public class InstServiceImpl implements InstService {
             LOGGER.error("node not exist , queryNodeId={}", nodeId);
             throw SecretpadException.of(InstErrorCode.INST_NOT_EXISTS, "inst is invalid");
         }
-
+        if (NodeInstTokenStateEnum.USED.equals(node.getInstTokenState())) {
+            LOGGER.error("node inst token is used , nodeId={}", nodeId);
+            throw SecretpadException.of(InstErrorCode.INST_TOKEN_USED, "instToken is used");
+        }
         /* match db token **/
-        if (!StringUtils.equals(instToken, node.getInstToken())) {
+        String instTokenCheck = node.getInstToken();
+        try {
+            instTokenCheck = FileUtils.readFile2String(instTokenCheck);
+        } catch (IOException e) {
+            LOGGER.warn("IOException: readFile2String token", e);
+        }
+        if (!StringUtils.equals(instToken, instTokenCheck)) {
             LOGGER.error("token mismatch value in db , inputToken={} dbToken={}", instToken, node.getInstToken());
             throw SecretpadException.of(InstErrorCode.INST_TOKEN_MISMATCH, "token is expired");
         }
@@ -260,13 +286,25 @@ public class InstServiceImpl implements InstService {
         Boolean secureUrl = HttpUtils.isSecureUrl(request.getHost());
         if (!secureUrl) {
             LOGGER.warn("host url is insecure , host={}", request.getHost());
-            //throw SecretpadException.of(InstErrorCode.INST_REGISTER_CHECK_FAILED,"host is invalid");
         }
 
         String baseDirPath = getStoreDir(instId, nodeId);
         String certFilePath = writeFileToLocal(request.getCertFile(), baseDirPath, "client.crt");
         String keyFilePath = writeFileToLocal(request.getKeyFile(), baseDirPath, "client.pem");
         String tokenFilePath = writeFileToLocal(request.getTokenFile(), baseDirPath, "token");
+
+        try {
+            if (StringUtils.isNotBlank(FileUtils.readFile2String(certFilePath))) {
+                CertUtils.loadX509Cert(certFilePath);
+            }
+            if (StringUtils.isNotBlank(FileUtils.readFile2String(keyFilePath))) {
+                CertUtils.loadPrivateKey(keyFilePath);
+            }
+        } catch (Exception e) {
+            LOGGER.error("load x509 cert failed, certFilePath={} keyFilePath={}", certFilePath, keyFilePath, e);
+            throw SecretpadException.of(InstErrorCode.INST_REGISTER_CHECK_FAILED, e, "cert is invalid");
+        }
+
 
         /* all check pass*/
         KusciaGrpcConfig kConfig = KusciaGrpcConfig.builder().domainId(nodeId).
@@ -289,6 +327,7 @@ public class InstServiceImpl implements InstService {
         String address = kConfig.getHost() + ":" + request.getTransPort();
         node.setNetAddress(address);
         node.setProtocol(kConfig.getProtocol().name());
+        node.setInstTokenState(NodeInstTokenStateEnum.USED);
         nodeRepository.saveAndFlush(node);
 
     }

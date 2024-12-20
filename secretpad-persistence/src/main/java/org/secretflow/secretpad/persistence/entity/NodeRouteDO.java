@@ -42,6 +42,7 @@ import java.util.List;
 @Getter
 @Setter
 @Where(clause = "is_deleted = 0")
+@EqualsAndHashCode(callSuper = true)
 public class NodeRouteDO extends BaseAggregationRoot<NodeRouteDO> {
 
     @Column(name = "src_node_id", nullable = false, length = 64)

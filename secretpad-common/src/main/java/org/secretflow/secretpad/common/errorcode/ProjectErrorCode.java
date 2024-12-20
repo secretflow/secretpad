@@ -65,6 +65,8 @@ public enum ProjectErrorCode implements ErrorCode {
 
     PROJECT_FEATURE_TABLE_NOT_EXISTS(202011516),
     NON_OUR_CREATION_CAN_VIEWED(202011517),
+
+    PROJECT_CREATE_FAILED(202011518),
     ;
 
 

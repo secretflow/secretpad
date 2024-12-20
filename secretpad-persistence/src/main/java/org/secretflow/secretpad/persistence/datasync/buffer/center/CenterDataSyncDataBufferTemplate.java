@@ -54,7 +54,7 @@ public class CenterDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate
      * @param nodeId
      */
     @Override
-    public EntityChangeListener.DbChangeEvent<BaseAggregationRoot> pool(String nodeId) throws InterruptedException {
+    public EntityChangeListener.DbChangeEvent<BaseAggregationRoot> poll(String nodeId) throws InterruptedException {
         return QUEUE.poll();
     }
 

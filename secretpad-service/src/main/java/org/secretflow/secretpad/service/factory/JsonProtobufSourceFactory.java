@@ -57,6 +57,7 @@ public class JsonProtobufSourceFactory {
         List<CompListDef> resp = new ArrayList<>();
         List<ComponentDef> secretpad = new ArrayList<>();
         List<ComponentDef> secretpad_tee = new ArrayList<>();
+        List<ComponentDef> scql = new ArrayList<>();
         for (String location : locations) {
             File dir = ResourceUtils.getFile(location);
             File[] files = dir.listFiles();
@@ -72,19 +73,25 @@ public class JsonProtobufSourceFactory {
                 if (compListDef.getName().equals(ComponentConstants.SECRETPAD_TEE)) {
                     secretpad_tee = compListDef.getCompsList();
                 }
+                if (compListDef.getName().equals(ComponentConstants.SCQL)) {
+                    scql = compListDef.getCompsList();
+                }
             }
         }
         for (CompListDef item : items) {
             String name = item.getName();
             switch (name) {
-                case ComponentConstants.SECRETPAD, ComponentConstants.SECRETPAD_TEE:
+                case ComponentConstants.SECRETPAD, ComponentConstants.SECRETPAD_TEE, ComponentConstants.SCQL:
                     resp.add(item);
                     break;
                 case ComponentConstants.TRUSTEDFLOW:
                     resp.add(item.toBuilder().addAllComps(secretpad_tee).build());
                     break;
                 case ComponentConstants.SECRETFLOW:
-                    resp.add(item.toBuilder().addAllComps(secretpad).build());
+                    resp.add(item.toBuilder()
+                            .addAllComps(secretpad)
+                            .addAllComps(scql)
+                            .build());
                     break;
                 default:
                     throw new IllegalArgumentException("Unknown component name: " + name);

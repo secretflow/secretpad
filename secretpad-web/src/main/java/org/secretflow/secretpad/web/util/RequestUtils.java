@@ -79,7 +79,7 @@ public class RequestUtils {
         Assert.notNull(request, "request is null");
         Optional<String> first = HEADERS.stream().filter(header -> isValidIP(request, header)).findFirst();
         if (first.isPresent()) {
-            ipAddresses = first.get();
+            ipAddresses = request.getHeader(first.get());
             if (!ipAddresses.isEmpty()) {
                 ipAddresses = ipAddresses.split(",")[0];
                 return ipAddresses;

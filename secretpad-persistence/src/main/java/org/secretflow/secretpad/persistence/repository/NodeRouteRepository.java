@@ -20,9 +20,11 @@ import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
 import java.util.List;
@@ -78,6 +80,8 @@ public interface NodeRouteRepository extends BaseRepository<NodeRouteDO, String>
      *
      * @param srcNodeId source node id
      */
+    @Modifying
+    @Transactional
     void deleteBySrcNodeId(@Param("srcNodeId") String srcNodeId);
 
     /**
@@ -85,6 +89,8 @@ public interface NodeRouteRepository extends BaseRepository<NodeRouteDO, String>
      *
      * @param dstNodeId destination node id
      */
+    @Modifying
+    @Transactional
     void deleteByDstNodeId(@Param("dstNodeId") String dstNodeId);
 
     @Query(value = "from NodeRouteDO a join NodeDO b on a.srcNodeId=b.nodeId " +

@@ -60,42 +60,42 @@ public interface ScheduledService {
      */
     SecretPadPageResponse<PageScheduledVO> queryPage(PageScheduledRequest request, Pageable pageable);
 
-    /*
+    /**
      * offline
      */
     void offline(ScheduledOfflineRequest request);
 
-    /*
+    /**
      * del
      */
     void del(ScheduledDelRequest request);
 
-    /*
+    /**
      * info
      */
     ProjectJobVO info(ScheduledInfoRequest request);
 
-    /*
+    /**
      * task page
      */
     SecretPadPageResponse<TaskPageScheduledVO> taskPage(TaskPageScheduledRequest request, Pageable of);
 
-    /*
+    /**
      * task stop
      */
     void taskStop(TaskStopScheduledRequest request);
 
-    /*
+    /**
      * task rerun
      */
     void taskRerun(TaskReRunScheduledRequest request);
 
-    /*
+    /**
      * task info
      */
     ProjectJobVO taskInfo(@Valid TaskInfoScheduledRequest request);
 
-    /*
+    /**
      * once success
      */
     boolean onceSuccess(@Valid ScheduledGraphOnceSuccessRequest scheduledGraphCreateRequest);

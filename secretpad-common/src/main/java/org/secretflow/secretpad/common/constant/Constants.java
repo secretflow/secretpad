@@ -41,4 +41,6 @@ public class Constants {
     public static final String COL_TYPE_BIN = "binned";
     public static final String COL_TYPE_FEATURE = "feature";
 
+    public static final int JOB_ID_LENGTH = 4;
+
 }

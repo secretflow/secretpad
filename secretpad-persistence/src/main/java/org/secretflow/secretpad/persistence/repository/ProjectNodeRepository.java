@@ -90,8 +90,8 @@ public interface ProjectNodeRepository extends BaseRepository<ProjectNodeDO, Pro
      * @param projectId target projectId
      */
     @Modifying
-    @Query(value = "update ProjectNodeDO pn set pn.isDeleted = true where pn.upk.projectId=:projectId")
-    void deleteByProjectId(@Param("projectId") String projectId);
+    @Transactional
+    void deleteByUpkProjectId(@Param("projectId") String projectId);
 
     @Query(nativeQuery = true, value = "delete from project_node")
     @Modifying

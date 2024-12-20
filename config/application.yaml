@@ -193,17 +193,24 @@ secretpad:
     tee-dm-image: ${TEE_DM_IMAGE:0.1.0b0}
     capsule-manager-sim-image: ${CAPSULE_MANAGER_SIM_IMAGE:0.1.2b0}
     data-proxy-image: ${DATA_PROXY_IMAGE:0.1.0b0}
+    scql-image: ${SCQL_IMAGE:0.1.0b0}
 
   component:
     hide:
       - secretflow/io/read_data:1.0.0
       - secretflow/io/write_data:1.0.0
       - secretflow/io/identity:1.0.0
+      - secretflow/io/data_sink:1.0.0
+      - secretflow/io/data_source:1.0.0
       - secretflow/model/model_export:1.0.0
       - secretflow/ml.train/slnn_train:0.0.1
       - secretflow/ml.predict/slnn_predict:0.0.2
   data-proxy:
     enabled: ${DATAPROXY_ENABLE:true}
+  scql:
+    enabled: ${SCQL_ENABLE:true}
+    component: secretflow/stats/scql_analysis:1.0.0
+
 
 sfclusterDesc:
   deviceConfig:

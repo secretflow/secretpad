@@ -25,10 +25,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.*;
 import lombok.*;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -50,17 +47,22 @@ public class InstRegisterRequest {
 
     @JsonProperty("domainId")
     @NotBlank
+    @Pattern(regexp = "^[a-z0-9]([a-z0-9.-]{0,61}[a-z0-9])?$", message = "domainId must be a valid domainId")
     private String nodeId;
 
     @NotBlank
     private String host;
 
-    /** port  for kuscia api */
+    /**
+     * port  for kuscia api
+     */
     @Min(value = 0, message = "port must be less  than 0")
     @Max(value = 65535, message = "port must be greater than 65535")
     private int port;
 
-    /** port for transport */
+    /**
+     * port for transport
+     */
     @Min(value = 0, message = "port must be less  than 0")
     @Max(value = 65535, message = "port must be greater than 65535")
     private int transPort;

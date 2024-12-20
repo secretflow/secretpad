@@ -68,6 +68,11 @@ public class GraphNodeDetail extends GraphNodeInfo {
      */
     private List<NodeSimpleInfo> parties;
 
+    /**
+     * the graph node running progress
+     */
+    private Float progress;
+
     public GraphNodeDetail(ProjectGraphNodeDO graphNodeDO, GraphNodeTaskStatus status, List<MergedProjectResult> results) {
         this.codeName = graphNodeDO.getCodeName();
         this.graphNodeId = graphNodeDO.getUpk().getGraphNodeId();
@@ -132,10 +137,11 @@ public class GraphNodeDetail extends GraphNodeInfo {
             partyMap.putAll(infosMap);
         }
         if (!CollectionUtils.isEmpty(graphNodeDOList)) {
-            return graphNodeDOList.stream().map(graphNodeDO ->
-                            fromDO(graphNodeDO, statusMap.getOrDefault(graphNodeDO.getUpk().getGraphNodeId(), GraphNodeTaskStatus.STAGING), null)
+            return graphNodeDOList.stream().map(graphNodeDO -> fromDO(graphNodeDO,
+                                    statusMap.getOrDefault(graphNodeDO.getUpk().getGraphNodeId(), GraphNodeTaskStatus.STAGING), null)
                                     .withJobTask(jobTaskMap.get(graphNodeDO.getUpk().getGraphNodeId()).getJobId(), jobTaskMap.get(graphNodeDO.getUpk().getGraphNodeId()).getTaskId())
-                                    .withJobParties(partyMap.get(graphNodeDO.getUpk().getGraphNodeId())))
+                                    .withJobParties(partyMap.get(graphNodeDO.getUpk().getGraphNodeId()))
+                                    .withTaskProgress(jobTaskMap.get(graphNodeDO.getUpk().getGraphNodeId()).getProgress()))
                     .collect(Collectors.toList());
         }
         return new ArrayList<>();
@@ -156,6 +162,11 @@ public class GraphNodeDetail extends GraphNodeInfo {
 
     public GraphNodeDetail withJobParties(List<NodeSimpleInfo> parties) {
         this.parties = parties;
+        return this;
+    }
+
+    public GraphNodeDetail withTaskProgress(Float progress) {
+        this.progress = progress;
         return this;
     }
 

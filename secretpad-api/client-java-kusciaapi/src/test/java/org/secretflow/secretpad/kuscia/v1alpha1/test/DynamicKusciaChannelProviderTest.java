@@ -31,7 +31,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.secretflow.v1alpha1.kusciaapi.DomainServiceGrpc;
 
-import java.util.HashSet;
+import java.util.concurrent.CopyOnWriteArraySet;
 
 /**
  * @author yutu
@@ -61,8 +61,9 @@ public class DynamicKusciaChannelProviderTest {
     void testCurrentStubDomainServiceGrpc() {
         DynamicKusciaChannelProvider service = new DynamicKusciaChannelProvider();
         DynamicKusciaGrpcConfig dynamicKusciaGrpcConfig = new DynamicKusciaGrpcConfig();
-        dynamicKusciaGrpcConfig.setNodes(new HashSet<>());
+        dynamicKusciaGrpcConfig.setNodes(new CopyOnWriteArraySet<>());
         service.setDynamicKusciaGrpcConfig(dynamicKusciaGrpcConfig);
+        service.registerKuscia(config);
         service.registerKuscia(config);
         service.setNodeId("alice");
         DomainServiceGrpc.DomainServiceBlockingStub domainServiceBlockingStub = service.currentStub(DomainServiceGrpc.DomainServiceBlockingStub.class);

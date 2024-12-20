@@ -24,7 +24,6 @@ import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.*;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.datasource.AbstractDatasourceManager;
-import org.secretflow.secretpad.manager.integration.datatable.AbstractDatatableManager;
 import org.secretflow.secretpad.manager.integration.model.*;
 import org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pDataSyncProducerTemplate;
 import org.secretflow.secretpad.persistence.entity.*;
@@ -86,8 +85,6 @@ public class NodeManager extends AbstractNodeManager {
     @Value("${secretpad.platform-type}")
     private String platformType;
 
-    @Resource
-    private AbstractDatatableManager datatableManager;
     @Resource
     private AbstractDatasourceManager datasourceManager;
 
@@ -175,7 +172,7 @@ public class NodeManager extends AbstractNodeManager {
         if (CollectionUtils.isEmpty(nodeDTOS) || CollectionUtils.isEmpty(nodeIds)) {
             return nodeDTOS.stream().map(NodeDTO::getNodeId).toList();
         }
-        return nodeDTOS.stream().filter(nodeDTO -> nodeIds.contains(nodeDTO.getNodeId())).map(NodeDTO::getNodeId).collect(Collectors.toList());
+        return nodeDTOS.stream().map(NodeDTO::getNodeId).filter(nodeIds::contains).collect(Collectors.toList());
 
     }
 
@@ -292,7 +289,8 @@ public class NodeManager extends AbstractNodeManager {
                 .nodeId(nodeId)
                 .netAddress(nodeId + ":1080")
                 .type(DomainConstants.DomainTypeEnum.normal.name())
-                .mode(param.getMode()) //mpc only
+                //mpc only
+                .mode(param.getMode())
                 .name(param.getName())
                 .masterNodeId(localNodeId)
                 .build();
@@ -320,6 +318,7 @@ public class NodeManager extends AbstractNodeManager {
         }
 
         nodeDO.setInstToken(generateInstToken(nodeDO));
+        nodeDO.setInstTokenState(NodeInstTokenStateEnum.UNUSED);
         nodeRepository.saveAndFlush(nodeDO);
 
         return nodeDO.getInstToken();
@@ -474,7 +473,7 @@ public class NodeManager extends AbstractNodeManager {
         allProjectResults = filterByKind(allProjectResults, param.getKindFilters());
         LOGGER.info("Querying the domain data map with every ref_id in all project results.");
         //merge db like join
-        List<NodeResultDTO> nodeResultDTOS = allProjectResults.stream().map(projectResultDO -> mergeNodeResult(projectResultDO)).toList();
+        List<NodeResultDTO> nodeResultDTOS = allProjectResults.stream().map(this::mergeNodeResult).toList();
 
         LOGGER.info("Filter node results with name filter = {}", param.getNameFilter());
         nodeResultDTOS = filterByName(nodeResultDTOS, param.getNameFilter());
@@ -629,13 +628,12 @@ public class NodeManager extends AbstractNodeManager {
     }
 
 
-    private NodeDTO fillByGrpcDomainQuery(NodeDTO nodeDTO) {
+    private void fillByGrpcDomainQuery(NodeDTO nodeDTO) {
         nodeDTO.setProtocol(protocol);
         DomainOuterClass.QueryDomainRequest queryDomainRequest =
                 DomainOuterClass.QueryDomainRequest.newBuilder().setDomainId(nodeDTO.getNodeId()).build();
         DomainOuterClass.QueryDomainResponse response = kusciaGrpcClientAdapter.queryDomain(queryDomainRequest);
         fillNodeDTOByKResp(nodeDTO, response);
-        return nodeDTO;
     }
 
 
@@ -796,7 +794,7 @@ public class NodeManager extends AbstractNodeManager {
             if (StringUtils.isNotBlank(nodeDO.getNetAddress())) {
                 netAddr = nodeDO.getNetAddress();
             }
-            if (Objects.nonNull(nodeDO) && StringUtils.isNotBlank(nodeDO.getInstId())) {
+            if (StringUtils.isNotBlank(nodeDO.getInstId())) {
                 log.info("instId replace");
                 //new version,reinstall
                 instId = nodeDO.getInstId();
@@ -933,7 +931,7 @@ public class NodeManager extends AbstractNodeManager {
 
         DatasourceDTO.NodeDatasourceId from = DatasourceDTO.NodeDatasourceId.from(domainData.getDomainId(), domainData.getDatasourceId());
         Optional<DatasourceDTO> datasourceDTO = datasourceManager.findById(from);
-        if (!datasourceDTO.isPresent()) {
+        if (datasourceDTO.isEmpty()) {
             LOGGER.warn("findNodeResult find datasource fail, from={}", JsonUtils.toJSONString(from));
         }
 
@@ -1025,6 +1023,11 @@ public class NodeManager extends AbstractNodeManager {
         return P2pDataSyncProducerTemplate.nodeIds.contains(nodeId);
     }
 
+    /*** only one */
+    private boolean onlyOneNode() {
+        return P2pDataSyncProducerTemplate.nodeIds.size() == 1;
+    }
+
     /**
      * not found , return null
      * nodeId:input node
@@ -1032,11 +1035,11 @@ public class NodeManager extends AbstractNodeManager {
      * match one
      */
     private static String searchTargetNode(String nodeId, ParticipantNodeInstVO bo) {
-        /** search from initiator*/
+        /* search from initiator*/
         if (StringUtils.equals(nodeId, bo.getInitiatorNodeId())) {
             return bo.getInvitees().get(0).getInviteeId();
         }
-        /** search from invitee*/
+        /* search from invitee*/
         Optional<ParticipantNodeInstVO.NodeInstVO> first = bo.getInvitees().stream()
                 .filter(invitee -> StringUtils.equals(invitee.getInviteeId(), nodeId))
                 .findFirst();
@@ -1050,12 +1053,12 @@ public class NodeManager extends AbstractNodeManager {
      * match all
      */
     private static List<String> searchAllTargetNode(String nodeId, ParticipantNodeInstVO bo) {
-        /** search from initiator*/
+        /* search from initiator*/
         if (StringUtils.equals(nodeId, bo.getInitiatorNodeId())) {
-            return bo.getInvitees().stream().map(in -> in.getInviteeId()).collect(Collectors.toList());
+            return bo.getInvitees().stream().map(ParticipantNodeInstVO.NodeInstVO::getInviteeId).collect(Collectors.toList());
         }
         List<String> nodeIds = new ArrayList<>();
-        /** search from invitee*/
+        /* search from invitee*/
         Optional<ParticipantNodeInstVO.NodeInstVO> first = bo.getInvitees().stream()
                 .filter(invitee -> StringUtils.equals(invitee.getInviteeId(), nodeId))
                 .findFirst();
@@ -1071,13 +1074,23 @@ public class NodeManager extends AbstractNodeManager {
      */
     @Override
     public String getTargetNodeId(String nodeId, String projectId) {
-        if (PlatformTypeEnum.AUTONOMY.name().equals(this.platformType) && !isLocalInstNode(nodeId)) {
-            Optional<ProjectApprovalConfigDO> projectConDO = projectApprovalConfigRepository.findByProjectId(projectId);
-            List<ParticipantNodeInstVO> participantNodeInstVOS = projectConDO.get().getParticipantNodeInfo();
-            Optional<String> targetNodeOpt = participantNodeInstVOS.stream().map(vo -> searchTargetNode(nodeId, vo)).filter(node -> node != null).findFirst();
-            if (targetNodeOpt.isPresent()) {
-                return targetNodeOpt.get();
+        if (PlatformTypeEnum.AUTONOMY.name().equals(this.platformType)) {
+            //only one no need to search
+            if (onlyOneNode()) {
+                return localNodeId;
             }
+            if (isLocalInstNode(nodeId)) {
+                return nodeId;
+            }
+            // not found then search from config
+            Optional<ProjectApprovalConfigDO> projectConDO = projectApprovalConfigRepository.findByProjectId(projectId);
+            List<ParticipantNodeInstVO> nodeTree = projectConDO.get().getParticipantNodeInfo();
+            Optional<String> targetNodeOpt = nodeTree
+                    .stream().map(vo -> searchTargetNode(nodeId, vo))
+                    .filter(node -> node != null && isLocalInstNode(node))
+                    .findFirst();
+            // not found use local as default
+            return targetNodeOpt.orElseGet(() -> localNodeId);
         }
         return nodeId;
     }
@@ -1087,7 +1100,7 @@ public class NodeManager extends AbstractNodeManager {
         if (PlatformTypeEnum.AUTONOMY.name().equals(this.platformType) && !isLocalInstNode(nodeId)) {
             Optional<ProjectApprovalConfigDO> projectConDO = projectApprovalConfigRepository.findByProjectId(projectId);
             List<ParticipantNodeInstVO> participantNodeInstVOS = projectConDO.get().getParticipantNodeInfo();
-            return participantNodeInstVOS.stream().flatMap(vo -> searchAllTargetNode(nodeId, vo).stream()).filter(node -> node != null).collect(Collectors.toSet());
+            return participantNodeInstVOS.stream().flatMap(vo -> searchAllTargetNode(nodeId, vo).stream()).filter(Objects::nonNull).collect(Collectors.toSet());
         }
         return new HashSet<>();
     }

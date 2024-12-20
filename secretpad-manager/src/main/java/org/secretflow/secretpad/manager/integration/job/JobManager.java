@@ -162,6 +162,27 @@ public class JobManager extends AbstractJobManager {
         }
     }
 
+    /** merge process in extra info **/
+    public static ProjectTaskDO.ExtraInfo mergeExtraInfo(Job.TaskStatus taskStatus, ProjectTaskDO.ExtraInfo extraInfo) {
+
+        if (taskStatus == null || taskStatus.getProgress() <= 0.0f) {
+            return extraInfo;
+        }
+
+        if (extraInfo == null) {
+            ProjectTaskDO.ExtraInfo info = new ProjectTaskDO.ExtraInfo();
+            info.setProgress(taskStatus.getProgress());
+            return info;
+        } else {
+            extraInfo.setProgress(taskStatus.getProgress());
+        }
+        return extraInfo;
+    }
+
+
+
+
+
     public static Job.TaskStatus mergeKusciaTaskStatus(String rawTaskId, String taskId, Map<String, Job.TaskStatus> map, Job.TaskStatus kusciaTaskStatus) {
         Job.TaskStatus.Builder builder = kusciaTaskStatus.toBuilder();
         GraphNodeTaskStatus rawGraphNodeTaskStatus = GraphNodeTaskStatus.formKusciaTaskStatus(kusciaTaskStatus.getState());
@@ -226,6 +247,7 @@ public class JobManager extends AbstractJobManager {
                             } catch (Exception e) {
                                 LOGGER.error("syncJob exception: {} {}", responses, e.getMessage(), e);
                             }
+
                         }
 
                         @Override
@@ -542,6 +564,7 @@ public class JobManager extends AbstractJobManager {
                             }
                             task.setStatus(GraphNodeTaskStatus.formKusciaTaskStatus(kusciaTaskStatus.getState()));
                             task.setErrMsg(kusciaTaskStatus.getErrMsg());
+                            task.setExtraInfo(mergeExtraInfo(kusciaTaskStatus,task.getExtraInfo()));
                             syncResult(task);
                         }
                 );
@@ -764,6 +787,7 @@ public class JobManager extends AbstractJobManager {
             }
         }
     }
+
 
     public boolean checkOrCreateDomainDataGrant(String nodeId, String grantNodeId, String domainDataId) {
         // kuscia Each namespace needs to ensure that domainDataId and domainDataGrantId are unique.

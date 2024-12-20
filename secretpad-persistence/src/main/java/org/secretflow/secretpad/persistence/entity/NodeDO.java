@@ -16,10 +16,9 @@
 
 package org.secretflow.secretpad.persistence.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import org.secretflow.secretpad.common.enums.NodeInstTokenStateEnum;
+
+import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import org.hibernate.annotations.Where;
@@ -80,7 +79,6 @@ public class NodeDO extends BaseAggregationRoot<NodeDO> {
      * token for inst register
      **/
     @Column(name = "inst_token", length = 300)
-
     private String instToken;
 
     @Column(name = "protocol", length = 32)
@@ -91,4 +89,11 @@ public class NodeDO extends BaseAggregationRoot<NodeDO> {
     private String token;
     private String type;
     private Integer mode;
+
+    /**
+     * token state for inst register
+     **/
+    @Enumerated(value = EnumType.STRING)
+    @Column(name = "inst_token_state", length = 10)
+    private NodeInstTokenStateEnum instTokenState = NodeInstTokenStateEnum.UNUSED;
 }

@@ -26,6 +26,7 @@ import org.secretflow.secretpad.persistence.datasync.producer.p2p.P2pPaddingNode
 import org.secretflow.secretpad.persistence.datasync.rest.DataSyncRestTemplate;
 import org.secretflow.secretpad.persistence.datasync.rest.p2p.P2pDataSyncRestService;
 import org.secretflow.secretpad.persistence.datasync.rest.p2p.P2pDataSyncRestTemplate;
+import org.secretflow.secretpad.persistence.datasync.rest.p2p.log.P2pRestLog;
 import org.secretflow.secretpad.persistence.datasync.retry.DataSyncRetryTemplate;
 import org.secretflow.secretpad.persistence.datasync.retry.impl.ThrowDataSyncRetry;
 import org.secretflow.secretpad.persistence.datasync.retry.impl.TryDataSyncRetry;
@@ -64,7 +65,7 @@ import java.util.concurrent.ThreadPoolExecutor;
  */
 @Slf4j
 @Configuration
-@ConditionalOnProperty(prefix = "secretpad.datasync", value = "p2p", matchIfMissing = false, havingValue = "true")
+@ConditionalOnProperty(prefix = "secretpad.datasync", value = "p2p", havingValue = "true")
 public class P2pDataSyncConfigurable {
     @Value("${secretpad.gateway}")
     private String kusciaLiteGateway;
@@ -107,10 +108,13 @@ public class P2pDataSyncConfigurable {
     @Bean
     public P2pDataSyncRestService p2pDataSyncRestService() {
         HttpClient httpClient = HttpClient.create()
-                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10 * 1000)  //Connected timeout
+                //Connected timeout
+                .option(ChannelOption.CONNECT_TIMEOUT_MILLIS, 10 * 1000)
                 .doOnConnected(conn -> {
-                    conn.addHandlerLast(new ReadTimeoutHandler(6)); //read timeout
-                    conn.addHandlerLast(new WriteTimeoutHandler(6)); //write timeout
+                    //read timeout
+                    conn.addHandlerLast(new ReadTimeoutHandler(6));
+                    //write timeout
+                    conn.addHandlerLast(new WriteTimeoutHandler(6));
                 });
         if (!kusciaLiteGateway.contains(":")) {
             kusciaLiteGateway = kusciaLiteGateway + ":80";
@@ -118,6 +122,8 @@ public class P2pDataSyncConfigurable {
         WebClient webClient = WebClient.builder()
                 .baseUrl("http://" + kusciaLiteGateway)
                 .clientConnector(new ReactorClientHttpConnector(httpClient))
+                .filter(P2pRestLog.logRequest())
+                .filter(P2pRestLog.logResponse())
                 //error callback
                 .defaultStatusHandler(HttpStatusCode::isError, clientResponse -> {
                     log.info("p2pDataSyncRestService error,{}", clientResponse.statusCode().value());

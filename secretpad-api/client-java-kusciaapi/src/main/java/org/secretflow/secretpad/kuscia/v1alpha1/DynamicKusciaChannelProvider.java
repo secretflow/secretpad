@@ -125,6 +125,10 @@ public class DynamicKusciaChannelProvider {
     public void registerKuscia(KusciaGrpcConfig config) {
         Assert.notNull(config, "KusciaGrpcConfig must not be null");
         config.validateAndProcess();
+        if (dynamicKusciaGrpcConfig.getNodes().contains(config)) {
+            log.info("KusciaGrpcConfig already exists,unRegisterKuscia config={}", config);
+            unRegisterKuscia(config);
+        }
         if (isInitialized || dynamicKusciaGrpcConfig.getNodes().add(config)) {
             log.info("Register kuscia node success, config={}", config);
             synchronized (lock) {
@@ -143,7 +147,10 @@ public class DynamicKusciaChannelProvider {
         if (isInitialized || CHANNEL_FACTORIES.containsKey(config.getDomainId())) {
             log.info("Unregister kuscia node success, config={}", config);
             synchronized (lock) {
-                CHANNEL_FACTORIES.remove(config.getDomainId()).shutdown();
+                KusciaApiChannelFactory remove = CHANNEL_FACTORIES.remove(config.getDomainId());
+                if (remove != null) {
+                    remove.shutdown();
+                }
                 if (!ObjectUtils.isEmpty(publisher)) {
                     publisher.publishEvent(new UnRegisterKusciaEvent(this, config));
                 }

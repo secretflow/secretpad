@@ -22,13 +22,16 @@ import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.NodeRouteApprovalConfigDO;
 import org.secretflow.secretpad.persistence.entity.VoteInviteDO;
 import org.secretflow.secretpad.persistence.entity.VoteRequestDO;
-import org.secretflow.secretpad.persistence.repository.*;
-import org.secretflow.secretpad.service.CertificateService;
+import org.secretflow.secretpad.persistence.repository.NodeRepository;
+import org.secretflow.secretpad.persistence.repository.NodeRouteAuditConfigRepository;
+import org.secretflow.secretpad.persistence.repository.VoteInviteRepository;
+import org.secretflow.secretpad.persistence.repository.VoteRequestRepository;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.model.message.MessageDetailRequest;
 import org.secretflow.secretpad.service.model.message.MessageListRequest;
 import org.secretflow.secretpad.service.model.message.MessagePendingCountRequest;
 import org.secretflow.secretpad.web.utils.FakerUtils;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -60,17 +63,6 @@ public class MessageControllerTest extends ControllerTest {
     @MockBean
     private NodeRepository nodeRepository;
 
-    @MockBean
-    private InstRepository instRepository;
-
-    @MockBean
-    private ProjectRepository projectRepository;
-
-    @MockBean
-    private ProjectApprovalConfigRepository projectApprovalConfigRepository;
-
-    @MockBean
-    private CertificateService certificateService;
 
     @Test
     public void list() throws Exception {
@@ -116,6 +108,7 @@ public class MessageControllerTest extends ControllerTest {
                     .content(JsonUtils.toJSONString(messageListRequest));
         });
     }
+
     @Test
     public void pendingCount() throws Exception {
         assertResponse(() -> {

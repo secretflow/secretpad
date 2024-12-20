@@ -19,7 +19,6 @@ package org.secretflow.secretpad.service;
 import org.secretflow.secretpad.service.model.common.SecretPadPageResponse;
 import org.secretflow.secretpad.service.model.node.*;
 import org.secretflow.secretpad.service.model.node.p2p.P2pCreateNodeRequest;
-
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
@@ -166,4 +165,6 @@ public interface NodeService {
     void initialNode(String instName);
 
     void updateNodeMasterNodeId(String nodeId);
+
+    List<String> findInstIdsForNodes(List<String> nodeIds);
 }

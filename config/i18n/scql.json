@@ -1,0 +1,20 @@
+{
+  ".": {
+    "scql": "scql",
+    "First-party Scql components.": "官方Scql组件"
+  },
+  "stats/scql_analysis:1.0.0": {
+    "stats": "统计",
+    "scql_analysis": "自定义SCQL分析",
+    "Support secure query statement analysis SCQL (Secure Collaborative Query Language) based on SQL syntax. It is only used for analysis and cannot produce details. Currently, it only supports connection of privacy intersection and sample table components,Currently, the results of this component are only output to the initiator.": "支持基于SQL语法的安全查询语句分析SCQL（Secure Collabarative Query Language）,仅用于分析，不可产出明细，目前仅支持连接隐私求交、样本表组件，目前该组件结果只输出给发起方.",
+    "1.0.0": "1.0.0",
+    "column_config": "列配置",
+    "input feature column config": "输入特征列配置",
+    "task_initiator": "结果获取方",
+    "Select the task result acquirer, and the component output results will only be output to the result acquirer.": "选择任务结果获取方，组件产出结果将只输出给结果获取方。",
+    "script_input": "输入SQL",
+    "Input table.": "输入表",
+    "report": "报告",
+    "Output table statistics report.": "输出自定义SCQL分析结果表"
+  }
+}

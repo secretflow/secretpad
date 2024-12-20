@@ -578,4 +578,45 @@ public class JobManagerTest extends ControllerTest {
         }
     }
 
+
+    /**
+     * taskStatus is null
+     */
+    @Test
+    public void testMergeExtraInfoWithNullTaskStatus() {
+        Job.TaskStatus taskStatus = null;
+        ProjectTaskDO.ExtraInfo extraInfo = new ProjectTaskDO.ExtraInfo();
+        ProjectTaskDO.ExtraInfo result = JobManager.mergeExtraInfo(taskStatus, extraInfo);
+        Assertions.assertEquals(extraInfo,result);
+    }
+
+    @Test
+    public void testMergeExtraInfoWithZeroOrNegativeProgress() {
+        Job.TaskStatus taskStatus = Job.TaskStatus.newBuilder().setProgress(0.0f).build();
+        ProjectTaskDO.ExtraInfo extraInfo = new ProjectTaskDO.ExtraInfo();
+
+        ProjectTaskDO.ExtraInfo result = JobManager.mergeExtraInfo(taskStatus, extraInfo);
+        Assertions.assertEquals(extraInfo,result);
+    }
+
+    /**
+     */
+    @Test
+    public void testMergeExtraInfoWithNullExtraInfo() {
+        Job.TaskStatus taskStatus = Job.TaskStatus.newBuilder().setProgress(0.5f).build();
+        ProjectTaskDO.ExtraInfo extraInfo = null;
+        ProjectTaskDO.ExtraInfo result = JobManager.mergeExtraInfo(taskStatus, extraInfo);
+        Assertions.assertEquals(0.5f, result.getProgress(), 0.0001);
+    }
+
+    /**
+     */
+    @Test
+    public void testMergeExtraInfoWithNonNullTaskStatusAndExtraInfo() {
+        Job.TaskStatus taskStatus = Job.TaskStatus.newBuilder().setProgress(0.8f).build();
+        ProjectTaskDO.ExtraInfo extraInfo = new ProjectTaskDO.ExtraInfo();
+        ProjectTaskDO.ExtraInfo result = JobManager.mergeExtraInfo(taskStatus, extraInfo);
+        Assertions.assertEquals(0.8f, result.getProgress(), 0.0001);
+    }
+
 }

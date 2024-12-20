@@ -338,6 +338,7 @@ public class ModelExportControllerTest extends ControllerTest {
     private ModelExportDTO buildSuccessModelExportDTO() {
         return ModelExportDTO.builder()
                 .projectId(UUIDUtils.random(4))
+                .initiator("alice")
                 .graphId(UUIDUtils.random(4))
                 .modelId(UUIDUtils.random(4))
                 .modelName("test")

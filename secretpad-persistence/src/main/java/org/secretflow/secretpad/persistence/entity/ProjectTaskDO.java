@@ -90,6 +90,23 @@ public class ProjectTaskDO extends BaseAggregationRoot {
     @Convert(converter = GraphNodeConverter.class)
     private ProjectGraphNodeDO graphNode;
 
+    /**
+     * task extra info
+     */
+    @Column(name = "extra_info", nullable = true)
+    @Convert(converter = ExtraInfoConverter.class)
+    private ExtraInfo extraInfo;
+
+
+    /** prevent npe */
+    public ExtraInfo getExtraInfo() {
+        if (this.extraInfo == null) {
+            this.extraInfo = new ExtraInfo();
+        }
+        return this.extraInfo;
+    }
+
+
     @Override
     public String getProjectId() {
         return this.upk.projectId;
@@ -143,6 +160,23 @@ public class ProjectTaskDO extends BaseAggregationRoot {
         public GraphNodeConverter() {
             super(ProjectGraphNodeDO.class);
         }
+    }
+
+
+    @Converter
+    public static class ExtraInfoConverter extends BaseObjectJsonConverter<ExtraInfo> {
+        public ExtraInfoConverter() {
+            super(ExtraInfo.class);
+        }
+    }
+
+    @Data
+    @AllArgsConstructor
+    @NoArgsConstructor
+    public static class ExtraInfo implements Serializable{
+        /** task progress */
+        private static final long serialVersionUID = -941002226318258211L;
+        private Float progress;
     }
 
     /**

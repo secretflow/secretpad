@@ -43,7 +43,6 @@ import org.secretflow.secretpad.service.model.node.*;
 import org.secretflow.secretpad.service.model.node.p2p.P2pCreateNodeRequest;
 import org.secretflow.secretpad.service.model.noderoute.CreateNodeRouterRequest;
 import org.secretflow.secretpad.service.model.project.ProjectJobVO;
-
 import jakarta.annotation.Resource;
 import jakarta.validation.constraints.NotBlank;
 import org.apache.commons.lang3.ObjectUtils;
@@ -595,6 +594,11 @@ public class NodeServiceImpl implements NodeService {
     @Override
     public void updateNodeMasterNodeId(String instId) {
         nodeRepository.updateMasterNodeIdByInstid(instId, masterNodeId);
+    }
+
+    @Override
+    public List<String> findInstIdsForNodes(List<String> nodeIds) {
+        return nodeRepository.findInstIdsByNodeIds(nodeIds);
     }
 }
 

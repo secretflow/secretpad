@@ -71,6 +71,7 @@
                     <protoSourceRoot>../../proto</protoSourceRoot>
                     <includes>
                         <include>**/kuscia/proto/**</include>
+                        <include>**/scql/**</include>
                         <include>**/secretflow/serving/kuscia/**</include>
                         <include>**/secretflow_serving/config/**</include>
                         <include>**/secretflow/protos/**</include>

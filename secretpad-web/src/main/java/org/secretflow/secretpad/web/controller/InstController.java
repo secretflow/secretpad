@@ -78,7 +78,6 @@ public class InstController {
     @PostMapping(value = "/node/add", consumes = "application/json")
     @ApiResource(code = ApiResourceCodeConstants.NODE_CREATE)
     public SecretPadResponse<InstTokenVO> createNode(@Valid @RequestBody CreateNodeRequest request) {
-
         return SecretPadResponse.success(instService.createNode(request));
     }
 
@@ -89,7 +88,6 @@ public class InstController {
     @PostMapping(value = "/node/token", consumes = "application/json")
     @ApiResource(code = ApiResourceCodeConstants.NODE_TOKEN)
     public SecretPadResponse<InstTokenVO> token(@Valid @RequestBody NodeTokenRequest request) {
-
         return SecretPadResponse.success(instService.getToken(request));
     }
 
@@ -97,7 +95,6 @@ public class InstController {
     @PostMapping(value = "/node/newToken", consumes = "application/json")
     @ApiResource(code = ApiResourceCodeConstants.NODE_NEW_TOKEN)
     public SecretPadResponse<InstTokenVO> newToken(@Valid @RequestBody NodeTokenRequest request) {
-
         return SecretPadResponse.success(instService.newToken(request));
     }
 

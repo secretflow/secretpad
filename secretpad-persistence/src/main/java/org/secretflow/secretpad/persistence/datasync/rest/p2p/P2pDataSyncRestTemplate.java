@@ -51,7 +51,7 @@ public class P2pDataSyncRestTemplate extends DataSyncRestTemplate {
         while (size > 0) {
             long startTime = System.currentTimeMillis();
             log.debug("data sync start to send {}, now size {}", node, size);
-            event = dataSyncDataBufferTemplate.pool(node);
+            event = dataSyncDataBufferTemplate.poll(node);
             if (!ObjectUtils.isEmpty(event)) {
                 SecretPadResponse<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> syncResp;
                 String routeId = "";
@@ -79,7 +79,7 @@ public class P2pDataSyncRestTemplate extends DataSyncRestTemplate {
                     log.error("P2pDataSyncRestTemplate send error", e);
                     onError(node, event);
                     long duration = System.currentTimeMillis() - startTime;
-                    recordMetrics(routeId, syncDataDTO.getTableName(), duration, e.getMessage(), size);
+                    recordMetrics(routeId, syncDataDTO.getTableName(), duration, ObjectUtils.isEmpty(e.getMessage()) ? e.getClass().getName() : e.getMessage(), size);
                 }
                 size = dataSyncDataBufferTemplate.size(node);
                 log.debug("data sync end to send {}, now size {}", node, size);
@@ -116,9 +116,14 @@ public class P2pDataSyncRestTemplate extends DataSyncRestTemplate {
     }
 
     private void recordMetrics(String target, String tableName, long duration, String status, int size) {
-        Timer timer = Timer.builder("p2p.data.sync.duration")
-                .tags(Tags.of("target", target, "tableName", tableName, "status", status, "size", String.valueOf(size)))
-                .register(meterRegistry);
-        timer.record(Duration.ofMillis(duration));
+        log.info("recordMetrics target:{}, tableName:{}, duration:{}, status:{}, size:{}", target, tableName, duration, status, size);
+        try {
+            Timer timer = Timer.builder("p2p.data.sync.duration")
+                    .tags(Tags.of("target", target, "tableName", tableName, "status", status, "size", String.valueOf(size)))
+                    .register(meterRegistry);
+            timer.record(Duration.ofMillis(duration));
+        } catch (Exception e) {
+            log.error("recordMetrics error", e);
+        }
     }
 }

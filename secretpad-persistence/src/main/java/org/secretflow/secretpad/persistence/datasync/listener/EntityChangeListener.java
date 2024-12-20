@@ -92,6 +92,7 @@ public class EntityChangeListener {
     @Setter
     @NoArgsConstructor
     @AllArgsConstructor
+    @EqualsAndHashCode
     public static class DbChangeEvent<T extends ProjectNodesInfo> implements Serializable {
         @Serial
         private static final long serialVersionUID = 8759123498754L;

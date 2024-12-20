@@ -32,10 +32,7 @@ import org.secretflow.secretpad.service.util.RateLimitUtil;
 import org.secretflow.secretpad.web.utils.FakerUtils;
 
 import com.google.common.collect.Lists;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.common.Common;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
@@ -84,29 +81,6 @@ class DatatableControllerTest extends ControllerTest {
 
     @MockBean
     private IpFilterUtil ipFilterUtil;
-    private static final ThreadLocal<MockedStatic<RateLimitUtil>> threadLocalMocked = ThreadLocal.withInitial(() -> null);
-    private static final Object lock = new Object();
-
-    @BeforeEach
-    public void setUp() {
-        synchronized (lock) {
-            tearDown();
-            MockedStatic<RateLimitUtil> mocked = Mockito.mockStatic(RateLimitUtil.class);
-            threadLocalMocked.set(mocked);
-        }
-    }
-
-    @AfterEach
-    public void tearDown() {
-        synchronized (lock) {
-            MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-            if (mocked != null) {
-                mocked.clearInvocations();
-                mocked.close();
-                threadLocalMocked.remove();
-            }
-        }
-    }
 
     /**
      * createDatable test
@@ -115,8 +89,7 @@ class DatatableControllerTest extends ControllerTest {
      */
     @Test
     public void createDatable() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).thenAnswer(invocation -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).thenAnswer(invocation -> null);
         CreateDatatableRequest request = FakerUtils.fake(CreateDatatableRequest.class);
         request.setDatasourceType("OSS");
         request.setDatasourceName("ossDatasource");
@@ -161,8 +134,7 @@ class DatatableControllerTest extends ControllerTest {
      */
     @Test
     public void createDatableMysql() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         CreateDatatableRequest request = FakerUtils.fake(CreateDatatableRequest.class);
         request.setDatasourceType("MYSQL");
         request.setDatasourceName("mysqlDatasource");
@@ -212,8 +184,7 @@ class DatatableControllerTest extends ControllerTest {
      */
     @Test
     public void createDatableOdps() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         CreateDatatableRequest request = FakerUtils.fake(CreateDatatableRequest.class);
         request.setDatasourceType("ODPS");
         request.setDatasourceName("odpsDatasource");
@@ -265,8 +236,7 @@ class DatatableControllerTest extends ControllerTest {
 
     @Test
     public void createHttpDatatable() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         assertResponse(() -> {
             Mockito.when(ipFilterUtil.urlIsIpInRange(Mockito.anyString())).thenReturn(false);
             CreateDatatableRequest request = new CreateDatatableRequest();
@@ -291,8 +261,7 @@ class DatatableControllerTest extends ControllerTest {
 
     @Test
     void listDatatables() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         assertResponse(() -> {
             ListDatatableRequest request = FakerUtils.fake(ListDatatableRequest.class);
             request.setPageSize(10);
@@ -332,8 +301,7 @@ class DatatableControllerTest extends ControllerTest {
 
     @Test
     void getDatatable() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         assertResponse(() -> {
             GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
             request.setNodeId("alice");
@@ -370,8 +338,7 @@ class DatatableControllerTest extends ControllerTest {
      */
     @Test
     void getOSSDatatable() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         assertResponse(() -> {
             GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
             request.setNodeId("alice");
@@ -430,8 +397,7 @@ class DatatableControllerTest extends ControllerTest {
 
     @Test
     void getOdpsDatatable() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         assertResponse(() -> {
             GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
             request.setNodeId("alice");
@@ -486,8 +452,7 @@ class DatatableControllerTest extends ControllerTest {
 
     @Test
     void getOSSDatatableAwsFalse() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         assertResponse(() -> {
             GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
             request.setNodeId("alice");
@@ -549,8 +514,7 @@ class DatatableControllerTest extends ControllerTest {
      */
     @Test
     void getODPSDatatable() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         assertResponse(() -> {
             GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
             request.setNodeId("alice");
@@ -608,8 +572,7 @@ class DatatableControllerTest extends ControllerTest {
     //get mysql
     @Test
     void getMysqlDatatable() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         assertResponse(() -> {
             GetDatatableRequest request = FakerUtils.fake(GetDatatableRequest.class);
             request.setNodeId("alice");
@@ -666,8 +629,7 @@ class DatatableControllerTest extends ControllerTest {
 
     @Test
     void deleteDatatable() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         assertResponseWithEmptyData(() -> {
             DeleteDatatableRequest request = FakerUtils.fake(DeleteDatatableRequest.class);
             request.setType("CSV");
@@ -702,8 +664,7 @@ class DatatableControllerTest extends ControllerTest {
 
     @Test
     void deleteHttpDatatable() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         assertResponseWithEmptyData(() -> {
             DeleteDatatableRequest request = FakerUtils.fake(DeleteDatatableRequest.class);
             request.setType("HTTP");
@@ -727,8 +688,7 @@ class DatatableControllerTest extends ControllerTest {
      */
     @Test
     void deleteHttpDatatableWithDatatableErrorCode() throws Exception {
-        MockedStatic<RateLimitUtil> mocked = threadLocalMocked.get();
-        mocked.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
+        mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> null);
         assertErrorCode(() -> {
             DeleteDatatableRequest request = FakerUtils.fake(DeleteDatatableRequest.class);
             request.setType("HTTP");

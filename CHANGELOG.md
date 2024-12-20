@@ -14,6 +14,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 `Fixed` for any bug fixes.
 `Security` in case of vulnerabilities.
 
+
+## [0.12.0b0] - 2024-12-15
+
+### Added
+
+- [Feature]  Added a SCQL component
+- [Feature]  Added a PSI component for three parties
+- [Feature]  Added a SQL component for one-side data preprocessing
+- [Feature]  Added an Unbalanced PSI Cache component and an Unbalanced PSI calculate component
+- [Feature]  Added bad_rate and total_rate metrics in the report of WOE component
+- [Feature]  Added original_count and total_count metrics in the report of PSI component
+- [Feature]  Added running progress display on training components
+- [Documentation] Operation Manual for SCQL component
+
+### Changed
+- [Optimization] Improved MySQL datasource registration prompts
+
+### Fixed
+- [Fixed] data query issues in P2P deploy mode
+
+
+
 ## [0.11.0b0] - 2024-10-15
 
 ### Added

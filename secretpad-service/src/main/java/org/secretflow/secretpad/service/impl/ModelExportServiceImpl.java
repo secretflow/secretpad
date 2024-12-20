@@ -115,9 +115,7 @@ public class ModelExportServiceImpl implements ModelExportService {
         Set<String> partyIds = new HashSet<>();
         request.getModelPartyConfig().forEach(m -> partyIds.add(m.getModelParty()));
         String modelDataName = UUIDUtils.random(2) + "_" + Instant.now().toEpochMilli();
-        request.getModelPartyConfig().forEach(m -> {
-            m.setModelDataName(modelDataName);
-        });
+        request.getModelPartyConfig().forEach(m -> m.setModelDataName(modelDataName));
         if (envService.isAutonomy() && StringUtils.isEmpty(getInitiator(partyIds))) {
             throw SecretpadException.of(ModelExportErrorCode.MODEL_EXPORT_FAILED, "initiator must be one of party");
         }
@@ -141,6 +139,7 @@ public class ModelExportServiceImpl implements ModelExportService {
                 .partyDataSources(request.getModelPartyConfig().stream().map(e -> PartyDataSource.builder().partyId(e.getModelParty()).datasource(e.getModelDataSource() + "/" + modelDataName).build()).collect(Collectors.toList()))
                 .modelList(cList)
                 .trainId(trainId)
+                .initiator(getInitiator(partyIds))
                 .build();
         String job = createJob(request, modelExportDTO);
         Objects.requireNonNull(cacheManager.getCache(CacheConstants.MODEL_EXPORT_CACHE)).putIfAbsent(job, JsonUtils.toString(modelExportDTO));
@@ -318,7 +317,11 @@ public class ModelExportServiceImpl implements ModelExportService {
      * check parites in local inst
      **/
     private String getInitiator(Collection<String> parties) {
-        return parties.stream().filter(party -> envService.isNodeInCurrentInst(party)).findFirst().get();
+        log.info("kuscia job parties {}", parties);
+        if (envService.isAutonomy()) {
+            return parties.stream().filter(party -> envService.isNodeInCurrentInst(party)).findFirst().get();
+        }
+        return envService.getPlatformNodeId();
     }
 
     private String getModelExportReport(ModelExportDTO modelExportDTO) {
@@ -360,7 +363,7 @@ public class ModelExportServiceImpl implements ModelExportService {
                 "domain", "model",
                 "name", "model_export",
                 "version", "1.0.0",
-                "attr_paths", List.of("model_name", "model_desc", "input_datasets", "output_datasets", "component_eval_params","he_mode"),
+                "attr_paths", List.of("model_name", "model_desc", "input_datasets", "output_datasets", "component_eval_params", "he_mode"),
                 "attrs", List.of(
                         Map.of("s", request.getModelName()),
                         Map.of("s", StringUtils.isEmpty(request.getModelDesc()) ? "" : request.getModelDesc()),

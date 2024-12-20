@@ -25,6 +25,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -128,6 +129,7 @@ public interface ProjectResultRepository extends BaseRepository<ProjectResultDO,
     List<ProjectResultDO> findByProjectIdAndRefId(@Param("projectId") String projectId, @Param("refId") String refId);
 
     @Modifying
+    @Transactional
     @Query(nativeQuery = true, value = "delete from project_result where job_id=:jobId and project_id=:projectId")
     void deleteByJobId(@Param("projectId") String projectId, @Param("jobId") String jobId);
 }

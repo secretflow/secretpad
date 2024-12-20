@@ -20,6 +20,8 @@ import org.secretflow.secretpad.common.enums.PlatformTypeEnum;
 import org.secretflow.secretpad.common.errorcode.VoteErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.*;
+import org.secretflow.secretpad.manager.integration.noderoute.NodeRouteManager;
+import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.VoteInviteDO;
 import org.secretflow.secretpad.persistence.entity.VoteRequestDO;
 import org.secretflow.secretpad.persistence.repository.*;
@@ -38,6 +40,7 @@ import org.secretflow.secretpad.service.model.datasync.vote.DbSyncRequest;
 import org.secretflow.secretpad.service.model.message.*;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
 
+import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.secretflow.v1alpha1.kusciaapi.Certificate;
 import org.slf4j.Logger;
@@ -45,6 +48,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.CollectionUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -60,6 +64,7 @@ import java.util.stream.Collectors;
  * @date 2023/09/20
  */
 @Service
+@RequiredArgsConstructor
 public class MessageServiceImpl implements MessageService {
     private final static Logger LOGGER = LoggerFactory.getLogger(MessageServiceImpl.class);
 
@@ -81,35 +86,26 @@ public class MessageServiceImpl implements MessageService {
     private final EnvService envService;
 
     private final CertificateService certificateService;
+    private final NodeRouteManager nodeRouteManager;
 
-
-    public MessageServiceImpl(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, InstRepository instRepository, Map<VoteTypeEnum, VoteTypeHandler> voteTypeHandlerMap, VoteRequestCustomRepository voteRequestCustomRepository, VoteInviteCustomRepository voteInviteCustomRepository, EnvService envService, CertificateService certificateService) {
-        this.voteInviteRepository = voteInviteRepository;
-        this.voteRequestRepository = voteRequestRepository;
-        this.nodeRepository = nodeRepository;
-        this.instRepository = instRepository;
-        this.voteTypeHandlerMap = voteTypeHandlerMap;
-        this.voteRequestCustomRepository = voteRequestCustomRepository;
-        this.voteInviteCustomRepository = voteInviteCustomRepository;
-        this.envService = envService;
-        this.certificateService = certificateService;
-    }
 
     @Transactional(rollbackFor = Exception.class)
     @Override
     public void reply(String action, String reason, String voteParticipantId, String voteId) {
         identityVerification(voteParticipantId);
         Optional<VoteInviteDO> voteInviteDOOptional = voteInviteRepository.findById(new VoteInviteDO.UPK(voteId, voteParticipantId));
-        if (!voteInviteDOOptional.isPresent()) {
+        if (voteInviteDOOptional.isEmpty()) {
             LOGGER.error("Cannot find vote info by voteID {} and voteParticipantID {}.", voteId, voteParticipantId);
             throw SecretpadException.of(VoteErrorCode.VOTE_NOT_EXISTS);
         }
         VoteInviteDO voteInviteDO = voteInviteDOOptional.get();
         String voter = voteTypeHandlerMap.get(VoteTypeEnum.valueOf(voteInviteDO.getType())).getVoter(voteParticipantId);
         Optional<VoteRequestDO> optionalVoteRequestDO = voteRequestRepository.findById(voteId);
-        if (!optionalVoteRequestDO.isPresent()) {
+        if (optionalVoteRequestDO.isEmpty()) {
             throw SecretpadException.of(VoteErrorCode.VOTE_NOT_EXISTS);
         }
+        // Check whether the route exists, master node routing and invitation node routing, double check
+        checkVoteRoute(voteInviteDO);
         VoteRequestDO voteRequestDO = optionalVoteRequestDO.get();
         String requestMsg = voteRequestDO.getRequestMsg();
         String teeAction = VoteStatusEnum.APPROVED.name().equals(action) ? "APPROVE" : "REJECT";
@@ -220,10 +216,9 @@ public class MessageServiceImpl implements MessageService {
 
     private MessageVO convert2VO(VoteInviteDO inviteDO) {
         Optional<VoteRequestDO> voteRequestDOOptional = voteRequestRepository.findByVoteID(inviteDO.getUpk().getVoteID());
-        if (!voteRequestDOOptional.isPresent()) {
+        if (voteRequestDOOptional.isEmpty()) {
             LOGGER.error("Cannot find vote request  by voteID {}", inviteDO.getUpk().getVoteID());
             return null;
-            //throw SecretpadException.of(VoteErrorCode.VOTE_NOT_EXISTS, inviteDO.getUpk().getVoteID() + " not found in voteRequest");
         }
         String initiator = voteRequestDOOptional.get().getInitiator();
         String initiatorNodeName;
@@ -258,6 +253,21 @@ public class MessageServiceImpl implements MessageService {
                 .initiatingTypeMessage(initiatorMessage)
                 .voteTypeMessage(voteTypeHandlerMap.get(VoteTypeEnum.valueOf(requestDO.getType())).getMessageListNecessaryInfo(requestDO.getVoteID()))
                 .build();
+    }
+
+    private void checkVoteRoute(VoteInviteDO voteInviteDO) {
+        if (envService.isAutonomy()) {
+            String initiator = voteInviteDO.getInitiator();
+            List<NodeDO> byInstId = nodeRepository.findByInstId(initiator);
+            if (CollectionUtils.isEmpty(byInstId)) {
+                throw SecretpadException.of(VoteErrorCode.VOTE_INITIATOR_INST_NOT_FOUND, "initiator inst not found");
+            }
+            String dstMasterNodeId = byInstId.get(0).getMasterNodeId();
+            String myMasterNodeId = envService.getPlatformNodeId();
+            if (!nodeRouteManager.checkNodeRouteReady(myMasterNodeId, dstMasterNodeId, myMasterNodeId)) {
+                throw SecretpadException.of(VoteErrorCode.VOTE_MASTER_ROUTE_NOT_READY, myMasterNodeId + "->" + dstMasterNodeId);
+            }
+        }
     }
 
 }

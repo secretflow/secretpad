@@ -83,4 +83,6 @@ public class ComponentVersion {
     @Schema(description = "dataProxyImage")
     private String dataProxyImage;
 
+    @Schema(description = "scqlImage")
+    private String scqlImage;
 }
