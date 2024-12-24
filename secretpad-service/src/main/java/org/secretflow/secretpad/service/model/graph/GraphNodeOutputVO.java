@@ -19,9 +19,10 @@ package org.secretflow.secretpad.service.model.graph;
 import org.secretflow.secretpad.common.errorcode.GraphErrorCode;
 import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.persistence.model.ResultKind;
-
 import lombok.Builder;
 import lombok.Data;
+
+import java.util.List;
 
 /**
  * Graph node output view object
@@ -63,6 +64,11 @@ public class GraphNodeOutputVO {
      * this output produced by this graph
      */
     private String graphID;
+
+    /**
+     * warning
+     */
+    private List<String> warning;
     /**
      * Graph start time
      */
@@ -157,4 +163,5 @@ public class GraphNodeOutputVO {
          */
         private String datasourceType;
     }
+
 }

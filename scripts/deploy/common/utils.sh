@@ -242,6 +242,8 @@ function clear_env() {
 	unset DOMAIN_HOST_INTERNAL_PORT
 	unset KUSCIA_K3S_INSTALL_DIR
 	unset KUSCIA_CONFIG_INSTALL_DIR
+	unset DATAPROXY_IMAGE
+	unset SCQL_IMAGE
 }
 
 function prepare_environment() {
@@ -431,8 +433,8 @@ function applySfServingAppImage() {
 		container_id=${KUSCIA_CTR}
 	fi
 	if is_p2p_node; then
-	container_id=${KUSCIA_CTR}
-  fi
+		container_id=${KUSCIA_CTR}
+	fi
 	log "apply sf serving appImage"
 	# shellcheck disable=SC2046
 	docker run --rm --entrypoint /bin/bash -v $(pwd):/tmp/secretpad "$SECRETPAD_IMAGE" -c 'cp -R /app/scripts/templates/sf-serving.yaml /tmp/secretpad/'
@@ -448,6 +450,35 @@ function applySfServingAppImage() {
 	docker cp sf-serving-0.yaml "$container_id":/home/kuscia
 	log "docker exec -it $container_id kubectl apply -f sf-serving.yam"
 	docker exec -it "$container_id" kubectl apply -f sf-serving-0.yaml
+}
+
+function applySfScqlAppImage() {
+	if [ "$NEED_SCQL" = false ]; then
+		log_warn "ARM architecture does not support scql"
+		return
+	fi
+	local container_id=${KUSCIA_MASTER_CTR}
+	if is_p2p; then
+		container_id=${KUSCIA_CTR}
+	fi
+	if is_p2p_node; then
+		container_id=${KUSCIA_CTR}
+	fi
+	log "apply sf scql appImage"
+	# shellcheck disable=SC2046
+	docker run --rm --entrypoint /bin/bash -v $(pwd):/tmp/secretpad "$SECRETPAD_IMAGE" -c 'cp -R /app/scripts/templates/sf-scql.yaml /tmp/secretpad/'
+	SCQL_IMAGE_TAG=${SCQL_IMAGE##*:}
+	log "SCQL_IMAGE_TAG $SCQL_IMAGE_TAG "
+	# shellcheck disable=SC2001
+	SCQL_IMAGE_NAME=$(echo "$SCQL_IMAGE" | sed "s/:${SCQL_IMAGE_TAG}//")
+	log "SCQL_IMAGE_NAME $SCQL_IMAGE_NAME "
+	sed "s|{{.SCQL_IMAGE_NAME}}|${SCQL_IMAGE_NAME}|g;
+    s|{{.SCQL_IMAGE_TAG}}|${SCQL_IMAGE_TAG}|g" \
+		sf-scql.yaml >sf-scql-0.yaml
+	log "docker cp sf-scql.yaml  $container_id:/home/kuscia"
+	docker cp sf-scql-0.yaml "$container_id":/home/kuscia
+	log "docker exec -it $container_id kubectl apply -f sf-scql.yam"
+	docker exec -it "$container_id" kubectl apply -f sf-scql-0.yaml
 }
 
 function create_alice_bob_domain_route() {
@@ -553,6 +584,7 @@ function post_kuscia_node() {
 		return 1
 	fi
 	resp=$(cat post_kuscia_node.txt)
+	log "HTTP response: $resp"
 	code=$(echo "$resp" | grep -o '"code":[0-9]*' | cut -d':' -f2 | tr -d ' ')
 	if [ "$PAD_HTTP_STATUS" -eq 200 ] && [ "$code" -eq 0 ]; then
 		log_success "HTTP success，code: $PAD_HTTP_STATUS"

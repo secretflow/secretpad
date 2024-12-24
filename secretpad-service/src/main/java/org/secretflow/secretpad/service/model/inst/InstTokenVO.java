@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.service.model.inst;
 
+import org.secretflow.secretpad.common.enums.NodeInstTokenStateEnum;
+
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.*;
 
@@ -52,5 +54,11 @@ public class InstTokenVO {
      */
     @Schema(description = "createTime")
     private String createTime;
+
+    /**
+     * inst token state
+     */
+    @Schema(description = "instTokenState")
+    private NodeInstTokenStateEnum instTokenState;
 
 }

@@ -19,7 +19,6 @@ package org.secretflow.secretpad.persistence.repository;
 
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.model.NodeInstDTO;
-
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -54,8 +53,7 @@ public interface NodeRepository extends BaseRepository<NodeDO, String> {
      * @param nodeId target nodeId
      * @return node result optional
      */
-    @Query(value = "select id,node_id,name,auth,description,control_node_id,net_address,token,type,mode,master_node_id,is_deleted,gmt_create,gmt_modified,inst_id,inst_token,protocol from node " +
-            "where node_id=:nodeId and is_deleted = 1", nativeQuery = true)
+    @Query(value = "select * from node where node_id=:nodeId and is_deleted = 1", nativeQuery = true)
     Optional<NodeDO> findDeletedRecordByNodeId(String nodeId);
 
     /**
@@ -63,7 +61,8 @@ public interface NodeRepository extends BaseRepository<NodeDO, String> {
      *
      * @param nodeId target nodeId
      */
-    @Query("delete from NodeDO nd where nd.nodeId=:nodeId")
+    @Modifying
+    @Transactional
     void deleteByNodeId(String nodeId);
 
     List<NodeDO> findByType(String type);
@@ -100,4 +99,7 @@ public interface NodeRepository extends BaseRepository<NodeDO, String> {
     @Transactional
     @Query(value = "update node set master_node_id = :masterNodeId where inst_id =:instId", nativeQuery = true)
     void updateMasterNodeIdByInstid(String instId, String masterNodeId);
+
+    @Query(value = "select distinct inst_id from node where node_id in :nodeIds", nativeQuery = true)
+    List<String> findInstIdsByNodeIds(@Param("nodeIds") Collection<String> nodeIds);
 }

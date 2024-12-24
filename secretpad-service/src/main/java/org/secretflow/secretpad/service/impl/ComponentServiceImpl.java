@@ -21,6 +21,7 @@ import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.FileUtils;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.service.ComponentService;
+import org.secretflow.secretpad.service.configuration.ScqlConfig;
 import org.secretflow.secretpad.service.configuration.SecretFlowVersionConfig;
 import org.secretflow.secretpad.service.configuration.SecretpadComponentConfig;
 import org.secretflow.secretpad.service.constant.ComponentConstants;
@@ -30,7 +31,6 @@ import org.secretflow.secretpad.service.model.graph.CompListVO;
 import org.secretflow.secretpad.service.model.graph.ComponentKey;
 import org.secretflow.secretpad.service.model.graph.ComponentSummaryDef;
 import org.secretflow.secretpad.service.model.graph.GraphNodeInfo;
-
 import com.secretflow.spec.v1.CompListDef;
 import com.secretflow.spec.v1.ComponentDef;
 import jakarta.annotation.Resource;
@@ -69,6 +69,9 @@ public class ComponentServiceImpl implements ComponentService {
     @Resource
     private SecretFlowVersionConfig secretFlowVersionConfig;
 
+    @Resource
+    private ScqlConfig scqlConfig;
+
     @Override
     public Map<String, CompListVO> listComponents() {
         Map<String, CompListVO> resp = new HashMap<>();
@@ -101,6 +104,7 @@ public class ComponentServiceImpl implements ComponentService {
             }
         });
         resp.remove(ComponentConstants.SECRETPAD);
+        resp.remove(ComponentConstants.SCQL);
         return resp;
     }
 
@@ -129,6 +133,7 @@ public class ComponentServiceImpl implements ComponentService {
     public Object listComponentI18n() {
         Map<String, Map<String, Object>> config = new HashMap<>();
         Map<String, Object> secretpad = new HashMap<>();
+        Map<String, Object> scql = new HashMap<>();
         try {
             File dir = ResourceUtils.getFile(i18nLocation);
             File[] files = dir.listFiles();
@@ -141,13 +146,19 @@ public class ComponentServiceImpl implements ComponentService {
                     if (!CollectionUtils.isEmpty(content)) {
                         if (app.equals(ComponentConstants.SECRETPAD)) {
                             secretpad = content;
+                        }else if (app.equals(ComponentConstants.SCQL)){
+                            scql = content;
                         } else {
                             config.put(app, content);
                         }
                     }
                 }
                 Map<String, Object> finalSecretpad = secretpad;
-                config.keySet().forEach(k -> config.get(k).putAll(finalSecretpad));
+                Map<String, Object> finalScql = scql;
+                config.keySet().forEach(k -> {
+                    config.get(k).putAll(finalSecretpad);
+                    config.get(ComponentConstants.SECRETFLOW).putAll(finalScql);
+                });
             }
         } catch (IOException e) {
             throw SecretpadException.of(GraphErrorCode.COMPONENT_18N_ERROR, e);
@@ -182,6 +193,7 @@ public class ComponentServiceImpl implements ComponentService {
                     .secretflowServingImage(secretFlowVersionConfig.getSecretflowServingImage())
                     .kusciaImage(secretFlowVersionConfig.getKusciaImage())
                     .dataProxyImage(secretFlowVersionConfig.getDataProxyImage())
+                    .scqlImage(secretFlowVersionConfig.getScqlImage())
                     .build();
 
             case TEE -> ComponentVersion.builder()
@@ -199,6 +211,7 @@ public class ComponentServiceImpl implements ComponentService {
                     .kusciaImage(secretFlowVersionConfig.getKusciaImage())
                     .secretflowImage(secretFlowVersionConfig.getSecretflowImage())
                     .dataProxyImage(secretFlowVersionConfig.getDataProxyImage())
+                    .scqlImage(secretFlowVersionConfig.getScqlImage())
                     .build();
             default -> null;
         };

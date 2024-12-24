@@ -28,6 +28,7 @@ import org.secretflow.secretpad.persistence.repository.InstRepository;
 import org.secretflow.secretpad.service.dataproxy.DataProxyService;
 import org.secretflow.secretpad.service.model.common.SecretPadResponse;
 import org.secretflow.secretpad.service.util.DbSyncUtil;
+import org.secretflow.secretpad.service.util.RateLimitUtil;
 import org.secretflow.secretpad.web.SecretPadApplication;
 
 import jakarta.annotation.Resource;
@@ -63,6 +64,8 @@ import java.util.*;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import static org.mockito.Mockito.mockStatic;
+
 
 /**
  * Basic controller test
@@ -78,6 +81,7 @@ public class ControllerTest {
     public static final String PROJECT_ID = "projectagdasvacaghyhbvscvyjnba";
     private final static Logger LOGGER = LoggerFactory.getLogger(ControllerTest.class);
     public static MockedStatic<DbSyncUtil> pushToCenterUtilMockedStatic;
+    public static MockedStatic<RateLimitUtil> mockedRateLimitUtil;
     @Autowired
     protected MockMvc mockMvc;
     @MockBean
@@ -104,6 +108,7 @@ public class ControllerTest {
                 .ownerId("test")
                 .projectIds(Set.of(PROJECT_ID)).build());
         pushToCenterUtilMockedStatic = Mockito.mockStatic(DbSyncUtil.class);
+        mockedRateLimitUtil = mockStatic(RateLimitUtil.class);
         Mockito.doNothing().when(dataProxyService).updateDataSourceUseDataProxyInMaster();
         Mockito.doNothing().when(dataProxyService).updateDataSourceUseDataProxyInP2p(Mockito.anyString());
         P2pDataSyncProducerTemplate.nodeIds.add("alice");
@@ -114,6 +119,7 @@ public class ControllerTest {
     @AfterEach
     public void after() {
         pushToCenterUtilMockedStatic.close();
+        mockedRateLimitUtil.close();
     }
 
     void assertResponse(MvcRequestFunction<MockHttpServletRequestBuilder> f) throws Exception {

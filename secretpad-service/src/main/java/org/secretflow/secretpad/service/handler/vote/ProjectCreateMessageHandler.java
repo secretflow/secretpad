@@ -18,6 +18,10 @@ package org.secretflow.secretpad.service.handler.vote;
 
 import org.secretflow.secretpad.common.constant.CacheConstants;
 import org.secretflow.secretpad.common.enums.ProjectStatusEnum;
+import org.secretflow.secretpad.common.errorcode.InstErrorCode;
+import org.secretflow.secretpad.common.errorcode.ProjectErrorCode;
+import org.secretflow.secretpad.common.errorcode.VoteErrorCode;
+import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.Base64Utils;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.manager.integration.node.NodeManager;
@@ -26,6 +30,7 @@ import org.secretflow.secretpad.persistence.model.ParticipantNodeInstVO;
 import org.secretflow.secretpad.persistence.repository.*;
 import org.secretflow.secretpad.service.CertificateService;
 import org.secretflow.secretpad.service.EnvService;
+import org.secretflow.secretpad.service.InstService;
 import org.secretflow.secretpad.service.enums.VoteTypeEnum;
 import org.secretflow.secretpad.service.impl.InstServiceImpl;
 import org.secretflow.secretpad.service.model.approval.*;
@@ -56,12 +61,15 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
 
     private final CacheManager cacheManager;
 
+    private final InstService instService;
 
-    public ProjectCreateMessageHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, InstRepository instRepository, EnvService envService, ProjectApprovalConfigRepository projectApprovalConfigRepository, ProjectRepository projectRepository, CertificateService certificateService, NodeManager nodeManager, ProjectNodeRepository projectNodeRepository, ProjectInstRepository projectInstRepository, CacheManager cacheManager) {
+
+    public ProjectCreateMessageHandler(VoteInviteRepository voteInviteRepository, VoteRequestRepository voteRequestRepository, NodeRepository nodeRepository, InstRepository instRepository, EnvService envService, ProjectApprovalConfigRepository projectApprovalConfigRepository, ProjectRepository projectRepository, CertificateService certificateService, NodeManager nodeManager, ProjectNodeRepository projectNodeRepository, ProjectInstRepository projectInstRepository, CacheManager cacheManager, InstService instService) {
         super(voteInviteRepository, voteRequestRepository, nodeRepository, instRepository, envService, projectRepository, projectApprovalConfigRepository, nodeManager, certificateService);
         this.projectNodeRepository = projectNodeRepository;
         this.projectInstRepository = projectInstRepository;
         this.cacheManager = cacheManager;
+        this.instService = instService;
     }
 
 
@@ -72,7 +80,58 @@ public class ProjectCreateMessageHandler extends AbstractAutonomyVoteTypeHandler
 
     @Override
     protected void preCheck(String initiatorId, AbstractVoteConfig voteConfig) {
+        try {
+            ProjectCreateApprovalConfig projectCreateApprovalConfig = (ProjectCreateApprovalConfig) voteConfig;
 
+            List<ParticipantNodeInstVO> participantNodeInstVOS = projectCreateApprovalConfig.getParticipantNodeInstVOS();
+
+            // Validate participants list is not empty
+            List<String> participants = projectCreateApprovalConfig.getParticipants().stream()
+                    .filter(participant -> !initiatorId.equals(participant))
+                    .toList();
+            if (participants.isEmpty()) {
+                throw SecretpadException.of(VoteErrorCode.PARTICIPANT_NOT_EXIST);
+            }
+
+            // Collect initiator node IDs
+            List<String> initiatorNodeIds = participantNodeInstVOS.stream()
+                    .map(ParticipantNodeInstVO::getInitiatorNodeId)
+                    .toList();
+
+            // Validate that initiator node IDs do not contain duplicates
+            if (hasDuplicates(initiatorNodeIds)) {
+                throw SecretpadException.of(VoteErrorCode.INITIATOR_NODE_DUPLICATE);
+            }
+
+            // Validate that initiator node IDs match the inst of the initiator
+            if (!instService.checkNodesInInst(initiatorId, initiatorNodeIds)) {
+                throw SecretpadException.of(InstErrorCode.INITIATOR_INST_NODE_MISMATCH);
+            }
+
+            // Collect invitee IDs and fetch corresponding inst IDs
+            List<String> inviteeIds = participantNodeInstVOS.stream()
+                    .flatMap(participant -> participant.getInvitees().stream())
+                    .map(ParticipantNodeInstVO.NodeInstVO::getInviteeId)
+                    .toList();
+            List<String> instIds = nodeRepository.findInstIdsByNodeIds(inviteeIds);
+
+            // Determine if invited nodes match the participating inst
+            boolean hasMismatch = instIds.stream().anyMatch(instId -> !participants.contains(instId));
+            if (hasMismatch) {
+                throw SecretpadException.of(InstErrorCode.INVITEE_INST_NODE_MISMATCH);
+            }
+        }catch (SecretpadException e){
+            LOGGER.error("ProjectCreateMessageHandler preCheck error:{}", e.getMessage(), e);
+            throw e;
+        } catch (Exception e) {
+            LOGGER.error("ProjectCreateMessageHandler preCheck error:{}", e.getMessage(), e);
+            throw SecretpadException.of(ProjectErrorCode.PROJECT_CREATE_FAILED, e);
+        }
+    }
+
+    public static <T> boolean hasDuplicates(List<T> list) {
+        Set<T> set = new HashSet<>(list);
+        return set.size() < list.size();
     }
 
     @Override

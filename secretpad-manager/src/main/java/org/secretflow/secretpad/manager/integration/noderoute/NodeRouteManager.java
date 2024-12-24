@@ -24,10 +24,8 @@ import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.kuscia.v1alpha1.service.impl.KusciaGrpcClientAdapter;
 import org.secretflow.secretpad.manager.integration.model.CreateNodeRouteParam;
 import org.secretflow.secretpad.manager.integration.model.NodeRouteDTO;
-import org.secretflow.secretpad.manager.integration.node.AbstractNodeManager;
 import org.secretflow.secretpad.persistence.entity.NodeDO;
 import org.secretflow.secretpad.persistence.entity.NodeRouteDO;
-import org.secretflow.secretpad.persistence.repository.NodeRepository;
 import org.secretflow.secretpad.persistence.repository.NodeRouteRepository;
 
 import lombok.RequiredArgsConstructor;
@@ -56,9 +54,6 @@ import static org.secretflow.secretpad.common.constant.Constants.PROTOCOL_HTTPS;
 public class NodeRouteManager extends AbstractNodeRouteManager {
 
     private final NodeRouteRepository nodeRouteRepository;
-    private final NodeRepository nodeRepository;
-
-    private final AbstractNodeManager nodeManager;
     private final KusciaGrpcClientAdapter kusciaGrpcClientAdapter;
 
     @Value("${secretpad.platform-type}")
@@ -145,10 +140,10 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
 
     @Transactional
     public void deleteNodeRoute(NodeRouteDO nodeRouteDO) {
-        deleteDomainRouter(nodeRouteDO);
         if (ObjectUtils.isEmpty(nodeRouteDO)) {
             throw SecretpadException.of(NodeRouteErrorCode.NODE_ROUTE_NOT_EXIST_ERROR, "node router do not exit");
         }
+        deleteDomainRouter(nodeRouteDO);
         nodeRouteRepository.deleteById(nodeRouteDO.getRouteId());
     }
 
@@ -220,6 +215,7 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
         return kusciaGrpcClientAdapter.queryDomainRoute(queryDomainRouteRequest, channelNodeId);
     }
 
+    @Override
     public boolean checkDomainRouterExistsInKuscia(String srcNodeId, String dstNodeId, String channelNodeId) {
         DomainRoute.QueryDomainRouteResponse response = queryDomainRouter(srcNodeId, dstNodeId, channelNodeId);
         return response.getStatus().getCode() == 0;
@@ -231,12 +227,12 @@ public class NodeRouteManager extends AbstractNodeRouteManager {
         kusciaGrpcClientAdapter.deleteDomain(request, channelNodeId);
     }
 
-    private void deleteDomainRouter(String srcNodeId, String dstNodeId,String channelNodeId) {
+    private void deleteDomainRouter(String srcNodeId, String dstNodeId, String channelNodeId) {
         DomainRoute.DeleteDomainRouteRequest request =
                 DomainRoute.DeleteDomainRouteRequest.newBuilder().setSource(srcNodeId).setDestination(dstNodeId).build();
         if (StringUtils.isBlank(channelNodeId)) {
             kusciaGrpcClientAdapter.deleteDomainRoute(request);
-        }else {
+        } else {
             kusciaGrpcClientAdapter.deleteDomainRoute(request, channelNodeId);
         }
     }

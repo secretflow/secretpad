@@ -23,6 +23,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -60,7 +61,7 @@ public interface ProjectInstRepository extends BaseRepository<ProjectInstDO, Pro
     List<ProjectInstDO> findByInstId(String instId);
 
     @Modifying
-    @Query(value = "update ProjectInstDO pi set pi.isDeleted = true where pi.upk.projectId=:projectId")
-    void deleteByProjectId(@Param("projectId") String projectId);
+    @Transactional
+    void deleteByUpkProjectId(@Param("projectId") String projectId);
 
 }

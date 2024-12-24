@@ -17,7 +17,6 @@
 package org.secretflow.secretpad.manager.integration.model;
 
 import org.secretflow.secretpad.common.enums.ModelStatsEnum;
-import org.secretflow.secretpad.common.util.UserContext;
 import org.secretflow.secretpad.persistence.entity.ProjectModelPackDO;
 import org.secretflow.secretpad.persistence.model.GraphNodeTaskStatus;
 import org.secretflow.secretpad.persistence.model.PartyDataSource;
@@ -48,6 +47,7 @@ public class ModelExportDTO implements Serializable {
     private String projectId;
 
     private String graphId;
+    private String initiator;
     private String modelId;
 
     private String modelName;
@@ -79,7 +79,7 @@ public class ModelExportDTO implements Serializable {
         }
         return ProjectModelPackDO.builder()
                 .modelId(modelExportDTO.getModelId())
-                .initiator(UserContext.getUser().getPlatformNodeId())
+                .initiator(modelExportDTO.getInitiator())
                 .projectId(modelExportDTO.getProjectId())
                 .modelName(modelExportDTO.getModelName())
                 .modelDesc(modelExportDTO.getModelDesc())

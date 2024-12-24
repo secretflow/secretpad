@@ -76,17 +76,21 @@ public class P2pDataSyncProducerTemplate extends AbstractDataSyncProducerTemplat
     @Async
     @Override
     public void push(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {
-        List<String> sync = dataSyncConfig.getSync();
-        String dType = event.getDType();
-        if (!sync.contains(dType)) {
-            return;
-        }
-        log.debug("before paddingNodes data:{} action:{} projectId: {} nodeIds: {}", event.getDType(), event.getAction(), event.getProjectId(), event.getNodeIds());
-        p2pPaddingNodeServiceImpl.paddingNodes(event);
-        log.debug("after paddingNodes data:{} action:{} projectId: {} nodeIds: {}", event.getDType(), event.getAction(), event.getProjectId(), event.getNodeIds());
-        if (PlatformTypeEnum.valueOf(platformType).equals(PlatformTypeEnum.AUTONOMY) && !filter(event)) {
-            log.debug("start to push");
-            dataSyncDataBufferTemplate.push(event);
+        try {
+            List<String> sync = dataSyncConfig.getSync();
+            String dType = event.getDType();
+            if (!sync.contains(dType)) {
+                return;
+            }
+            log.debug("before paddingNodes data:{} action:{} projectId: {} nodeIds: {}", event.getDType(), event.getAction(), event.getProjectId(), event.getNodeIds());
+            p2pPaddingNodeServiceImpl.paddingNodes(event);
+            log.debug("after paddingNodes data:{} action:{} projectId: {} nodeIds: {}", event.getDType(), event.getAction(), event.getProjectId(), event.getNodeIds());
+            if (PlatformTypeEnum.valueOf(platformType).equals(PlatformTypeEnum.AUTONOMY) && !filter(event)) {
+                log.debug("start to push");
+                dataSyncDataBufferTemplate.push(event);
+            }
+        } catch (Exception e) {
+            log.error("P2pDataSyncProducerTemplate push error", e);
         }
     }
 

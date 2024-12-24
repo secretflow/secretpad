@@ -60,7 +60,22 @@ public enum InstErrorCode implements ErrorCode {
     /**
      * file operation fail
      */
-    INST_FILE_OPERATION_FAILED(202011207);
+    INST_FILE_OPERATION_FAILED(202011207),
+    /**
+     * token used
+     */
+    INST_TOKEN_USED(202011208),
+
+    /**
+     * initiator inst node not match
+     */
+    INITIATOR_INST_NODE_MISMATCH(202011209),
+
+    /**
+     *  invitee inst node not match
+     */
+    INVITEE_INST_NODE_MISMATCH(202011210),
+    ;
 
 
     private final int code;

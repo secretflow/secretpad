@@ -20,6 +20,7 @@ import org.secretflow.secretpad.common.constant.ProjectConstants;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import lombok.*;
 import org.hibernate.sql.Update;
 
@@ -39,11 +40,14 @@ public class CreateProjectRequest {
      * Project name
      */
     @Schema(description = "project name")
+    @NotBlank(message = "name not empty")
+    @Size(max = 32, message = "name max length is 32")
     private String name;
     /**
      * Project description
      */
     @Schema(description = "project description")
+    @Size(max = 128, message = "description max length is 128")
     private String description;
 
     /**

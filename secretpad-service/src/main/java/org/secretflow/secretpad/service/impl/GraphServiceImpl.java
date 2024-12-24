@@ -49,9 +49,10 @@ import org.secretflow.secretpad.service.model.graph.*;
 import org.secretflow.secretpad.service.model.node.NodeSimpleInfo;
 import org.secretflow.secretpad.service.model.project.GetProjectJobTaskOutputRequest;
 import org.secretflow.secretpad.service.model.project.StopProjectJobTaskRequest;
+import org.secretflow.secretpad.service.model.report.ScqlReport;
 import org.secretflow.secretpad.service.util.AutonomyNodeRouteUtil;
 import org.secretflow.secretpad.service.util.GraphUtils;
-
+import org.secretflow.secretpad.service.util.ResultConvertUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.base.Strings;
 import com.google.gson.Gson;
@@ -64,6 +65,7 @@ import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.jetbrains.annotations.NotNull;
 import org.secretflow.proto.kuscia.TaskConfig;
 import org.secretflow.v1alpha1.kusciaapi.Domaindata;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -76,8 +78,7 @@ import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
-import static org.secretflow.secretpad.common.constant.ComponentConstants.BINNING_MODIFICATIONS_CODENAME;
-import static org.secretflow.secretpad.common.constant.ComponentConstants.MODEL_PARAM_MODIFICATIONS_CODENAME;
+import static org.secretflow.secretpad.common.constant.ComponentConstants.*;
 import static org.secretflow.secretpad.service.constant.ComponentConstants.COMP_READ_DATA_DATATABLE_ID;
 import static org.secretflow.secretpad.service.constant.Constants.TEE_PROJECT_MODE;
 import static org.secretflow.secretpad.service.util.JobUtils.genTaskOutputId;
@@ -385,6 +386,7 @@ public class GraphServiceImpl implements GraphService {
                 }
             } else { /** read data */
                 outputVO.setType(ResultKind.FedTable.getName());
+                outputVO.setCodeName(graphNodeInfo.codeName);
                 String datatableId = ComponentTools.getDataTableId(graphNodeInfo);
                 List<ProjectDatatableDO> datatableDOS = datatableRepository.findByDatableId(projectId, datatableId);
                 if (!CollectionUtils.isEmpty(datatableDOS)) {
@@ -447,22 +449,7 @@ public class GraphServiceImpl implements GraphService {
 
                         switch (resultKind) {
                             case Report:
-                                Optional<ProjectReportDO> reportDOOptional = reportRepository.findById(new ProjectReportDO.UPK(projectId, latestOutputId));
-                                if (reportDOOptional.isEmpty()) {
-                                    throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_OUTPUT_NOT_EXISTS);
-                                }
-                                ProjectReportDO reportDO = reportDOOptional.get();
-                                content = reportDO.getContent();
-                                JsonNode jsonNode = JsonUtils.parseObject(content);
-                                Object tabs = null;
-                                if (ObjectUtils.isNotEmpty(jsonNode)) {
-                                    JsonNode meta = jsonNode.get("meta");
-                                    if (ObjectUtils.isNotEmpty(meta)) {
-                                        tabs = meta.get("tabs");
-                                    }
-                                }
-                                outputVO.setTabs(ObjectUtils.isEmpty(tabs) ? new ArrayList<>() : tabs);
-                                return outputVO;
+                                return getGraphNodeOutputVO(projectId, latestOutputId, outputVO);
                             case READ_DATA:
                                 Optional<ProjectReadDataDO> readDataDOOptional = projectReadDataRepository.findById(new ProjectReadDataDO.UPK(projectId, latestOutputId));
                                 if (readDataDOOptional.isEmpty()) {
@@ -522,6 +509,33 @@ public class GraphServiceImpl implements GraphService {
         Table.HeaderItem fileHeader = Table.HeaderItem.newBuilder().setType(String.valueOf(AttrType.AT_STRING)).setName("metas").build();
         GraphNodeOutputVO.FileMeta fileMeta = GraphNodeOutputVO.FileMeta.builder().headers(ProtoUtils.protosToListMap(List.of(fileHeader))).rows(outputResults).build();
         outputVO.setMeta(fileMeta);
+        return outputVO;
+    }
+
+    private @NotNull GraphNodeOutputVO getGraphNodeOutputVO(String projectId, String latestOutputId, GraphNodeOutputVO outputVO) {
+        Optional<ProjectReportDO> reportDOOptional = reportRepository.findById(new ProjectReportDO.UPK(projectId, latestOutputId));
+        if (reportDOOptional.isEmpty()) {
+            throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_OUTPUT_NOT_EXISTS);
+        }
+        ProjectReportDO reportDO = reportDOOptional.get();
+        JsonNode jsonNode = JsonUtils.parseObject(reportDO.getContent());
+        if (Objects.isNull(jsonNode.get("type"))) {
+            ScqlReport scqlReport = JsonUtils.toJavaObject(jsonNode, ScqlReport.class);
+            List<String> reasons = scqlReport.getWarnings().stream()
+                    .map(ScqlReport.SQLWarning::getReason)
+                    .toList();
+            outputVO.setWarning(reasons);
+            String content = ResultConvertUtil.convertScqlToSfReport(scqlReport);
+            jsonNode = JsonUtils.parseObject(content);
+        }
+        Object tabs = null;
+        if (ObjectUtils.isNotEmpty(jsonNode)) {
+            JsonNode meta = jsonNode.get("meta");
+            if (ObjectUtils.isNotEmpty(meta)) {
+                tabs = meta.get("tabs");
+            }
+        }
+        outputVO.setTabs(ObjectUtils.isEmpty(tabs) ? new ArrayList<>() : tabs);
         return outputVO;
     }
 
@@ -588,15 +602,7 @@ public class GraphServiceImpl implements GraphService {
         GraphNodeOutputVO.OutputResult outputResult;
         switch (resultKind) {
             case Report:
-                Optional<ProjectReportDO> reportDOOptional = reportRepository.findById(new ProjectReportDO.UPK(projectId, centerResultId));
-                if (reportDOOptional.isEmpty()) {
-                    throw SecretpadException.of(GraphErrorCode.GRAPH_NODE_OUTPUT_NOT_EXISTS);
-                }
-                ProjectReportDO reportDO = reportDOOptional.get();
-                String content = reportDO.getContent();
-                Object tabs = JsonUtils.parseObject(content).get("meta").get("tabs");
-                outputVO.setTabs(tabs);
-                return outputVO;
+                return getGraphNodeOutputVO(projectId, centerNodeId, outputVO);
             case Model:
             case Rule:
                 outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(centerNodeId).path(centerResultId).build();
@@ -760,6 +766,7 @@ public class GraphServiceImpl implements GraphService {
                     nodeStatusVO.setTaskId(taskDOOptional.get().getUpk().getTaskId());
                     nodeStatusVO.setJobId(taskDOOptional.get().getUpk().getJobId());
                     nodeStatusVO.setParties(nodeRepository.findByNodeIdIn(taskDOOptional.get().getParties()).stream().map(e -> NodeSimpleInfo.builder().nodeName(e.getName()).nodeId(e.getNodeId()).build()).collect(Collectors.toList()));
+                    nodeStatusVO.setProgress(taskDOOptional.get().getExtraInfo().getProgress());
                     jobIds.add(taskDOOptional.get().getUpk().getJobId());
                 }
                 nodeStatusVO.setStatus(status);
@@ -984,6 +991,15 @@ public class GraphServiceImpl implements GraphService {
                 }
 
             });
+            // for fake two parties
+            ProjectGraphNodeDO currNodeDO = nodeDOMap.get(entry.getKey());
+            if (currNodeDO != null && DATA_PREP_UNBALANCE_PSI_CACHE.equalsIgnoreCase(currNodeDO.getCodeName())) {
+                String partyId = ComponentTools.getHiddenPartyId(currNodeDO.getNodeDef());
+                if (StringUtils.isNotEmpty(partyId)) {
+                    parties.add(partyId);
+                }
+            }
+
             result.put(entry.getKey(), parties);
             GraphContext.set(partyLists);
         }

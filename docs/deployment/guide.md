@@ -58,6 +58,8 @@ Edge节点部署参考：[p2p 模式部署](./p2p.md)
 > 默认账号：admin，默认密码：5o*****
 >
 > 如果忘记默认密码，请参考[日志说明](./log.md#secretpad默认密码查看)，在日志中找到默认密码。
+>
+> 请勿在生产环境中使用弱口令
 
 部署成功后，浏览器打开 http://{ip地址}: Secretpad 端口号，利用部署过程中配置的用户密码登陆平台即可体验。
 ![secretpad_login.jpg](../imgs/secretpad_login.jpg)

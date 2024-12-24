@@ -21,6 +21,7 @@ import org.secretflow.secretpad.persistence.entity.TokensDO;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Optional;
 
@@ -47,18 +48,18 @@ public interface UserTokensRepository extends BaseRepository<TokensDO, String> {
      * @param name  userName
      * @param token user token record
      */
-    @Query("delete from TokensDO td where td.name=:name and td.token=:token")
+    @Transactional
     @Modifying
     void deleteByNameAndToken(@Param("name") String name, @Param("token") String token);
+
 
     /**
      * the token record of the user is deleted
      *
      * @param name userName
      */
-    @Query("delete from TokensDO td where td.name=:name")
     @Modifying
+    @Transactional
     void deleteByName(@Param("name") String name);
-
 
 }

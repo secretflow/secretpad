@@ -75,10 +75,10 @@ public class DbDataInit implements CommandLineRunner {
         }
 
         try {
-            password = environment.getProperty("secretpad.auth.pad_pwd", String.class, AuthConstants.PASSWORD);
+            password = environment.getProperty("secretpad.auth.pad_pwd", String.class, AuthConstants.getRandomPassword());
         } catch (Exception e) {
             log.debug("initUserAndPwd failed", e);
-            password = AuthConstants.PASSWORD;
+            password = AuthConstants.getRandomPassword();
         }
 
 
@@ -92,6 +92,10 @@ public class DbDataInit implements CommandLineRunner {
         Optional<AccountsDO> accountsDOOptional = userAccountsRepository.findByName(accountsDO.getName());
         if (accountsDOOptional.isEmpty()) {
             userAccountsRepository.save(accountsDO);
+        } else {
+            log.info("user {} already exists update password", username);
+            accountsDOOptional.get().setPasswordHash(Sha256Utils.hash(password));
+            userAccountsRepository.save(accountsDOOptional.get());
         }
         FileUtils.writeToFile(accountsDO.getOwnerId());
     }

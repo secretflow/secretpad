@@ -51,6 +51,10 @@ public class GraphNodeStatusVO {
      */
     private GraphNodeTaskStatus status;
 
+    /**
+     * task progress
+     */
+    private Float progress;
 
     /**
      * Graph node job parties

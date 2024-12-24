@@ -22,6 +22,7 @@ import org.secretflow.secretpad.persistence.entity.ProjectScheduleTaskDO;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -38,6 +39,8 @@ public interface ProjectScheduleTaskRepository extends BaseRepository<ProjectSch
     List<ProjectScheduleTaskDO> findByScheduleIdAndStatus(String scheduleId, ScheduledStatus status);
 
     @Modifying
-    @Query("update ProjectScheduleTaskDO set status = ?2  where scheduleTaskId = ?1")
+    @Transactional
+    @Query(value = "update project_schedule_task  set status = :status where schedule_task_id = :scheduleTaskId and is_deleted = 0",
+            nativeQuery = true)
     void updateStatus(String scheduleTaskId, ScheduledStatus status);
 }

@@ -148,7 +148,7 @@ function check_user_passwd() {
 }
 
 function instName_settings() {
-  export LANG=C.UTF-8
+	export LANG=C.UTF-8
 	if ! is_p2p; then
 		return 0
 	fi
@@ -350,6 +350,8 @@ function start() {
 			-e TEE_APP_IMAGE="${TEE_APP_IMAGE##*:}" \
 			-e TEE_DM_IMAGE="${TEE_DM_IMAGE##*:}" \
 			-e CAPSULE_MANAGER_SIM_IMAGE="${CAPSULE_MANAGER_SIM_IMAGE##*:}" \
+			-e DATA_PROXY_IMAGE="${DATAPROXY_IMAGE##*:}" \
+			-e SCQL_IMAGE="${SCQL_IMAGE##*:}" \
 			-e SECRETPAD_CLOUD_LOG_SLS_AK="${SECRETPAD_CLOUD_LOG_SLS_AK}" \
 			-e SECRETPAD_CLOUD_LOG_SLS_SK="${SECRETPAD_CLOUD_LOG_SLS_SK}" \
 			-e SECRETPAD_CLOUD_LOG_SLS_HOST="${SECRETPAD_CLOUD_LOG_SLS_HOST}" \
@@ -365,6 +367,7 @@ function start() {
 			-e INST_NAME="${INST_NAME}" \
 			-e JAVA_OPTS="${JAVA_OPTS}" \
 			-e DATAPROXY_ENABLE="${DATAPROXY_ENABLE}" \
+			-e SCQL_ENABLE="${SCQL_ENABLE}" \
 			"${SECRETPAD_IMAGE}"
 		probe_secret_pad "${PAD_CTR}"
 		create_secretpad_svc "${KUSCIA_CTR}" "${PAD_CTR}" "$NODE_ID"

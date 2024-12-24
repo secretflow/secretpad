@@ -42,6 +42,7 @@ public class ComponentConstants {
     public static final String SECRETPAD_TEE = "secretpad_tee";
     public static final String SECRETFLOW = "secretflow";
     public static final String TRUSTEDFLOW = "trustedflow";
+    public static final String SCQL = "scql";
     public static final String CHECKPOINT_SUB = "_checkpoint";
     public static final String CHECKPOINT_PRE = "ck";
 

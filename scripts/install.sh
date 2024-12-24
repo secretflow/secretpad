@@ -15,14 +15,15 @@
 # limitations under the License.
 #
 
-export KUSCIA_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.12.0b0"
-export SECRETPAD_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.11.0b0"
-export SECRETFLOW_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.10.0b1"
-export SECRETFLOW_SERVING_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.7.0b0"
+export KUSCIA_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.13.0b0"
+export SECRETPAD_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.12.0b0"
+export SECRETFLOW_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.11.0b1"
+export SECRETFLOW_SERVING_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.8.0b0"
 export TEE_APP_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"
 export TEE_DM_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/sf-tee-dm-sim:0.1.0b0"
 export CAPSULE_MANAGER_SIM_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"
-export DATAPROXY_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/dataproxy:0.2.0b0"
+export DATAPROXY_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/dataproxy:0.3.0b0"
+export SCQL_IMAGE="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/scql:0.9.2b1"
 
 # MPC TEE ALL-IN-ONE
 export DEPLOY_MODE="ALL-IN-ONE"
@@ -152,10 +153,14 @@ case $architecture in
 arm*)
 	echo "ARM architecture detected"
 	export DEPLOY_MODE="MPC"
+	echo "ARM architecture does not support scql"
+	export SCQL_ENABLE="false"
 	;;
 aarch64*)
 	echo "ARM 64-bit architecture detected"
 	export DEPLOY_MODE="MPC"
+	echo "ARM architecture does not support scql"
+	export SCQL_ENABLE="false"
 	;;
 x86_64*)
 	echo "AMD64 or Intel 64-bit architecture detected"
@@ -167,6 +172,13 @@ i386 | i486 | i586 | i686)
 	echo "Unknown architecture: $architecture"
 	;;
 esac
+
+function need_scql() {
+	if [ "${SCQL_ENABLE}" = 'true' ]; then
+		return 0
+	fi
+	return 1
+}
 
 function check_pad_kuscia_sf_image() {
 	if [ -z "${SECRETPAD_IMAGE}" ]; then
@@ -183,6 +195,12 @@ function check_pad_kuscia_sf_image() {
 	fi
 	if [ -z "${SECRETFLOW_SERVING_IMAGE}" ]; then
 		echo -e "${RED}[ERROR]${NC} you need set the SECRETFLOW_SERVING_IMAGE environment variable"
+		exit 1
+	fi
+}
+function check_scql_image() {
+	if [ -z "${SCQL_IMAGE}" ]; then
+		echo -e "${RED}[ERROR]${NC} you need set the SCQL_IMAGE environment variable"
 		exit 1
 	fi
 }
@@ -219,6 +237,7 @@ function show_all_images() {
 	echo "TEE_DM_IMAGE              ${TEE_DM_IMAGE}"
 	echo "CAPSULE_MANAGER_SIM_IMAGE ${CAPSULE_MANAGER_SIM_IMAGE}"
 	echo "DATAPROXY_IMAGE           ${DATAPROXY_IMAGE}"
+	echo "SCQL_IMAGE                ${SCQL_IMAGE}"
 }
 
 function show_mpc_images() {
@@ -227,6 +246,9 @@ function show_mpc_images() {
 	echo "SECRETFLOW_IMAGE          ${SECRETFLOW_IMAGE}"
 	echo "SECRETFLOW_SERVING_IMAGE  ${SECRETFLOW_SERVING_IMAGE}"
 	echo "DATAPROXY_IMAGE           ${DATAPROXY_IMAGE}"
+}
+function show_scql_images() {
+	echo "SCQL_IMAGE                ${SCQL_IMAGE}"
 }
 
 function show_tee_images() {
@@ -246,6 +268,7 @@ function empty_image_env() {
 	export TEE_DM_IMAGE=""
 	export CAPSULE_MANAGER_SIM_IMAGE=""
 	export DATAPROXY_IMAGE=""
+	export SCQL_IMAGE=""
 }
 
 function init_images_from_files() {
@@ -274,6 +297,8 @@ function init_images_from_files() {
 				export SECRETFLOW_SERVING_IMAGE=$image
 			elif [[ $image == *dataproxy* ]]; then
 				export DATAPROXY_IMAGE=$image
+			elif [[ $image == *scql* ]]; then
+				export SCQL_IMAGE=$image
 			fi
 		fi
 	done
@@ -285,6 +310,11 @@ function update_sf_image_name() {
 	fi
 	if [[ "${SECRETFLOW_SERVING_IMAGE}" != *aliyuncs* && "${SECRETFLOW_SERVING_IMAGE}" != *docker.io/* ]]; then
 		export SECRETFLOW_SERVING_IMAGE="docker.io/"${SECRETFLOW_SERVING_IMAGE}
+	fi
+}
+function update_scql_image_name() {
+	if [[ "${SCQL_IMAGE}" != *aliyuncs* && "${SCQL_IMAGE}" != *docker.io/* ]]; then
+		export SCQL_IMAGE="docker.io/"${SCQL_IMAGE}
 	fi
 }
 
@@ -315,6 +345,9 @@ function load_docker_images() {
 			docker pull "${TEE_DM_IMAGE}"
 			docker pull "${CAPSULE_MANAGER_SIM_IMAGE}"
 			docker pull "${DATAPROXY_IMAGE}"
+			if need_scql; then
+				docker pull "${SCQL_IMAGE}"
+			fi
 		fi
 		if [ "${DEPLOY_MODE}" = 'MPC' ]; then
 			docker pull "${SECRETPAD_IMAGE}"
@@ -322,6 +355,9 @@ function load_docker_images() {
 			docker pull "${SECRETFLOW_IMAGE}"
 			docker pull "${SECRETFLOW_SERVING_IMAGE}"
 			docker pull "${DATAPROXY_IMAGE}"
+			if need_scql; then
+				docker pull "${SCQL_IMAGE}"
+			fi
 		fi
 		if [ "${DEPLOY_MODE}" = 'TEE' ]; then
 			docker pull "${SECRETPAD_IMAGE}"
@@ -348,6 +384,10 @@ function check_image_ok() {
 	if [ "${DEPLOY_MODE}" = 'ALL-IN-ONE' ]; then
 		check_pad_kuscia_sf_image
 		check_tee_image
+		if need_scql; then
+			check_scql_image
+			update_scql_image_name
+		fi
 		update_sf_image_name
 		update_tee_image_name
 		show_all_images
@@ -355,6 +395,10 @@ function check_image_ok() {
 	if [ "${DEPLOY_MODE}" = 'MPC' ]; then
 		check_pad_kuscia_sf_image
 		update_sf_image_name
+		if need_scql; then
+			check_scql_image
+			update_scql_image_name
+		fi
 		show_mpc_images
 	fi
 	if [ "${DEPLOY_MODE}" = 'TEE' ]; then
@@ -435,6 +479,9 @@ function deploy_kuscia() {
 		if need_tee; then
 			bash register_app_image_0.sh -c "$KUSCIA_CTR" -i "$TEE_DM_IMAGE" --import
 		fi
+		if need_scql; then
+			bash register_app_image_0.sh -c "$KUSCIA_CTR" -i "$SCQL_IMAGE" --import
+		fi
 		if need_mpc; then
 			bash register_app_image_0.sh -c "$KUSCIA_CTR" -i "$SECRETFLOW_SERVING_IMAGE" --import
 		fi
@@ -445,6 +492,10 @@ function deploy_kuscia() {
 			applySfServingAppImage
 			bash register_app_image_0.sh -c "$KUSCIA_CTR" -i "$SECRETFLOW_SERVING_IMAGE" --import
 		fi
+		if need_scql; then
+			applySfScqlAppImage
+			bash register_app_image_0.sh -c "$KUSCIA_CTR" -i "$SCQL_IMAGE" --import
+		fi
 		delete_dp_datasource
 	fi
 	if is_p2p_node; then
@@ -452,10 +503,17 @@ function deploy_kuscia() {
 			applySfServingAppImage
 			bash register_app_image_0.sh -c "$KUSCIA_CTR" -i "$SECRETFLOW_SERVING_IMAGE" --import
 		fi
+		if need_scql; then
+			applySfScqlAppImage
+			bash register_app_image_0.sh -c "$KUSCIA_CTR" -i "$SCQL_IMAGE" --import
+		fi
 		delete_dp_datasource
 	fi
 	if is_master; then
 		applySfServingAppImage
+		if need_scql; then
+			applySfScqlAppImage
+		fi
 	fi
 	log "docker exec -it ${KUSCIA_CTR} sh scripts/deploy/init_kusciaapi_client_certs.sh"
 	docker exec -it "${KUSCIA_CTR}" sh scripts/deploy/init_kusciaapi_client_certs.sh

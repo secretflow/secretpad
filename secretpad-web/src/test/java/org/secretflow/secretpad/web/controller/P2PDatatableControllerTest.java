@@ -33,6 +33,7 @@ import org.secretflow.secretpad.persistence.repository.ProjectFeatureTableReposi
 import org.secretflow.secretpad.service.model.datatable.CreateDatatableRequest;
 import org.secretflow.secretpad.service.model.datatable.ListDatatableRequest;
 import org.secretflow.secretpad.web.utils.FakerUtils;
+
 import com.google.common.collect.Lists;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -46,7 +47,6 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
 import java.util.*;
 
-import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 /**
@@ -77,6 +77,49 @@ public class P2PDatatableControllerTest extends ControllerTest {
     @MockBean
     private InstRepository instRepository;
 
+
+    /**
+     * createDatable local datasource in p2p
+     *
+     * @throws Exception
+     */
+    @Test
+    public void createDatableLocal() throws Exception {
+        CreateDatatableRequest request = FakerUtils.fake(CreateDatatableRequest.class);
+        request.setDatasourceType("LOCAL");
+        request.setDatasourceName("localDatasource");
+        request.setNodeIds(Collections.singletonList("nodeId"));
+        request.setOwnerId("nodeId");
+        UserContextDTO user = UserContext.getUser();
+        user.setName("name");
+        Mockito.when(UserContext.getUserName()).thenReturn("user");
+        when(nodeRepository.findByNodeId("nodeId")).thenReturn(FakerUtils.fake(NodeDO.class));
+        when(nodeRepository.findByInstId("nodeId")).thenReturn(List.of(NodeDO.builder().nodeId("nodeId").build()));
+        UserContext.getUser().setApiResources(Set.of(ApiResourceCodeConstants.DATATABLE_CREATE));
+
+        Domaindata.CreateDomainDataResponse response = Domaindata.CreateDomainDataResponse.newBuilder()
+                .setData(Domaindata.CreateDomainDataResponseData.newBuilder()
+                        .setDomaindataId(request.getOwnerId())
+                        .build())
+                .setStatus(Common.Status.newBuilder().setCode(0).build())
+                .build();
+        when(kusciaGrpcClientAdapter.createDomainData(
+                Mockito.any(), Mockito.any())).thenReturn(response);
+        when(kusciaGrpcClientAdapter.queryDomainDataSource(Mockito.any())).thenReturn(Domaindatasource.QueryDomainDataSourceResponse.newBuilder()
+                .setData(Domaindatasource.DomainDataSource.newBuilder()
+                        .setDatasourceId("datasourceId")
+                        .setName("name")
+                        .setType("type")
+                        .build())
+                .setStatus(Common.Status.newBuilder().setCode(0).build())
+                .build());
+        assertResponse(() -> {
+            return MockMvcRequestBuilders.post(getMappingUrl(DatatableController.class, "createDataTable", CreateDatatableRequest.class))
+                    .content(JsonUtils.toJSONString(request));
+        });
+    }
+
+
     /**
      * createDatable test in p2p
      *
@@ -103,7 +146,7 @@ public class P2PDatatableControllerTest extends ControllerTest {
                 .setStatus(Common.Status.newBuilder().setCode(0).build())
                 .build();
         when(kusciaGrpcClientAdapter.createDomainData(
-                Mockito.any(),Mockito.any())).thenReturn(response);
+                Mockito.any(), Mockito.any())).thenReturn(response);
         when(kusciaGrpcClientAdapter.queryDomainDataSource(Mockito.any())).thenReturn(Domaindatasource.QueryDomainDataSourceResponse.newBuilder()
                 .setData(Domaindatasource.DomainDataSource.newBuilder()
                         .setDatasourceId("datasourceId")
@@ -128,9 +171,9 @@ public class P2PDatatableControllerTest extends ControllerTest {
     }
 
 
-
     /**
      * listDatatables test in p2p
+     *
      * @throws Exception
      */
     @Test

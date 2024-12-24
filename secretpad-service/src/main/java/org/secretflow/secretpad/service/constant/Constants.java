@@ -50,4 +50,9 @@ public class Constants {
     public static final String BUCKET_PATTEN = "^[a-z0-9][a-z0-9-]{1,61}[a-z0-9]$";
 
     public static final String DEFAULT_REGION = "us-east-1";
+
+    public static final String SCQL_INVALID_VALUE = "NULL";
+
+    public static final String SCQL_REPORT = "scql_report";
+
 }

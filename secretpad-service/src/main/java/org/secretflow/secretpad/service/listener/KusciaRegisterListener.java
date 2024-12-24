@@ -38,7 +38,6 @@ import org.springframework.util.ResourceUtils;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.ObjectOutputStream;
 import java.nio.file.Files;
 
@@ -96,26 +95,24 @@ public class KusciaRegisterListener implements ApplicationListener<RegisterKusci
                 dataProxyService.updateDataSourceUseDataProxyByDomainId(config.getDomainId(), config.getDomainId());
                 break;
         }
-        try {
-            serializableWrite(config);
-        } catch (IOException e) {
-            log.error("KusciaRegisterListener serializableWrite error: {}", e.getMessage(), e);
-        }
+        serializableWrite(config);
     }
 
 
-    public void serializableWrite(KusciaGrpcConfig config) throws IOException {
+    public void serializableWrite(KusciaGrpcConfig config) {
         ObjectOutputStream os = null;
-        File file = ResourceUtils.getFile(kusciaPath + config.getDomainId());
-        if (!Files.exists(file.toPath().getParent())) {
-            Files.createDirectories(file.toPath().getParent());
-        }
-        if (!Files.exists(file.toPath())) {
-            Files.createFile(file.toPath());
-        }
         try {
+            File file = ResourceUtils.getFile(kusciaPath + config.getDomainId());
+            if (!Files.exists(file.toPath().getParent())) {
+                Files.createDirectories(file.toPath().getParent());
+            }
+            if (!Files.exists(file.toPath())) {
+                Files.createFile(file.toPath());
+            }
             os = new ObjectOutputStream(new FileOutputStream(file));
             os.writeObject(config);
+        } catch (Exception e) {
+            log.error("KusciaRegisterListener serializableWrite error: {}", e.getMessage(), e);
         } finally {
             IOUtils.closeQuietly(os);
         }

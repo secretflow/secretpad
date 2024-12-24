@@ -15,7 +15,8 @@
 # limitations under the License.
 #
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" &>/dev/null && pwd)"
-SF_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.10.0b1
+SF_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.11.0b1
+
 
 PULL_FLAG=$2
 if [[ $1 != "" ]]; then
@@ -31,8 +32,10 @@ if [[ $PULL_FLAG == true ]]; then
 	docker pull "${SF_IMAGE}"
 fi
 
-docker inspect -f '{{ index .Config.Labels "kuscia.secretflow.comp_list" }}' "${SF_IMAGE}" >"${SCRIPT_DIR}"/../config/components/secretflow.json
+# x86 only arm is not ok
+docker run --rm "${SF_IMAGE}" secretflow component inspect -a > "${SCRIPT_DIR}"/../config/components/secretflow.json
 echo 'update comp_list'
 
-docker inspect -f '{{ index .Config.Labels "kuscia.secretflow.translation" }}' "${SF_IMAGE}" >"${SCRIPT_DIR}"/../config/i18n/secretflow.json
+# x86 only arm is not ok
+docker run --rm "${SF_IMAGE}" secretflow component get_translation > "${SCRIPT_DIR}"/../config/i18n/secretflow.json
 echo 'update translation'

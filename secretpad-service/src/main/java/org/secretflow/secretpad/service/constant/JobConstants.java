@@ -29,4 +29,6 @@ public class JobConstants {
     public static final String TEE_IMAGE = "tee-dm-image";
 
     public static final String SECRETFLOW_SERVING_IMAGE = "sf-serving-image";
+
+    public static final String SCQL_IMAGE = "scql-image";
 }

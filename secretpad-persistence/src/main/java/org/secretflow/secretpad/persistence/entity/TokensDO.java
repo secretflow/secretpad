@@ -22,7 +22,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
-import org.hibernate.annotations.Where;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDateTime;
 
@@ -40,8 +40,8 @@ import java.time.LocalDateTime;
 @ToString
 @Getter
 @Setter
-@SQLDelete(sql = "update user_tokens set is_deleted = 1 where inst_id = ?")
-@Where(clause = "is_deleted = 0")
+@SQLDelete(sql = "update user_tokens set is_deleted = 1 where token = ?")
+@SQLRestriction("is_deleted = 0")
 public class TokensDO extends BaseAggregationRoot<TokensDO> {
 
     /**
@@ -67,7 +67,7 @@ public class TokensDO extends BaseAggregationRoot<TokensDO> {
     /**
      * session data
      */
-    @Column(name = "session_data", nullable = true)
+    @Column(name = "session_data")
     private String sessionData;
 
 }

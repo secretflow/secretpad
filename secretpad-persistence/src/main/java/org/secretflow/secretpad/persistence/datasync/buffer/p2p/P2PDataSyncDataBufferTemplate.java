@@ -111,7 +111,7 @@ public class P2PDataSyncDataBufferTemplate extends DataSyncDataBufferTemplate {
      * @param nodeId
      */
     @Override
-    public EntityChangeListener.DbChangeEvent<BaseAggregationRoot> pool(String nodeId) throws InterruptedException {
+    public EntityChangeListener.DbChangeEvent<BaseAggregationRoot> poll(String nodeId) throws InterruptedException {
         UniqueLinkedBlockingQueue<EntityChangeListener.DbChangeEvent<BaseAggregationRoot>> queue =
                 QUEUE_MAP.getOrDefault(nodeId, null);
         return ObjectUtils.isEmpty(queue) ? null : queue.poll();

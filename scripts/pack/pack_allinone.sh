@@ -16,14 +16,15 @@
 #
 
 # shellcheck disable=SC2223
-: ${KUSCIA_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.12.0b0"}
-: ${SECRETPAD_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.11.0b0"}
-: ${SECRETFLOW_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.10.0b1"}
-: ${SECRETFLOW_SERVING_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.7.0b0"}
+: ${KUSCIA_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.13.0b0"}
+: ${SECRETPAD_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.12.0b0"}
+: ${SECRETFLOW_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.11.0b1"}
+: ${SECRETFLOW_SERVING_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.8.0b0"}
 : ${TEE_APP_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"}
 : ${TEE_DM_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/sf-tee-dm-sim:0.1.0b0"}
 : ${CAPSULE_MANAGER_SIM_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/capsule-manager-sim-ubuntu20.04:v0.1.0b0"}
-: ${DATAPROXY_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/dataproxy:0.2.0b0"}
+: ${DATAPROXY_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/dataproxy:0.3.0b0"}
+: ${SCQL_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/scql:0.9.2b1"}
 
 GREEN='\033[0;32m'
 NC='\033[0m'
@@ -33,6 +34,7 @@ function log() {
 }
 
 NEED_TEE=true
+NEED_SCQL=true
 MVP_TAR_SUFFIX="linux-x86_64"
 
 if [ -z "$1" ]; then
@@ -47,9 +49,10 @@ else
 fi
 if [ "$platform" = "linux/arm64" ]; then
 	NEED_TEE=false
+	NEED_SCQL=false
 	MVP_TAR_SUFFIX="linux-aarch_64"
 fi
-echo "== start build $platform , TEE included:$NEED_TEE"
+echo "== start build $platform , TEE included:$NEED_TEE, SCQL included:$NEED_SCQL"
 
 # create dir
 echo "mkdir -p secretflow-allinone-package/images"
@@ -98,6 +101,9 @@ if [ "${SECRETFLOW_SERVING_IMAGE}" == "" ]; then
 fi
 if [ "${DATAPROXY_IMAGE}" == "" ]; then
 	DATAPROXY_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/dataproxy:latest
+fi
+if [ "${SCQL_IMAGE}" == "" ]; then
+	SCQL_IMAGE=secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/scql:latest
 fi
 
 echo "kuscia image: $KUSCIA_IMAGE"
@@ -155,6 +161,23 @@ docker save -o ./secretflow-allinone-package/images/serving-${secretflowServingT
 
 echo "docker save -o ./secretflow-allinone-package/images/dataproxy-${dataproxyTag}.tar ${DATAPROXY_IMAGE} "
 docker save -o ./secretflow-allinone-package/images/dataproxy-${dataproxyTag}.tar ${DATAPROXY_IMAGE}
+
+
+# scql
+if [ "$NEED_SCQL" = "true" ]; then
+	echo "scql is needed"
+	echo "SCQL_IMAGE image: $SCQL_IMAGE"
+
+	echo "docker pull --platform=$platform ${SCQL_IMAGE}"
+	docker pull --platform=$platform ${SCQL_IMAGE}
+	log "docker pull --platform=$platform ${SCQL_IMAGE} done"
+
+	scqlTag=${SCQL_IMAGE##*:}
+	echo "scql tag: $scqlTag"
+
+	echo "docker save -o ./secretflow-allinone-package/images/scql-${scqlTag}.tar ${SCQL_IMAGE} "
+	docker save -o ./secretflow-allinone-package/images/scql-${scqlTag}.tar ${SCQL_IMAGE}
+fi
 
 # tee
 if [ "$NEED_TEE" = "true" ]; then

@@ -17,6 +17,8 @@
 package org.secretflow.secretpad.common.util;
 
 
+import org.secretflow.secretpad.common.constant.SystemConstants;
+
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.JWTVerifier;
 import com.auth0.jwt.algorithms.Algorithm;
@@ -51,7 +53,11 @@ public class TokenUtil {
      * @return sign
      */
     public static String sign(String secret, String audience) {
-        return sign(secret, audience, null, null);
+        String sign = sign(secret, audience, null, null);
+        // ./config/p2pNodeInstToken/secret_audience
+        String tokenFilePath = SystemConstants.P2P_NODE_INST_TOKEN_FILE + FileUtils.FILE_SEPARATOR + secret + "_" + audience;
+        FileUtils.writeContentToFile(sign, tokenFilePath);
+        return tokenFilePath;
     }
 
 

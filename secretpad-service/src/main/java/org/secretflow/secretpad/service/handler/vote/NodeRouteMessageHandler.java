@@ -175,6 +175,9 @@ public class NodeRouteMessageHandler extends AbstractVoteTypeHandler {
         NodeRouteVoteConfig nodeRouteVoteConfig = (NodeRouteVoteConfig) voteConfig;
         String srcNodeID = nodeRouteVoteConfig.getSrcNodeId();
         String desNodeID = nodeRouteVoteConfig.getDesNodeId();
+        if (StringUtils.equals(srcNodeID, desNodeID)) {
+            throw SecretpadException.of(NodeRouteErrorCode.SRC_NODE_AND_DEST_NODE_SAME, srcNodeID);
+        }
         NodeRouteApprovalConfigDO nodeRouteApprovalConfigDO = NodeRouteApprovalConfigDO.builder()
                 .desNodeID(desNodeID)
                 .srcNodeID(srcNodeID)

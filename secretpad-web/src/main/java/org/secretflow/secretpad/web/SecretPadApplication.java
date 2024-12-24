@@ -78,10 +78,10 @@ public class SecretPadApplication {
             userName = AuthConstants.USER_NAME;
         }
         try {
-            password = environment.getProperty("secretpad.auth.pad_pwd", String.class, AuthConstants.PASSWORD);
+            password = environment.getProperty("secretpad.auth.pad_pwd", String.class, AuthConstants.getRandomPassword());
         } catch (Exception e) {
             log.debug("initUserAndPwd failed use default", e);
-            password = AuthConstants.PASSWORD;
+            password = AuthConstants.getRandomPassword();
         }
         log.info("userName:{} password:{}", userName, password);
     }

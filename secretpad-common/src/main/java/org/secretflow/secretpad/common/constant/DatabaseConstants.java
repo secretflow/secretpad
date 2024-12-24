@@ -24,4 +24,6 @@ package org.secretflow.secretpad.common.constant;
  */
 public class DatabaseConstants {
     public static final String GMT_CREATE = "gmtCreate";
+    public static final String CSV_DB_TYPE = "csvdb";
+
 }

@@ -287,7 +287,7 @@ public class ProjectServiceImpl implements ProjectService {
         }
         projectRepository.deleteById(projectId);
         // delete all project_node
-        projectNodeRepository.deleteByProjectId(projectId);
+        projectNodeRepository.deleteByUpkProjectId(projectId);
     }
 
     /**
@@ -532,7 +532,10 @@ public class ProjectServiceImpl implements ProjectService {
                 .edges(CollectionUtils.isEmpty(job.getEdges()) ? Collections.emptyList() : job.getEdges().stream().map(GraphEdge::fromDO).collect(Collectors.toList()))
                 .nodes(CollectionUtils.isEmpty(job.getTasks()) ? Collections.emptyList() : job.getTasks().values().stream().map(it -> GraphNodeDetail.fromDO(
                                         it.getGraphNode(), it.getStatus(), taskResults.get(it.getUpk().getTaskId()))
-                                .withJobTask(it.getUpk().getJobId(), it.getUpk().getTaskId()).withJobParties(getParties(it.getParties(), nodeRepository)))
+                                .withJobTask(it.getUpk().getJobId(), it.getUpk().getTaskId())
+                                .withJobParties(getParties(it.getParties(), nodeRepository))
+                                .withTaskProgress(it.getExtraInfo().getProgress())
+                        )
                         .collect(Collectors.toList()))
                 .build();
         return ProjectJobVO.from(job, detailVO);
@@ -670,8 +673,8 @@ public class ProjectServiceImpl implements ProjectService {
         if (!ProjectStatusEnum.REVIEWING.getCode().equals(projectDOOptional.get().getStatus())) {
             throw SecretpadException.of(ProjectErrorCode.PROJECT_CAN_NOT_ARCHIVE);
         }
-        projectInstRepository.deleteByProjectId(archiveProjectRequest.getProjectId());
-        projectNodeRepository.deleteByProjectId(archiveProjectRequest.getProjectId());
+        projectInstRepository.deleteByUpkProjectId(archiveProjectRequest.getProjectId());
+        projectNodeRepository.deleteByUpkProjectId(archiveProjectRequest.getProjectId());
         ProjectDO projectDO = projectDOOptional.get();
         projectDO.setStatus(ProjectStatusEnum.ARCHIVED.getCode());
         projectRepository.save(projectDO);

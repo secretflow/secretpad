@@ -90,8 +90,7 @@ public class DatasourceControllerAutonomyTest extends ControllerTest {
                     .build());
             MockedStatic<HttpUtils> httpUtilsMockedStatic = Mockito.mockStatic(HttpUtils.class);
             httpUtilsMockedStatic.when(() -> HttpUtils.detection(Mockito.anyString())).thenReturn(true);
-            MockedStatic<RateLimitUtil> rateLimitUtilMockedStatic = Mockito.mockStatic(RateLimitUtil.class);
-            rateLimitUtilMockedStatic.when(RateLimitUtil::verifyRate).then(invocationOnMock -> true);
+            mockedRateLimitUtil.when(RateLimitUtil::verifyRate).then(invocationOnMock -> true);
             return MockMvcRequestBuilders.post(getMappingUrl(DataSourceController.class, "create", CreateDatasourceRequest.class))
                     .content(JsonUtils.toJSONString(request));
         });

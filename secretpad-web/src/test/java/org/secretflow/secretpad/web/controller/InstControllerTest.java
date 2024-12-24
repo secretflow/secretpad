@@ -4,6 +4,7 @@ import org.secretflow.secretpad.common.constant.InstConstants;
 import org.secretflow.secretpad.common.constant.resource.ApiResourceCodeConstants;
 import org.secretflow.secretpad.common.errorcode.InstErrorCode;
 import org.secretflow.secretpad.common.errorcode.NodeErrorCode;
+import org.secretflow.secretpad.common.util.FileUtils;
 import org.secretflow.secretpad.common.util.JsonUtils;
 import org.secretflow.secretpad.common.util.TokenUtil;
 import org.secretflow.secretpad.common.util.UserContext;
@@ -17,6 +18,7 @@ import org.secretflow.secretpad.service.model.node.NodeIdRequest;
 import org.secretflow.secretpad.service.model.node.NodeTokenRequest;
 
 import org.junit.jupiter.api.Test;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.secretflow.v1alpha1.common.Common;
 import org.secretflow.v1alpha1.kusciaapi.DomainOuterClass;
@@ -26,6 +28,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.File;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -353,7 +356,8 @@ public class InstControllerTest extends ControllerTest {
             node.setInstId("user");
             node.setNodeId("alice");
             node.setName("alice");
-            node.setInstToken("token1");
+            String sign = TokenUtil.sign(node.getInstId(), node.getNodeId());
+            node.setInstToken(sign);
             when(nodeRepository.findOneByInstId(any(), Mockito.anyString())).thenReturn(node);
             return MockMvcRequestBuilders.post(getMappingUrl(InstController.class, "token", NodeTokenRequest.class))
                     .content(JsonUtils.toJSONString(request));
@@ -416,6 +420,30 @@ public class InstControllerTest extends ControllerTest {
     }
 
     /**
+     * test newToken node is empty
+     *
+     * @throws Exception
+     */
+    @Test
+    public void testNewTokenNodeIsError() throws Exception {
+        try (MockedStatic<TokenUtil> tokenUtilMockedStatic = Mockito.mockStatic(TokenUtil.class)) {
+            assertErrorCode(() -> {
+                NodeTokenRequest request = new NodeTokenRequest();
+                request.setNodeId("alice");
+                NodeDO node = new NodeDO();
+                node.setInstId("user");
+                node.setNodeId("alice");
+                node.setName("alice");
+                node.setInstToken("token1");
+                when(nodeRepository.findOneByInstId(any(), Mockito.anyString())).thenReturn(node);
+                tokenUtilMockedStatic.when(() -> TokenUtil.sign(any(), any())).thenReturn("123");
+                return MockMvcRequestBuilders.post(getMappingUrl(InstController.class, "newToken", NodeTokenRequest.class))
+                        .content(JsonUtils.toJSONString(request));
+            }, InstErrorCode.INST_TOKEN_MISMATCH);
+        }
+    }
+
+    /**
      * test deleteNode
      *
      * @throws Exception
@@ -427,7 +455,7 @@ public class InstControllerTest extends ControllerTest {
             NodeIdRequest request = new NodeIdRequest();
             request.setNodeId("alice");
             String instId = "testInstId";
-            String nodeId = "testNodeId";
+            String nodeId = "test-node-id";
             String projectId = "testProjectId";
             NodeDO nodeDO = new NodeDO();
             nodeDO.setInstId(instId);
@@ -515,7 +543,7 @@ public class InstControllerTest extends ControllerTest {
         assertErrorCode(() -> {
             NodeIdRequest request = new NodeIdRequest();
             request.setNodeId("alice");
-            String nodeId = "testNodeId";
+            String nodeId = "test-node-id";
             String projectId = "testProjectId";
             NodeDO node = new NodeDO();
             node.setInstId("user");
@@ -586,7 +614,7 @@ public class InstControllerTest extends ControllerTest {
             NodeIdRequest request = new NodeIdRequest();
             request.setNodeId("alice");
             String instId = "testInstId";
-            String nodeId = "testNodeId";
+            String nodeId = "test-node-id";
             String projectId = "testProjectId";
             NodeDO nodeDO = new NodeDO();
             nodeDO.setInstId(instId);
@@ -628,7 +656,7 @@ public class InstControllerTest extends ControllerTest {
             NodeIdRequest request = new NodeIdRequest();
             request.setNodeId("alice");
             String instId = "testInstId";
-            String nodeId = "testNodeId";
+            String nodeId = "test-node-id";
             String projectId = "testProjectId";
             NodeDO nodeDO = new NodeDO();
             nodeDO.setInstId(instId);
@@ -674,7 +702,7 @@ public class InstControllerTest extends ControllerTest {
             NodeIdRequest request = new NodeIdRequest();
             request.setNodeId("alice");
             String instId = "testInstId";
-            String nodeId = "testNodeId";
+            String nodeId = "test-node-id";
             String projectId = "testProjectId";
             NodeDO nodeDO = new NodeDO();
             nodeDO.setInstId(instId);
@@ -722,13 +750,17 @@ public class InstControllerTest extends ControllerTest {
     @Test
     void testRegisterNode() throws Exception {
         assertMultipartResponseWithEmptyData(() -> {
-            String token = TokenUtil.sign("testInstId", "testNodeId");
-            String jsonData = "{\"token\":\"" + token + "\",\"domainId\":\"testNodeId\",\"host\":\"http://example.com\",\"port\":8080,\"mode\":\"P2P\",\"protocol\":\"NOTLS\"}";
-            MockMultipartFile file1 = new MockMultipartFile("certFile", "client.crt", MediaType.TEXT_PLAIN_VALUE, "client.crt".getBytes());
-            MockMultipartFile file2 = new MockMultipartFile("keyFile", "client.pem", MediaType.TEXT_PLAIN_VALUE, "client.pem".getBytes());
-            MockMultipartFile file3 = new MockMultipartFile("token", "token", MediaType.TEXT_PLAIN_VALUE, "token".getBytes());
+            String token = TokenUtil.sign("testInstId", "test-node-id");
+            String tokenStr = FileUtils.readFile2String(token);
+            String jsonData = "{\"token\":\"" + tokenStr + "\",\"domainId\":\"test-node-id\",\"host\":\"http://example.com\",\"port\":8080,\"mode\":\"P2P\",\"protocol\":\"NOTLS\"}";
+            File clientCrt = FileUtils.readFile("./config/certs/client.crt");
+            File clientPem = FileUtils.readFile("./config/certs/client.pem");
+            File clientToken = FileUtils.readFile("./config/certs/token");
+            MockMultipartFile file1 = new MockMultipartFile("certFile", "client.crt", MediaType.TEXT_PLAIN_VALUE, FileUtils.readFile2String(clientCrt).getBytes());
+            MockMultipartFile file2 = new MockMultipartFile("keyFile", "client.pem", MediaType.TEXT_PLAIN_VALUE, FileUtils.readFile2String(clientPem).getBytes());
+            MockMultipartFile file3 = new MockMultipartFile("token", "token", MediaType.TEXT_PLAIN_VALUE, FileUtils.readFile2String(clientToken).getBytes());
             NodeDO nodeDO = NodeDO.builder()
-                    .nodeId("testNodeId")
+                    .nodeId("test-node-id")
                     .instId("testInstId")
                     .name("testNodeName")
                     .instToken(token)
@@ -755,8 +787,8 @@ public class InstControllerTest extends ControllerTest {
     @Test
     void testRegisterNodeNodeIsNull() throws Exception {
         assertMultipartErrorCode(() -> {
-            String token = TokenUtil.sign("testInstId", "testNodeId");
-            String jsonData = "{\"token\":\"" + token + "\",\"domainId\":\"testNodeId\",\"host\":\"http://example.com\",\"port\":8080,\"mode\":\"P2P\",\"protocol\":\"NOTLS\"}";
+            String token = TokenUtil.sign("testInstId", "test-node-id");
+            String jsonData = "{\"token\":\"" + token + "\",\"domainId\":\"test-node-id\",\"host\":\"http://example.com\",\"port\":8080,\"mode\":\"P2P\",\"protocol\":\"NOTLS\"}";
             MockMultipartFile file1 = new MockMultipartFile("certFile", "client.crt", MediaType.TEXT_PLAIN_VALUE, "client.crt".getBytes());
             MockMultipartFile file2 = new MockMultipartFile("keyFile", "client.pem", MediaType.TEXT_PLAIN_VALUE, "client.pem".getBytes());
             MockMultipartFile file3 = new MockMultipartFile("token", "token", MediaType.TEXT_PLAIN_VALUE, "token".getBytes());
@@ -777,13 +809,13 @@ public class InstControllerTest extends ControllerTest {
     @Test
     void testRegisterNodeInstIsNull() throws Exception {
         assertMultipartErrorCode(() -> {
-            String token = TokenUtil.sign("testInstId", "testNodeId");
-            String jsonData = "{\"token\":\"" + token + "\",\"domainId\":\"testNodeId\",\"host\":\"http://example.com\",\"port\":8080,\"mode\":\"P2P\",\"protocol\":\"NOTLS\"}";
+            String token = TokenUtil.sign("testInstId", "test-node-id");
+            String jsonData = "{\"token\":\"" + token + "\",\"domainId\":\"test-node-id\",\"host\":\"http://example.com\",\"port\":8080,\"mode\":\"P2P\",\"protocol\":\"NOTLS\"}";
             MockMultipartFile file1 = new MockMultipartFile("certFile", "client.crt", MediaType.TEXT_PLAIN_VALUE, "client.crt".getBytes());
             MockMultipartFile file2 = new MockMultipartFile("keyFile", "client.pem", MediaType.TEXT_PLAIN_VALUE, "client.pem".getBytes());
             MockMultipartFile file3 = new MockMultipartFile("token", "token", MediaType.TEXT_PLAIN_VALUE, "token".getBytes());
             NodeDO nodeDO = NodeDO.builder()
-                    .nodeId("testNodeId")
+                    .nodeId("test-node-id")
                     .instId("testInstId")
                     .name("testNodeName")
                     .instToken(token)
@@ -807,13 +839,13 @@ public class InstControllerTest extends ControllerTest {
     @Test
     void testRegisterNodeInstTokenMismatch() throws Exception {
         assertMultipartErrorCode(() -> {
-            String token = TokenUtil.sign("testInstId", "testNodeId");
-            String jsonData = "{\"token\":\"" + token + "\",\"domainId\":\"testNodeId\",\"host\":\"http://example.com\",\"port\":8080,\"mode\":\"P2P\",\"protocol\":\"NOTLS\"}";
+            String token = TokenUtil.sign("testInstId", "test-node-id");
+            String jsonData = "{\"token\":\"" + token + "\",\"domainId\":\"test-node-id\",\"host\":\"http://example.com\",\"port\":8080,\"mode\":\"P2P\",\"protocol\":\"NOTLS\"}";
             MockMultipartFile file1 = new MockMultipartFile("certFile", "client.crt", MediaType.TEXT_PLAIN_VALUE, "client.crt".getBytes());
             MockMultipartFile file2 = new MockMultipartFile("keyFile", "client.pem", MediaType.TEXT_PLAIN_VALUE, "client.pem".getBytes());
             MockMultipartFile file3 = new MockMultipartFile("token", "token", MediaType.TEXT_PLAIN_VALUE, "token".getBytes());
             NodeDO nodeDO = NodeDO.builder()
-                    .nodeId("testNodeId")
+                    .nodeId("test-node-id")
                     .instId("testInstId")
                     .name("testNodeName")
                     .instToken(token + "1")
@@ -841,12 +873,12 @@ public class InstControllerTest extends ControllerTest {
     @Test
     void testRegisterNodeVerifyFalse() throws Exception {
         assertMultipartErrorCode(() -> {
-            String jsonData = "{\"token\":\"token\",\"domainId\":\"testNodeId\",\"host\":\"http://example.com\",\"port\":8080,\"mode\":\"P2P\",\"protocol\":\"NOTLS\"}";
+            String jsonData = "{\"token\":\"token\",\"domainId\":\"test-node-id\",\"host\":\"http://example.com\",\"port\":8080,\"mode\":\"P2P\",\"protocol\":\"NOTLS\"}";
             MockMultipartFile file1 = new MockMultipartFile("certFile", "client.crt", MediaType.TEXT_PLAIN_VALUE, "client.crt".getBytes());
             MockMultipartFile file2 = new MockMultipartFile("keyFile", "client.pem", MediaType.TEXT_PLAIN_VALUE, "client.pem".getBytes());
             MockMultipartFile file3 = new MockMultipartFile("token", "token", MediaType.TEXT_PLAIN_VALUE, "token".getBytes());
             NodeDO nodeDO = NodeDO.builder()
-                    .nodeId("testNodeId")
+                    .nodeId("test-node-id")
                     .instId("testInstId")
                     .name("testNodeName")
                     .instToken("token")

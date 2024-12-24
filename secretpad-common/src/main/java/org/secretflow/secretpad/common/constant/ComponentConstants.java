@@ -50,5 +50,14 @@ public class ComponentConstants {
 
     public static final String DATA_FILTER_EXPR_CONDITION_FILTER = "data_filter/expr_condition_filter";
 
+    public static final String STATS_SCQL_ANALYSIS = "stats/scql_analysis";
+
+    public static final String SCRIPT_INPUT = "script_input";
+
     public static final String TABLE_SEPARATOR = "_";
+
+    public static final String DATA_PREP_UNBALANCE_PSI_CACHE = "data_prep/unbalance_psi_cache";
+
+    public static final String TASK_INITIATOR = "task_initiator";
+
 }

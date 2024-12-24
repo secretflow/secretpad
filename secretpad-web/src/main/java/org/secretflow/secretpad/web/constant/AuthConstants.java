@@ -16,6 +16,8 @@
 
 package org.secretflow.secretpad.web.constant;
 
+import java.util.Random;
+
 /**
  * Authorization Constants
  *
@@ -25,20 +27,63 @@ package org.secretflow.secretpad.web.constant;
 public class AuthConstants {
     public static final String TOKEN_NAME = "User-Token";
     public static final String USER_NAME = "admin";
-    public static final String PASSWORD = "12#$qwER";
-    public static final String CSRF_SAME_SITE = "SameSite";
-    public static final String CSRF_SAME_SITE_VALUE = "Strict";
+    private volatile static String RANDOM_PASSWORD;
 
     /**
      * get tokenName
      *
-     * @param platformType
-     * @param platformNodeId
+     * @param platformType   platform type
+     * @param platformNodeId platform node id
      * @return {@link String }
      */
 
     @Deprecated
     public static String getTokenName(String platformType, String platformNodeId) {
         return TOKEN_NAME + "_" + platformType + "_" + platformNodeId;
+    }
+
+    public static String getRandomPassword() {
+        if (RANDOM_PASSWORD == null) {
+            synchronized (AuthConstants.class) {
+                if (RANDOM_PASSWORD == null) {
+                    RANDOM_PASSWORD = generateRandomPassword();
+                }
+            }
+        }
+        return RANDOM_PASSWORD;
+    }
+
+    public static String generateRandomPassword() {
+        String upperCase = "ABCDEFGHJKMNPQRSTUVWXYZ";
+        String lowerCase = "abcdefghjkmnpqrstuvwxyz";
+        String numbers = "123456789";
+        String specialChars = "@$!%*?&/\\";
+        StringBuilder password = new StringBuilder();
+        Random random = new Random();
+        for (int i = 0; i < 8; i++) {
+            int type = random.nextInt(4);
+            switch (type) {
+                case 0:
+                    password.append(upperCase.charAt(random.nextInt(upperCase.length())));
+                    break;
+                case 1:
+                    password.append(lowerCase.charAt(random.nextInt(lowerCase.length())));
+                    break;
+                case 2:
+                    password.append(numbers.charAt(random.nextInt(numbers.length())));
+                    break;
+                case 3:
+                    password.append(specialChars.charAt(random.nextInt(specialChars.length())));
+                    break;
+                default:
+                    break;
+            }
+        }
+        String temPassword = password.toString();
+        String regex = "^(?=.*[a-z])(?=.*[A-Z])(?=.*\\d)(?=.*[@$!%*?&])[A-Za-z\\d@$!%*?&]{8,}$";
+        if (!temPassword.matches(regex)) {
+            return generateRandomPassword();
+        }
+        return password.toString();
     }
 }

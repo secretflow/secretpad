@@ -278,9 +278,7 @@ public class ModelManagementServiceImpl implements ModelManagementService {
                         .build();
                 String domainId = party.getNodeId();
                 List<CreateModelServingRequest.PartyConfig.Feature> features = party.getFeatures();
-                features.forEach(e -> {
-                    featureMapping.put(e.getOnlineName(), e.getOfflineName());
-                });
+                features.forEach(e -> featureMapping.put(e.getOnlineName(), e.getOfflineName()));
                 //serving config
                 ServerConfigOuterClass.ServerConfig serverConfig = ServerConfigOuterClass.ServerConfig.newBuilder()
                         .putAllFeatureMapping(featureMapping)
@@ -543,7 +541,9 @@ public class ModelManagementServiceImpl implements ModelManagementService {
         if (StringUtils.isNotBlank(servingId) && ModelStatsEnum.PUBLISHING.name().equals(modelStats)) {
             Serving.QueryServingResponse queryServingResponse = null;
             try {
-                queryServingResponse = kusciaGrpcClientAdapter.queryServing(Serving.QueryServingRequest.newBuilder().setServingId(servingId).build());
+                String execNodeId = getInitiator(projectModelPackDO);
+                log.info("query serving execNodeId: {}", execNodeId);
+                queryServingResponse = kusciaGrpcClientAdapter.queryServing(Serving.QueryServingRequest.newBuilder().setServingId(servingId).build(), execNodeId);
             } catch (Exception e) {
                 log.error("queryServing error!", e);
             }
@@ -652,5 +652,22 @@ public class ModelManagementServiceImpl implements ModelManagementService {
     private double buildMaxMemoryValue(double maxMemory, double minMemory) {
         maxMemory = Math.max(maxMemory, ServingConstants.DEFAULT_MEMORY);
         return Math.max(maxMemory, minMemory);
+    }
+
+    /**
+     * compensate for old data
+     **/
+    private String getInitiator(ProjectModelPackDO projectModelPackDO) {
+        String initiator = projectModelPackDO.getInitiator();
+        log.info("initiator {} getInitiator projectModelPackDO:{}", initiator, projectModelPackDO.getPartyDataSources());
+        if (StringUtils.equals(initiator, envService.getPlatformNodeId())) {
+            List<PartyDataSource> partyDataSources = projectModelPackDO.getPartyDataSources();
+            Set<String> parties = partyDataSources.stream().map(PartyDataSource::getPartyId).collect(Collectors.toSet());
+            if (envService.isAutonomy()) {
+                return parties.stream().filter(party -> envService.isNodeInCurrentInst(party)).findFirst().get();
+            }
+            return envService.getPlatformNodeId();
+        }
+        return initiator;
     }
 }

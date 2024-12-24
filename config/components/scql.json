@@ -1,0 +1,59 @@
+{
+  "name": "scql",
+  "desc": "First-party Scql components.",
+  "version": "0.0.1",
+  "comps": [
+    {
+      "domain": "stats",
+      "name": "scql_analysis",
+      "desc": "Support secure query statement analysis SCQL (Secure Collaborative Query Language) based on SQL syntax. It is only used for analysis and cannot produce details. Currently, it only supports connection of privacy intersection and sample table components,Currently, the results of this component are only output to the initiator.",
+      "version": "1.0.0",
+      "inputs": [
+        {
+          "name": "input_ds",
+          "desc": "Input table.",
+          "types": [
+            "sf.table.individual",
+            "sf.table.vertical_table"
+          ]
+        }
+      ],
+      "attrs": [
+        {
+          "name": "column_config",
+          "desc": "input feature column config",
+          "type": "AT_CUSTOM_PROTOBUF",
+          "customProtobufCls": "feature_column_config_pb2.FeatureColumnConfig"
+        },
+        {
+          "name": "task_initiator",
+          "desc": "Select the task result acquirer, and the component output results will only be output to the result acquirer.",
+          "type": "AT_PARTY",
+          "atomic": {
+            "listMinLengthInclusive": "1",
+            "listMaxLengthInclusive": "1"
+          }
+        },
+        {
+          "name": "script_input",
+          "desc": "select ta.age, avg(tb.income) from alice.tbl as ta join bob.tbl as tb on ta.id=tb.id group by ta.age",
+          "type": "AT_STRING",
+          "atomic": {
+            "isOptional": false,
+            "defaultValue": {
+            }
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "name": "report",
+          "desc": "Output scql analysis report.",
+          "types": [
+            "sf.report"
+          ]
+        }
+      ]
+    }
+  ]
+}

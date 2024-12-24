@@ -75,6 +75,18 @@ public class ComponentTools {
         return tableId;
     }
 
+    /**now  only for unbalance psi */
+    public static String getHiddenPartyId(Object nodeDefObj) {
+        Pipeline.NodeDef nodeDef = getNodeDef(nodeDefObj);
+        List<Struct> attrsList = nodeDef.getAttrsList();
+        String partyId = "";
+        if (!CollectionUtils.isEmpty(attrsList)) {
+            partyId = attrsList.get(1).getFieldsOrDefault(ComponentConstants.ATTRIBUTE_SS, Value.newBuilder().build()).getListValue().getValues(0).getStringValue();
+        }
+        return partyId;
+    }
+
+
     public static String getDataTablePartition(GraphNodeInfo nodeInfo) {
         Pipeline.NodeDef nodeDef = getNodeDef(nodeInfo.getNodeDef());
         List<Struct> attrsList = nodeDef.getAttrsList();

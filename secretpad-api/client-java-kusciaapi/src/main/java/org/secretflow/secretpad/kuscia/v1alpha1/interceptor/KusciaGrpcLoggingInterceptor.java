@@ -36,6 +36,7 @@ public class KusciaGrpcLoggingInterceptor implements ClientInterceptor {
     public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
             MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
 
+        long startTime = System.currentTimeMillis();
         log.info("[kuscia] {}  Calling method: {}", domainId, method.getFullMethodName());
 
         return new ForwardingClientCall.SimpleForwardingClientCall<>(next.newCall(method, callOptions)) {
@@ -47,7 +48,8 @@ public class KusciaGrpcLoggingInterceptor implements ClientInterceptor {
 
             @Override
             public void cancel(String message, Throwable t) {
-                log.error("[kuscia] {} Cancel request: {}", domainId, message, t);
+                long endTime = System.currentTimeMillis();
+                log.error("[kuscia] {} Cancel request: {} time: {}", domainId, message, endTime - startTime, t);
                 super.cancel(message, t);
             }
 
@@ -56,7 +58,8 @@ public class KusciaGrpcLoggingInterceptor implements ClientInterceptor {
                 super.start(new ForwardingClientCallListener.SimpleForwardingClientCallListener<>(responseListener) {
                     @Override
                     public void onMessage(RespT message) {
-                        log.info("[kuscia] {} Response: {}", domainId, message);
+                        long endTime = System.currentTimeMillis();
+                        log.info("[kuscia] {} Response: {} time: {}", domainId, message, endTime - startTime);
                         super.onMessage(message);
                     }
                 }, headers);

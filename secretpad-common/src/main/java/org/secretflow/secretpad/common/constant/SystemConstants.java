@@ -38,4 +38,6 @@ public class SystemConstants {
     public static final String USER_ADMIN = "admin";
 
     public static final String USER_OWNER_ID_FILE = "./config/ownerId";
+
+    public static final String P2P_NODE_INST_TOKEN_FILE = "./config/p2pNodeInstToken";
 }

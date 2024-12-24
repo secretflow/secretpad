@@ -17,6 +17,7 @@
 package org.secretflow.secretpad.service.configuration;
 
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -66,9 +67,15 @@ public class SecretFlowVersionConfig {
      */
     private String capsuleManagerSimImage;
 
-    /*
+    /**
      * data proxy image version
      */
     private String dataProxyImage;
+
+    /**
+     * scql image version
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private String scqlImage;
 
 }
