@@ -107,7 +107,7 @@ For more details, see [Development](./docs/deployment_experience/v0.6.0b0/deploy
 
 | secretpad Version | Kuscia Version | secretflow Version | trustedflow Version | serving Version | dataproxy Version | scql Version |
 |-------------------|----------------|--------------------|---------------------|-----------------|-------------------|--------------|
-| 0.12.0b0          | 0.13.0b0       | 1.11.0b0           | 0.1.1b0             | 0.8.0b0         | 0.3.0b0           | 0.9.2b1      |
+| 0.12.0b0          | 0.13.0b0       | 1.11.0b1           | 0.1.1b0             | 0.8.0b0         | 0.3.0b0           | 0.9.2b1      |
 | 0.11.0b0          | 0.12.0b0       | 1.10.0b0/1.10.0b1  | 0.1.1b0             | 0.7.0b0         | 0.2.0b0           |              |
 | 0.10.0b0/0.10.1b0 | 0.11.0b0       | 1.9.0b0/1.9.0b2    | 0.1.1b0             | 0.6.0b0         | 0.1.0b1           |              |
 | 0.9.0b0           | 0.10.0b0       | 1.8.0b0            | 0.1.1b0             | 0.5.0b0         |                   |              |

@@ -18,7 +18,7 @@
 # shellcheck disable=SC2223
 : ${KUSCIA_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/kuscia:0.13.0b0"}
 : ${SECRETPAD_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretpad:0.12.0b0"}
-: ${SECRETFLOW_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.11.0b0"}
+: ${SECRETFLOW_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/secretflow-lite-anolis8:1.11.0b1"}
 : ${SECRETFLOW_SERVING_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/serving-anolis8:0.8.0b0"}
 : ${TEE_APP_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/teeapps-sim-ubuntu20.04:0.1.2b0"}
 : ${TEE_DM_IMAGE:="secretflow-registry.cn-hangzhou.cr.aliyuncs.com/secretflow/sf-tee-dm-sim:0.1.0b0"}
