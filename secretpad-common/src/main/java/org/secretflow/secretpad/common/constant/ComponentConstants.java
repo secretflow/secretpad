@@ -48,6 +48,8 @@ public class ComponentConstants {
 
     public static final String DATA_PREP_UNION = "data_prep/union";
 
+    public static final String DATA_FILTER_SAMPLE = "data_filter/sample";
+
     public static final String DATA_FILTER_EXPR_CONDITION_FILTER = "data_filter/expr_condition_filter";
 
     public static final String STATS_SCQL_ANALYSIS = "stats/scql_analysis";

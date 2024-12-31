@@ -42,5 +42,5 @@ public interface ProjectScheduleTaskRepository extends BaseRepository<ProjectSch
     @Transactional
     @Query(value = "update project_schedule_task  set status = :status where schedule_task_id = :scheduleTaskId and is_deleted = 0",
             nativeQuery = true)
-    void updateStatus(String scheduleTaskId, ScheduledStatus status);
+    void updateStatus(String scheduleTaskId, String status);
 }

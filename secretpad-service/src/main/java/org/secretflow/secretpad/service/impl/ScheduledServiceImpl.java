@@ -280,7 +280,7 @@ public class ScheduledServiceImpl implements ScheduledService {
         }
         checkOwner(projectScheduleDO.getOwner());
         secretpadScheduledService.pauseScheduler(request.getScheduleId());
-        projectScheduleRepository.updateStatusByScheduleId(request.getScheduleId(), ScheduledStatus.DOWN);
+        projectScheduleRepository.updateStatusByScheduleId(request.getScheduleId(), ScheduledStatus.DOWN.name());
     }
 
     @Override
@@ -347,7 +347,7 @@ public class ScheduledServiceImpl implements ScheduledService {
             job.stop();
             projectScheduleJobRepository.save(job);
             kusciaGrpcClientAdapter.stopJob(Job.StopJobRequest.newBuilder().setJobId(job.getUpk().getJobId()).build());
-            projectScheduleTaskRepository.updateStatus(request.getScheduleTaskId(), ScheduledStatus.STOPPING);
+            projectScheduleTaskRepository.updateStatus(request.getScheduleTaskId(), ScheduledStatus.STOPPING.name());
         } else {
             log.error("taskStop, schedule task status is not running, scheduleTaskId:{}", projectScheduleTaskDO.getScheduleTaskId());
             throw SecretpadException.of(ScheduledErrorCode.SCHEDULE_TASK_STATUS_NOT_RUNNING, projectScheduleTaskDO.getStatus().name());

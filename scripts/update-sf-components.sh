@@ -63,8 +63,8 @@ COMP_TRANSLATION_FILE="sf_comp_translation.json"
 
 function parse_sf_image_labels() {
 	echo "=> => parse secretflow image labels"
-	comp_list=$(docker inspect -f '{{ index .Config.Labels "kuscia.secretflow.comp_list" }}' ${SF_IMAGE})
-	comp_translation=$(docker inspect -f '{{ index .Config.Labels "kuscia.secretflow.translation" }}' ${SF_IMAGE})
+	comp_list=$(docker run --rm "${SF_IMAGE}" secretflow component inspect -a)
+	comp_translation=$(docker run --rm "${SF_IMAGE}" secretflow component get_translation)
 
 	if [[ comp_list == "" ]]; then
 		echo "=> => => label kuscia.secretflow.comp_list can't be empty in sf image"

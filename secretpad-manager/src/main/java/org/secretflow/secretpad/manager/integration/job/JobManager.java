@@ -69,8 +69,7 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-import static org.secretflow.secretpad.common.constant.ComponentConstants.DATA_FILTER_EXPR_CONDITION_FILTER;
-import static org.secretflow.secretpad.common.constant.ComponentConstants.DATA_PREP_UNION;
+import static org.secretflow.secretpad.common.constant.ComponentConstants.*;
 import static org.secretflow.secretpad.common.constant.Constants.*;
 
 /**
@@ -162,7 +161,9 @@ public class JobManager extends AbstractJobManager {
         }
     }
 
-    /** merge process in extra info **/
+    /**
+     * merge process in extra info
+     **/
     public static ProjectTaskDO.ExtraInfo mergeExtraInfo(Job.TaskStatus taskStatus, ProjectTaskDO.ExtraInfo extraInfo) {
 
         if (taskStatus == null || taskStatus.getProgress() <= 0.0f) {
@@ -178,9 +179,6 @@ public class JobManager extends AbstractJobManager {
         }
         return extraInfo;
     }
-
-
-
 
 
     public static Job.TaskStatus mergeKusciaTaskStatus(String rawTaskId, String taskId, Map<String, Job.TaskStatus> map, Job.TaskStatus kusciaTaskStatus) {
@@ -564,7 +562,7 @@ public class JobManager extends AbstractJobManager {
                             }
                             task.setStatus(GraphNodeTaskStatus.formKusciaTaskStatus(kusciaTaskStatus.getState()));
                             task.setErrMsg(kusciaTaskStatus.getErrMsg());
-                            task.setExtraInfo(mergeExtraInfo(kusciaTaskStatus,task.getExtraInfo()));
+                            task.setExtraInfo(mergeExtraInfo(kusciaTaskStatus, task.getExtraInfo()));
                             syncResult(task);
                         }
                 );
@@ -765,7 +763,9 @@ public class JobManager extends AbstractJobManager {
 
     private void createDomainGrantByUnion(ProjectTaskDO taskDO, String domainDataId) {
         String codeName = taskDO.getGraphNode().getCodeName();
-        if (!DATA_PREP_UNION.equalsIgnoreCase(codeName) && !DATA_FILTER_EXPR_CONDITION_FILTER.equalsIgnoreCase(codeName)) {
+        if (!DATA_PREP_UNION.equalsIgnoreCase(codeName) && !DATA_FILTER_EXPR_CONDITION_FILTER.equalsIgnoreCase(codeName)
+                && !DATA_FILTER_SAMPLE.equalsIgnoreCase(codeName)
+        ) {
             return;
         }
         // Only one node and a union need to create a domain grant
