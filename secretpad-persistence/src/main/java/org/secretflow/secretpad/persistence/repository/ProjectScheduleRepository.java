@@ -16,7 +16,6 @@
 
 package org.secretflow.secretpad.persistence.repository;
 
-import org.secretflow.secretpad.common.enums.ScheduledStatus;
 import org.secretflow.secretpad.persistence.entity.ProjectScheduleDO;
 
 import org.springframework.data.jpa.repository.Modifying;
@@ -35,5 +34,5 @@ public interface ProjectScheduleRepository extends BaseRepository<ProjectSchedul
     @Modifying
     @Transactional
     @Query(value = "update project_schedule set status = :status where schedule_id = :scheduleId and is_deleted = 0", nativeQuery = true)
-    void updateStatusByScheduleId(String scheduleId, ScheduledStatus status);
+    void updateStatusByScheduleId(String scheduleId, String status);
 }

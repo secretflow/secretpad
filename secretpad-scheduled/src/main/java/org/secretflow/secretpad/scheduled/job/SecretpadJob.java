@@ -97,7 +97,7 @@ public class SecretpadJob extends QuartzJobBean {
         } catch (Exception e) {
             log.error("SecretpadJob execute error", e);
             if (ObjectUtils.isNotEmpty(o)) {
-                projectScheduleTaskRepository.updateStatus(o.getScheduleTaskId(), ScheduledStatus.FAILED);
+                projectScheduleTaskRepository.updateStatus(o.getScheduleTaskId(), ScheduledStatus.FAILED.name());
             }
         }
         applicationEventPublisher.publishEvent(new ScheduledJobStartEvent(this, context));

@@ -602,7 +602,7 @@ public class GraphServiceImpl implements GraphService {
         GraphNodeOutputVO.OutputResult outputResult;
         switch (resultKind) {
             case Report:
-                return getGraphNodeOutputVO(projectId, centerNodeId, outputVO);
+                return getGraphNodeOutputVO(projectId, centerResultId, outputVO);
             case Model:
             case Rule:
                 outputResult = GraphNodeOutputVO.OutputResult.builder().nodeId(centerNodeId).path(centerResultId).build();
