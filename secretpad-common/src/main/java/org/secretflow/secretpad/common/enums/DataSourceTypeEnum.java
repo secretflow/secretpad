@@ -28,6 +28,7 @@ public enum DataSourceTypeEnum {
     LOCAL(true),
     MYSQL(true),
     ODPS(true),
+    TDSQL(true),
     ;
 
     /**
@@ -46,6 +47,7 @@ public enum DataSourceTypeEnum {
             case "oss" -> OSS;
             case "mysql" -> MYSQL;
             case "odps" -> ODPS;
+            case "tdsql" -> TDSQL;
             default -> throw new IllegalArgumentException("Invalidate DataSource type: " + str);
         };
     }
