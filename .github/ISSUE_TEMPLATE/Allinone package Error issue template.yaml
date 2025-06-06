@@ -65,11 +65,25 @@ body:
     validations:
       required: true
   - type: textarea
+    id: Demand-Description
+    attributes:
+      label: Demand Description
+      description: Understanding your objective allows us to provide more precise solutions.
+      placeholder: |
+            1. Requirement Type (Functionality/Performance/Others)
+            2. Desired objective to achieve
+            3. For further assistance or to communicate additional scene information, please contact us for 1-on-1 support.
+            （WeChat:secretflow02）
+      value:
+      render: shell
+    validations:
+      required: true
+  - type: textarea
     id: what-happened
     attributes:
       label: What happend and What you expected to happen.
       description: Describe the bug, expected behavior.
-      placeholder: A bug happened!
+      placeholder: Current situation or status overview
       value:
       render: shell
     validations:
