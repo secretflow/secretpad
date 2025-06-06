@@ -30,6 +30,7 @@ public class DomainDatasourceConstants {
     public static final String DEFAULT_OSS_DATASOURCE_TYPE = "OSS";
     public static final String DEFAULT_ODPS_DATASOURCE_TYPE = "ODPS";
     public static final String DEFAULT_MYSQL_DATASOURCE_TYPE = "MYSQL";
+    public static final String DEFAULT_TDSQL_DATASOURCE_TYPE = "TDSQL";
     public static final String DEFAULT_HTTP_DATASOURCE_TYPE = "HTTP";
 
     public static final String ODPS_DATASOURCE_PARTITION_TYPE_ODPS = "odps";
@@ -41,4 +42,5 @@ public class DomainDatasourceConstants {
     public final static String DATASOURCE_ID_PREFIX = "oss-";
     public final static String DATASOURCE_ODPS_ID_PREFIX = "odps-";
     public final static String DATASOURCE_MYSQL_ID_PREFIX = "mysql-";
+    public final static String DATASOURCE_TDSQL_ID_PREFIX = "tdsql-";
 }
