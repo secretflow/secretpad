@@ -61,7 +61,7 @@ public abstract class AbstractDatasourceHandler implements DatasourceHandler {
     public void fetchResult(Map<String, String> failedDatasource, List<CompletableFuture<KusciaResponse<Domaindatasource.CreateDomainDataSourceResponse>>> completableFutures) {
         try {
             CompletableFuture
-                    .allOf(completableFutures.toArray(new CompletableFuture[0]))
+                    .allOf(completableFutures.toArray(new CompletableFuture[completableFutures.size()]))
                     .get(5000, TimeUnit.MILLISECONDS);
             for (CompletableFuture<KusciaResponse<Domaindatasource.CreateDomainDataSourceResponse>> task : completableFutures) {
 
