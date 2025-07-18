@@ -70,6 +70,10 @@ public class DatasourceDetailUnAggregateDTO {
                 Domaindatasource.DatabaseDataSourceInfo mysql = info.getDatabase();
                 datasourceDetailUnAggregateDTO.setInfo(MysqlDatasourceInfo.builder().endpoint(mysql.getEndpoint()).user(mysql.getUser()).password(DesensitizationUtils.akSkDesensitize(mysql.getPassword())).database(mysql.getDatabase()).build());
                 break;
+            case DomainDatasourceConstants.DEFAULT_TDSQL_DATASOURCE_TYPE:
+                Domaindatasource.TdsqlDataSourceInfo tdsql = info.getTdsql();
+                datasourceDetailUnAggregateDTO.setInfo(TdsqlDatasourceInfo.builder().endpoint(tdsql.getEndpoint()).user(tdsql.getUser()).password(DesensitizationUtils.akSkDesensitize(tdsql.getPassword())).database(tdsql.getDatabase()).build());
+                break;
             default:
                 break;
         }
