@@ -111,7 +111,6 @@ public class ModelExportServiceImpl implements ModelExportService {
     @Override
     public ModelExportPackageResponse exportModel(ModelExportPackageRequest request) throws InvalidProtocolBufferException {
         log.debug("export model {}", request);
-        UserContext.getUser().getOwnerId();
         Set<String> partyIds = new HashSet<>();
         request.getModelPartyConfig().forEach(m -> partyIds.add(m.getModelParty()));
         String modelDataName = UUIDUtils.random(2) + "_" + Instant.now().toEpochMilli();
