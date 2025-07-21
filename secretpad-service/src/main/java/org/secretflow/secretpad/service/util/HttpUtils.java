@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public final class HttpUtils {
 
-    private static OkHttpClient client = new OkHttpClient.Builder()
+    private static final OkHttpClient client = new OkHttpClient.Builder()
             .followRedirects(false)
             .connectTimeout(100, TimeUnit.MILLISECONDS)
             .build();

@@ -40,7 +40,6 @@ public class GraphBuilder {
     private final Map<String, List<String>> dependencies = new HashMap<>();
     private final Map<String, String> output2node = new HashMap<>();
     private final Map<String, String> input2node = new HashMap<>();
-    private final Map<String, List<String>> node2inputs = new HashMap<>();
     private final Map<String, GraphNodeInfo> nodeMap = new HashMap<>();
 
     /**
@@ -49,6 +48,7 @@ public class GraphBuilder {
      * @param nodes graph node information list
      */
     public GraphBuilder(List<GraphNodeInfo> nodes) {
+        Map<String, List<String>> node2inputs = new HashMap<>();
         if (!CollectionUtils.isEmpty(nodes)) {
             for (GraphNodeInfo node : nodes) {
                 String nodeId = node.getGraphNodeId();

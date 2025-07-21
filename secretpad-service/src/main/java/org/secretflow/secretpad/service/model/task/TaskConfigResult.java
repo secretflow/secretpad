@@ -21,8 +21,8 @@ package org.secretflow.secretpad.service.model.task;
  * @date 2024/11/18
  */
 public class TaskConfigResult {
-    private String taskInputConfig;
-    private String appImage;
+    private final String taskInputConfig;
+    private final String appImage;
 
     // Constructor, getters and setters
     public TaskConfigResult(String taskInputConfig, String appImage) {

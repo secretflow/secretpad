@@ -48,10 +48,10 @@ public class HttpDatasourceHandler extends AbstractDatasourceHandler {
 
 
     @Resource
-    private InstService instService;
+    private final InstService instService;
 
     @Resource
-    private EnvService envService;
+    private final EnvService envService;
 
     @Override
 
