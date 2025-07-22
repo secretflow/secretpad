@@ -42,12 +42,12 @@ public class FileUtils {
     /**
      *
      **/
-    public final static String FILE_SEPARATOR = "/";
+    public static final String FILE_SEPARATOR = "/";
 
     /**
      * cert limit 10kb
      **/
-    public final static long CERT_FILE_MAX_SIZE = 1 * 10 * 1024;
+    public static final long CERT_FILE_MAX_SIZE = 10 * 1024;
 
     /**
      * Load file from the classpath resources or filesystem
@@ -87,7 +87,7 @@ public class FileUtils {
      * @throws IOException
      */
     public static String readFile2String(File file) throws IOException {
-        return FileCopyUtils.copyToString(new FileReader(file));
+        return Files.readString(file.toPath(), StandardCharsets.UTF_8);
     }
 
 
