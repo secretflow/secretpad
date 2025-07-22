@@ -88,7 +88,7 @@ public class CertUtils {
         keyFactory.generatePrivate(keySpec);
     }
 
-    public static byte[] decodePem(String pem) {
+    private static byte[] decodePem(String pem) {
         Matcher matcher = PEM_PATTERN.matcher(pem);
         if (!matcher.find() || matcher.groupCount() < 2) {
             throw new IllegalArgumentException("Invalid PEM format");
