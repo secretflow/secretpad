@@ -31,7 +31,6 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 public class LogConfigProperties {
 
-    @NotBlank
     private SLSConfig sls;
 
     @Getter
