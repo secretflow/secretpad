@@ -21,6 +21,7 @@ import org.secretflow.secretpad.common.exception.SecretpadException;
 import org.secretflow.secretpad.common.util.SpringContextUtil;
 
 import lombok.extern.slf4j.Slf4j;
+import okhttp3.*;
 import org.springframework.http.HttpStatus;
 
 import java.io.IOException;
