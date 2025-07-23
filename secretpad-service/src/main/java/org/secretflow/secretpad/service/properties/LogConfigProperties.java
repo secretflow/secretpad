@@ -31,6 +31,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @Setter
 public class LogConfigProperties {
 
+    @NotBlank
     private SLSConfig sls;
 
     @Getter
@@ -38,11 +39,11 @@ public class LogConfigProperties {
     public static class SLSConfig {
         @NotBlank
         private String host;
-        @NotBlank
 
+        @NotBlank
         private String ak;
-        @NotBlank
 
+        @NotBlank
         private String sk;
 
         @NotBlank
