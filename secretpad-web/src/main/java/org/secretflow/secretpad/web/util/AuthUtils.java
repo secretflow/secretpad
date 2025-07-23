@@ -30,7 +30,6 @@ import org.apache.commons.lang3.StringUtils;
  * @date 2023/06/21
  */
 public class AuthUtils {
-
     /**
      * Find token from http header
      *
@@ -40,9 +39,8 @@ public class AuthUtils {
     public static String findTokenInHeader(HttpServletRequest request) {
         String token = request.getHeader(AuthConstants.TOKEN_NAME);
         if (StringUtils.isEmpty(token)) {
-            throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "The request header does not contain header!");
+            throw SecretpadException.of(AuthErrorCode.AUTH_FAILED, "The request header does not contain User-Token!");
         }
         return token;
     }
-
 }
