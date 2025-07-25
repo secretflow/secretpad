@@ -69,6 +69,8 @@ public enum SystemErrorCode implements ErrorCode {
 
     REQUEST_FREQUENCY_ERROR(2020111012),
 
+    FILE_OPERATION_ERROR(2020111013)
+
     ;
 
     private final int code;

@@ -29,7 +29,6 @@ import org.secretflow.secretpad.service.model.data.DownloadDataRequest;
 import org.secretflow.secretpad.service.model.data.DownloadInfo;
 import org.secretflow.secretpad.service.model.data.UploadDataResultVO;
 
-import jakarta.servlet.ServletOutputStream;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.slf4j.Logger;
@@ -39,7 +38,10 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
+import java.nio.charset.StandardCharsets;
 
 /**
  * Data controller
@@ -105,27 +107,39 @@ public class DataController {
     @DataResource(field = "nodeId", resourceType = DataResourceTypeEnum.NODE_ID)
     @ApiResource(code = ApiResourceCodeConstants.DATA_DOWNLOAD)
     public void download(HttpServletResponse response, @Valid @RequestBody DownloadDataRequest request) {
-        DownloadInfo downloadInfo = dataService.download(request);
-        response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
-        response.setHeader("Content-Disposition", "attachment;filename*=UTF-8''" + downloadInfo.getFileName());
-        response.setContentLength(downloadInfo.getFileLength());
         try {
-            ServletOutputStream outputStream = response.getOutputStream();
-            InputStream inputStream = downloadInfo.getInputStream();
-            if(downloadInfo.getFileLength() == 0){
-                response.setContentLength("No data".getBytes().length);
-                outputStream.write("No data".getBytes());
-            }else{
-                byte[] buf = new byte[1024];
-                int len;
-                while ((len = inputStream.read(buf)) > 0) {
-                    outputStream.write(buf, 0, len);
+            DownloadInfo downloadInfo = dataService.download(request);
+
+            response.setContentType(MediaType.APPLICATION_OCTET_STREAM_VALUE);
+            response.setHeader("Content-Disposition", "attachment;filename*=UTF-8''" + downloadInfo.getFileName());
+
+            if (downloadInfo.getFileLength() > 0) {
+                response.setContentLength(downloadInfo.getFileLength());
+                try (InputStream inputStream = downloadInfo.getInputStream();
+                     OutputStream outputStream = response.getOutputStream()) {
+
+                    // Use an 8KB buffer to balance performance and memory
+                    byte[] buffer = new byte[8192];
+                    int bytesRead;
+
+                    while ((bytesRead = inputStream.read(buffer)) != -1) {
+                        outputStream.write(buffer, 0, bytesRead);
+                    }
+                }
+            } else {
+                // Handling scenarios without data
+                String noData = "No data available";
+                byte[] bytes = noData.getBytes(StandardCharsets.UTF_8);
+                response.setContentLength(bytes.length);
+                try (OutputStream outputStream = response.getOutputStream()) {
+                    outputStream.write(bytes);
                 }
             }
-            inputStream.close();
-            outputStream.close();
+        } catch (IOException e) {
+            LOGGER.error("Download failed: {}, {}", request.getNodeId(), request.getDomainDataId(), e);
+            throw SecretpadException.of(SystemErrorCode.FILE_OPERATION_ERROR, "Download failed");
         } catch (Exception e) {
-            LOGGER.error(e.getMessage());
+            LOGGER.error("Unexpected error: {}, {}", request.getNodeId(), request.getDomainDataId(), e);
             throw SecretpadException.of(SystemErrorCode.UNKNOWN_ERROR, e);
         }
     }
