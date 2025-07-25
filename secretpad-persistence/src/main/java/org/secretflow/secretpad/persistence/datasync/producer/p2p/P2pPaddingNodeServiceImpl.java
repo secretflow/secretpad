@@ -57,7 +57,7 @@ public class P2pPaddingNodeServiceImpl implements PaddingNodeService {
 
     private final NodeRepository nodeRepository;
 
-    private Map<String, String> inst_Node = new ConcurrentHashMap<>();
+    private final Map<String, String> inst_Node = new ConcurrentHashMap<>();
 
     @Override
     public void paddingNodes(EntityChangeListener.DbChangeEvent<BaseAggregationRoot> event) {

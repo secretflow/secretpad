@@ -31,11 +31,11 @@ import com.amazonaws.services.s3.AmazonS3ClientBuilder;
  */
 public final class OssAutoCloseableClient implements AutoCloseable {
 
-    private static ClientConfiguration
+    private static final ClientConfiguration
             clientConfiguration = new ClientConfiguration().withConnectionTimeout(500)
             .withProtocol(Protocol.HTTP)
             .withSocketTimeout(500);
-    private AmazonS3 amazonS3Client;
+    private final AmazonS3 amazonS3Client;
 
     private OssAutoCloseableClient(AmazonS3 amazonS3Client) {
         this.amazonS3Client = amazonS3Client;
