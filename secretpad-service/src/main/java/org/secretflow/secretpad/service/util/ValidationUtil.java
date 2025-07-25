@@ -18,17 +18,15 @@ package org.secretflow.secretpad.service.util;
 
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
-import jakarta.validation.ValidatorFactory;
 
 /**
  * @author chenmingliang
  * @date 2024/04/18
  */
 public class ValidationUtil {
-    private static final ValidatorFactory factory = Validation.buildDefaultValidatorFactory();
+    private static final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
     public static boolean allFieldsNotNull(Object obj) {
-        Validator validator = factory.getValidator();
         return validator.validate(obj).isEmpty();
     }
 }

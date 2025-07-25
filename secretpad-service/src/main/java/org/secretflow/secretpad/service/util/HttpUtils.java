@@ -25,6 +25,7 @@ import okhttp3.*;
 import org.springframework.http.HttpStatus;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -32,11 +33,14 @@ import java.util.concurrent.TimeUnit;
 @Slf4j
 public final class HttpUtils {
 
-    private static OkHttpClient client = new OkHttpClient.Builder()
+    private static final IpFilterUtil ipFilterUtil = SpringContextUtil.getBean(IpFilterUtil.class);
+
+    private static final OkHttpClient client = new OkHttpClient.Builder()
             .followRedirects(false)
             .connectTimeout(100, TimeUnit.MILLISECONDS)
+            .readTimeout(500, TimeUnit.MILLISECONDS)
+            .writeTimeout(500, TimeUnit.MILLISECONDS)
             .build();
-
 
     private HttpUtils() {
     }
@@ -86,15 +90,16 @@ public final class HttpUtils {
         if (!isSecureUrl(url)) {
             throw SecretpadException.of(FeatureTableErrorCode.FEATURE_TABLE_IP_FILTER, url);
         }
+
         Request request = new Request.Builder()
                 .url(url)
                 .head()
                 .build();
-        log.info("detection url {}", url);
+
         try (Response response = client.newCall(request).execute()) {
             return response.isSuccessful() || response.code() != HttpStatus.INTERNAL_SERVER_ERROR.value();
         } catch (Exception e) {
-            log.error("HttpUtils detection fail", e);
+            log.error("HttpUtils detection fail to {}", url, e);
             return false;
         }
     }
@@ -102,10 +107,13 @@ public final class HttpUtils {
     public static Boolean isSecureUrl(String urlString) {
         try {
             new URL(urlString);
+            return !ipFilterUtil.urlIsIpInRange(urlString);
+        } catch (MalformedURLException mue) {
+            log.error("Invalid URL format: {}", urlString, mue);
+            return false;
         } catch (Exception e) {
+            log.error("Unknow exception happen: ", e);
             return false;
         }
-        IpFilterUtil ipFilterUtil = SpringContextUtil.getBean(IpFilterUtil.class);
-        return !ipFilterUtil.urlIsIpInRange(urlString);
     }
 }

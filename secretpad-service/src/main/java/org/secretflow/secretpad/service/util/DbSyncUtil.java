@@ -40,7 +40,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class DbSyncUtil {
 
-    private final static Logger LOGGER = LoggerFactory.getLogger(DbSyncUtil.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DbSyncUtil.class);
     private static final String HTTP_PREFIX = "http://";
     private static String kusciaLiteGateway;
     private static String routeHeader;

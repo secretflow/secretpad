@@ -43,7 +43,6 @@ import static org.secretflow.secretpad.common.constant.SystemConstants.SKIP_TEST
 @Profile(SKIP_TEST)
 public class CloudLogServiceFactory {
 
-
     private final LogConfigProperties logConfigProperties;
 
     private final ProjectJobTaskRepository taskRepository;
@@ -64,23 +63,23 @@ public class CloudLogServiceFactory {
     }
 
     public ICloudLogService getLogServiceInstance() {
+        LogConfigProperties.SLSConfig sls = logConfigProperties.getSls();
         try {
-            if (Objects.nonNull(logConfigProperties.getSls()) && ValidationUtil.allFieldsNotNull(logConfigProperties.getSls())) {
-                log.info("Detected that the cloud service has been configured,create cloud service instance");
+            if (Objects.nonNull(sls) && ValidationUtil.allFieldsNotNull(sls)) {
+                log.info("Detected that the cloud service has been configured, create cloud service instance");
                 return new SLSCloudLogServiceImpl(
-                        logConfigProperties.getSls(),
+                        sls,
                         platformType,
                         nodeId,
                         taskRepository,
                         nodeRepository
-
                 );
             } else {
-                log.warn("cloud service configuration is not available,please check your configuration,like ak,sk,host");
+                log.warn("cloud service configuration is not available, please check your configuration,like ak,sk,host");
             }
         } catch (Exception e) {
             // The cloud log is not mandatory; even if this Bean fails to be created, we still need to allow the system to start normally, just providing an error log will suffice.
-            log.error("create cloud log service instance failed,error message:{}", e.getMessage());
+            log.error("create cloud log service instance failed, error message:{}", e.getMessage());
         }
 
         return null;

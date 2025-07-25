@@ -38,11 +38,11 @@ public class LogConfigProperties {
     public static class SLSConfig {
         @NotBlank
         private String host;
-        @NotBlank
 
+        @NotBlank
         private String ak;
-        @NotBlank
 
+        @NotBlank
         private String sk;
 
         @NotBlank
