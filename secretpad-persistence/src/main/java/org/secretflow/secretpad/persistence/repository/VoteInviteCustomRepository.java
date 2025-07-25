@@ -90,7 +90,7 @@ public class VoteInviteCustomRepository {
             predicates.add(cb.equal(root.get("type"), type));
         }
         query.select(cb.count(root))
-                .where(cb.and(predicates.toArray(new Predicate[0])));
+                .where(cb.and(predicates.toArray(new Predicate[predicates.size()])));
         return entityManager.createQuery(query).getSingleResult();
     }
 }

@@ -42,9 +42,10 @@ public class FlywayConfig {
     @Bean
     public Flyway defaultFlyway(@Qualifier("defaultDataSource") DataSource dataSource) {
         FlywayProperties flywayProperties = defaultFlywayProperties();
+        int size = flywayProperties.getLocations().size();
         Flyway flyway = Flyway.configure()
                 .dataSource(dataSource)
-                .locations(flywayProperties.getLocations().toArray(new String[0]))
+                .locations(flywayProperties.getLocations().toArray(new String[size]))
                 .baselineOnMigrate(true)
                 .load();
         flyway.migrate();
@@ -60,9 +61,10 @@ public class FlywayConfig {
     @Bean
     public Flyway quartzFlyway(@Qualifier("quartzDataSource") DataSource dataSource) {
         FlywayProperties flywayProperties = quartzFlywayProperties();
+        int size = flywayProperties.getLocations().size();
         Flyway flyway = Flyway.configure()
                 .dataSource(dataSource)
-                .locations(flywayProperties.getLocations().toArray(new String[0]))
+                .locations(flywayProperties.getLocations().toArray(new String[size]))
                 .baselineOnMigrate(true)
                 .load();
         flyway.migrate();

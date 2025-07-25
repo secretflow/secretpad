@@ -256,7 +256,7 @@ public abstract class AbstractDatatableHandler implements DatatableHandler {
     public void fetchResult(Map<String, String> failedDatatable, List<CompletableFuture<KusciaResponse<Domaindata.CreateDomainDataResponse>>> completableFutures, List<CreateDatatableVO.DataTableNodeInfo> dataTableNodeInfos) {
         try {
             CompletableFuture
-                    .allOf(completableFutures.toArray(new CompletableFuture[0]))
+                    .allOf(completableFutures.toArray(new CompletableFuture[completableFutures.size()]))
                     .get(5000, TimeUnit.MILLISECONDS);
             for (CompletableFuture<KusciaResponse<Domaindata.CreateDomainDataResponse>> task : completableFutures) {
 
