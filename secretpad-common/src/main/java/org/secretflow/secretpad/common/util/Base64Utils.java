@@ -18,6 +18,7 @@ package org.secretflow.secretpad.common.util;
 
 import org.apache.commons.codec.binary.Base64;
 
+import java.nio.charset.StandardCharsets;
 
 /**
  * ApprovalController.
@@ -27,17 +28,22 @@ import org.apache.commons.codec.binary.Base64;
  */
 public final class Base64Utils {
 
+    private static final java.nio.charset.Charset BASE64_CHARSET = StandardCharsets.ISO_8859_1;
+
     private Base64Utils() {
     }
 
     public static byte[] decode(String base64) {
-        byte[] bytes = base64.getBytes();
-        return Base64.decodeBase64(bytes);
+        if (base64 == null) {
+            return null;
+        }
+        return Base64.decodeBase64(base64.getBytes(BASE64_CHARSET));
     }
 
     public static String encode(byte[] bytes) {
-        return new String(Base64.encodeBase64(bytes));
+        if (bytes == null) {
+            return null;
+        }
+        return new String(Base64.encodeBase64(bytes), BASE64_CHARSET);
     }
-
-
 }
