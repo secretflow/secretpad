@@ -219,10 +219,10 @@ public abstract class AbstractDatatableHandler implements DatatableHandler {
                 .collect(Collectors.groupingBy(it -> it.getValue0().getUpk().getDatatableId()));
     }
 
-    public void logFailedDatatable(Map<String, String> failedDatatable) {
+    public void logFailedDatatable(Map<String, String> failedDatatable, int totalSize) {
         if (!failedDatatable.isEmpty()) {
-            log.info("Some nodes failed to create datatable: {}", JsonUtils.toJSONString(failedDatatable));
-            if (failedDatatable.size() == failedDatatable.size()) {
+            log.error("Some nodes failed to create datatable: {}", JsonUtils.toJSONString(failedDatatable));
+            if (failedDatatable.size() == totalSize) {
                 log.error("All nodes failed to create datatable: {}", JsonUtils.toJSONString(failedDatatable));
                 throw SecretpadException.of(DatatableErrorCode.DATATABLE_CREATE_FAILED, "All nodes create datatable failed");
             }
