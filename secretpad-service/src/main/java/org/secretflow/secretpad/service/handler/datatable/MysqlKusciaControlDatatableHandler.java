@@ -93,7 +93,7 @@ public class MysqlKusciaControlDatatableHandler extends AbstractDatatableHandler
 
         fetchResult(failedDatatable, completableFutures, dataTableNodeInfos);
 
-        logFailedDatatable(failedDatatable);
+        logFailedDatatable(failedDatatable, createDatatableRequest.getNodeIds().size());
 
         return new CreateDatatableVO(dataTableNodeInfos, failedDatatable);
     }

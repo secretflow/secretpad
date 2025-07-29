@@ -95,7 +95,7 @@ public class OdpsKusciaControlDatatableHandler extends AbstractDatatableHandler 
 
         fetchResult(failedDatatable, completableFutures, dataTableNodeInfos);
 
-        logFailedDatatable(failedDatatable);
+        logFailedDatatable(failedDatatable, createDatatableRequest.getNodeIds().size());
 
         return new CreateDatatableVO(dataTableNodeInfos, failedDatatable);
     }
