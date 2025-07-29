@@ -70,7 +70,7 @@ public abstract class AbstractDatatableManager {
      *
      * @param nodeId              nodeId
      * @param pageSize
-     * @param pageNumberfindByIds
+     * @param pageNumber
      * @param statusFilter
      * @param datatableNameFilter
      * @param types
