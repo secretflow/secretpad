@@ -46,7 +46,7 @@ public class CreateDatasourceRequest {
     private List<String> nodeIds;
 
     @NotBlank(message = "type cannot be blank")
-    @OneOfType(types = {DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE, DomainDatasourceConstants.DEFAULT_ODPS_DATASOURCE_TYPE, DomainDatasourceConstants.DEFAULT_MYSQL_DATASOURCE_TYPE})
+    @OneOfType(types = {DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE, DomainDatasourceConstants.DEFAULT_ODPS_DATASOURCE_TYPE, DomainDatasourceConstants.DEFAULT_MYSQL_DATASOURCE_TYPE, DomainDatasourceConstants.DEFAULT_TDSQL_DATASOURCE_TYPE})
     private String type;
 
     @NotBlank(message = "name can not be empty")
@@ -63,7 +63,8 @@ public class CreateDatasourceRequest {
     @JsonSubTypes({
             @JsonSubTypes.Type(value = OssDatasourceInfo.class, name = DomainDatasourceConstants.DEFAULT_OSS_DATASOURCE_TYPE),
             @JsonSubTypes.Type(value = OdpsDatasourceInfo.class, name = DomainDatasourceConstants.DEFAULT_ODPS_DATASOURCE_TYPE),
-            @JsonSubTypes.Type(value = MysqlDatasourceInfo.class, name = DomainDatasourceConstants.DEFAULT_MYSQL_DATASOURCE_TYPE)
+            @JsonSubTypes.Type(value = MysqlDatasourceInfo.class, name = DomainDatasourceConstants.DEFAULT_MYSQL_DATASOURCE_TYPE),
+            @JsonSubTypes.Type(value = TdsqlDatasourceInfo.class, name = DomainDatasourceConstants.DEFAULT_TDSQL_DATASOURCE_TYPE)
     })
     private @Valid DataSourceInfo dataSourceInfo;
 }

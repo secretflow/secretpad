@@ -158,6 +158,8 @@ message DataSourceInfo {
   DatabaseDataSourceInfo database = 3;
   // aliyun odps(MaxCompute)
   OdpsDataSourceInfo odps = 4;
+  // TDSQL info
+  TdsqlDataSourceInfo tdsql = 5;
 }
 
 // datasource info for local path
@@ -205,4 +207,11 @@ message OdpsDataSourceInfo {
   string project = 2;
   string access_key_id = 3;
   string access_key_secret = 4;
+}
+
+message TdsqlDataSourceInfo {
+  string endpoint = 1;
+  string user = 2;
+  string password = 3;
+  string database = 4;
 }
