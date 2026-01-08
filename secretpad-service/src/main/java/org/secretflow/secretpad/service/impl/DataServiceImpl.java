@@ -92,7 +92,7 @@ public class DataServiceImpl implements DataService {
         File target = null;
         for (int i = 0; i < 5; i++) {
             randomFileName = getRandomFileName(fileName);
-            target = new File(dirPath + randomFileName);
+            target = new File(dirPath + randomFileName).getAbsoluteFile();
             if (!target.exists()) {
                 break;
             }
@@ -102,10 +102,10 @@ public class DataServiceImpl implements DataService {
             LOGGER.warn("After try some times generate random file name, the target random file {} still exists.", dirPath + randomFileName);
             throw SecretpadException.of(DataErrorCode.FILE_EXISTS_ERROR);
         }
-        createDirIfNotExist(dirPath);
+        createDirIfNotExist(target.getParent());
         try {
             file.transferTo(target);
-            FileUtils.removeBOMFromFile(dirPath + randomFileName);
+            FileUtils.removeBOMFromFile(target.getAbsolutePath());
         } catch (IOException e) {
             LOGGER.error("IOException: {}", e.getMessage());
             throw SecretpadException.of(SystemErrorCode.UNKNOWN_ERROR, e);
